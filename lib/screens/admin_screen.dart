@@ -1,4 +1,7 @@
+﻿import 'dart:convert';
 import 'dart:math';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -110,20 +113,20 @@ class _AdminScreenState extends State<AdminScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFFF6207)),
+                            border: Border.all(color: const Color(0xFF16A34A)),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.download_outlined,
-                                  size: 14, color: Color(0xFFFF6207)),
+                                  size: 14, color: Color(0xFF16A34A)),
                               SizedBox(width: 6),
                               Text(
                                 '지표 내보내기',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFF6207),
+                                  color: Color(0xFF16A34A),
                                 ),
                               ),
                             ],
@@ -179,6 +182,12 @@ class _AdminScreenState extends State<AdminScreen> {
                         active: _tab == 'restaurants',
                         onTap: () => setState(() => _tab = 'restaurants'),
                       ),
+                      const SizedBox(width: 8),
+                      _TabPill(
+                        label: '인기 관리',
+                        active: _tab == 'popularity',
+                        onTap: () => setState(() => _tab = 'popularity'),
+                      ),
                     ],
                   ),
                 ),
@@ -192,10 +201,11 @@ class _AdminScreenState extends State<AdminScreen> {
                         ? _MetricsTab(
                             restaurants: restaurants,
                             onDetail: (key) => setState(() => _detail = key),
-                            onDauDetail: () =>
-                                setState(() => _showDau = true),
+                            onDauDetail: () => setState(() => _showDau = true),
                           )
-                        : _RestaurantsTab(restaurants: restaurants),
+                        : _tab == 'restaurants'
+                            ? _RestaurantsTab(restaurants: restaurants)
+                            : _PopularityTab(restaurants: restaurants),
                   ),
                 ),
               ],
@@ -216,7 +226,10 @@ class _AdminScreenState extends State<AdminScreen> {
 
           // Export sheet
           if (_showExport)
-            _ExportSheet(onClose: () => setState(() => _showExport = false)),
+            _ExportSheet(
+              onClose: () => setState(() => _showExport = false),
+              restaurants: restaurants,
+            ),
         ],
       ),
     );
@@ -277,7 +290,7 @@ class _MetricCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -544,7 +557,7 @@ class _MetricsTab extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.3,
+          childAspectRatio: 1.9,
           children: [
             _MetricCard(
               label: 'DAU',
@@ -633,7 +646,7 @@ class _MetricsTab extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF6207),
+                            color: Color(0xFF16A34A),
                           ),
                         ),
                       ],
@@ -694,7 +707,7 @@ class _MetricsTab extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF6207),
+                            color: Color(0xFF16A34A),
                           ),
                         ),
                       ],
@@ -774,6 +787,218 @@ class _MetricsTab extends StatelessWidget {
   }
 }
 
+// ── Algorithm toggle card ─────────────────────────────────────────────────
+class _AlgorithmToggleCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final isOn = provider.useAlgorithmRanking;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('인기도 알고리즘',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827))),
+                    SizedBox(height: 4),
+                    Text('최근 1주 혼잡도 지속시간 기반 자동 측정',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => provider.toggleAlgorithmRanking(),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 56,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isOn ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      width: 24, height: 24,
+                      margin: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                          color: Colors.white, shape: BoxShape.circle),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!isOn) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFFE5E7EB), height: 1),
+            const SizedBox(height: 8),
+            const Text('아래 목록에서 ▲▼ 버튼으로 순위를 직접 설정하세요.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Popularity tab ───────────────────────────────────────────────────────
+class _PopularityTab extends StatelessWidget {
+  final List<Restaurant> restaurants;
+  const _PopularityTab({required this.restaurants});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final useAlgo = provider.useAlgorithmRanking;
+
+    final sorted = useAlgo
+        ? restaurants
+        : [...restaurants]..sort((a, b) {
+            if (a.manualRank == 0 && b.manualRank == 0) return 0;
+            if (a.manualRank == 0) return 1;
+            if (b.manualRank == 0) return -1;
+            return a.manualRank.compareTo(b.manualRank);
+          });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _AlgorithmToggleCard(),
+        if (!useAlgo) ...[
+          const SizedBox(height: 20),
+          const Text('인기 순위',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 8),
+          ...sorted.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final r = entry.value;
+            return Padding(
+              key: ValueKey(r.id),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: r.manualRank > 0
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFE5E7EB),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          r.manualRank > 0 ? '${r.manualRank}' : '-',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: r.manualRank > 0
+                                ? Colors.white
+                                : const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(r.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF111827))),
+                          Text('${r.area} · ${r.category}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF9CA3AF))),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: idx == 0 ? null : () {
+                            final ids = sorted.map((e) => e.id).toList();
+                            ids.insert(idx - 1, ids.removeAt(idx));
+                            provider.setManualRanks(ids);
+                          },
+                          child: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: idx == 0
+                                  ? const Color(0xFFF9FAFB)
+                                  : const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(Icons.keyboard_arrow_up,
+                                size: 16,
+                                color: idx == 0
+                                    ? const Color(0xFFD1D5DB)
+                                    : const Color(0xFF6B7280)),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: idx == sorted.length - 1 ? null : () {
+                            final ids = sorted.map((e) => e.id).toList();
+                            ids.insert(idx + 1, ids.removeAt(idx));
+                            provider.setManualRanks(ids);
+                          },
+                          child: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: idx == sorted.length - 1
+                                  ? const Color(0xFFF9FAFB)
+                                  : const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(Icons.keyboard_arrow_down,
+                                size: 16,
+                                color: idx == sorted.length - 1
+                                    ? const Color(0xFFD1D5DB)
+                                    : const Color(0xFF6B7280)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+}
+
 // ── Restaurants tab ───────────────────────────────────────────────────────
 class _RestaurantsTab extends StatefulWidget {
   final List<Restaurant> restaurants;
@@ -792,6 +1017,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
+    final sorted = widget.restaurants;
 
     return Stack(
       children: [
@@ -831,9 +1057,12 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
             const SizedBox(height: 16),
 
             // Restaurant list
-            ...widget.restaurants.map((r) {
+            ...sorted.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final r = entry.value;
               final isConfirming = _confirmDeleteId == r.id;
               return Padding(
+                key: ValueKey(r.id),
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Container(
                   padding: const EdgeInsets.all(20),
@@ -1208,7 +1437,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
             _LineChart(
               values: vals,
               xLabels: lbls,
-              color: const Color(0xFFFF6207),
+              color: const Color(0xFF16A34A),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -1243,19 +1472,13 @@ class _DetailSheet extends StatelessWidget {
     if (detailKey == 'reports' || detailKey == 'avgReports') {
       final sorted = [...restaurants]
         ..sort((a, b) => _totalReports(b) - _totalReports(a));
-      final chartData = restaurants.map((r) => _totalReports(r).toDouble()).toList();
-      final maxV =
-          chartData.isEmpty ? 1.0 : chartData.reduce(max);
+      final maxV = restaurants.isEmpty
+          ? 1.0
+          : restaurants.map((r) => _totalReports(r).toDouble()).reduce(max);
       title = detailKey == 'reports' ? '매장별 누적 제보 수' : '매장 평균 제보 수';
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BarChart(
-            data: chartData,
-            labels: restaurants.map((r) => r.emoji).toList(),
-            color: const Color(0xFFFF6207),
-          ),
-          const SizedBox(height: 16),
           ...sorted.map((r) {
             final frac = maxV > 0 ? _totalReports(r) / maxV : 0.0;
             return Padding(
@@ -1291,7 +1514,7 @@ class _DetailSheet extends StatelessWidget {
                                   widthFactor: frac,
                                   child: Container(
                                     height: 6,
-                                    color: const Color(0xFFFF6207),
+                                    color: const Color(0xFF16A34A),
                                   ),
                                 ),
                               ],
@@ -1325,7 +1548,7 @@ class _DetailSheet extends StatelessWidget {
         'mau': ('월간 활성 사용자 추이',
             _mauMonthly.map((v) => v.toDouble()).toList(),
             _months6.toList(),
-            const Color(0xFFFF6207)),
+            const Color(0xFF16A34A)),
         'clickRate': ('추천 배너 클릭률 추이', _clickWeekly, _weekDates,
             const Color(0xFF6366F1)),
         'pushOpenRate': ('푸시 오픈율 추이', _pushWeekly, _weekDates,
@@ -1404,8 +1627,9 @@ class _DetailSheet extends StatelessWidget {
 // ── Export sheet ──────────────────────────────────────────────────────────
 class _ExportSheet extends StatefulWidget {
   final VoidCallback onClose;
+  final List<Restaurant> restaurants;
 
-  const _ExportSheet({required this.onClose});
+  const _ExportSheet({required this.onClose, required this.restaurants});
 
   @override
   State<_ExportSheet> createState() => _ExportSheetState();
@@ -1423,12 +1647,51 @@ class _ExportSheetState extends State<_ExportSheet> {
   ];
 
   late Set<String> _selected;
+  late DateTime _startDate;
+  late DateTime _endDate;
 
   @override
   void initState() {
     super.initState();
     _selected = Set.from(_sheetLabels);
+    _endDate = DateTime.now();
+    _startDate = _endDate.subtract(const Duration(days: 29));
   }
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final initial = isStart ? _startDate : _endDate;
+    final first = DateTime(2024);
+    final last = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(last) ? last : initial,
+      firstDate: first,
+      lastDate: last,
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF16A34A),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _startDate = picked;
+        if (_endDate.isBefore(_startDate)) _endDate = _startDate;
+      } else {
+        _endDate = picked;
+        if (_startDate.isAfter(_endDate)) _startDate = _endDate;
+      }
+    });
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
   void _toggle(String label) {
     setState(() {
@@ -1438,6 +1701,77 @@ class _ExportSheetState extends State<_ExportSheet> {
         _selected.add(label);
       }
     });
+  }
+
+  String _buildCsv() {
+    final buf = StringBuffer();
+    final period = '${_fmt(_startDate)} ~ ${_fmt(_endDate)}';
+    final rs = widget.restaurants;
+
+    void section(String title, List<List<String>> rows) {
+      buf.writeln('[$title] 기간: $period');
+      for (final row in rows) {
+        buf.writeln(row.map((c) => '"$c"').join(','));
+      }
+      buf.writeln();
+    }
+
+    if (_selected.contains('사용자 지표')) {
+      section('사용자 지표', [
+        ['항목', '값'],
+        ['DAU', '$_mau명 (오늘 ${_dauWeek.last}명)'],
+        ['MAU', '$_mau명'],
+        ['추천 배너 클릭률', '$_clickRate%'],
+        ['푸시 오픈율', '$_pushOpenRate%'],
+      ]);
+    }
+    if (_selected.contains('매장 현황')) {
+      section('매장 현황', [
+        ['매장명', '구역', '카테고리', '현재 상태', '누적 제보', '영업시간'],
+        ...rs.map((r) => [
+          r.name, r.area, r.category, r.status,
+          '${r.totalReports}건', r.hours,
+        ]),
+      ]);
+    }
+    if (_selected.contains('유저 제보 참여 현황')) {
+      section('유저 제보 참여 현황', [
+        ['매장명', '여유로움', '약간혼잡', '자리없음', '합계'],
+        ...rs.map((r) => [
+          r.name,
+          '${r.reports['여유로움'] ?? 0}',
+          '${r.reports['약간혼잡'] ?? 0}',
+          '${r.reports['자리없음'] ?? 0}',
+          '${r.totalReports}',
+        ]),
+      ]);
+    }
+    if (_selected.contains('오너 참여 현황')) {
+      section('오너 참여 현황', [
+        ['매장명', '오너 등록'],
+        ...rs.map((r) => [r.name, '미등록']),
+      ]);
+    }
+    for (final label in ['리텐션', '시간대 분석', '전환 지표']) {
+      if (_selected.contains(label)) {
+        section(label, [['※ 백엔드 연동 후 실데이터로 교체 예정']]);
+      }
+    }
+    return buf.toString();
+  }
+
+  void _export() {
+    final csv = _buildCsv();
+    // UTF-8 BOM 추가 (Excel에서 한글 깨짐 방지)
+    final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csv)];
+    final blob = html.Blob([bytes], 'text/csv;charset=utf-8;');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final filename = 'campuslunch_${_fmt(_startDate)}_${_fmt(_endDate)}.csv';
+    html.AnchorElement(href: url)
+      ..setAttribute('download', filename)
+      ..click();
+    html.Url.revokeObjectUrl(url);
+    widget.onClose();
   }
 
   @override
@@ -1461,21 +1795,67 @@ class _ExportSheetState extends State<_ExportSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: const Text(
-                '최근 30일',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _pickDate(isStart: true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF9CA3AF)),
+                          const SizedBox(width: 8),
+                          Text(
+                            _fmt(_startDate),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('~', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _pickDate(isStart: false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF9CA3AF)),
+                          const SizedBox(width: 8),
+                          Text(
+                            _fmt(_endDate),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             Row(
@@ -1500,7 +1880,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFFF6207),
+                      color: Color(0xFF16A34A),
                     ),
                   ),
                 ),
@@ -1522,12 +1902,12 @@ class _ExportSheetState extends State<_ExportSheet> {
                         height: 16,
                         decoration: BoxDecoration(
                           color: checked
-                              ? const Color(0xFFFF6207)
+                              ? const Color(0xFF16A34A)
                               : Colors.white,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: checked
-                                ? const Color(0xFFFF6207)
+                                ? const Color(0xFF16A34A)
                                 : const Color(0xFFD1D5DB),
                             width: 2,
                           ),
@@ -1555,30 +1935,14 @@ class _ExportSheetState extends State<_ExportSheet> {
             }),
             const SizedBox(height: 24),
             GestureDetector(
-              onTap: _selected.isEmpty
-                  ? null
-                  : () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text(
-                            '엑셀 내보내기는 출시 후 지원 예정이에요',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          backgroundColor: const Color(0xFF111827),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      widget.onClose();
-                    },
+              onTap: _selected.isEmpty ? null : _export,
               child: Opacity(
                 opacity: _selected.isEmpty ? 0.4 : 1.0,
                 child: Container(
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6207),
+                    color: const Color(0xFF16A34A),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Row(
@@ -1588,7 +1952,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                           size: 16, color: Colors.white),
                       SizedBox(width: 8),
                       Text(
-                        '엑셀로 내보내기 (.xlsx)',
+                        'CSV로 내보내기 (.csv)',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
@@ -1841,7 +2205,7 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                 height: 56,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6207),
+                  color: const Color(0xFF16A34A),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Center(
@@ -2132,7 +2496,7 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                 height: 56,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6207),
+                  color: const Color(0xFF16A34A),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Center(
@@ -2337,6 +2701,6 @@ InputDecoration _inputDecoration(String hint) {
         borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
     focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFFF6207), width: 1.5)),
+        borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
   );
 }

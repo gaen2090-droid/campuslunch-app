@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/restaurant.dart';
@@ -35,8 +34,8 @@ class SupabaseRestaurantRepository {
         .toList();
   }
 
-  Future<void> reportStatus(String restaurantId, String uiStatus) async {
-    final source = uiStatus == '영업안함' ? 'owner' : 'user';
+  Future<void> reportStatus(String restaurantId, String uiStatus,
+      {String source = 'user'}) async {
     await _client.from('crowd_reports').insert({
       'restaurant_id': restaurantId,
       'level': CrowdLevelMapper.toDb(uiStatus),
@@ -71,7 +70,18 @@ class SupabaseRestaurantRepository {
     if (data.containsKey('area')) patch['area'] = data['area'];
     if (data.containsKey('address')) patch['address'] = data['address'];
     if (data.containsKey('image_url')) patch['image_url'] = data['image_url'];
-    if (data.containsKey('description')) patch['description'] = data['description'];
+
+    if (data.containsKey('hours') || data.containsKey('menu')) {
+      final existing = await _client
+          .from('restaurants')
+          .select('description')
+          .eq('id', id)
+          .single();
+      final desc = _parseDescription(existing['description'] as String?) ?? {};
+      if (data.containsKey('hours')) desc['hours'] = data['hours'];
+      if (data.containsKey('menu')) desc['menu'] = data['menu'];
+      patch['description'] = jsonEncode(desc);
+    }
 
     final row = await _client
         .from('restaurants')
@@ -159,7 +169,6 @@ class SupabaseRestaurantRepository {
       address: row['address'] as String? ?? row['area'] as String,
       status: status,
       updated: updated,
-      emoji: extra?['emoji'] as String? ?? seed?.emoji ?? '🍽️',
       imageUrl: row['image_url'] as String? ?? seed?.imageUrl ?? '',
       distance: (extra?['distance'] as num?)?.toDouble() ?? seed?.distance ?? 200,
       x: (extra?['map_x'] as num?)?.toDouble() ?? seed?.x ?? 50,
@@ -167,7 +176,116 @@ class SupabaseRestaurantRepository {
       hours: extra?['hours'] as String? ?? seed?.hours ?? '11:00 - 21:00',
       reports: reportCounts.isEmpty ? (seed?.reports ?? {}) : reportCounts,
       menu: menu,
+      popularityScore: _calcPopularityScore(
+        reports,
+        extra?['hours'] as String? ?? seed?.hours ?? '',
+      ),
+      manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  Future<void> updateManualRanks(Map<String, int> rankById) async {
+    for (final entry in rankById.entries) {
+      final existing = await _client
+          .from('restaurants')
+          .select('description')
+          .eq('id', entry.key)
+          .single();
+      final desc = _parseDescription(existing['description'] as String?) ?? {};
+      desc['manual_rank'] = entry.value;
+      await _client
+          .from('restaurants')
+          .update({'description': jsonEncode(desc)})
+          .eq('id', entry.key);
+    }
+  }
+
+  // ── 인기도 점수 계산 ──
+  // (약간혼잡 지속 토큰*1 + 자리없음 지속 토큰*2), 토큰=5분, 영업시간 내만 집계, 최근 7일
+  int _calcPopularityScore(List<Map<String, dynamic>> reports, String hours) {
+    final ranges = _parseHoursRanges(hours);
+    if (ranges.isEmpty || reports.isEmpty) return 0;
+
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    final recent = reports
+        .map((r) => {
+              ...r,
+              '_dt': DateTime.parse(r['created_at'] as String).toLocal(),
+            })
+        .where((r) => (r['_dt'] as DateTime).isAfter(weekAgo))
+        .toList()
+      ..sort((a, b) =>
+          (a['_dt'] as DateTime).compareTo(b['_dt'] as DateTime));
+
+    if (recent.isEmpty) return 0;
+
+    int score = 0;
+    for (int i = 0; i < recent.length; i++) {
+      final status = CrowdLevelMapper.fromDb(
+        recent[i]['level'] as String,
+        metadata: Map<String, dynamic>.from(recent[i]['metadata'] as Map? ?? {}),
+      );
+      final weight = status == '약간혼잡' ? 1 : (status == '자리없음' ? 2 : 0);
+      if (weight == 0) continue;
+
+      final start = recent[i]['_dt'] as DateTime;
+      final DateTime end;
+      if (i + 1 < recent.length) {
+        end = recent[i + 1]['_dt'] as DateTime;
+      } else {
+        // 마지막 제보: 해당 영업 구간 끝까지 연장
+        final sm = start.hour * 60 + start.minute;
+        final range = ranges.firstWhere(
+          (r) => sm >= r.$1 && sm < r.$2,
+          orElse: () => (0, 0),
+        );
+        if (range.$2 == 0) continue;
+        end = DateTime(start.year, start.month, start.day,
+            range.$2 ~/ 60, range.$2 % 60);
+      }
+
+      final mins = _minsWithinHours(start, end, ranges);
+      score += (mins ~/ 5) * weight;
+    }
+    return score;
+  }
+
+  // "11:00 - 14:00, 17:00 - 19:00" → [(660,840),(1020,1140)]
+  List<(int, int)> _parseHoursRanges(String hours) {
+    final ranges = <(int, int)>[];
+    for (final part in hours.split(',')) {
+      final m = RegExp(r'(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})')
+          .firstMatch(part.trim());
+      if (m != null) {
+        final s = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
+        final e = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);
+        if (e > s) ranges.add((s, e));
+      }
+    }
+    return ranges;
+  }
+
+  // [start, end] 중 영업시간과 겹치는 분(minute) 수 계산
+  int _minsWithinHours(DateTime start, DateTime end, List<(int, int)> ranges) {
+    if (!start.isBefore(end)) return 0;
+    int total = 0;
+    var day = DateTime(start.year, start.month, start.day);
+    final lastDay = DateTime(end.year, end.month, end.day);
+    while (!day.isAfter(lastDay)) {
+      final wStart = day.year == start.year && day.month == start.month && day.day == start.day
+          ? start.hour * 60 + start.minute
+          : 0;
+      final wEnd = day.year == end.year && day.month == end.month && day.day == end.day
+          ? end.hour * 60 + end.minute
+          : 24 * 60;
+      for (final r in ranges) {
+        final oStart = wStart > r.$1 ? wStart : r.$1;
+        final oEnd = wEnd < r.$2 ? wEnd : r.$2;
+        if (oEnd > oStart) total += oEnd - oStart;
+      }
+      day = day.add(const Duration(days: 1));
+    }
+    return total;
   }
 
   Map<String, dynamic>? _parseDescription(String? raw) {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,16 +6,51 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/report_sheet.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Restaurant restaurant;
   const DetailScreen({super.key, required this.restaurant});
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<AppProvider>();
+      final r = provider.restaurants.firstWhere(
+        (x) => x.id == widget.restaurant.id,
+        orElse: () => widget.restaurant,
+      );
+      if (r.status == '영업안함') return;
+      ReportSheet.show(context, r, (status) {
+        provider.reportStatus(r.id, status);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text(
+            '제보가 반영됐어요. 감사해요!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF111827),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+          duration: const Duration(milliseconds: 1600),
+          elevation: 0,
+        ));
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final r = provider.restaurants.firstWhere(
-      (x) => x.id == restaurant.id,
-      orElse: () => restaurant,
+      (x) => x.id == widget.restaurant.id,
+      orElse: () => widget.restaurant,
     );
     final isBookmarked = provider.bookmarks.contains(r.id);
     final statusColor = _statusColor(r.status);
@@ -39,14 +74,13 @@ class DetailScreen extends StatelessWidget {
                           imageUrl: r.imageUrl,
                           fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => Container(
-                            color: const Color(0xFFFFF3EC),
-                            child: Center(
-                              child: Text(r.emoji,
-                                  style: const TextStyle(fontSize: 56)),
+                            color: const Color(0xFFF0FDF4),
+                            child: const Center(
+                              child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
                             ),
                           ),
                         )
-                      : Container(color: const Color(0xFFFFF9F7)),
+                      : Container(color: const Color(0xFFF0FDF4)),
                 ),
 
                 // 플로팅 헤더 버튼
@@ -72,7 +106,7 @@ class DetailScreen extends StatelessWidget {
                                   : Icons.bookmark_border,
                               size: 16,
                               color: isBookmarked
-                                  ? const Color(0xFFFF6207)
+                                  ? const Color(0xFF16A34A)
                                   : const Color(0xFF6B7280),
                             ),
                           ),
@@ -159,8 +193,10 @@ class DetailScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 children: [
-                  GestureDetector(
-                    onTap: () => ReportSheet.show(
+                  Opacity(
+                    opacity: r.status == '영업안함' ? 0.4 : 1.0,
+                    child: GestureDetector(
+                    onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
                       context,
                       r,
                       (status) {
@@ -184,15 +220,8 @@ class DetailScreen extends StatelessWidget {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6207),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0xFFFFE4CC),
-                            blurRadius: 20,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -212,6 +241,7 @@ class DetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  ),
                   const SizedBox(height: 10),
                   GestureDetector(
                     onTap: () => _navigate(r),
@@ -219,22 +249,22 @@ class DetailScreen extends StatelessWidget {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3EC),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFFFD4B8)),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.navigation_outlined,
-                              size: 16, color: Color(0xFFFF6207)),
+                              size: 16, color: Color(0xFF16A34A)),
                           SizedBox(width: 6),
                           Text(
                             '길찾기',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFFF6207),
+                              color: Color(0xFF16A34A),
                             ),
                           ),
                         ],
@@ -297,7 +327,7 @@ class DetailScreen extends StatelessWidget {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFFFF6207),
+                                    color: Color(0xFF16A34A),
                                   ),
                                 ),
                               ],

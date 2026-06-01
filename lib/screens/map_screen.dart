@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
@@ -192,7 +192,7 @@ class _MapScreenState extends State<MapScreen> {
                           duration: const Duration(milliseconds: 200),
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                            color: _showBookmarked ? const Color(0xFFFF6207) : Colors.white,
+                            color: _showBookmarked ? const Color(0xFF16A34A) : Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: const [
                               BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -370,7 +370,7 @@ class _MapScreenState extends State<MapScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isLocated ? const Color(0xFFFFF3EC) : Colors.white,
+                  color: _isLocated ? const Color(0xFFF0FDF4) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -379,7 +379,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFFFF6207) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -401,7 +401,7 @@ class _MapScreenState extends State<MapScreen> {
               child: _SelectedCard(
                 restaurant: _selected!,
                 onDetail: () => _openDetail(_selected!),
-                onReport: () => ReportSheet.show(
+                onReport: _selected!.status == '영업안함' ? null : () => ReportSheet.show(
                   context,
                   _selected!,
                   (status) {
@@ -603,7 +603,7 @@ class _MapFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFFF6207) : Colors.white,
+          color: on ? const Color(0xFF16A34A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -660,7 +660,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFFFF6207))),
+                      color: Color(0xFF16A34A))),
             ),
           ),
         GridView.count(
@@ -676,7 +676,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFFFF3EC) : Colors.transparent,
+                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -688,12 +688,12 @@ class _DropdownGrid extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
-                            color: on ? const Color(0xFFFF6207) : const Color(0xFF374151),
+                            color: on ? const Color(0xFF16A34A) : const Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis),
                     ),
                     if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFFFF6207)),
+                      const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
                   ],
                 ),
               ),
@@ -772,7 +772,7 @@ class _MapPinPainter extends CustomPainter {
 class _SelectedCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onDetail;
-  final VoidCallback onReport;
+  final VoidCallback? onReport;
   final VoidCallback onDismiss;
   final double safeBottom;
 
@@ -821,19 +821,34 @@ class _SelectedCard extends StatelessWidget {
                 children: [
                   Container(
                     width: 48, height: 48,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3EC),
+                      color: const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Center(
-                      child: Text(
-                        r.name.isNotEmpty ? r.name[0] : '?',
-                        style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF6207)),
-                      ),
-                    ),
+                    child: r.imageUrl.isNotEmpty
+                        ? Image.network(
+                            r.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                r.name.isNotEmpty ? r.name[0] : '?',
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF16A34A)),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              r.name.isNotEmpty ? r.name[0] : '?',
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF16A34A)),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -876,7 +891,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFFFD4B8)),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -884,27 +899,30 @@ class _SelectedCard extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFFFF6207))),
+                                color: Color(0xFF16A34A))),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: onReport,
-                    child: Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF6207),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: Text('혼잡도 제보하기',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white)),
+                  child: Opacity(
+                    opacity: onReport == null ? 0.4 : 1.0,
+                    child: GestureDetector(
+                      onTap: onReport,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text('혼잡도 제보하기',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white)),
+                        ),
                       ),
                     ),
                   ),

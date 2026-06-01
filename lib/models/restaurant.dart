@@ -18,8 +18,9 @@ class Restaurant {
   final String address;
   String status;
   int updated;
-  final String emoji;
   final String imageUrl;
+  final int popularityScore;
+  final int manualRank;
   final double distance;
   final double x;
   final double y;
@@ -35,8 +36,9 @@ class Restaurant {
     required this.address,
     required this.status,
     required this.updated,
-    required this.emoji,
     required this.imageUrl,
+    this.popularityScore = 0,
+    this.manualRank = 0,
     required this.distance,
     required this.x,
     required this.y,
@@ -58,8 +60,9 @@ class Restaurant {
         address: address,
         status: status ?? this.status,
         updated: updated ?? this.updated,
-        emoji: emoji,
         imageUrl: imageUrl,
+        popularityScore: popularityScore,
+        manualRank: manualRank,
         distance: distance,
         x: x,
         y: y,

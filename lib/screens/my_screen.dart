@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
@@ -68,7 +68,7 @@ class _MyScreenState extends State<MyScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFFFF6207),
+                    color: Color(0xFF16A34A),
                     letterSpacing: -0.8,
                   ),
                 ),
@@ -93,12 +93,12 @@ class _MyScreenState extends State<MyScreen> {
                     Row(
                       children: [
                         Container(
-                          width: 56,
-                          height: 56,
+                          width: 44,
+                          height: 44,
                           decoration: const BoxDecoration(
-                              color: Color(0xFFFFE4CC), shape: BoxShape.circle),
+                              color: Color(0xFFF3F4F6), shape: BoxShape.circle),
                           child: const Center(
-                              child: Text('🍽️', style: TextStyle(fontSize: 24))),
+                              child: Icon(Icons.person, size: 22, color: Color(0xFF9CA3AF))),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -179,7 +179,7 @@ class _MyScreenState extends State<MyScreen> {
                       children: [
                         const Icon(Icons.bookmark,
                             size: 16,
-                            color: Color(0xFFFF6207)),
+                            color: Color(0xFF16A34A)),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -194,7 +194,7 @@ class _MyScreenState extends State<MyScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFE4CC),
+                            color: const Color(0xFFDCFCE7),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -202,7 +202,7 @@ class _MyScreenState extends State<MyScreen> {
                             style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFFFF6207)),
+                                color: Color(0xFF16A34A)),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -236,7 +236,7 @@ class _MyScreenState extends State<MyScreen> {
                     Row(
                       children: [
                         const Icon(Icons.notifications,
-                            size: 16, color: Color(0xFFFF6207)),
+                            size: 16, color: Color(0xFF16A34A)),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -329,7 +329,7 @@ class _MyScreenState extends State<MyScreen> {
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFFC1BDB7)),
+                            color: Color(0xFF9CA3AF)),
                       ),
                     ),
                   ),
@@ -342,7 +342,7 @@ class _MyScreenState extends State<MyScreen> {
                 decoration: const BoxDecoration(
                   border: Border(
                       top: BorderSide(
-                          color: Color(0xFFE0DDD4),
+                          color: Color(0xFFE5E7EB),
                           style: BorderStyle.solid)),
                 ),
                 padding: const EdgeInsets.only(top: 24),
@@ -365,7 +365,7 @@ class _MyScreenState extends State<MyScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: const Color(0xFFE0DDD4),
+                              color: const Color(0xFFE5E7EB),
                               style: BorderStyle.solid),
                         ),
                         child: const Center(
@@ -531,7 +531,7 @@ class _MyScreenState extends State<MyScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 14),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFFF6207),
+                                          color: const Color(0xFF16A34A),
                                           borderRadius:
                                               BorderRadius.circular(16),
                                         ),
@@ -637,7 +637,7 @@ class _ToggleRow extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 color:
-                    enabled ? const Color(0xFFFF6207) : const Color(0xFFE5E7EB),
+                    enabled ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: AnimatedAlign(

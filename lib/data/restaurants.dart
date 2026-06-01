@@ -1,4 +1,4 @@
-import '../models/restaurant.dart';
+﻿import '../models/restaurant.dart';
 
 const List<String> regionTabs = ['전체', '학식', '정문', '중문', '후문'];
 const List<String> cuisineFilters = ['전체', '학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
@@ -13,7 +13,6 @@ final List<Restaurant> initialRestaurants = [
     address: '학생회관 1층',
     status: '여유로움',
     updated: 5,
-    emoji: '🍚',
     imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&q=80&fit=crop',
     distance: 35,
     x: 45,
@@ -35,7 +34,6 @@ final List<Restaurant> initialRestaurants = [
     address: '정문 근처',
     status: '약간혼잡',
     updated: 8,
-    emoji: '🍝',
     imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80&fit=crop',
     distance: 340,
     x: 72,
@@ -58,7 +56,6 @@ final List<Restaurant> initialRestaurants = [
     address: '중문 근처',
     status: '여유로움',
     updated: 6,
-    emoji: '☕',
     imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80&fit=crop',
     distance: 43,
     x: 56,
@@ -81,7 +78,6 @@ final List<Restaurant> initialRestaurants = [
     address: '후문 골목',
     status: '자리없음',
     updated: 3,
-    emoji: '🍲',
     imageUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600&q=80&fit=crop',
     distance: 420,
     x: 28,
@@ -103,7 +99,6 @@ final List<Restaurant> initialRestaurants = [
     address: '후문 골목',
     status: '여유로움',
     updated: 12,
-    emoji: '🍙',
     imageUrl: 'https://images.unsplash.com/photo-1635363638580-c2809d049eee?w=600&q=80&fit=crop',
     distance: 450,
     x: 35,
@@ -126,7 +121,6 @@ final List<Restaurant> initialRestaurants = [
     address: '중문 근처',
     status: '영업안함',
     updated: 0,
-    emoji: '🥘',
     imageUrl: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600&q=80&fit=crop',
     distance: 48,
     x: 52,
@@ -147,7 +141,6 @@ final List<Restaurant> initialRestaurants = [
     address: '정문 앞',
     status: '약간혼잡',
     updated: 14,
-    emoji: '🍜',
     imageUrl: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=600&q=80&fit=crop',
     distance: 360,
     x: 78,

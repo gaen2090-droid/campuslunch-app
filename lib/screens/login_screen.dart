@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -40,21 +40,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    final id = _idCtrl.text.trim();
+    final email = _idCtrl.text.trim();
     final pw = _pwCtrl.text;
-    if (id.isEmpty) { setState(() => _error = '아이디를 입력해주세요.'); return; }
+    if (email.isEmpty) { setState(() => _error = '이메일을 입력해주세요.'); return; }
+    if (!_isLogin && !email.contains('@')) {
+      setState(() => _error = '이메일 형식으로 입력해주세요.'); return;
+    }
     if (pw.length < 6) { setState(() => _error = '비밀번호는 6자 이상이어야 해요.'); return; }
 
     setState(() { _loading = true; _error = ''; });
     final provider = context.read<AppProvider>();
 
     if (_isLogin) {
-      final ok = await provider.login(id, pw);
-      if (!ok && mounted) setState(() { _error = '아이디 또는 비밀번호가 올바르지 않아요.'; _loading = false; });
+      final ok = await provider.login(email, pw);
+      if (!ok && mounted) setState(() { _error = '이메일 또는 비밀번호가 올바르지 않아요.'; _loading = false; });
     } else {
       final cf = _cfCtrl.text;
       if (pw != cf) { setState(() { _error = '비밀번호가 일치하지 않아요.'; _loading = false; }); return; }
-      final err = await provider.register(id, pw, '');
+      final err = await provider.register(email, pw, '');
       if (err != null && mounted) setState(() { _error = err; _loading = false; });
     }
   }
@@ -64,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F7),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           Positioned(
@@ -73,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
               imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
               child: Container(
                 width: 240, height: 240,
-                decoration: const BoxDecoration(color: Color(0xFFFFD4B8), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFBBF7D0), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -84,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 width: 220, height: 220,
                 decoration: BoxDecoration(
-                    color: const Color(0xFFFED7AA).withAlpha(180), shape: BoxShape.circle),
+                    color: const Color(0xFFA7F3D0).withAlpha(180), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -126,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // 입력 필드
                   _Field(
                     controller: _idCtrl,
-                    hint: '아이디',
+                    hint: '이메일',
                     onChanged: (_) => setState(() => _error = ''),
                   ),
                   const SizedBox(height: 10),
@@ -166,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6207),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -337,7 +340,7 @@ class _Field extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFFFF6207), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
       ),
     );
   }
@@ -378,7 +381,7 @@ class _PasswordField extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFFFF6207), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
       ),
     );
   }

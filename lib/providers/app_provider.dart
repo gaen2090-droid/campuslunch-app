@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
@@ -28,9 +29,11 @@ class AppProvider extends ChangeNotifier {
   // ── 설정 ──
   bool _locationMode = false;
   bool _notificationEnabled = false;
+  bool _useAlgorithmRanking = true;
 
   bool get locationMode => _locationMode;
   bool get notificationEnabled => _notificationEnabled;
+  bool get useAlgorithmRanking => _useAlgorithmRanking;
 
   // ── 식당 ──
   List<Restaurant> _restaurants = [];
@@ -52,6 +55,7 @@ class AppProvider extends ChangeNotifier {
   static const _kAccounts = 'cl_accounts';
   static const _kBookmarks = 'cl_bookmarks';
   static const _kOverrides = 'cl_restaurant_overrides';
+  static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -60,6 +64,8 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
+
+    _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
@@ -121,33 +127,80 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 로그인 ──
-  Future<bool> login(String id, String password) async {
+  Future<bool> login(String email, String password) async {
     // 개발용 테스트 계정
-    if (id == 'admin' && password == 'admin123') {
+    if (email == 'admin' && password == 'admin123') {
       await _saveSession(await SharedPreferences.getInstance(),
           Account(id: 'admin', password: 'admin123', nickname: '관리자', role: 'admin'));
       return true;
     }
-    if (id == 'owner' && password == 'owner123') {
+    if (email == 'owner' && password == 'owner123') {
       await _saveSession(await SharedPreferences.getInstance(),
           Account(id: 'owner', password: 'owner123', nickname: '사장님', role: 'owner',
               restaurantIds: [_restaurants.isNotEmpty ? _restaurants.first.id.toString() : '1']));
       return true;
     }
 
+    // Supabase Auth
+    if (SupabaseService.isReady) {
+      try {
+        final res = await SupabaseService.client.auth
+            .signInWithPassword(email: email, password: password);
+        if (res.user != null) {
+          final meta = res.user!.userMetadata;
+          final nickname = meta?['nickname'] as String? ?? _generateNickname();
+          await _saveSession(await SharedPreferences.getInstance(),
+              Account(id: email, password: '', nickname: nickname));
+          return true;
+        }
+      } on AuthException {
+        return false;
+      } catch (e) {
+        debugPrint('[Supabase] login failed: $e');
+      }
+    }
+
+    // 로컬 폴백
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
-    final account = accounts.where((a) => a.id == id && a.password == password).firstOrNull;
+    final account = accounts.where((a) => a.id == email && a.password == password).firstOrNull;
     if (account == null) return false;
     await _saveSession(prefs, account);
     return true;
   }
 
-  Future<String?> register(String id, String password, String nick) async {
+  Future<String?> register(String email, String password, String nick) async {
+    final nickname = nick.isEmpty ? _generateNickname() : nick;
+
+    // Supabase Auth
+    if (SupabaseService.isReady) {
+      try {
+        final res = await SupabaseService.client.auth.signUp(
+          email: email,
+          password: password,
+          data: {'nickname': nickname},
+        );
+        if (res.user == null) return '회원가입에 실패했어요.';
+        await _saveSession(await SharedPreferences.getInstance(),
+            Account(id: email, password: '', nickname: nickname));
+        return null;
+      } on AuthException catch (e) {
+        final msg = e.message.toLowerCase();
+        // 이미 가입된 이메일은 에러 반환, 나머지(rate limit 등)는 로컬 폴백
+        if (msg.contains('already') || msg.contains('registered')) {
+          return '이미 사용 중인 이메일이에요.';
+        }
+        debugPrint('[Supabase] register AuthException: ${e.message}');
+      } catch (e) {
+        debugPrint('[Supabase] register failed: $e');
+      }
+    }
+
+    // 로컬 폴백
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
-    if (accounts.any((a) => a.id == id)) return '이미 사용 중인 아이디예요.';
-    final account = Account(id: id, password: password, nickname: nick.isEmpty ? _generateNickname() : nick);
+    if (accounts.any((a) => a.id == email)) return '이미 사용 중인 이메일이에요.';
+    final account = Account(id: email, password: password, nickname: nickname);
     _saveAccounts(prefs, [...accounts, account]);
     await _saveSession(prefs, account);
     return null;
@@ -242,7 +295,8 @@ class AppProvider extends ChangeNotifier {
     final repo = _restaurantRepo;
     if (repo != null) {
       try {
-        await repo.reportStatus(restaurantId, status);
+        await repo.reportStatus(restaurantId, status,
+            source: _userRole == 'owner' ? 'owner' : 'user');
         _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
@@ -346,7 +400,6 @@ class AppProvider extends ChangeNotifier {
       address: data['address'] as String? ?? data['area'] as String,
       status: '여유로움',
       updated: 0,
-      emoji: '🍽️',
       imageUrl: data['image_url'] as String? ?? '',
       distance: 200,
       x: (data['x'] as num?)?.toDouble() ?? 50,
@@ -387,7 +440,6 @@ class AppProvider extends ChangeNotifier {
         address: data['address'] as String? ?? r.address,
         status: r.status,
         updated: r.updated,
-        emoji: r.emoji,
         imageUrl: data['image_url'] as String? ?? r.imageUrl,
         distance: r.distance,
         x: r.x,
@@ -423,12 +475,47 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleAlgorithmRanking() async {
+    _useAlgorithmRanking = !_useAlgorithmRanking;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kUseAlgorithmRanking, _useAlgorithmRanking);
+    notifyListeners();
+  }
+
+  Future<void> setManualRanks(List<String> orderedIds) async {
+    final rankById = {
+      for (int i = 0; i < orderedIds.length; i++) orderedIds[i]: i + 1
+    };
+    _restaurants = _restaurants.map((r) {
+      final rank = rankById[r.id];
+      if (rank == null) return r;
+      return Restaurant(
+        id: r.id, name: r.name, category: r.category, area: r.area,
+        address: r.address, status: r.status, updated: r.updated,
+        imageUrl: r.imageUrl, distance: r.distance, x: r.x, y: r.y,
+        hours: r.hours, reports: r.reports, menu: r.menu,
+        popularityScore: r.popularityScore, manualRank: rank,
+      );
+    }).toList();
+    notifyListeners();
+
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      try {
+        await repo.updateManualRanks(rankById);
+      } catch (e, st) {
+        debugPrint('[Supabase] setManualRanks failed: $e\n$st');
+      }
+    }
+  }
+
   Future<void> _loadRestaurantsFromSupabase() async {
     final repo = _restaurantRepo;
     if (repo == null) return;
 
     try {
-      _restaurants = await repo.fetchAll();
+      final fetched = await repo.fetchAll();
+      if (fetched.isNotEmpty) _restaurants = fetched;
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
     }
@@ -436,7 +523,9 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> devReset() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedAccounts = prefs.getString(_kAccounts);
     await prefs.clear();
+    if (savedAccounts != null) await prefs.setString(_kAccounts, savedAccounts);
     _restaurants = List<Restaurant>.from(initialRestaurants);
     _bookmarks = {};
     _isLoggedIn = false;

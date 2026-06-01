@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -7,7 +7,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F7),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // 블러 장식 - 우측 상단
@@ -20,7 +20,7 @@ class SplashScreen extends StatelessWidget {
                 width: 240,
                 height: 240,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFFD4B8),
+                  color: Color(0xFFBBF7D0),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -36,7 +36,7 @@ class SplashScreen extends StatelessWidget {
                 width: 220,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFED7AA).withAlpha(180),
+                  color: const Color(0xFFA7F3D0).withAlpha(180),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -51,11 +51,11 @@ class SplashScreen extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6207),
+                    color: const Color(0xFF16A34A),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0xFFFFD4B8),
+                        color: Color(0xFFBBF7D0),
                         blurRadius: 28,
                         offset: Offset(0, 10),
                       ),
@@ -71,7 +71,7 @@ class SplashScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFFFF6207),
+                    color: Color(0xFF16A34A),
                     letterSpacing: -1.0,
                   ),
                 ),

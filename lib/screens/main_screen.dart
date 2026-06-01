@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
@@ -91,7 +91,7 @@ class _NavTab extends StatelessWidget {
             Icon(
               active ? activeIcon : icon,
               size: 22,
-              color: active ? const Color(0xFFFF6207) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
             ),
             const SizedBox(height: 2),
             Text(
@@ -99,7 +99,7 @@ class _NavTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: active ? const Color(0xFFFF6207) : const Color(0xFF9CA3AF),
+                color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
               ),
             ),
           ],

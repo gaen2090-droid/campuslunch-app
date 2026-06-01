@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -49,12 +49,12 @@ class CampusLunchApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6207),
+          seedColor: const Color(0xFF16A34A),
           brightness: Brightness.light,
         ),
         fontFamily: 'Pretendard',
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFFFF9F7),
+        scaffoldBackgroundColor: const Color(0xFFF0FDF4),
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
         appBarTheme: const AppBarTheme(

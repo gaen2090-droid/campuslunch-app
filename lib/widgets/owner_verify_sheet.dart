@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class OwnerVerifySheet extends StatefulWidget {
@@ -162,7 +162,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFFF6207), width: 1.5),
+                        borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
                       ),
                     ),
                   ),
@@ -190,7 +190,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                         height: 56,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF6207),
+                          color: const Color(0xFF16A34A),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(

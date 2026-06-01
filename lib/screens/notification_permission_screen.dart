@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 
@@ -35,14 +35,14 @@ class NotificationPermissionScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3EC),
+                          color: const Color(0xFFF0FDF4),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.notifications,
                             size: 28,
-                            color: Color(0xFFFF6207),
+                            color: Color(0xFF16A34A),
                           ),
                         ),
                       ),
@@ -98,15 +98,8 @@ class NotificationPermissionScreen extends StatelessWidget {
                           height: 56,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF6207),
+                            color: const Color(0xFF16A34A),
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0xFFFFE4CC),
-                                blurRadius: 20,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
                           ),
                           child: const Center(
                             child: Text(

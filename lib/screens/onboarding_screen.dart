@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +18,7 @@ class OnboardingScreen extends StatelessWidget {
     final top3 = previews.take(3).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F7),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // 블러 원형 장식
@@ -31,7 +31,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 240,
                 height: 240,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFFD4B8),
+                  color: Color(0xFFBBF7D0),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -46,7 +46,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 220,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFED7AA).withAlpha(180),
+                  color: const Color(0xFFA7F3D0).withAlpha(180),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -66,11 +66,11 @@ class OnboardingScreen extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF6207),
+                          color: const Color(0xFF16A34A),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [
                             BoxShadow(
-                              color: Color(0xFFFFD4B8),
+                              color: Color(0xFFBBF7D0),
                               blurRadius: 20,
                               offset: Offset(0, 8),
                             ),
@@ -89,7 +89,7 @@ class OnboardingScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFFFF6207),
+                              color: Color(0xFF16A34A),
                               letterSpacing: -0.8,
                             ),
                           ),
@@ -185,11 +185,11 @@ class OnboardingScreen extends StatelessWidget {
                       height: 60,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6207),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0xFFFFD4B8),
+                            color: Color(0xFFBBF7D0),
                             blurRadius: 24,
                             offset: Offset(0, 8),
                           ),
@@ -295,7 +295,7 @@ class _InitialCircle extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: const BoxDecoration(
-        color: Color(0xFFFFF3EC),
+        color: Color(0xFFF0FDF4),
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -304,7 +304,7 @@ class _InitialCircle extends StatelessWidget {
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: Color(0xFFFF6207),
+            color: Color(0xFF16A34A),
           ),
         ),
       ),

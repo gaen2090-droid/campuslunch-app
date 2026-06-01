@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/restaurant.dart';
 
@@ -25,7 +25,7 @@ class NearbyPrompt extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 96),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3EC),
+        color: const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
@@ -104,9 +104,9 @@ class NearbyPrompt extends StatelessWidget {
                                   ? CachedNetworkImage(
                                       imageUrl: r.imageUrl,
                                       fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => _EmojiBox(emoji: r.emoji),
+                                      errorWidget: (_, __, ___) => const _IconBox(),
                                     )
-                                  : _EmojiBox(emoji: r.emoji),
+                                  : const _IconBox(),
                             ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
@@ -137,15 +137,16 @@ class NearbyPrompt extends StatelessWidget {
   }
 }
 
-class _EmojiBox extends StatelessWidget {
-  final String emoji;
-  const _EmojiBox({required this.emoji});
+class _IconBox extends StatelessWidget {
+  const _IconBox();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFFFAF8),
-      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+      color: const Color(0xFFF0FDF4),
+      child: const Center(
+        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+      ),
     );
   }
 }

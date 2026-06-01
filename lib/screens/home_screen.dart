@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -47,6 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
+    final useAlgo = context.read<AppProvider>().useAlgorithmRanking;
+    int popularScore(Restaurant r) =>
+        useAlgo ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
+                : (r.manualRank > 0 ? -r.manualRank : -9999);
+
     var list = all.where((r) {
       final regionOk = _regions.isEmpty || _regions.contains(r.area);
       final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
@@ -58,9 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_sortBy == '여유로운순') {
         const pri = {'여유로움': 0, '약간혼잡': 1, '자리없음': 2, '영업안함': 3};
         final d = (pri[a.status] ?? 9) - (pri[b.status] ?? 9);
-        return d != 0 ? d : b.totalReports.compareTo(a.totalReports);
+        return d != 0 ? d : popularScore(b).compareTo(popularScore(a));
       }
-      return b.totalReports.compareTo(a.totalReports);
+      return popularScore(b).compareTo(popularScore(a));
     });
     return list;
   }
@@ -76,7 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openDetail(Restaurant r) => Navigator.push(
       context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
 
-  void _openReport(Restaurant r) => ReportSheet.show(context, r, (status) {
+  void _openReport(Restaurant r) {
+    if (r.status == '영업안함') return;
+    ReportSheet.show(context, r, (status) {
     context.read<AppProvider>().reportStatus(r.id, status);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: const Text(
@@ -92,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       elevation: 0,
     ));
   });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +111,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final available = filtered.where((r) => r.status == '여유로움' || r.status == '약간혼잡').toList();
     final busy = filtered.where((r) => r.status == '자리없음').toList();
+    final closed = filtered.where((r) => r.status == '영업안함').toList();
+    final useAlgo = provider.useAlgorithmRanking;
+    int _score(Restaurant r) => useAlgo
+        ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
+        : (r.manualRank > 0 ? -r.manualRank : -9999);
     final recommended = available.isNotEmpty
-        ? available.reduce((a, b) => a.totalReports >= b.totalReports ? a : b)
+        ? available.reduce((a, b) => _score(a) >= _score(b) ? a : b)
         : null;
     final availableCards = available.where((r) => r.id != recommended?.id).toList();
 
     return Stack(
+      fit: StackFit.expand,
       children: [
         Column(
           children: [
@@ -128,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 40,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6207),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: const Center(
@@ -249,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 32,
                         decoration: BoxDecoration(
                           color: _showBookmarked
-                              ? const Color(0xFFFF6207)
+                              ? const Color(0xFF16A34A)
                               : Colors.white,
                           shape: BoxShape.circle,
                           border: _showBookmarked
@@ -325,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: _searchActive
               ? _buildSearch(searchResults)
-              : _buildList(recommended, availableCards, busy),
+              : _buildList(recommended, availableCards, busy, closed),
         ),
           ],
         ),
@@ -416,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> busy) {
+  Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> busy, List<Restaurant> closed) {
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
       child: ListView(
@@ -483,6 +497,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
                 )),
           ],
+
+          // 영업종료
+          if (closed.isNotEmpty) ...[
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty) ? 8 : 12, 20, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF9CA3AF), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('영업종료',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF9CA3AF))),
+                ],
+              ),
+            ),
+            ...closed.map((r) => Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
+                )),
+          ],
         ],
       ),
     );
@@ -506,10 +547,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFFF6207) : Colors.white,
+          color: on ? const Color(0xFF16A34A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFFFF6207) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -563,7 +604,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFFFF6207))),
+                      color: Color(0xFF16A34A))),
             ),
           ),
         GridView.count(
@@ -579,7 +620,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFFFF3EC) : Colors.transparent,
+                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -592,13 +633,13 @@ class _DropdownGrid extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFFFF6207) : const Color(0xFF374151),
+                          color: on ? const Color(0xFF16A34A) : const Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFFFF6207)),
+                      const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
                   ],
                 ),
               ),

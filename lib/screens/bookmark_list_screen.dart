@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -25,18 +25,23 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
   static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
 
   List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
+    final useAlgo = context.read<AppProvider>().useAlgorithmRanking;
+    int popScore(Restaurant r) => useAlgo
+        ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
+        : (r.manualRank > 0 ? -r.manualRank : -9999);
+
     var list = all.where((r) {
       final regionOk = _regions.isEmpty || _regions.contains(r.area);
       final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
       return bookmarks.contains(r.id) && regionOk && cuisineOk;
     }).toList();
     list.sort((a, b) {
-      if (_sortBy == '인기순') return b.totalReports.compareTo(a.totalReports);
+      if (_sortBy == '인기순') return popScore(b).compareTo(popScore(a));
       if (_sortBy == '가까운순') return a.distance.compareTo(b.distance);
       if (_sortBy == '여유로운순') {
         const pri = {'여유로움': 0, '약간혼잡': 1, '자리없음': 2, '영업안함': 3};
         final d = (pri[a.status] ?? 9) - (pri[b.status] ?? 9);
-        return d != 0 ? d : b.totalReports.compareTo(a.totalReports);
+        return d != 0 ? d : popScore(b).compareTo(popScore(a));
       }
       return b.id.compareTo(a.id);
     });
@@ -102,7 +107,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.8,
-                      color: Color(0xFFFF6207),
+                      color: Color(0xFF16A34A),
                     ),
                   ),
                 ),
@@ -245,12 +250,12 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                                 margin: const EdgeInsets.only(right: 10),
                                 decoration: BoxDecoration(
                                   color: _selectedIds.contains(r.id)
-                                      ? const Color(0xFFFF6207)
+                                      ? const Color(0xFF16A34A)
                                       : Colors.white,
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: _selectedIds.contains(r.id)
-                                        ? const Color(0xFFFF6207)
+                                        ? const Color(0xFF16A34A)
                                         : const Color(0xFFD1D5DB),
                                     width: 2,
                                   ),
@@ -335,7 +340,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         child: Container(
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF6207),
+                            color: const Color(0xFF16A34A),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
@@ -382,10 +387,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFFF6207) : Colors.white,
+          color: on ? const Color(0xFF16A34A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFFFF6207) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -439,7 +444,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFFFF6207))),
+                      color: Color(0xFF16A34A))),
             ),
           ),
         GridView.count(
@@ -455,7 +460,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFFFF3EC) : Colors.transparent,
+                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding:
@@ -470,7 +475,7 @@ class _DropdownGrid extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
                           color: on
-                              ? const Color(0xFFFF6207)
+                              ? const Color(0xFF16A34A)
                               : const Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -478,7 +483,7 @@ class _DropdownGrid extends StatelessWidget {
                     ),
                     if (on)
                       const Icon(Icons.check,
-                          size: 14, color: Color(0xFFFF6207)),
+                          size: 14, color: Color(0xFF16A34A)),
                   ],
                 ),
               ),

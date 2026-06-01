@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/restaurant.dart';
 
@@ -40,9 +40,9 @@ class RestaurantCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _EmojiBox(emoji: r.emoji),
+                      errorWidget: (_, __, ___) => const _IconBox(),
                     )
-                  : _EmojiBox(emoji: r.emoji),
+                  : const _IconBox(),
             ),
             const SizedBox(width: 12),
             // 텍스트
@@ -93,17 +93,18 @@ class RestaurantCard extends StatelessWidget {
   }
 }
 
-class _EmojiBox extends StatelessWidget {
-  final String emoji;
-  const _EmojiBox({required this.emoji});
+class _IconBox extends StatelessWidget {
+  const _IconBox();
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(color: Color(0xFFFFFAF8)),
-      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+      decoration: const BoxDecoration(color: Color(0xFFF0FDF4)),
+      child: const Center(
+        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+      ),
     );
   }
 }
@@ -145,13 +146,14 @@ class HeroRestaurantCard extends StatelessWidget {
               else
                 Container(color: const Color(0xFFFFA06B)),
 
-              // 그라디언트
+              // 하단 다크 그라디언트 (텍스트 가독성)
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFFFF6207), Color(0x40FF6207)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+                    colors: [Colors.transparent, Color(0xCC000000)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.3, 1.0],
                   ),
                 ),
               ),
@@ -162,13 +164,12 @@ class HeroRestaurantCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 추천 뱃지
+                    // 추천 뱃지 (초록 유지)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(40),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withAlpha(60)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -266,7 +267,7 @@ class HeroRestaurantCard extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFFFF6207)),
+                                      color: Color(0xFF16A34A)),
                                 ),
                               ),
                             ),
