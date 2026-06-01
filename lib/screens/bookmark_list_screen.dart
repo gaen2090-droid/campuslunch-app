@@ -18,13 +18,13 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
   Set<String> _cuisines = {};
   String? _openDropdown;
   bool _editMode = false;
-  Set<int> _selectedIds = {};
+  Set<String> _selectedIds = {};
 
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
   static const _regionOpts = ['학식', '정문', '중문', '후문'];
   static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
 
-  List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
+  List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     var list = all.where((r) {
       final regionOk = _regions.isEmpty || _regions.contains(r.area);
       final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
@@ -54,7 +54,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
         _selectedIds = {};
       });
 
-  void _toggleSelect(int id) => setState(() {
+  void _toggleSelect(String id) => setState(() {
         _selectedIds.contains(id) ? _selectedIds.remove(id) : _selectedIds.add(id);
       });
 

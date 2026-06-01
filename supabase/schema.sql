@@ -1,0 +1,7 @@
+-- 참고: 프로젝트 DB는 이미 아래 구조로 생성되어 있습니다.
+-- restaurants: uuid id, name, category, area, address, latitude, longitude,
+--              image_url, description, owner_id, is_active, created_at, updated_at
+-- crowd_reports: level (crowd_level enum: normal|full|closed),
+--                source (crowd_source enum: user|owner|system), metadata jsonb
+--
+-- 앱 연동 전 필수: supabase/policies.sql 실행

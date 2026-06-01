@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
+  List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     var list = all.where((r) {
       final regionOk = _regions.isEmpty || _regions.contains(r.area);
       final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);

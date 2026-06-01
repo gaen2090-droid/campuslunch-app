@@ -6,7 +6,7 @@ const List<String> sortOptions = ['인기순', '가까운순', '여유로운순'
 
 final List<Restaurant> initialRestaurants = [
   Restaurant(
-    id: 1,
+    id: '1',
     name: '학식 한식당',
     category: '학식',
     area: '학식',
@@ -28,7 +28,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 2,
+    id: '2',
     name: '양셰프',
     category: '양식',
     area: '정문',
@@ -51,7 +51,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 3,
+    id: '3',
     name: '미들도어',
     category: '카페',
     area: '중문',
@@ -74,7 +74,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 4,
+    id: '4',
     name: '뜸들이다',
     category: '한식',
     area: '후문',
@@ -96,7 +96,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 5,
+    id: '5',
     name: '후문 김밥',
     category: '분식',
     area: '후문',
@@ -119,7 +119,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 6,
+    id: '6',
     name: '중앙 마라탕',
     category: '중식',
     area: '중문',
@@ -140,7 +140,7 @@ final List<Restaurant> initialRestaurants = [
     ],
   ),
   Restaurant(
-    id: 7,
+    id: '7',
     name: '정문 라멘',
     category: '일식',
     area: '정문',

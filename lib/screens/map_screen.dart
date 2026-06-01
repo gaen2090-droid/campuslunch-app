@@ -40,7 +40,7 @@ class _MapScreenState extends State<MapScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
   }
 
-  List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
+  List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     return all.where((r) {
       final q = _searchCtrl.text.trim().toLowerCase();
       final regionOk = _regions.isEmpty || _regions.contains(r.area);

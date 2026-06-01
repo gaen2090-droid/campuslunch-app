@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/restaurant.dart';
-import '../models/account.dart';
 import '../data/restaurants.dart';
+import '../data/supabase_restaurant_repository.dart';
+import '../models/account.dart';
+import '../models/restaurant.dart';
+import '../services/supabase_service.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
@@ -35,8 +37,8 @@ class AppProvider extends ChangeNotifier {
   List<Restaurant> get restaurants => _restaurants;
 
   // ── 북마크 ──
-  Set<int> _bookmarks = {};
-  Set<int> get bookmarks => _bookmarks;
+  Set<String> _bookmarks = {};
+  Set<String> get bookmarks => _bookmarks;
 
   // ── 키 ──
   static const _kLocation = 'cl_location_mode';
@@ -53,10 +55,14 @@ class AppProvider extends ChangeNotifier {
 
   static const _sessionDuration = Duration(days: 30);
 
+  SupabaseRestaurantRepository? get _restaurantRepo =>
+      SupabaseService.isReady ? SupabaseRestaurantRepository() : null;
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
+    await _loadRestaurantsFromSupabase();
 
     // 저장된 혼잡도 오버라이드 적용
     final overridesJson = prefs.getString(_kOverrides);
@@ -74,7 +80,9 @@ class AppProvider extends ChangeNotifier {
     // 북마크 복원
     final bookmarksJson = prefs.getString(_kBookmarks);
     if (bookmarksJson != null) {
-      _bookmarks = Set<int>.from(jsonDecode(bookmarksJson) as List);
+      _bookmarks = Set<String>.from(
+        (jsonDecode(bookmarksJson) as List).map((e) => e.toString()),
+      );
     }
 
     // 인증 상태 복원
@@ -230,7 +238,19 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 혼잡도 제보 ──
-  Future<void> reportStatus(int restaurantId, String status) async {
+  Future<void> reportStatus(String restaurantId, String status) async {
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      try {
+        await repo.reportStatus(restaurantId, status);
+        _restaurants = await repo.fetchAll();
+        notifyListeners();
+        return;
+      } catch (e, st) {
+        debugPrint('[Supabase] reportStatus failed: $e\n$st');
+      }
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final overridesJson = prefs.getString(_kOverrides);
     final overrides = overridesJson != null
@@ -253,7 +273,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 북마크 ──
-  Future<void> toggleBookmark(int id) async {
+  Future<void> toggleBookmark(String id) async {
     final prefs = await SharedPreferences.getInstance();
     if (_bookmarks.contains(id)) {
       _bookmarks.remove(id);
@@ -306,11 +326,20 @@ class AppProvider extends ChangeNotifier {
 
   // ── 어드민: 매장 관리 ──
   Future<void> addRestaurant(Map<String, dynamic> data) async {
-    final maxId = _restaurants.isEmpty
-        ? 0
-        : _restaurants.map((r) => r.id).reduce((a, b) => a > b ? a : b);
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      try {
+        final newR = await repo.insert(data);
+        _restaurants = [..._restaurants, newR];
+        notifyListeners();
+        return;
+      } catch (e, st) {
+        debugPrint('[Supabase] addRestaurant failed: $e\n$st');
+      }
+    }
+
     final newR = Restaurant(
-      id: maxId + 1,
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
       name: data['name'] as String,
       category: data['category'] as String,
       area: data['area'] as String,
@@ -334,7 +363,20 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> editRestaurant(int id, Map<String, dynamic> data) async {
+  Future<void> editRestaurant(String id, Map<String, dynamic> data) async {
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      try {
+        final updated = await repo.update(id, data);
+        _restaurants =
+            _restaurants.map((r) => r.id == id ? updated : r).toList();
+        notifyListeners();
+        return;
+      } catch (e, st) {
+        debugPrint('[Supabase] editRestaurant failed: $e\n$st');
+      }
+    }
+
     _restaurants = _restaurants.map((r) {
       if (r.id != id) return r;
       return Restaurant(
@@ -364,9 +406,32 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteRestaurant(int id) async {
+  Future<void> deleteRestaurant(String id) async {
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      try {
+        await repo.delete(id);
+        _restaurants = _restaurants.where((r) => r.id != id).toList();
+        notifyListeners();
+        return;
+      } catch (e, st) {
+        debugPrint('[Supabase] deleteRestaurant failed: $e\n$st');
+      }
+    }
+
     _restaurants = _restaurants.where((r) => r.id != id).toList();
     notifyListeners();
+  }
+
+  Future<void> _loadRestaurantsFromSupabase() async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+
+    try {
+      _restaurants = await repo.fetchAll();
+    } catch (e, st) {
+      debugPrint('[Supabase] load restaurants failed: $e\n$st');
+    }
   }
 
   Future<void> devReset() async {

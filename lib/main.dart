@@ -1,7 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
@@ -11,8 +15,18 @@ import 'screens/notification_permission_screen.dart';
 import 'screens/owner_screen.dart';
 import 'screens/admin_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+
+  if (Env.isSupabaseConfigured) {
+    await SupabaseService.initialize();
+  } else if (kDebugMode) {
+    debugPrint(
+      '[Supabase] SUPABASE_URL이 비어 있어 로컬 데이터만 사용합니다.',
+    );
+  }
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,

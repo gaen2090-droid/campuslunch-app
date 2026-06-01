@@ -11,7 +11,7 @@ class MenuItem {
 }
 
 class Restaurant {
-  final int id;
+  final String id;
   final String name;
   final String category;
   final String area;

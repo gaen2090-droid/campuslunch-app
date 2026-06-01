@@ -787,7 +787,7 @@ class _RestaurantsTab extends StatefulWidget {
 class _RestaurantsTabState extends State<_RestaurantsTab> {
   bool _showAdd = false;
   Restaurant? _editTarget;
-  int? _confirmDeleteId;
+  String? _confirmDeleteId;
 
   @override
   Widget build(BuildContext context) {
