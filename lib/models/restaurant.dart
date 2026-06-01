@@ -13,13 +13,13 @@ class MenuItem {
 class Restaurant {
   final int id;
   final String name;
-  final String cuisine;
-  final String region;
+  final String category;
   final String area;
+  final String address;
   String status;
   int updated;
   final String emoji;
-  final String image;
+  final String imageUrl;
   final double distance;
   final double x;
   final double y;
@@ -30,13 +30,13 @@ class Restaurant {
   Restaurant({
     required this.id,
     required this.name,
-    required this.cuisine,
-    required this.region,
+    required this.category,
     required this.area,
+    required this.address,
     required this.status,
     required this.updated,
     required this.emoji,
-    required this.image,
+    required this.imageUrl,
     required this.distance,
     required this.x,
     required this.y,
@@ -53,13 +53,13 @@ class Restaurant {
       Restaurant(
         id: id,
         name: name,
-        cuisine: cuisine,
-        region: region,
+        category: category,
         area: area,
+        address: address,
         status: status ?? this.status,
         updated: updated ?? this.updated,
         emoji: emoji,
-        image: image,
+        imageUrl: imageUrl,
         distance: distance,
         x: x,
         y: y,

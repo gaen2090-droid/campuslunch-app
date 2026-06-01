@@ -100,9 +100,9 @@ class NearbyPrompt extends StatelessWidget {
                             SizedBox(
                               height: 56,
                               width: double.infinity,
-                              child: r.image.isNotEmpty
+                              child: r.imageUrl.isNotEmpty
                                   ? CachedNetworkImage(
-                                      imageUrl: r.image,
+                                      imageUrl: r.imageUrl,
                                       fit: BoxFit.cover,
                                       errorWidget: (_, __, ___) => _EmojiBox(emoji: r.emoji),
                                     )

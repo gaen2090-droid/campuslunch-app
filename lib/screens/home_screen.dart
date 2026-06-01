@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../widgets/nearby_prompt.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/report_sheet.dart';
 import 'detail_screen.dart';
@@ -21,11 +22,23 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
   bool _showBookmarked = false;
+  bool _showNearby = false;
+  bool? _prevLocationMode;
   final _searchCtrl = TextEditingController();
 
   static const _regionOpts = ['학식', '정문', '중문', '후문'];
   static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['인기순', '가까운순', '여유로운순'];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locationMode = context.read<AppProvider>().locationMode;
+    if (locationMode && _prevLocationMode != true) {
+      _showNearby = true;
+    }
+    _prevLocationMode = locationMode;
+  }
 
   @override
   void dispose() {
@@ -35,8 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
     var list = all.where((r) {
-      final regionOk = _regions.isEmpty || _regions.contains(r.region);
-      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.cuisine);
+      final regionOk = _regions.isEmpty || _regions.contains(r.area);
+      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
       final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
       return regionOk && cuisineOk && bookmarkOk;
     }).toList();
@@ -56,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final query = q.trim().toLowerCase();
     if (query.isEmpty) return [];
     return all
-        .where((r) => '${r.name} ${r.region} ${r.cuisine}'.toLowerCase().contains(query))
+        .where((r) => '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(query))
         .toList();
   }
 
@@ -95,8 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
         : null;
     final availableCards = available.where((r) => r.id != recommended?.id).toList();
 
-    return Column(
+    return Stack(
       children: [
+        Column(
+          children: [
         // ── 헤더 ──
         Container(
           color: Colors.white,
@@ -312,6 +327,22 @@ class _HomeScreenState extends State<HomeScreen> {
               ? _buildSearch(searchResults)
               : _buildList(recommended, availableCards, busy),
         ),
+          ],
+        ),
+
+        // ── 근처 매장 제보 요청 팝업 ──
+        if (_showNearby && !_searchActive)
+          Positioned(
+            left: 0, right: 0, bottom: 80,
+            child: NearbyPrompt(
+              restaurants: all,
+              onClose: () => setState(() => _showNearby = false),
+              onReport: (r) {
+                setState(() => _showNearby = false);
+                _openReport(r);
+              },
+            ),
+          ),
       ],
     );
   }

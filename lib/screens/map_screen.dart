@@ -43,9 +43,9 @@ class _MapScreenState extends State<MapScreen> {
   List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
     return all.where((r) {
       final q = _searchCtrl.text.trim().toLowerCase();
-      final regionOk = _regions.isEmpty || _regions.contains(r.region);
-      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.cuisine);
-      final searchOk = q.isEmpty || '${r.name} ${r.region} ${r.cuisine}'.toLowerCase().contains(q);
+      final regionOk = _regions.isEmpty || _regions.contains(r.area);
+      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
+      final searchOk = q.isEmpty || '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(q);
       final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
       return regionOk && cuisineOk && searchOk && bookmarkOk;
     }).toList();
@@ -847,7 +847,7 @@ class _SelectedCard extends StatelessWidget {
                                 color: Color(0xFF111827))),
                         const SizedBox(height: 2),
                         Row(children: [
-                          Text('${r.region} · ',
+                          Text('${r.area} · ',
                               style: const TextStyle(
                                   fontSize: 12, color: Color(0xFF9CA3AF))),
                           Text(r.status,

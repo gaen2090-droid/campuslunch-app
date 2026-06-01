@@ -230,9 +230,9 @@ class _RestaurantRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: restaurant.image.isNotEmpty
+            child: restaurant.imageUrl.isNotEmpty
                 ? CachedNetworkImage(
-                    imageUrl: restaurant.image,
+                    imageUrl: restaurant.imageUrl,
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
@@ -254,9 +254,9 @@ class _RestaurantRow extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  restaurant.region == restaurant.cuisine
-                      ? restaurant.region
-                      : '${restaurant.region} · ${restaurant.cuisine}',
+                  restaurant.area == restaurant.category
+                      ? restaurant.area
+                      : '${restaurant.area} · ${restaurant.category}',
                   style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
                 ),
               ],

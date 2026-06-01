@@ -862,7 +862,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${r.region} · ${r.cuisine}',
+                                  '${r.area} · ${r.category}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF9CA3AF),
@@ -1645,9 +1645,9 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
         .toList();
     widget.onAdd({
       'name': _nameCtrl.text.trim(),
-      'region': _region,
-      'cuisine': _cuisine,
-      'area': _areaByRegion[_region] ?? _region,
+      'area': _region,
+      'category': _cuisine,
+      'address': _areaByRegion[_region] ?? _region,
       'hours': hours,
       'menu': validMenu,
     });
@@ -1892,8 +1892,8 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
     super.initState();
     final r = widget.restaurant;
     _nameCtrl = TextEditingController(text: r.name);
-    _region = _regions.contains(r.region) ? r.region : '정문';
-    _cuisine = _cuisines.contains(r.cuisine) ? r.cuisine : '한식';
+    _region = _regions.contains(r.area) ? r.area : '정문';
+    _cuisine = _cuisines.contains(r.category) ? r.category : '한식';
     _times = _parseTimeRanges(r.hours);
     _menu = r.menu.isNotEmpty
         ? r.menu.map((m) => _MenuEntry()
@@ -1932,9 +1932,9 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
         .toList();
     widget.onSave({
       'name': _nameCtrl.text.trim(),
-      'region': _region,
-      'cuisine': _cuisine,
-      'area': _areaByRegion[_region] ?? _region,
+      'area': _region,
+      'category': _cuisine,
+      'address': _areaByRegion[_region] ?? _region,
       'hours': hours,
       'menu': validMenu,
     });

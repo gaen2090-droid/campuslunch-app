@@ -26,8 +26,8 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
 
   List<Restaurant> _filter(List<Restaurant> all, Set<int> bookmarks) {
     var list = all.where((r) {
-      final regionOk = _regions.isEmpty || _regions.contains(r.region);
-      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.cuisine);
+      final regionOk = _regions.isEmpty || _regions.contains(r.area);
+      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
       return bookmarks.contains(r.id) && regionOk && cuisineOk;
     }).toList();
     list.sort((a, b) {

@@ -32,11 +32,11 @@ class DetailScreen extends StatelessWidget {
               children: [
                 // 전체폭 이미지
                 SizedBox(
-                  height: r.image.isNotEmpty ? 220 : safeTop + 72,
+                  height: r.imageUrl.isNotEmpty ? 220 : safeTop + 72,
                   width: double.infinity,
-                  child: r.image.isNotEmpty
+                  child: r.imageUrl.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: r.image,
+                          imageUrl: r.imageUrl,
                           fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => Container(
                             color: const Color(0xFFFFF3EC),
@@ -111,9 +111,9 @@ class DetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          r.region == r.cuisine
-                              ? r.region
-                              : '${r.region} · ${r.cuisine}',
+                          r.area == r.category
+                              ? r.area
+                              : '${r.area} · ${r.category}',
                           style: const TextStyle(
                               fontSize: 13, color: Color(0xFF9CA3AF)),
                         ),
