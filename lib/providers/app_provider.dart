@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException, UserAttributes;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthException, UserAttributes;
 import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
@@ -83,7 +85,9 @@ class AppProvider extends ChangeNotifier {
         final ov = overrides[r.id.toString()] as Map<String, dynamic>?;
         if (ov == null) return r;
         final updatedAt = ov['updatedAt'] as int? ?? 0;
-        final diffMin = ((DateTime.now().millisecondsSinceEpoch - updatedAt) / 60000).floor();
+        final diffMin =
+            ((DateTime.now().millisecondsSinceEpoch - updatedAt) / 60000)
+                .floor();
         return r.copyWith(status: ov['status'] as String, updated: diffMin);
       }).toList();
     }
@@ -112,7 +116,8 @@ class AppProvider extends ChangeNotifier {
       _nickname = prefs.getString(_kNickname) ?? '';
       _accountId = prefs.getString(_kAccountId) ?? '';
       _userRole = prefs.getString(_kUserRole) ?? 'user';
-      _ownerRestaurantIds = List<String>.from(jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
+      _ownerRestaurantIds = List<String>.from(
+          jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
       _locationMode = prefs.getBool(_kLocation) ?? false;
       _notificationEnabled = prefs.getBool(_kPush) ?? false;
 
@@ -135,14 +140,26 @@ class AppProvider extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     // 개발용 테스트 계정
     if (email == 'admin' && password == 'admin123') {
-      await _saveSession(await SharedPreferences.getInstance(),
-          Account(id: 'admin', password: 'admin123', nickname: '관리자', role: 'admin'));
+      await _saveSession(
+          await SharedPreferences.getInstance(),
+          Account(
+              id: 'admin',
+              password: 'admin123',
+              nickname: '관리자',
+              role: 'admin'));
       return true;
     }
     if (email == 'owner' && password == 'owner123') {
-      await _saveSession(await SharedPreferences.getInstance(),
-          Account(id: 'owner', password: 'owner123', nickname: '사장님', role: 'owner',
-              restaurantIds: [_restaurants.isNotEmpty ? _restaurants.first.id.toString() : '1']));
+      await _saveSession(
+          await SharedPreferences.getInstance(),
+          Account(
+              id: 'owner',
+              password: 'owner123',
+              nickname: '사장님',
+              role: 'owner',
+              restaurantIds: [
+                _restaurants.isNotEmpty ? _restaurants.first.id.toString() : '1'
+              ]));
       return true;
     }
 
@@ -165,13 +182,15 @@ class AppProvider extends ChangeNotifier {
           if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
             await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
           }
-          await _saveSession(prefs, Account(
-            id: email,
-            password: '',
-            nickname: nickname,
-            role: role,
-            restaurantIds: restaurantIds,
-          ));
+          await _saveSession(
+              prefs,
+              Account(
+                id: email,
+                password: '',
+                nickname: nickname,
+                role: role,
+                restaurantIds: restaurantIds,
+              ));
           return true;
         }
       } on AuthException catch (e) {
@@ -185,7 +204,9 @@ class AppProvider extends ChangeNotifier {
     // 로컬 폴백
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
-    final account = accounts.where((a) => a.id == email && a.password == password).firstOrNull;
+    final account = accounts
+        .where((a) => a.id == email && a.password == password)
+        .firstOrNull;
     if (account == null) return false;
     await _saveSession(prefs, account);
     return true;
@@ -319,8 +340,7 @@ class AppProvider extends ChangeNotifier {
             ? (SupabaseService.client.auth.currentUser?.id ?? _accountId)
             : _accountId;
         await repo.reportStatus(restaurantId, status,
-            source: _userRole == 'owner' ? 'owner' : 'user',
-            userId: userId);
+            source: _userRole == 'owner' ? 'owner' : 'user', userId: userId);
         _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
@@ -379,7 +399,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   void _saveAccounts(SharedPreferences prefs, List<Account> accounts) {
-    prefs.setString(_kAccounts, jsonEncode(accounts.map((a) => a.toMap()).toList()));
+    prefs.setString(
+        _kAccounts, jsonEncode(accounts.map((a) => a.toMap()).toList()));
   }
 
   bool get _hasSupabaseSession =>
@@ -415,7 +436,10 @@ class AppProvider extends ChangeNotifier {
   Future<void> socialLogin() async {
     final prefs = await SharedPreferences.getInstance();
     final nick = prefs.getString(_kNickname) ?? _generateNickname();
-    final fakeAccount = Account(id: 'social_${DateTime.now().millisecondsSinceEpoch}', password: '', nickname: nick);
+    final fakeAccount = Account(
+        id: 'social_${DateTime.now().millisecondsSinceEpoch}',
+        password: '',
+        nickname: nick);
     await _saveSession(prefs, fakeAccount);
   }
 
@@ -516,13 +540,70 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> verifyOwnerCode(String code) async {
+  Future<String?> uploadRestaurantImage(Uint8List bytes, String ext) async {
     final repo = _restaurantRepo;
-    if (repo == null) return 'INVALID_CODE';
+    if (repo == null) return null;
     try {
-      final restaurantId = await repo.findRestaurantIdByOwnerCode(code);
-      if (restaurantId == null) return 'INVALID_CODE';
+      return await repo.uploadImage(bytes, ext);
+    } catch (e, st) {
+      debugPrint('[Supabase] uploadImage failed: $e\n$st');
+      return null;
+    }
+  }
 
+  Future<void> generateOwnerCode(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    try {
+      final code = await repo.generateOwnerCode(restaurantId);
+      _restaurants = _restaurants.map((r) {
+        if (r.id != restaurantId) return r;
+        return Restaurant(
+          id: r.id,
+          name: r.name,
+          category: r.category,
+          area: r.area,
+          address: r.address,
+          status: r.status,
+          updated: r.updated,
+          imageUrl: r.imageUrl,
+          distance: r.distance,
+          x: r.x,
+          y: r.y,
+          hours: r.hours,
+          reports: r.reports,
+          menu: r.menu,
+          popularityScore: r.popularityScore,
+          manualRank: r.manualRank,
+          ownerCode: code,
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[Supabase] generateOwnerCode failed: $e\n$st');
+    }
+  }
+
+  Future<String?> verifyOwnerCode(String code) async {
+    // 로컬 restaurants에서 먼저 확인
+    final found = _restaurants.where((r) => r.ownerCode == code);
+    String? restaurantId = found.isEmpty ? null : found.first.id;
+
+    // 로컬에 없으면 DB에서 조회
+    if (restaurantId == null) {
+      final repo = _restaurantRepo;
+      if (repo != null) {
+        try {
+          restaurantId = await repo.findRestaurantIdByOwnerCode(code);
+        } catch (e) {
+          debugPrint('[verifyOwnerCode] DB lookup failed: $e');
+        }
+      }
+    }
+
+    if (restaurantId == null) return 'INVALID_CODE';
+
+    try {
       _userRole = 'owner';
       _ownerRestaurantIds = [restaurantId];
 
@@ -531,7 +612,10 @@ class AppProvider extends ChangeNotifier {
       await prefs.setString(_kOwnerIds, jsonEncode([restaurantId]));
 
       // Supabase Auth metadata에 role 저장 (로그인 후에도 유지)
-      await _syncMetadata({'role': 'owner', 'restaurant_ids': [restaurantId]});
+      await _syncMetadata({
+        'role': 'owner',
+        'restaurant_ids': [restaurantId]
+      });
 
       _stage = 'owner';
       notifyListeners();
@@ -563,10 +647,11 @@ class AppProvider extends ChangeNotifier {
     if (wasOn && !_useAlgorithmRanking) {
       final allUnranked = _restaurants.every((r) => r.manualRank == 0);
       if (allUnranked) {
-        final sorted = [..._restaurants]
-          ..sort((a, b) {
-            final aScore = a.popularityScore > 0 ? a.popularityScore : a.totalReports;
-            final bScore = b.popularityScore > 0 ? b.popularityScore : b.totalReports;
+        final sorted = [..._restaurants]..sort((a, b) {
+            final aScore =
+                a.popularityScore > 0 ? a.popularityScore : a.totalReports;
+            final bScore =
+                b.popularityScore > 0 ? b.popularityScore : b.totalReports;
             return bScore.compareTo(aScore);
           });
         await setManualRanks(sorted.map((r) => r.id).toList());
@@ -584,11 +669,22 @@ class AppProvider extends ChangeNotifier {
       final rank = rankById[r.id];
       if (rank == null) return r;
       return Restaurant(
-        id: r.id, name: r.name, category: r.category, area: r.area,
-        address: r.address, status: r.status, updated: r.updated,
-        imageUrl: r.imageUrl, distance: r.distance, x: r.x, y: r.y,
-        hours: r.hours, reports: r.reports, menu: r.menu,
-        popularityScore: r.popularityScore, manualRank: rank,
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        area: r.area,
+        address: r.address,
+        status: r.status,
+        updated: r.updated,
+        imageUrl: r.imageUrl,
+        distance: r.distance,
+        x: r.x,
+        y: r.y,
+        hours: r.hours,
+        reports: r.reports,
+        menu: r.menu,
+        popularityScore: r.popularityScore,
+        manualRank: rank,
       );
     }).toList();
     notifyListeners();

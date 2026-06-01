@@ -1,5 +1,7 @@
 ﻿import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
@@ -232,6 +234,7 @@ class _AdminScreenState extends State<AdminScreen> {
             _DetailSheet(
               detailKey: _detail!,
               restaurants: context.read<AppProvider>().restaurants,
+              metrics: context.read<AppProvider>().metrics,
               onClose: () => setState(() => _detail = null),
             ),
 
@@ -301,7 +304,7 @@ class _MetricCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -309,6 +312,7 @@ class _MetricCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               label,
@@ -318,7 +322,6 @@ class _MetricCard extends StatelessWidget {
                 color: Color(0xFF9CA3AF),
               ),
             ),
-            const SizedBox(height: 4),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -553,9 +556,12 @@ class _MetricsTab extends StatelessWidget {
     final todayReports = metrics.todayReports > 0
         ? metrics.todayReports
         : restaurants.fold(0, (s, r) => s + _totalReports(r));
-    final avgReports = restaurants.isEmpty
+    final weekTotal = metrics.weekTotal > 0
+        ? metrics.weekTotal
+        : restaurants.fold(0, (s, r) => s + _totalReports(r));
+    final weekAvg = restaurants.isEmpty
         ? 0.0
-        : (todayReports / restaurants.length * 10).round() / 10;
+        : (weekTotal / restaurants.length * 10).round() / 10;
     final dauData = metrics.dailyReports.any((v) => v > 0)
         ? metrics.dailyReports
         : _dauWeek;
@@ -574,12 +580,12 @@ class _MetricsTab extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.9,
+          childAspectRatio: 2.6,
           children: [
             _MetricCard(
-              label: '오늘 제보 활동',
+              label: 'DAU',
               value: '$todayDau',
-              unit: '건',
+              unit: '명',
               onTap: onDauDetail,
             ),
             _MetricCard(
@@ -597,10 +603,10 @@ class _MetricsTab extends StatelessWidget {
               onTap: () => onDetail('reports'),
             ),
             _MetricCard(
-              label: '매장 평균 제보',
-              value: '$avgReports',
+              label: '최근 7일 누적 제보',
+              value: '$weekTotal',
               unit: '건',
-              onTap: () => onDetail('avgReports'),
+              onTap: () => onDetail('weekAvg'),
             ),
             _MetricCard(
               label: '추천 배너 클릭률',
@@ -1131,21 +1137,20 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                     color: Color(0xFF9CA3AF),
                                   ),
                                 ),
-                                if (r.ownerCode.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Text('사장님 코드 ',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Color(0xFF9CA3AF))),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Text('사장님 코드 ',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF9CA3AF))),
+                                    if (r.ownerCode.isNotEmpty)
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF0FDF4),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
                                               color: const Color(0xFFBBF7D0)),
                                         ),
@@ -1158,10 +1163,28 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                             letterSpacing: 2,
                                           ),
                                         ),
+                                      )
+                                    else
+                                      GestureDetector(
+                                        onTap: () => provider.generateOwnerCode(r.id),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF9FAFB),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                                color: const Color(0xFFE5E7EB)),
+                                          ),
+                                          child: const Text('발급',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF9CA3AF))),
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -1421,7 +1444,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
     final diff = current - vals[vals.length - 2];
 
     return _SheetBase(
-      title: '일별 제보 활동',
+      title: 'DAU (일별 제보 활동)',
       onClose: widget.onClose,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -1491,93 +1514,114 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
 class _DetailSheet extends StatelessWidget {
   final String detailKey;
   final List<Restaurant> restaurants;
+  final DashboardMetrics metrics;
   final VoidCallback onClose;
 
   const _DetailSheet({
     required this.detailKey,
     required this.restaurants,
+    required this.metrics,
     required this.onClose,
   });
+
+  Widget _restaurantBarList(Map<String, int> countById, int total) {
+    final data = restaurants.map((r) {
+      final cnt = countById[r.id] ?? 0;
+      return (r.name, cnt);
+    }).toList()
+      ..sort((a, b) => b.$2.compareTo(a.$2));
+    final maxV = data.isEmpty ? 1 : data.map((e) => e.$2).reduce(max);
+    final avg = restaurants.isEmpty
+        ? 0.0
+        : (total / restaurants.length * 10).round() / 10;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Text('평균',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF16A34A))),
+              const SizedBox(width: 8),
+              Text('$avg건',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF16A34A))),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...data.map((e) {
+          final frac = maxV > 0 ? e.$2 / maxV : 0.0;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(e.$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF374151))),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 96,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: Stack(children: [
+                            Container(height: 6, color: const Color(0xFFF3F4F6)),
+                            FractionallySizedBox(
+                              widthFactor: frac,
+                              child: Container(height: 6, color: const Color(0xFF16A34A)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 28,
+                        child: Text('${e.$2}',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827))),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     String title = '';
     Widget body = const SizedBox.shrink();
 
-    if (detailKey == 'reports' || detailKey == 'avgReports') {
-      final sorted = [...restaurants]
-        ..sort((a, b) => _totalReports(b) - _totalReports(a));
-      final maxV = restaurants.isEmpty
-          ? 1.0
-          : restaurants.map((r) => _totalReports(r).toDouble()).reduce(max);
-      title = detailKey == 'reports' ? '매장별 누적 제보 수' : '매장 평균 제보 수';
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...sorted.map((r) {
-            final frac = maxV > 0 ? _totalReports(r) / maxV : 0.0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      r.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 96,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: Stack(
-                              children: [
-                                Container(
-                                    height: 6,
-                                    color: const Color(0xFFF3F4F6)),
-                                FractionallySizedBox(
-                                  widthFactor: frac,
-                                  child: Container(
-                                    height: 6,
-                                    color: const Color(0xFF16A34A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        SizedBox(
-                          width: 28,
-                          child: Text(
-                            '${_totalReports(r)}',
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      );
+    if (detailKey == 'reports') {
+      title = '오늘 매장별 제보 수';
+      body = _restaurantBarList(metrics.todayByRestaurant, metrics.todayReports);
+    } else if (detailKey == 'weekAvg') {
+      title = '최근 7일 매장별 제보 수';
+      body = _restaurantBarList(metrics.weekByRestaurant, metrics.weekTotal);
     } else {
       final configs = {
         'mau': ('월간 활성 사용자 추이',
@@ -1585,9 +1629,9 @@ class _DetailSheet extends StatelessWidget {
             _months6.toList(),
             const Color(0xFF16A34A)),
         'clickRate': ('추천 배너 클릭률 추이', _clickWeekly, _weekDates,
-            const Color(0xFF6366F1)),
+            const Color(0xFF16A34A)),
         'pushOpenRate': ('푸시 오픈율 추이', _pushWeekly, _weekDates,
-            const Color(0xFF10B981)),
+            const Color(0xFF16A34A)),
       };
 
       if (detailKey == 'ownerStatus') {
@@ -2023,6 +2067,9 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
   String _cuisine = '한식';
   final List<_TimeRange> _times = [_TimeRange('11:00', '21:00')];
   final List<_MenuEntry> _menu = [_MenuEntry()];
+  Uint8List? _imageBytes;
+  String _imageExt = 'jpg';
+  bool _uploading = false;
   String _error = '';
 
   @override
@@ -2031,13 +2078,29 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, withData: true);
+    if (result == null || result.files.first.bytes == null) return;
+    setState(() {
+      _imageBytes = result.files.first.bytes;
+      _imageExt = result.files.first.extension ?? 'jpg';
+    });
+  }
+
+  Future<void> _submit() async {
     if (_nameCtrl.text.trim().isEmpty) {
       setState(() => _error = '매장명을 입력해주세요.');
       return;
     }
-    final hours =
-        _times.map((t) => '${t.from} - ${t.to}').join(', ');
+    setState(() => _uploading = true);
+    String imageUrl = '';
+    if (_imageBytes != null) {
+      imageUrl = await context.read<AppProvider>()
+              .uploadRestaurantImage(_imageBytes!, _imageExt) ??
+          '';
+    }
+    final hours = _times.map((t) => '${t.from} - ${t.to}').join(', ');
     final validMenu = _menu
         .where((m) => m.name.isNotEmpty)
         .map((m) => {'name': m.name, 'price': int.tryParse(m.price) ?? 0})
@@ -2049,6 +2112,7 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
       'address': _areaByRegion[_region] ?? _region,
       'hours': hours,
       'menu': validMenu,
+      if (imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
   }
 
@@ -2062,6 +2126,9 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _FieldLabel('이미지'),
+            _ImagePickerField(pickedBytes: _imageBytes, onTap: _pickImage),
+            const SizedBox(height: 12),
             _FieldLabel('매장명 *'),
             _InputField(controller: _nameCtrl, hint: 'ex. 정문 돈까스'),
             const SizedBox(height: 12),
@@ -2235,7 +2302,7 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
             ],
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: _submit,
+              onTap: _uploading ? null : _submit,
               child: Container(
                 height: 56,
                 width: double.infinity,
@@ -2243,15 +2310,12 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                   color: const Color(0xFF16A34A),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(
-                  child: Text(
-                    '추가하기',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
+                child: Center(
+                  child: _uploading
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('추가하기',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
                 ),
               ),
             ),
@@ -2285,6 +2349,9 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
   late List<_TimeRange> _times;
   late List<_MenuEntry> _menu;
   String _error = '';
+  Uint8List? _imageBytes;
+  String _imageExt = 'jpg';
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -2319,10 +2386,26 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
     return ranges.isEmpty ? [_TimeRange('11:00', '21:00')] : ranges;
   }
 
-  void _submit() {
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, withData: true);
+    if (result == null || result.files.first.bytes == null) return;
+    setState(() {
+      _imageBytes = result.files.first.bytes;
+      _imageExt = result.files.first.extension ?? 'jpg';
+    });
+  }
+
+  Future<void> _submit() async {
     if (_nameCtrl.text.trim().isEmpty) {
       setState(() => _error = '매장명을 입력해주세요.');
       return;
+    }
+    setState(() => _uploading = true);
+    String? imageUrl;
+    if (_imageBytes != null) {
+      imageUrl = await context.read<AppProvider>()
+          .uploadRestaurantImage(_imageBytes!, _imageExt);
     }
     final hours = _times.map((t) => '${t.from} - ${t.to}').join(', ');
     final validMenu = _menu
@@ -2336,6 +2419,7 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
       'address': _areaByRegion[_region] ?? _region,
       'hours': hours,
       'menu': validMenu,
+      if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
   }
 
@@ -2349,6 +2433,13 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _FieldLabel('이미지'),
+            _ImagePickerField(
+              currentUrl: widget.restaurant.imageUrl,
+              pickedBytes: _imageBytes,
+              onTap: _pickImage,
+            ),
+            const SizedBox(height: 12),
             _FieldLabel('매장명 *'),
             _InputField(controller: _nameCtrl, hint: 'ex. 정문 돈까스'),
             const SizedBox(height: 12),
@@ -2526,7 +2617,7 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
             ],
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: _submit,
+              onTap: _uploading ? null : _submit,
               child: Container(
                 height: 56,
                 width: double.infinity,
@@ -2534,15 +2625,12 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                   color: const Color(0xFF16A34A),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(
-                  child: Text(
-                    '저장하기',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
+                child: Center(
+                  child: _uploading
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('저장하기',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
                 ),
               ),
             ),
@@ -2551,6 +2639,59 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
       ),
     );
   }
+}
+
+// ── Image picker widget ───────────────────────────────────────────────────
+class _ImagePickerField extends StatelessWidget {
+  final String? currentUrl;
+  final Uint8List? pickedBytes;
+  final VoidCallback onTap;
+
+  const _ImagePickerField({
+    this.currentUrl,
+    this.pickedBytes,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = pickedBytes != null || (currentUrl?.isNotEmpty ?? false);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasImage ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+            width: hasImage ? 1.5 : 1,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: pickedBytes != null
+              ? Image.memory(pickedBytes!, fit: BoxFit.cover)
+              : (currentUrl?.isNotEmpty ?? false)
+                  ? Image.network(currentUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder())
+                  : _placeholder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() => Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.add_photo_alternate_outlined,
+              size: 28, color: Color(0xFF9CA3AF)),
+          SizedBox(height: 6),
+          Text('이미지 추가',
+              style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+        ],
+      );
 }
 
 // ── Shared form helpers ───────────────────────────────────────────────────

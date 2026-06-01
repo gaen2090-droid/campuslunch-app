@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'restaurant_image.dart';
 import '../models/restaurant.dart';
 
 class NearbyPrompt extends StatelessWidget {
@@ -100,13 +100,7 @@ class NearbyPrompt extends StatelessWidget {
                             SizedBox(
                               height: 56,
                               width: double.infinity,
-                              child: r.imageUrl.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: r.imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => const _IconBox(),
-                                    )
-                                  : const _IconBox(),
+                              child: RestaurantImage(url: r.imageUrl, fallback: () => const _IconBox()),
                             ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),

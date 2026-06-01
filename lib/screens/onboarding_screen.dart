@@ -1,6 +1,6 @@
 ﻿import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/restaurant_image.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/restaurant.dart';
@@ -230,15 +230,13 @@ class _RestaurantRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: restaurant.imageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: restaurant.imageUrl,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _InitialCircle(name: restaurant.name),
-                  )
-                : _InitialCircle(name: restaurant.name),
+            child: SizedBox(
+              width: 40, height: 40,
+              child: RestaurantImage(
+                url: restaurant.imageUrl,
+                fallback: () => _InitialCircle(name: restaurant.name),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

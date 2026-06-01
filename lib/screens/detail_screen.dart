@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/restaurant_image.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
@@ -69,18 +69,15 @@ class _DetailScreenState extends State<DetailScreen> {
                 SizedBox(
                   height: r.imageUrl.isNotEmpty ? 220 : safeTop + 72,
                   width: double.infinity,
-                  child: r.imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: r.imageUrl,
-                          fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(
-                            color: const Color(0xFFF0FDF4),
-                            child: const Center(
-                              child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
-                            ),
-                          ),
-                        )
-                      : Container(color: const Color(0xFFF0FDF4)),
+                  child: RestaurantImage(
+                    url: r.imageUrl,
+                    fallback: () => Container(
+                      color: const Color(0xFFF0FDF4),
+                      child: const Center(
+                        child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
+                      ),
+                    ),
+                  ),
                 ),
 
                 // 플로팅 헤더 버튼

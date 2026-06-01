@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/dashboard_metrics.dart';
@@ -56,7 +58,7 @@ class SupabaseRestaurantRepository {
 
     final rows = await _client
         .from('crowd_reports')
-        .select('created_at, metadata')
+        .select('created_at, metadata, restaurant_id')
         .gte('created_at', weekAgo.toIso8601String());
 
     // 일별 제보 수 집계 (최근 7일)
@@ -90,10 +92,30 @@ class SupabaseRestaurantRepository {
         .map((e) => (e.key, e.value))
         .toList();
 
+    // 매장별 오늘 / 최근 7일 제보 수 집계
+    final todayByRestaurant = <String, int>{};
+    final weekByRestaurant = <String, int>{};
+
+    for (final row in rows) {
+      final rid = row['restaurant_id'] as String?;
+      if (rid == null) continue;
+      final createdAt =
+          DateTime.parse(row['created_at'] as String).toLocal();
+      final dayIndex = now
+          .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
+          .inDays;
+      weekByRestaurant[rid] = (weekByRestaurant[rid] ?? 0) + 1;
+      if (dayIndex == 0) {
+        todayByRestaurant[rid] = (todayByRestaurant[rid] ?? 0) + 1;
+      }
+    }
+
     return DashboardMetrics(
       todayReports: todayTotal,
       dailyReports: dailyCounts,
       topReporters: topReporters,
+      todayByRestaurant: todayByRestaurant,
+      weekByRestaurant: weekByRestaurant,
     );
   }
 
@@ -136,7 +158,7 @@ class SupabaseRestaurantRepository {
           .select('description')
           .eq('id', id)
           .single();
-      final desc = _parseDescription(existing['description'] as String?) ?? {};
+      final desc = _parseDescription(existing['description']) ?? {};
       if (data.containsKey('hours')) desc['hours'] = data['hours'];
       if (data.containsKey('menu')) desc['menu'] = data['menu'];
       patch['description'] = jsonEncode(desc);
@@ -175,7 +197,7 @@ class SupabaseRestaurantRepository {
     List<Map<String, dynamic>> reports,
   ) {
     final id = row['id'] as String;
-    final extra = _parseDescription(row['description'] as String?);
+    final extra = _parseDescription(row['description']);
     final seed = extra == null ? _seedByName(row['name'] as String?) : null;
 
     final sorted = List<Map<String, dynamic>>.from(reports)
@@ -244,13 +266,59 @@ class SupabaseRestaurantRepository {
     );
   }
 
+  Future<String> uploadImage(Uint8List bytes, String ext) async {
+    const bucket = 'restaurant-images';
+    final path = 'restaurants/${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    // Storage 업로드 시도 (버킷 없으면 자동 생성 후 재시도)
+    try {
+      try {
+        await _client.storage.createBucket(
+          bucket,
+          const BucketOptions(public: true),
+        );
+      } catch (_) {
+        // 이미 존재하면 무시
+      }
+      await _client.storage.from(bucket).uploadBinary(
+            path, bytes,
+            fileOptions: FileOptions(contentType: 'image/$ext', upsert: true),
+          );
+      return _client.storage.from(bucket).getPublicUrl(path);
+    } catch (e) {
+      // Storage 실패 시 base64로 DB에 직접 저장
+      debugPrint('[Storage] fallback to base64: $e');
+      return 'data:image/$ext;base64,${base64Encode(bytes)}';
+    }
+  }
+
+  Future<String> generateOwnerCode(String restaurantId) async {
+    final code = (100000 + Random().nextInt(900000)).toString();
+    final existing = await _client
+        .from('restaurants')
+        .select('description')
+        .eq('id', restaurantId)
+        .single();
+    final desc = _parseDescription(existing['description']) ?? {};
+    desc['owner_code'] = code;
+    final updated = await _client
+        .from('restaurants')
+        .update({'description': jsonEncode(desc)})
+        .eq('id', restaurantId)
+        .select('id');
+    if ((updated as List).isEmpty) {
+      throw Exception('owner_code DB 저장 실패: 권한 부족이거나 존재하지 않는 식당 ID');
+    }
+    return code;
+  }
+
   Future<String?> findRestaurantIdByOwnerCode(String code) async {
     final rows = await _client
         .from('restaurants')
         .select('id, description')
         .eq('is_active', true);
     for (final row in rows) {
-      final desc = _parseDescription(row['description'] as String?);
+      final desc = _parseDescription(row['description']);
       if (desc?['owner_code'] == code) return row['id'] as String;
     }
     return null;
@@ -263,7 +331,7 @@ class SupabaseRestaurantRepository {
           .select('description')
           .eq('id', entry.key)
           .single();
-      final desc = _parseDescription(existing['description'] as String?) ?? {};
+      final desc = _parseDescription(existing['description']) ?? {};
       desc['manual_rank'] = entry.value;
       await _client
           .from('restaurants')
@@ -360,10 +428,15 @@ class SupabaseRestaurantRepository {
     return total;
   }
 
-  Map<String, dynamic>? _parseDescription(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
+  Map<String, dynamic>? _parseDescription(dynamic raw) {
+    if (raw == null) return null;
+    // jsonb 컬럼이면 이미 Map으로 반환됨
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    final str = raw as String?;
+    if (str == null || str.isEmpty) return null;
     try {
-      final decoded = jsonDecode(raw);
+      final decoded = jsonDecode(str);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     } catch (_) {}

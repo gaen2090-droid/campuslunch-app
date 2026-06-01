@@ -5,6 +5,7 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
+import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 
@@ -826,29 +827,18 @@ class _SelectedCard extends StatelessWidget {
                       color: const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: r.imageUrl.isNotEmpty
-                        ? Image.network(
-                            r.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Text(
-                                r.name.isNotEmpty ? r.name[0] : '?',
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF16A34A)),
-                              ),
-                            ),
-                          )
-                        : Center(
-                            child: Text(
-                              r.name.isNotEmpty ? r.name[0] : '?',
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF16A34A)),
-                            ),
-                          ),
+                    child: RestaurantImage(
+                      url: r.imageUrl,
+                      fallback: () => Center(
+                        child: Text(
+                          r.name.isNotEmpty ? r.name[0] : '?',
+                          style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF16A34A)),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

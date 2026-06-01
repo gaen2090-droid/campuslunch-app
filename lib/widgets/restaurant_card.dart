@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/restaurant.dart';
+import 'restaurant_image.dart';
 
 class RestaurantCard extends StatelessWidget {
   final Restaurant restaurant;
@@ -34,15 +34,13 @@ class RestaurantCard extends StatelessWidget {
             // 이미지
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: r.imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: r.imageUrl,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const _IconBox(),
-                    )
-                  : const _IconBox(),
+              child: SizedBox(
+                width: 48, height: 48,
+                child: RestaurantImage(
+                  url: r.imageUrl,
+                  fallback: () => const _IconBox(),
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             // 텍스트
@@ -136,15 +134,7 @@ class HeroRestaurantCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // 배경 이미지
-              if (r.imageUrl.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: r.imageUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) =>
-                      Container(color: const Color(0xFFFFA06B)),
-                )
-              else
-                Container(color: const Color(0xFFFFA06B)),
+              RestaurantImage(url: r.imageUrl),
 
               // 하단 다크 그라디언트 (텍스트 가독성)
               Container(

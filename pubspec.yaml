@@ -17,6 +17,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   supabase_flutter: ^2.12.4
   flutter_dotenv: ^6.0.1
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:
