@@ -21,6 +21,7 @@ class Restaurant {
   final String imageUrl;
   final int popularityScore;
   final int manualRank;
+  final String ownerCode;
   final double distance;
   final double x;
   final double y;
@@ -39,6 +40,7 @@ class Restaurant {
     required this.imageUrl,
     this.popularityScore = 0,
     this.manualRank = 0,
+    this.ownerCode = '',
     required this.distance,
     required this.x,
     required this.y,
@@ -63,6 +65,7 @@ class Restaurant {
         imageUrl: imageUrl,
         popularityScore: popularityScore,
         manualRank: manualRank,
+        ownerCode: ownerCode,
         distance: distance,
         x: x,
         y: y,

@@ -5,6 +5,7 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 
@@ -61,9 +62,18 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _showExport = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().fetchMetrics();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final restaurants = provider.restaurants;
+    final metrics = provider.metrics;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAF8),
@@ -200,6 +210,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     child: _tab == 'metrics'
                         ? _MetricsTab(
                             restaurants: restaurants,
+                            metrics: metrics,
                             onDetail: (key) => setState(() => _detail = key),
                             onDauDetail: () => setState(() => _showDau = true),
                           )
@@ -526,23 +537,29 @@ class _LineChartPainter extends CustomPainter {
 // ── Metrics tab ───────────────────────────────────────────────────────────
 class _MetricsTab extends StatelessWidget {
   final List<Restaurant> restaurants;
+  final DashboardMetrics metrics;
   final ValueChanged<String> onDetail;
   final VoidCallback onDauDetail;
 
   const _MetricsTab({
     required this.restaurants,
+    required this.metrics,
     required this.onDetail,
     required this.onDauDetail,
   });
 
   @override
   Widget build(BuildContext context) {
-    final totalReports =
-        restaurants.fold(0, (s, r) => s + _totalReports(r));
+    final todayReports = metrics.todayReports > 0
+        ? metrics.todayReports
+        : restaurants.fold(0, (s, r) => s + _totalReports(r));
     final avgReports = restaurants.isEmpty
         ? 0.0
-        : (totalReports / restaurants.length * 10).round() / 10;
-    final todayDau = _dauWeek.last;
+        : (todayReports / restaurants.length * 10).round() / 10;
+    final dauData = metrics.dailyReports.any((v) => v > 0)
+        ? metrics.dailyReports
+        : _dauWeek;
+    final todayDau = dauData.last;
 
     final sorted = [...restaurants]
       ..sort((a, b) => _totalReports(b) - _totalReports(a));
@@ -560,9 +577,9 @@ class _MetricsTab extends StatelessWidget {
           childAspectRatio: 1.9,
           children: [
             _MetricCard(
-              label: 'DAU',
+              label: '오늘 제보 활동',
               value: '$todayDau',
-              unit: '명',
+              unit: '건',
               onTap: onDauDetail,
             ),
             _MetricCard(
@@ -575,7 +592,7 @@ class _MetricsTab extends StatelessWidget {
             ),
             _MetricCard(
               label: '오늘 누적 제보',
-              value: '$totalReports',
+              value: '$todayReports',
               unit: '건',
               onTap: () => onDetail('reports'),
             ),
@@ -654,7 +671,7 @@ class _MetricsTab extends StatelessWidget {
                   )),
               const SizedBox(height: 12),
               const Text(
-                '누적 제보 기준 · 백엔드 연동 후 일별 집계 반영돼요',
+                '누적 제보 기준',
                 style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
               ),
             ],
@@ -682,42 +699,42 @@ class _MetricsTab extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ..._topReporters.toList().asMap().entries.map((e) => Padding(
-                    padding: EdgeInsets.only(
-                        bottom: e.key < 2 ? 12 : 0),
-                    child: Row(
-                      children: [
-                        Text(_rankEmoji[e.key],
-                            style: const TextStyle(fontSize: 18)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            e.value.$1,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+              if (metrics.topReporters.isEmpty)
+                const Text('아직 제보 데이터가 없어요',
+                    style: TextStyle(fontSize: 13, color: Color(0xFFD1D5DB)))
+              else
+                ...metrics.topReporters.asMap().entries.map((e) => Padding(
+                      padding: EdgeInsets.only(bottom: e.key < 2 ? 12 : 0),
+                      child: Row(
+                        children: [
+                          Text(_rankEmoji[e.key],
+                              style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              e.value.$1.length > 8
+                                  ? '${e.value.$1.substring(0, 8)}...'
+                                  : e.value.$1,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${e.value.$2}건',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
+                              color: Color(0xFF16A34A),
                             ),
                           ),
-                        ),
-                        Text(
-                          '${e.value.$2}건',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF16A34A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )),
-              const SizedBox(height: 12),
-              const Text(
-                '백엔드 연동 후 실시간 반영돼요',
-                style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
-              ),
+                        ],
+                      ),
+                    )),
             ],
           ),
         ),
@@ -844,13 +861,6 @@ class _AlgorithmToggleCard extends StatelessWidget {
               ),
             ],
           ),
-          if (!isOn) ...[
-            const SizedBox(height: 12),
-            const Divider(color: Color(0xFFE5E7EB), height: 1),
-            const SizedBox(height: 8),
-            const Text('아래 목록에서 ▲▼ 버튼으로 순위를 직접 설정하세요.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-          ],
         ],
       ),
     );
@@ -868,26 +878,35 @@ class _PopularityTab extends StatelessWidget {
     final useAlgo = provider.useAlgorithmRanking;
 
     final sorted = useAlgo
-        ? restaurants
-        : [...restaurants]..sort((a, b) {
+        ? ([...restaurants]..sort((a, b) {
+            final aScore = a.popularityScore > 0 ? a.popularityScore : a.totalReports;
+            final bScore = b.popularityScore > 0 ? b.popularityScore : b.totalReports;
+            return bScore.compareTo(aScore);
+          }))
+        : ([...restaurants]..sort((a, b) {
             if (a.manualRank == 0 && b.manualRank == 0) return 0;
             if (a.manualRank == 0) return 1;
             if (b.manualRank == 0) return -1;
             return a.manualRank.compareTo(b.manualRank);
-          });
+          }));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _AlgorithmToggleCard(),
-        if (!useAlgo) ...[
-          const SizedBox(height: 20),
-          const Text('인기 순위',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF9CA3AF))),
-          const SizedBox(height: 8),
+        const SizedBox(height: 20),
+        const Text('인기 순위',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF9CA3AF))),
+        const SizedBox(height: 4),
+        Text(
+          useAlgo ? '알고리즘이 자동으로 산정한 순위예요' : '카드를 드래그해서 순서를 바꿔보세요',
+          style: const TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
+        ),
+        const SizedBox(height: 12),
+        if (useAlgo)
           ...sorted.asMap().entries.map((entry) {
             final idx = entry.key;
             final r = entry.value;
@@ -903,27 +922,7 @@ class _PopularityTab extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 28, height: 28,
-                      decoration: BoxDecoration(
-                        color: r.manualRank > 0
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFE5E7EB),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          r.manualRank > 0 ? '${r.manualRank}' : '-',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: r.manualRank > 0
-                                ? Colors.white
-                                : const Color(0xFF9CA3AF),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _RankBadge(rank: idx + 1),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -941,60 +940,95 @@ class _PopularityTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: idx == 0 ? null : () {
-                            final ids = sorted.map((e) => e.id).toList();
-                            ids.insert(idx - 1, ids.removeAt(idx));
-                            provider.setManualRanks(ids);
-                          },
-                          child: Container(
-                            width: 32, height: 32,
-                            decoration: BoxDecoration(
-                              color: idx == 0
-                                  ? const Color(0xFFF9FAFB)
-                                  : const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(Icons.keyboard_arrow_up,
-                                size: 16,
-                                color: idx == 0
-                                    ? const Color(0xFFD1D5DB)
-                                    : const Color(0xFF6B7280)),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: idx == sorted.length - 1 ? null : () {
-                            final ids = sorted.map((e) => e.id).toList();
-                            ids.insert(idx + 1, ids.removeAt(idx));
-                            provider.setManualRanks(ids);
-                          },
-                          child: Container(
-                            width: 32, height: 32,
-                            decoration: BoxDecoration(
-                              color: idx == sorted.length - 1
-                                  ? const Color(0xFFF9FAFB)
-                                  : const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(Icons.keyboard_arrow_down,
-                                size: 16,
-                                color: idx == sorted.length - 1
-                                    ? const Color(0xFFD1D5DB)
-                                    : const Color(0xFF6B7280)),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
             );
-          }),
-        ],
+          })
+        else
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) newIndex--;
+              final ids = sorted.map((e) => e.id).toList();
+              final item = ids.removeAt(oldIndex);
+              ids.insert(newIndex, item);
+              provider.setManualRanks(ids);
+            },
+            children: sorted.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final r = entry.value;
+              return Padding(
+                key: ValueKey(r.id),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ReorderableDragStartListener(
+                  index: idx,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Row(
+                      children: [
+                        _RankBadge(rank: idx + 1),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(r.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF111827))),
+                              Text('${r.area} · ${r.category}',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF9CA3AF))),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.drag_handle,
+                            size: 20, color: Color(0xFFD1D5DB)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
+    );
+  }
+}
+
+// ── Rank badge ────────────────────────────────────────────────────────────
+class _RankBadge extends StatelessWidget {
+  final int rank;
+  const _RankBadge({required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28, height: 28,
+      decoration: const BoxDecoration(
+        color: Color(0xFF16A34A),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          '$rank',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1097,6 +1131,37 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                     color: Color(0xFF9CA3AF),
                                   ),
                                 ),
+                                if (r.ownerCode.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Text('사장님 코드 ',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF9CA3AF))),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF0FDF4),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: const Color(0xFFBBF7D0)),
+                                        ),
+                                        child: Text(
+                                          r.ownerCode,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF16A34A),
+                                            letterSpacing: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1339,22 +1404,24 @@ class _DauDetailSheet extends StatefulWidget {
 }
 
 class _DauDetailSheetState extends State<_DauDetailSheet> {
-  String _period = 'week';
-
-  static const _periods = {
-    'week': ('1주', [98.0, 112, 105, 134, 127, 89, 103], ['월', '화', '수', '목', '금', '토', '일']),
-    'month': ('1개월', [85.0, 88, 90, 92, 89, 95, 98, 102, 99, 108, 112, 107, 115, 118, 112, 120, 118, 125, 122, 127, 120, 128, 125, 130, 127, 122, 118, 125, 127, 103], ['1일', '', '', '', '', '', '', '', '', '', '', '', '', '', '15일', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '30일']),
-  };
+  List<String> get _weekLabels => List.generate(7, (i) {
+        final d = DateTime.now().subtract(Duration(days: 6 - i));
+        return '${d.month}/${d.day}';
+      });
 
   @override
   Widget build(BuildContext context) {
-    final vals = (_periods[_period] ?? _periods['week']!).$2.map((v) => v.toDouble()).toList();
-    final lbls = (_periods[_period] ?? _periods['week']!).$3;
+    final metrics = context.watch<AppProvider>().metrics;
+    final rawVals = metrics.dailyReports.any((v) => v > 0)
+        ? metrics.dailyReports
+        : _dauWeek;
+    final vals = rawVals.map((v) => v.toDouble()).toList();
+    final lbls = _weekLabels;
     final current = vals.last;
     final diff = current - vals[vals.length - 2];
 
     return _SheetBase(
-      title: '일간 활성 사용자',
+      title: '일별 제보 활동',
       onClose: widget.onClose,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -1402,38 +1469,6 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: _periods.keys.map((key) {
-                final isActive = _period == key;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _period = key),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? const Color(0xFF111827)
-                            : const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _periods[key]!.$1,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: isActive
-                              ? Colors.white
-                              : const Color(0xFF9CA3AF),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
             _LineChart(
               values: vals,
               xLabels: lbls,
@@ -1441,7 +1476,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
             ),
             const SizedBox(height: 12),
             const Text(
-              '백엔드 연동 전 목업 데이터예요',
+              '최근 7일 제보 활동량',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
             ),

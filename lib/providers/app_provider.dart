@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException, UserAttributes;
 import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
+import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
 
@@ -42,6 +43,10 @@ class AppProvider extends ChangeNotifier {
   // ── 북마크 ──
   Set<String> _bookmarks = {};
   Set<String> get bookmarks => _bookmarks;
+
+  // ── 대시보드 지표 ──
+  DashboardMetrics _metrics = DashboardMetrics.empty;
+  DashboardMetrics get metrics => _metrics;
 
   // ── 키 ──
   static const _kLocation = 'cl_location_mode';
@@ -149,12 +154,29 @@ class AppProvider extends ChangeNotifier {
         if (res.user != null) {
           final meta = res.user!.userMetadata;
           final nickname = meta?['nickname'] as String? ?? _generateNickname();
-          await _saveSession(await SharedPreferences.getInstance(),
-              Account(id: email, password: '', nickname: nickname));
+          final role = meta?['role'] as String? ?? 'user';
+          final restaurantIds = (meta?['restaurant_ids'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
+          final prefs = await SharedPreferences.getInstance();
+          // 북마크 복원
+          final remoteBookmarks = meta?['bookmarks'];
+          if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
+            await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
+          }
+          await _saveSession(prefs, Account(
+            id: email,
+            password: '',
+            nickname: nickname,
+            role: role,
+            restaurantIds: restaurantIds,
+          ));
           return true;
         }
-      } on AuthException {
-        return false;
+      } on AuthException catch (e) {
+        debugPrint('[Supabase] login AuthException: ${e.message}');
+        // 로컬 폴백으로 진행
       } catch (e) {
         debugPrint('[Supabase] login failed: $e');
       }
@@ -172,7 +194,11 @@ class AppProvider extends ChangeNotifier {
   Future<String?> register(String email, String password, String nick) async {
     final nickname = nick.isEmpty ? _generateNickname() : nick;
 
-    // Supabase Auth
+    final prefs = await SharedPreferences.getInstance();
+    final accounts = _loadAccounts(prefs);
+    if (accounts.any((a) => a.id == email)) return '이미 사용 중인 이메일이에요.';
+
+    // Supabase Auth 시도
     if (SupabaseService.isReady) {
       try {
         final res = await SupabaseService.client.auth.signUp(
@@ -181,25 +207,19 @@ class AppProvider extends ChangeNotifier {
           data: {'nickname': nickname},
         );
         if (res.user == null) return '회원가입에 실패했어요.';
-        await _saveSession(await SharedPreferences.getInstance(),
-            Account(id: email, password: '', nickname: nickname));
-        return null;
       } on AuthException catch (e) {
         final msg = e.message.toLowerCase();
-        // 이미 가입된 이메일은 에러 반환, 나머지(rate limit 등)는 로컬 폴백
         if (msg.contains('already') || msg.contains('registered')) {
           return '이미 사용 중인 이메일이에요.';
         }
         debugPrint('[Supabase] register AuthException: ${e.message}');
+        // rate limit 등 → 로컬에만 저장하고 계속 진행
       } catch (e) {
         debugPrint('[Supabase] register failed: $e');
       }
     }
 
-    // 로컬 폴백
-    final prefs = await SharedPreferences.getInstance();
-    final accounts = _loadAccounts(prefs);
-    if (accounts.any((a) => a.id == email)) return '이미 사용 중인 이메일이에요.';
+    // 항상 로컬에도 저장 (초기화 후 로컬 로그인 보장)
     final account = Account(id: email, password: password, nickname: nickname);
     _saveAccounts(prefs, [...accounts, account]);
     await _saveSession(prefs, account);
@@ -295,8 +315,12 @@ class AppProvider extends ChangeNotifier {
     final repo = _restaurantRepo;
     if (repo != null) {
       try {
+        final userId = SupabaseService.isReady
+            ? (SupabaseService.client.auth.currentUser?.id ?? _accountId)
+            : _accountId;
         await repo.reportStatus(restaurantId, status,
-            source: _userRole == 'owner' ? 'owner' : 'user');
+            source: _userRole == 'owner' ? 'owner' : 'user',
+            userId: userId);
         _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
@@ -335,6 +359,7 @@ class AppProvider extends ChangeNotifier {
       _bookmarks.add(id);
     }
     await prefs.setString(_kBookmarks, jsonEncode(_bookmarks.toList()));
+    await _syncMetadata({'bookmarks': _bookmarks.toList()});
     notifyListeners();
   }
 
@@ -357,6 +382,21 @@ class AppProvider extends ChangeNotifier {
     prefs.setString(_kAccounts, jsonEncode(accounts.map((a) => a.toMap()).toList()));
   }
 
+  bool get _hasSupabaseSession =>
+      SupabaseService.isReady &&
+      SupabaseService.client.auth.currentUser != null;
+
+  Future<void> _syncMetadata(Map<String, dynamic> data) async {
+    if (!_hasSupabaseSession) return;
+    try {
+      await SupabaseService.client.auth.updateUser(
+        UserAttributes(data: data),
+      );
+    } catch (e) {
+      debugPrint('[Supabase] updateUser metadata failed: $e');
+    }
+  }
+
   String _generateNickname() {
     const fruits = ['딸기', '사과', '포도', '수박', '레몬', '망고', '복숭아', '바나나'];
     final idx = DateTime.now().millisecondsSinceEpoch % fruits.length;
@@ -368,6 +408,7 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _nickname = nick;
     await prefs.setString(_kNickname, nick);
+    await _syncMetadata({'nickname': nick});
     notifyListeners();
   }
 
@@ -475,10 +516,63 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> verifyOwnerCode(String code) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return 'INVALID_CODE';
+    try {
+      final restaurantId = await repo.findRestaurantIdByOwnerCode(code);
+      if (restaurantId == null) return 'INVALID_CODE';
+
+      _userRole = 'owner';
+      _ownerRestaurantIds = [restaurantId];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kUserRole, 'owner');
+      await prefs.setString(_kOwnerIds, jsonEncode([restaurantId]));
+
+      // Supabase Auth metadata에 role 저장 (로그인 후에도 유지)
+      await _syncMetadata({'role': 'owner', 'restaurant_ids': [restaurantId]});
+
+      _stage = 'owner';
+      notifyListeners();
+      return null;
+    } catch (e) {
+      debugPrint('[verifyOwnerCode] $e');
+      return 'INVALID_CODE';
+    }
+  }
+
+  Future<void> fetchMetrics() async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    try {
+      _metrics = await repo.fetchMetrics();
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchMetrics failed: $e\n$st');
+    }
+  }
+
   Future<void> toggleAlgorithmRanking() async {
+    final wasOn = _useAlgorithmRanking;
     _useAlgorithmRanking = !_useAlgorithmRanking;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kUseAlgorithmRanking, _useAlgorithmRanking);
+
+    // 처음 off 전환 시 현재 인기순으로 자동 순위 배정
+    if (wasOn && !_useAlgorithmRanking) {
+      final allUnranked = _restaurants.every((r) => r.manualRank == 0);
+      if (allUnranked) {
+        final sorted = [..._restaurants]
+          ..sort((a, b) {
+            final aScore = a.popularityScore > 0 ? a.popularityScore : a.totalReports;
+            final bScore = b.popularityScore > 0 ? b.popularityScore : b.totalReports;
+            return bScore.compareTo(aScore);
+          });
+        await setManualRanks(sorted.map((r) => r.id).toList());
+        return;
+      }
+    }
     notifyListeners();
   }
 

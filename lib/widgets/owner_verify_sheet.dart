@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 
 class OwnerVerifySheet extends StatefulWidget {
   final VoidCallback onClose;
@@ -29,10 +31,13 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
   Future<void> _submit() async {
     if (_ctrl.text.length != 6) return;
     setState(() => _status = 'loading');
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) {
+    final error = await context.read<AppProvider>().verifyOwnerCode(_ctrl.text.trim());
+    if (!mounted) return;
+    if (error == null) {
+      widget.onSuccess(0);
+    } else {
       setState(() {
-        _errorCode = 'INVALID_CODE';
+        _errorCode = error;
         _status = 'error';
       });
     }

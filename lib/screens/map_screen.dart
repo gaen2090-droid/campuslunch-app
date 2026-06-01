@@ -891,7 +891,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(

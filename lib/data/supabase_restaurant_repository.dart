@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
 import 'crowd_level_mapper.dart';
@@ -35,16 +37,73 @@ class SupabaseRestaurantRepository {
   }
 
   Future<void> reportStatus(String restaurantId, String uiStatus,
-      {String source = 'user'}) async {
+      {String source = 'user', String? userId}) async {
     await _client.from('crowd_reports').insert({
       'restaurant_id': restaurantId,
       'level': CrowdLevelMapper.toDb(uiStatus),
       'source': source,
-      'metadata': {'status': uiStatus},
+      'metadata': {
+        'status': uiStatus,
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
+      },
     });
   }
 
+  Future<DashboardMetrics> fetchMetrics() async {
+    final now = DateTime.now().toLocal();
+    final todayStart = DateTime(now.year, now.month, now.day).toUtc();
+    final weekAgo = todayStart.subtract(const Duration(days: 6));
+
+    final rows = await _client
+        .from('crowd_reports')
+        .select('created_at, metadata')
+        .gte('created_at', weekAgo.toIso8601String());
+
+    // 일별 제보 수 집계 (최근 7일)
+    final dailyCounts = List.filled(7, 0);
+    int todayTotal = 0;
+    final userCounts = <String, int>{};
+
+    for (final row in rows) {
+      final createdAt =
+          DateTime.parse(row['created_at'] as String).toLocal();
+      final dayIndex = now
+          .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
+          .inDays;
+      if (dayIndex >= 0 && dayIndex < 7) {
+        dailyCounts[6 - dayIndex]++;
+      }
+      if (dayIndex == 0) todayTotal++;
+
+      final meta = row['metadata'];
+      if (meta is Map) {
+        final uid = meta['user_id'] as String?;
+        if (uid != null && uid.isNotEmpty) {
+          userCounts[uid] = (userCounts[uid] ?? 0) + 1;
+        }
+      }
+    }
+
+    final topReporters = (userCounts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)))
+        .take(3)
+        .map((e) => (e.key, e.value))
+        .toList();
+
+    return DashboardMetrics(
+      todayReports: todayTotal,
+      dailyReports: dailyCounts,
+      topReporters: topReporters,
+    );
+  }
+
   Future<Restaurant> insert(Map<String, dynamic> data) async {
+    final desc = <String, dynamic>{};
+    if (data.containsKey('hours')) desc['hours'] = data['hours'];
+    if (data.containsKey('menu')) desc['menu'] = data['menu'];
+    // 6자리 고유 인증번호 생성 (최초 1회)
+    desc['owner_code'] = (100000 + Random().nextInt(900000)).toString();
+
     final row = await _client
         .from('restaurants')
         .insert({
@@ -53,7 +112,7 @@ class SupabaseRestaurantRepository {
           'area': data['area'],
           'address': data['address'] ?? data['area'],
           'image_url': data['image_url'] ?? '',
-          'description': data['description'] ?? '',
+          'description': desc.isEmpty ? '' : jsonEncode(desc),
           'latitude': (data['latitude'] as num?)?.toDouble() ?? 0,
           'longitude': (data['longitude'] as num?)?.toDouble() ?? 0,
           'is_active': true,
@@ -181,7 +240,20 @@ class SupabaseRestaurantRepository {
         extra?['hours'] as String? ?? seed?.hours ?? '',
       ),
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
+      ownerCode: extra?['owner_code'] as String? ?? '',
     );
+  }
+
+  Future<String?> findRestaurantIdByOwnerCode(String code) async {
+    final rows = await _client
+        .from('restaurants')
+        .select('id, description')
+        .eq('is_active', true);
+    for (final row in rows) {
+      final desc = _parseDescription(row['description'] as String?);
+      if (desc?['owner_code'] == code) return row['id'] as String;
+    }
+    return null;
   }
 
   Future<void> updateManualRanks(Map<String, int> rankById) async {
