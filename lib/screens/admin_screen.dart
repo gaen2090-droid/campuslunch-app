@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -574,14 +575,16 @@ class _MetricsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 2x3 metric grid
-        GridView.count(
+        GridView.custom(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 2.6,
-          children: [
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            mainAxisExtent: 88,
+          ),
+          childrenDelegate: SliverChildListDelegate([
             _MetricCard(
               label: 'DAU',
               value: '$todayDau',
@@ -620,7 +623,7 @@ class _MetricsTab extends StatelessWidget {
               unit: '%',
               onTap: () => onDetail('pushOpenRate'),
             ),
-          ],
+          ]),
         ),
         const SizedBox(height: 12),
 
@@ -771,9 +774,9 @@ class _MetricsTab extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      '0',
-                      style: TextStyle(
+                    Text(
+                      '${restaurants.where((r) => r.ownerRegistered).length}',
+                      style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
                         height: 1,
@@ -1050,8 +1053,6 @@ class _RestaurantsTab extends StatefulWidget {
 }
 
 class _RestaurantsTabState extends State<_RestaurantsTab> {
-  bool _showAdd = false;
-  Restaurant? _editTarget;
   String? _confirmDeleteId;
 
   @override
@@ -1065,7 +1066,14 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
           children: [
             // Add button
             GestureDetector(
-              onTap: () => setState(() => _showAdd = true),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _AddRestaurantPage(
+                    onAdd: (data) => provider.addRestaurant(data),
+                  ),
+                ),
+              ),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1192,10 +1200,18 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                           Row(
                             children: [
                               GestureDetector(
-                                onTap: () => setState(() {
-                                  _editTarget = r;
-                                  _confirmDeleteId = null;
-                                }),
+                                onTap: () {
+                                  setState(() => _confirmDeleteId = null);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => _EditRestaurantPage(
+                                        restaurant: r,
+                                        onSave: (data) => provider.editRestaurant(r.id, data),
+                                      ),
+                                    ),
+                                  );
+                                },
                                 child: Container(
                                   width: 40,
                                   height: 40,
@@ -1306,30 +1322,6 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
           ],
         ),
 
-        // Add sheet overlay
-        if (_showAdd)
-          Positioned.fill(
-            child: _AddRestaurantSheet(
-              onClose: () => setState(() => _showAdd = false),
-              onAdd: (data) {
-                provider.addRestaurant(data);
-                setState(() => _showAdd = false);
-              },
-            ),
-          ),
-
-        // Edit sheet overlay
-        if (_editTarget != null)
-          Positioned.fill(
-            child: _EditRestaurantSheet(
-              restaurant: _editTarget!,
-              onClose: () => setState(() => _editTarget = null),
-              onSave: (data) {
-                provider.editRestaurant(_editTarget!.id, data);
-                setState(() => _editTarget = null);
-              },
-            ),
-          ),
       ],
     );
   }
@@ -2051,30 +2043,40 @@ class _ExportSheetState extends State<_ExportSheet> {
 }
 
 // ── Add restaurant sheet ───────────────────────────────────────────────────
-class _AddRestaurantSheet extends StatefulWidget {
-  final VoidCallback onClose;
+class _AddRestaurantPage extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onAdd;
 
-  const _AddRestaurantSheet({required this.onClose, required this.onAdd});
+  const _AddRestaurantPage({required this.onAdd});
 
   @override
-  State<_AddRestaurantSheet> createState() => _AddRestaurantSheetState();
+  State<_AddRestaurantPage> createState() => _AddRestaurantPageState();
 }
 
-class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
+class _AddRestaurantPageState extends State<_AddRestaurantPage> {
   final _nameCtrl = TextEditingController();
   String _region = '정문';
   String _cuisine = '한식';
   final List<_TimeRange> _times = [_TimeRange('11:00', '21:00')];
   final List<_MenuEntry> _menu = [_MenuEntry()];
+  late List<TextEditingController> _menuNameCtrls;
+  late List<TextEditingController> _menuPriceCtrls;
   Uint8List? _imageBytes;
   String _imageExt = 'jpg';
   bool _uploading = false;
   String _error = '';
 
   @override
+  void initState() {
+    super.initState();
+    _menuNameCtrls = [TextEditingController()];
+    _menuPriceCtrls = [TextEditingController()];
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
+    for (final c in _menuNameCtrls) c.dispose();
+    for (final c in _menuPriceCtrls) c.dispose();
     super.dispose();
   }
 
@@ -2114,14 +2116,25 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
       'menu': validMenu,
       if (imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return _SheetBase(
-      title: '매장 추가',
-      onClose: widget.onClose,
-      child: SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('매장 추가',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2225,8 +2238,8 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                     children: [
                       Expanded(
                         child: TextField(
-                          onChanged: (v) =>
-                              setState(() => _menu[e.key].name = v),
+                          controller: _menuNameCtrls[e.key],
+                          onChanged: (v) => _menu[e.key].name = v,
                           style: const TextStyle(
                               fontSize: 14, color: Color(0xFF111827)),
                           decoration: _inputDecoration('메뉴명'),
@@ -2236,9 +2249,9 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                       SizedBox(
                         width: 96,
                         child: TextField(
-                          onChanged: (v) => setState(
-                              () => _menu[e.key].price =
-                                  v.replaceAll(RegExp(r'\D'), '')),
+                          controller: _menuPriceCtrls[e.key],
+                          onChanged: (v) => _menu[e.key].price =
+                              v.replaceAll(RegExp(r'\D'), ''),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
@@ -2252,8 +2265,11 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                       if (_menu.length > 1) ...[
                         const SizedBox(width: 6),
                         GestureDetector(
-                          onTap: () =>
-                              setState(() => _menu.removeAt(e.key)),
+                          onTap: () {
+                            _menuNameCtrls.removeAt(e.key).dispose();
+                            _menuPriceCtrls.removeAt(e.key).dispose();
+                            setState(() => _menu.removeAt(e.key));
+                          },
                           child: Container(
                             width: 32,
                             height: 32,
@@ -2270,7 +2286,11 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                   ),
                 )),
             GestureDetector(
-              onTap: () => setState(() => _menu.add(_MenuEntry())),
+              onTap: () {
+                _menuNameCtrls.add(TextEditingController());
+                _menuPriceCtrls.add(TextEditingController());
+                setState(() => _menu.add(_MenuEntry()));
+              },
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2326,28 +2346,28 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
   }
 }
 
-// ── Edit restaurant sheet ─────────────────────────────────────────────────
-class _EditRestaurantSheet extends StatefulWidget {
+// ── Edit restaurant page ──────────────────────────────────────────────────
+class _EditRestaurantPage extends StatefulWidget {
   final Restaurant restaurant;
-  final VoidCallback onClose;
   final ValueChanged<Map<String, dynamic>> onSave;
 
-  const _EditRestaurantSheet({
+  const _EditRestaurantPage({
     required this.restaurant,
-    required this.onClose,
     required this.onSave,
   });
 
   @override
-  State<_EditRestaurantSheet> createState() => _EditRestaurantSheetState();
+  State<_EditRestaurantPage> createState() => _EditRestaurantPageState();
 }
 
-class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
+class _EditRestaurantPageState extends State<_EditRestaurantPage> {
   late TextEditingController _nameCtrl;
   late String _region;
   late String _cuisine;
   late List<_TimeRange> _times;
   late List<_MenuEntry> _menu;
+  late List<TextEditingController> _menuNameCtrls;
+  late List<TextEditingController> _menuPriceCtrls;
   String _error = '';
   Uint8List? _imageBytes;
   String _imageExt = 'jpg';
@@ -2366,11 +2386,19 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
           ..name = m.name
           ..price = '${m.price}').toList()
         : [_MenuEntry()];
+    _menuNameCtrls = _menu
+        .map((m) => TextEditingController(text: m.name))
+        .toList();
+    _menuPriceCtrls = _menu
+        .map((m) => TextEditingController(text: m.price))
+        .toList();
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    for (final c in _menuNameCtrls) c.dispose();
+    for (final c in _menuPriceCtrls) c.dispose();
     super.dispose();
   }
 
@@ -2421,14 +2449,25 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
       'menu': validMenu,
       if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return _SheetBase(
-      title: '매장 수정',
-      onClose: widget.onClose,
-      child: SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('매장 수정',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2534,11 +2573,8 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: TextEditingController(text: e.value.name)
-                            ..selection = TextSelection.collapsed(
-                                offset: e.value.name.length),
-                          onChanged: (v) =>
-                              setState(() => _menu[e.key].name = v),
+                          controller: _menuNameCtrls[e.key],
+                          onChanged: (v) => _menu[e.key].name = v,
                           style: const TextStyle(
                               fontSize: 14, color: Color(0xFF111827)),
                           decoration: _inputDecoration('메뉴명'),
@@ -2548,12 +2584,9 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                       SizedBox(
                         width: 96,
                         child: TextField(
-                          controller: TextEditingController(text: e.value.price)
-                            ..selection = TextSelection.collapsed(
-                                offset: e.value.price.length),
-                          onChanged: (v) => setState(() =>
-                              _menu[e.key].price =
-                                  v.replaceAll(RegExp(r'\D'), '')),
+                          controller: _menuPriceCtrls[e.key],
+                          onChanged: (v) => _menu[e.key].price =
+                              v.replaceAll(RegExp(r'\D'), ''),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
@@ -2567,8 +2600,11 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                       if (_menu.length > 1) ...[
                         const SizedBox(width: 6),
                         GestureDetector(
-                          onTap: () =>
-                              setState(() => _menu.removeAt(e.key)),
+                          onTap: () {
+                            _menuNameCtrls.removeAt(e.key).dispose();
+                            _menuPriceCtrls.removeAt(e.key).dispose();
+                            setState(() => _menu.removeAt(e.key));
+                          },
                           child: Container(
                             width: 32,
                             height: 32,
@@ -2585,7 +2621,11 @@ class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
                   ),
                 )),
             GestureDetector(
-              onTap: () => setState(() => _menu.add(_MenuEntry())),
+              onTap: () {
+                _menuNameCtrls.add(TextEditingController());
+                _menuPriceCtrls.add(TextEditingController());
+                setState(() => _menu.add(_MenuEntry()));
+              },
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2790,68 +2830,211 @@ class _TimeField extends StatelessWidget {
 
   const _TimeField({required this.value, required this.onChange});
 
+  List<int> _parse(String v) {
+    final parts = v.split(':');
+    final h = (parts.isNotEmpty ? int.tryParse(parts[0]) : null) ?? 11;
+    final m = (parts.length > 1 ? int.tryParse(parts[1]) : null) ?? 0;
+    final hc = h.clamp(0, 23);
+    final mc = m.clamp(0, 59);
+    return [hc ~/ 10, hc % 10, mc ~/ 10, mc % 10];
+  }
+
+  void _showPicker(BuildContext context) {
+    final digits = _parse(value);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      enableDrag: false,
+      builder: (_) => _TimePickerSheet(
+        initialDigits: digits,
+        onConfirm: (d) {
+          final h = '${d[0]}${d[1]}';
+          final m = '${d[2]}${d[3]}';
+          onChange('$h:$m');
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final parts = value.split(':');
-    final h = parts.isNotEmpty ? parts[0] : '11';
-    final m = parts.length > 1 ? parts[1] : '00';
-    final hours = List.generate(24, (i) => i.toString().padLeft(2, '0'));
-    const mins = ['00', '30'];
-
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+    return GestureDetector(
+      onTap: () => _showPicker(context),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF9CA3AF)),
+          ],
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: hours.contains(h) ? h : '11',
-                isExpanded: true,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827)),
-                onChanged: (v) {
-                  if (v != null) onChange('$v:$m');
-                },
-                items: hours
-                    .map((hh) => DropdownMenuItem(
-                          value: hh,
-                          child: Text(hh),
-                        ))
-                    .toList(),
+    );
+  }
+}
+
+class _TimePickerSheet extends StatefulWidget {
+  final List<int> initialDigits;
+  final ValueChanged<List<int>> onConfirm;
+
+  const _TimePickerSheet({required this.initialDigits, required this.onConfirm});
+
+  @override
+  State<_TimePickerSheet> createState() => _TimePickerSheetState();
+}
+
+class _TimePickerSheetState extends State<_TimePickerSheet> {
+  late List<int> _digits;
+  late List<FixedExtentScrollController> _controllers;
+
+  int _maxOf(int pos) {
+    if (pos == 0) return 2;
+    if (pos == 1) return _digits[0] < 2 ? 9 : 3;
+    if (pos == 2) return 5;
+    return 9;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _digits = List<int>.from(widget.initialDigits);
+    _controllers = List.generate(
+      4,
+      (i) => FixedExtentScrollController(initialItem: _digits[i]),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) c.dispose();
+    super.dispose();
+  }
+
+  void _onDigitChanged(int pos, int val) {
+    setState(() {
+      _digits[pos] = val.clamp(0, _maxOf(pos));
+      if (pos == 0 && _digits[0] == 2 && _digits[1] > 3) {
+        _digits[1] = 3;
+        _controllers[1].jumpToItem(3);
+      }
+    });
+  }
+
+  Widget _digitWheel(int pos) {
+    final count = _maxOf(pos) + 1;
+    return SizedBox(
+      width: 56,
+      child: CupertinoPicker(
+        scrollController: _controllers[pos],
+        itemExtent: 48,
+        squeeze: 1.0,
+        looping: false,
+        onSelectedItemChanged: (i) => _onDigitChanged(pos, i),
+        selectionOverlay: const SizedBox.shrink(),
+        children: List.generate(
+          count,
+          (i) => Center(
+            child: Text(
+              '$i',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
               ),
             ),
           ),
-          const Text(':',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF9CA3AF))),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: mins.contains(m) ? m : '00',
-                isExpanded: true,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827)),
-                onChanged: (v) {
-                  if (v != null) onChange('$h:$v');
-                },
-                items: mins
-                    .map((mm) => DropdownMenuItem(
-                          value: mm,
-                          child: Text(mm),
-                        ))
-                    .toList(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 32 + MediaQuery.of(context).padding.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40, height: 5,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          SizedBox(
+            height: 200,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 선택 하이라이트
+                Container(
+                  height: 48,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _digitWheel(0),
+                    _digitWheel(1),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(':',
+                          style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF9CA3AF))),
+                    ),
+                    _digitWheel(2),
+                    _digitWheel(3),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              widget.onConfirm(_digits);
+            },
+            child: Container(
+              height: 52,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF16A34A),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Text('확인',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white)),
               ),
             ),
           ),

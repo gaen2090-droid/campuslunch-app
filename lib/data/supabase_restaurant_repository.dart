@@ -21,6 +21,7 @@ class SupabaseRestaurantRepository {
   final SupabaseClient _client;
 
   Future<List<Restaurant>> fetchAll() async {
+    final now = DateTime.now();
     final rows = await _client
         .from('restaurants')
         .select()
@@ -30,12 +31,50 @@ class SupabaseRestaurantRepository {
     final reports = await _client.from('crowd_reports').select();
     final reportsByRestaurant = _groupReports(reports);
 
-    return rows
-        .map((row) => _mergeRow(
-              row,
-              reportsByRestaurant[row['id'] as String] ?? [],
-            ))
-        .toList();
+    final toInsertClosed = <String>[];
+
+    final result = rows.map((row) {
+      final id = row['id'] as String;
+      final allReports = reportsByRestaurant[id] ?? [];
+      final extra = _parseDescription(row['description']);
+      final hoursStr = extra?['hours'] as String? ?? '11:00 - 21:00';
+      final ranges = _parseHoursRanges(hoursStr);
+      final isOpen = ranges.isEmpty || _isNowWithinRanges(now, ranges);
+
+      if (isOpen) {
+        // 영업 중: system 자동 closed 제보 제외하고 상태 결정
+        final userReports = allReports
+            .where((r) => (r['source'] as String?) != 'system')
+            .toList();
+        return _mergeRow(row, userReports);
+      } else {
+        // 영업 외: 영업안함 강제 적용
+        final r = _mergeRow(row, allReports);
+        if (r.status != '영업안함') {
+          toInsertClosed.add(id);
+        }
+        return r.copyWith(status: '영업안함', updated: 0);
+      }
+    }).toList();
+
+    // 영업시간 종료된 매장 DB에 자동 기록 (중복 방지: 이미 closed면 스킵)
+    if (toInsertClosed.isNotEmpty) {
+      await Future.wait(toInsertClosed.map((id) =>
+        _client.from('crowd_reports').insert({
+          'restaurant_id': id,
+          'level': 'closed',
+          'source': 'system',
+          'metadata': {'status': '영업안함'},
+        }),
+      ));
+    }
+
+    return result;
+  }
+
+  bool _isNowWithinRanges(DateTime now, List<(int, int)> ranges) {
+    final nowMins = now.hour * 60 + now.minute;
+    return ranges.any((r) => nowMins >= r.$1 && nowMins < r.$2);
   }
 
   Future<void> reportStatus(String restaurantId, String uiStatus,
@@ -263,7 +302,22 @@ class SupabaseRestaurantRepository {
       ),
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
       ownerCode: extra?['owner_code'] as String? ?? '',
+      ownerRegistered: extra?['owner_registered'] as bool? ?? false,
     );
+  }
+
+  Future<void> markOwnerRegistered(String restaurantId) async {
+    final existing = await _client
+        .from('restaurants')
+        .select('description')
+        .eq('id', restaurantId)
+        .single();
+    final desc = _parseDescription(existing['description']) ?? {};
+    desc['owner_registered'] = true;
+    await _client
+        .from('restaurants')
+        .update({'description': jsonEncode(desc)})
+        .eq('id', restaurantId);
   }
 
   Future<String> uploadImage(Uint8List bytes, String ext) async {

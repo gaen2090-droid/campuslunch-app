@@ -448,8 +448,8 @@ class AppProvider extends ChangeNotifier {
     final repo = _restaurantRepo;
     if (repo != null) {
       try {
-        final newR = await repo.insert(data);
-        _restaurants = [..._restaurants, newR];
+        await repo.insert(data);
+        _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
       } catch (e, st) {
@@ -485,9 +485,8 @@ class AppProvider extends ChangeNotifier {
     final repo = _restaurantRepo;
     if (repo != null) {
       try {
-        final updated = await repo.update(id, data);
-        _restaurants =
-            _restaurants.map((r) => r.id == id ? updated : r).toList();
+        await repo.update(id, data);
+        _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
       } catch (e, st) {
@@ -616,6 +615,13 @@ class AppProvider extends ChangeNotifier {
         'role': 'owner',
         'restaurant_ids': [restaurantId]
       });
+
+      // 해당 매장을 오너 등록 완료로 표시
+      final repo = _restaurantRepo;
+      if (repo != null) {
+        await repo.markOwnerRegistered(restaurantId);
+        _restaurants = await repo.fetchAll();
+      }
 
       _stage = 'owner';
       notifyListeners();

@@ -1,21 +1,18 @@
 ﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../widgets/restaurant_image.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
+import '../data/restaurants.dart';
 import '../models/restaurant.dart';
+
+// 온보딩용 고정 미리보기 데이터 (영업시간 무관하게 항상 표시)
+final _previewRestaurants = initialRestaurants.take(3).toList();
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final restaurants = context.watch<AppProvider>().restaurants;
-    final previews = restaurants
-        .where((r) => r.status == '여유로움' || r.status == '약간혼잡')
-        .toList()
-      ..sort((a, b) => b.totalReports.compareTo(a.totalReports));
-    final top3 = previews.take(3).toList();
+    final top3 = _previewRestaurants;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -223,7 +220,6 @@ class _RestaurantRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = statusMetaMap[restaurant.status];
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -260,22 +256,21 @@ class _RestaurantRow extends StatelessWidget {
               ],
             ),
           ),
-          if (meta != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: Color(meta.bgColor),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                restaurant.status,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(meta.color),
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              '여유로움',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF22C55E),
               ),
             ),
+          ),
         ],
       ),
     );
