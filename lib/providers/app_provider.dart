@@ -162,6 +162,16 @@ class AppProvider extends ChangeNotifier {
               ]));
       return true;
     }
+    if (email == 'user' && password == 'user123') {
+      await _saveSession(
+          await SharedPreferences.getInstance(),
+          Account(
+              id: 'user',
+              password: 'user123',
+              nickname: '테스트유저',
+              role: 'user'));
+      return true;
+    }
 
     // Supabase Auth
     if (SupabaseService.isReady) {

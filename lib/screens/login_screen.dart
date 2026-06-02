@@ -15,10 +15,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _cfCtrl = TextEditingController();
-  bool _showPw = false;
-  bool _showCf = false;
   String _error = '';
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    void clearError() { if (_error.isNotEmpty) setState(() => _error = ''); }
+    _idCtrl.addListener(clearError);
+    _pwCtrl.addListener(clearError);
+    _cfCtrl.addListener(clearError);
+  }
 
   @override
   void dispose() {
@@ -34,8 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = '';
       _pwCtrl.clear();
       _cfCtrl.clear();
-      _showPw = false;
-      _showCf = false;
     });
   }
 
@@ -130,24 +135,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   _Field(
                     controller: _idCtrl,
                     hint: '이메일',
-                    onChanged: (_) => setState(() => _error = ''),
                   ),
                   const SizedBox(height: 10),
                   _PasswordField(
                     controller: _pwCtrl,
                     hint: '비밀번호 (6자 이상)',
-                    show: _showPw,
-                    onToggle: () => setState(() => _showPw = !_showPw),
-                    onChanged: (_) => setState(() => _error = ''),
                   ),
                   if (!_isLogin) ...[
                     const SizedBox(height: 10),
                     _PasswordField(
                       controller: _cfCtrl,
                       hint: '비밀번호 확인',
-                      show: _showCf,
-                      onToggle: () => setState(() => _showCf = !_showCf),
-                      onChanged: (_) => setState(() => _error = ''),
                     ),
                   ],
 
@@ -317,14 +315,12 @@ class _TabBtn extends StatelessWidget {
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
-  final ValueChanged<String>? onChanged;
-  const _Field({required this.controller, required this.hint, this.onChanged});
+  const _Field({required this.controller, required this.hint});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      onChanged: onChanged,
       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
       decoration: InputDecoration(
         hintText: hint,
@@ -346,31 +342,33 @@ class _Field extends StatelessWidget {
   }
 }
 
-class _PasswordField extends StatelessWidget {
+class _PasswordField extends StatefulWidget {
   final TextEditingController controller;
   final String hint;
-  final bool show;
-  final VoidCallback onToggle;
-  final ValueChanged<String>? onChanged;
-  const _PasswordField(
-      {required this.controller, required this.hint, required this.show, required this.onToggle, this.onChanged});
+  const _PasswordField({required this.controller, required this.hint});
+
+  @override
+  State<_PasswordField> createState() => _PasswordFieldState();
+}
+
+class _PasswordFieldState extends State<_PasswordField> {
+  bool _show = false;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: controller,
-      obscureText: !show,
-      onChanged: onChanged,
+      controller: widget.controller,
+      obscureText: !_show,
       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: widget.hint,
         hintStyle: const TextStyle(color: Color(0xFFD1D5DB), fontWeight: FontWeight.w500),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         suffixIcon: GestureDetector(
-          onTap: onToggle,
-          child: Icon(show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          onTap: () => setState(() => _show = !_show),
+          child: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
               size: 18, color: const Color(0xFF9CA3AF)),
         ),
         border: OutlineInputBorder(

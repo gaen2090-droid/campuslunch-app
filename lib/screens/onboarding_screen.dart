@@ -1,8 +1,10 @@
 ﻿import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/restaurant_image.dart';
 import '../data/restaurants.dart';
 import '../models/restaurant.dart';
+import '../providers/app_provider.dart';
 
 // 온보딩용 고정 미리보기 데이터 (영업시간 무관하게 항상 표시)
 final _previewRestaurants = initialRestaurants.take(3).toList();

@@ -302,7 +302,7 @@ class SupabaseRestaurantRepository {
       ),
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
       ownerCode: extra?['owner_code'] as String? ?? '',
-      ownerRegistered: extra?['owner_registered'] as bool? ?? false,
+      ownerRegistered: extra?['owner_registered'] == true,
     );
   }
 
@@ -314,10 +314,14 @@ class SupabaseRestaurantRepository {
         .single();
     final desc = _parseDescription(existing['description']) ?? {};
     desc['owner_registered'] = true;
-    await _client
+    final updated = await _client
         .from('restaurants')
         .update({'description': jsonEncode(desc)})
-        .eq('id', restaurantId);
+        .eq('id', restaurantId)
+        .select('id');
+    if ((updated as List).isEmpty) {
+      throw Exception('owner_registered 저장 실패: 권한 부족이거나 존재하지 않는 식당 ID');
+    }
   }
 
   Future<String> uploadImage(Uint8List bytes, String ext) async {
