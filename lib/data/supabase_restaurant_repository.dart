@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
+import '../utils/business_hours.dart';
 import 'crowd_level_mapper.dart';
 import 'restaurants.dart';
 
@@ -31,50 +32,24 @@ class SupabaseRestaurantRepository {
     final reports = await _client.from('crowd_reports').select();
     final reportsByRestaurant = _groupReports(reports);
 
-    final toInsertClosed = <String>[];
-
-    final result = rows.map((row) {
+    return rows.map((row) {
       final id = row['id'] as String;
       final allReports = reportsByRestaurant[id] ?? [];
       final extra = _parseDescription(row['description']);
-      final hoursStr = extra?['hours'] as String? ?? '11:00 - 21:00';
-      final ranges = _parseHoursRanges(hoursStr);
-      final isOpen = ranges.isEmpty || _isNowWithinRanges(now, ranges);
+      final bh = BusinessHoursData.fromDescription(extra);
+      final isOpen = bh.isOpenAt(now);
 
       if (isOpen) {
-        // 영업 중: system 자동 closed 제보 제외하고 상태 결정
+        // 영업 중: 과거 system 제보는 무시하고 사용자/사장 제보만 반영
         final userReports = allReports
             .where((r) => (r['source'] as String?) != 'system')
             .toList();
         return _mergeRow(row, userReports);
-      } else {
-        // 영업 외: 영업안함 강제 적용
-        final r = _mergeRow(row, allReports);
-        if (r.status != '영업안함') {
-          toInsertClosed.add(id);
-        }
-        return r.copyWith(status: '영업안함', updated: 0);
       }
+      // 영업 외: DB에 쓰지 않고 클라이언트에서만 영업안함 표시
+      return _mergeRow(row, allReports)
+          .copyWith(status: '영업안함', updated: 0);
     }).toList();
-
-    // 영업시간 종료된 매장 DB에 자동 기록 (중복 방지: 이미 closed면 스킵)
-    if (toInsertClosed.isNotEmpty) {
-      await Future.wait(toInsertClosed.map((id) =>
-        _client.from('crowd_reports').insert({
-          'restaurant_id': id,
-          'level': 'closed',
-          'source': 'system',
-          'metadata': {'status': '영업안함'},
-        }),
-      ));
-    }
-
-    return result;
-  }
-
-  bool _isNowWithinRanges(DateTime now, List<(int, int)> ranges) {
-    final nowMins = now.hour * 60 + now.minute;
-    return ranges.any((r) => nowMins >= r.$1 && nowMins < r.$2);
   }
 
   Future<void> reportStatus(String restaurantId, String uiStatus,
@@ -170,10 +145,33 @@ class SupabaseRestaurantRepository {
     );
   }
 
+  Future<String?> findRestaurantIdByGooglePlaceId(String placeId) async {
+    final rows = await _client
+        .from('restaurants')
+        .select('id, description')
+        .eq('is_active', true);
+    for (final row in rows) {
+      final desc = _parseDescription(row['description']);
+      if (desc?['google_place_id'] == placeId) {
+        return row['id'] as String;
+      }
+    }
+    return null;
+  }
+
   Future<Restaurant> insert(Map<String, dynamic> data) async {
     final desc = <String, dynamic>{};
     if (data.containsKey('hours')) desc['hours'] = data['hours'];
+    if (data.containsKey('hours_display')) {
+      desc['hours_display'] = data['hours_display'];
+    }
+    if (data.containsKey('hours_periods')) {
+      desc['hours_periods'] = data['hours_periods'];
+    }
     if (data.containsKey('menu')) desc['menu'] = data['menu'];
+    if (data.containsKey('google_place_id')) {
+      desc['google_place_id'] = data['google_place_id'];
+    }
     // 6자리 고유 인증번호 생성 (최초 1회)
     desc['owner_code'] = (100000 + Random().nextInt(900000)).toString();
 
@@ -211,6 +209,12 @@ class SupabaseRestaurantRepository {
           .single();
       final desc = _parseDescription(existing['description']) ?? {};
       if (data.containsKey('hours')) desc['hours'] = data['hours'];
+      if (data.containsKey('hours_display')) {
+        desc['hours_display'] = data['hours_display'];
+      }
+      if (data.containsKey('hours_periods')) {
+        desc['hours_periods'] = data['hours_periods'];
+      }
       if (data.containsKey('menu')) desc['menu'] = data['menu'];
       patch['description'] = jsonEncode(desc);
     }
@@ -303,9 +307,12 @@ class SupabaseRestaurantRepository {
       updated: updated,
       imageUrl: row['image_url'] as String? ?? seed?.imageUrl ?? '',
       distance: (extra?['distance'] as num?)?.toDouble() ?? seed?.distance ?? 200,
+      latitude: (row['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (row['longitude'] as num?)?.toDouble() ?? 0,
       x: (extra?['map_x'] as num?)?.toDouble() ?? seed?.x ?? 50,
       y: (extra?['map_y'] as num?)?.toDouble() ?? seed?.y ?? 50,
-      hours: extra?['hours'] as String? ?? seed?.hours ?? '11:00 - 21:00',
+      hours: _hoursLabel(extra, seed?.hours),
+      hoursPeriods: BusinessHoursData.fromDescription(extra).periods,
       reports: reportCounts.isEmpty ? (seed?.reports ?? {}) : reportCounts,
       menu: menu,
       popularityScore: _calcPopularityScore(
@@ -318,22 +325,13 @@ class SupabaseRestaurantRepository {
     );
   }
 
-  Future<void> markOwnerRegistered(String restaurantId) async {
-    final existing = await _client
-        .from('restaurants')
-        .select('description')
-        .eq('id', restaurantId)
-        .single();
-    final desc = _parseDescription(existing['description']) ?? {};
-    desc['owner_registered'] = true;
-    final updated = await _client
-        .from('restaurants')
-        .update({'description': jsonEncode(desc)})
-        .eq('id', restaurantId)
-        .select('id');
-    if ((updated as List).isEmpty) {
-      throw Exception('owner_registered 저장 실패: 권한 부족이거나 존재하지 않는 식당 ID');
-    }
+  /// 6자리 코드로 사장님 등록 (RPC, Publishable 키로 호출 가능)
+  Future<String> claimOwnerByCode(String code) async {
+    final result = await _client.rpc(
+      'claim_owner_by_code',
+      params: {'p_code': code.trim()},
+    );
+    return result as String;
   }
 
   Future<String> uploadImage(Uint8List bytes, String ext) async {
@@ -460,20 +458,14 @@ class SupabaseRestaurantRepository {
     return score;
   }
 
-  // "11:00 - 14:00, 17:00 - 19:00" → [(660,840),(1020,1140)]
-  List<(int, int)> _parseHoursRanges(String hours) {
-    final ranges = <(int, int)>[];
-    for (final part in hours.split(',')) {
-      final m = RegExp(r'(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})')
-          .firstMatch(part.trim());
-      if (m != null) {
-        final s = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
-        final e = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);
-        if (e > s) ranges.add((s, e));
-      }
-    }
-    return ranges;
+  String _hoursLabel(Map<String, dynamic>? extra, String? seedHours) {
+    final display = extra?['hours_display'] as String?;
+    if (display != null && display.trim().isNotEmpty) return display.trim();
+    return extra?['hours'] as String? ?? seedHours ?? BusinessHoursData.defaultHours;
   }
+
+  List<(int, int)> _parseHoursRanges(String hours) =>
+      BusinessHoursData.parseCanonicalRanges(hours);
 
   // [start, end] 중 영업시간과 겹치는 분(minute) 수 계산
   int _minsWithinHours(DateTime start, DateTime end, List<(int, int)> ranges) {

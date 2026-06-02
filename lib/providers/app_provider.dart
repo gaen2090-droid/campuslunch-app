@@ -1,15 +1,19 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show AuthException, UserAttributes;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/env.dart';
+import '../data/auth_repository.dart';
+import '../data/profile_repository.dart';
 import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
+import '../utils/business_hours.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
@@ -28,6 +32,16 @@ class AppProvider extends ChangeNotifier {
   String get accountId => _accountId;
   String get userRole => _userRole;
   List<String> get ownerRestaurantIds => _ownerRestaurantIds;
+
+  /// 이메일 링크 인증 직후 메인 화면에서 1회 표시
+  bool _showSignupCompleteMessage = false;
+  bool get showSignupCompleteMessage => _showSignupCompleteMessage;
+
+  void clearSignupCompleteMessage() {
+    if (!_showSignupCompleteMessage) return;
+    _showSignupCompleteMessage = false;
+    notifyListeners();
+  }
 
   // ── 설정 ──
   bool _locationMode = false;
@@ -63,11 +77,25 @@ class AppProvider extends ChangeNotifier {
   static const _kBookmarks = 'cl_bookmarks';
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
+  static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
 
   static const _sessionDuration = Duration(days: 30);
 
   SupabaseRestaurantRepository? get _restaurantRepo =>
       SupabaseService.isReady ? SupabaseRestaurantRepository() : null;
+
+  /// 앱 내 admin/admin123 또는 Supabase JWT role=admin
+  bool get _canAdminOps => _userRole == 'admin' || SupabaseService.isAdmin;
+
+  StreamSubscription<AuthState>? _authSub;
+  final ProfileRepository _profileRepo = ProfileRepository();
+  final AuthRepository _authRepo = AuthRepository();
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -91,6 +119,7 @@ class AppProvider extends ChangeNotifier {
         return r.copyWith(status: ov['status'] as String, updated: diffMin);
       }).toList();
     }
+    _restaurants = _restaurants.map(_applyOperatingHours).toList();
 
     // 북마크 복원
     final bookmarksJson = prefs.getString(_kBookmarks);
@@ -100,7 +129,21 @@ class AppProvider extends ChangeNotifier {
       );
     }
 
-    // 인증 상태 복원
+    if (SupabaseService.isReady) {
+      _bindAuthListener();
+      final session = SupabaseService.client.auth.currentSession;
+      final user = SupabaseService.client.auth.currentUser;
+      if (session != null &&
+          user != null &&
+          user.emailConfirmedAt != null) {
+        await _onSupabaseSignedIn(user);
+        await Future.delayed(const Duration(seconds: 2));
+        notifyListeners();
+        return;
+      }
+    }
+
+    // 인증 상태 복원 (로컬 / 테스트 계정)
     final loggedIn = prefs.getBool(_kLogin) ?? false;
     final sessionExp = prefs.getInt(_kSessionExp) ?? 0;
     if (loggedIn && DateTime.now().millisecondsSinceEpoch > sessionExp) {
@@ -138,7 +181,7 @@ class AppProvider extends ChangeNotifier {
 
   // ── 로그인 ──
   Future<bool> login(String email, String password) async {
-    // 개발용 테스트 계정
+    // 편의용 관리자 (개발·운영 준비 단계 — 출시 전 Supabase 관리자 계정으로 교체 권장)
     if (email == 'admin' && password == 'admin123') {
       await _saveSession(
           await SharedPreferences.getInstance(),
@@ -149,6 +192,8 @@ class AppProvider extends ChangeNotifier {
               role: 'admin'));
       return true;
     }
+
+    if (kDebugMode) {
     if (email == 'owner' && password == 'owner123') {
       await _saveSession(
           await SharedPreferences.getInstance(),
@@ -172,6 +217,7 @@ class AppProvider extends ChangeNotifier {
               role: 'user'));
       return true;
     }
+    }
 
     // Supabase Auth
     if (SupabaseService.isReady) {
@@ -179,27 +225,11 @@ class AppProvider extends ChangeNotifier {
         final res = await SupabaseService.client.auth
             .signInWithPassword(email: email, password: password);
         if (res.user != null) {
-          final meta = res.user!.userMetadata;
-          final nickname = meta?['nickname'] as String? ?? _generateNickname();
-          final role = meta?['role'] as String? ?? 'user';
-          final restaurantIds = (meta?['restaurant_ids'] as List?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              [];
-          final prefs = await SharedPreferences.getInstance();
-          final remoteBookmarks = meta?['bookmarks'];
-          if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
-            await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
+          if (res.user!.emailConfirmedAt == null) {
+            debugPrint('[Supabase] login: email not confirmed');
+            return false;
           }
-          await _saveSession(
-              prefs,
-              Account(
-                id: email,
-                password: '',
-                nickname: nickname,
-                role: role,
-                restaurantIds: restaurantIds,
-              ));
+          await _onSupabaseSignedIn(res.user!);
           return true;
         }
       } on AuthException catch (e) {
@@ -229,37 +259,146 @@ class AppProvider extends ChangeNotifier {
 
   Future<String?> register(String email, String password, String nick) async {
     final nickname = nick.isEmpty ? _generateNickname() : nick;
+    final trimmedEmail = email.trim();
+
+    if (SupabaseService.isReady) {
+      final status = await _authRepo.checkEmailSignupStatus(trimmedEmail);
+      switch (status) {
+        case EmailSignupStatus.registered:
+          return '이미 가입된 이메일이에요. 로그인해주세요.';
+        case EmailSignupStatus.pending:
+          return '이미 가입 요청된 이메일이에요. 메일함의 인증 링크를 확인하거나, 인증 화면에서 메일을 다시 보내주세요.';
+        case EmailSignupStatus.invalid:
+          return '이메일 형식을 확인해주세요.';
+        case EmailSignupStatus.available:
+        case EmailSignupStatus.unknown:
+          break;
+      }
+
+      try {
+        final res = await SupabaseService.client.auth.signUp(
+          email: trimmedEmail,
+          password: password,
+          data: {'nickname': nickname},
+          emailRedirectTo: Env.authRedirectUrl,
+        );
+        if (res.user == null) return '회원가입에 실패했어요.';
+
+        if (res.user!.identities != null && res.user!.identities!.isEmpty) {
+          return '이미 가입된 이메일이에요. 로그인해주세요.';
+        }
+
+        if (res.session != null) {
+          await _onSupabaseSignedIn(res.user!);
+          return null;
+        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_kAwaitingEmailConfirm, true);
+        return 'pending_email';
+      } on AuthException catch (e) {
+        final msg = e.message.toLowerCase();
+        if (msg.contains('already') || msg.contains('registered')) {
+          return '이미 가입된 이메일이에요. 로그인해주세요.';
+        }
+        if (msg.contains('rate') || msg.contains('limit')) {
+          return '메일 발송 한도에 걸렸어요. 30분 후 다시 시도하거나 다른 이메일로 가입해주세요.';
+        }
+        if (msg.contains('redirect') || msg.contains('url')) {
+          return '인증 주소 설정 오류예요. Supabase Redirect URLs에 campuslunch://login-callback 을 등록해주세요.';
+        }
+        return e.message;
+      } catch (e) {
+        debugPrint('[Supabase] register failed: $e');
+        return '회원가입에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
     if (accounts.any((a) => a.id == email)) return '이미 사용 중인 이메일이에요.';
-
-    // Supabase Auth 시도
-    if (SupabaseService.isReady) {
-      try {
-        final res = await SupabaseService.client.auth.signUp(
-          email: email,
-          password: password,
-          data: {'nickname': nickname},
-        );
-        if (res.user == null) return '회원가입에 실패했어요.';
-      } on AuthException catch (e) {
-        final msg = e.message.toLowerCase();
-        if (msg.contains('already') || msg.contains('registered')) {
-          return '이미 사용 중인 이메일이에요.';
-        }
-        debugPrint('[Supabase] register AuthException: ${e.message}');
-        // rate limit 등 → 로컬에만 저장하고 계속 진행
-      } catch (e) {
-        debugPrint('[Supabase] register failed: $e');
-      }
-    }
-
-    // 항상 로컬에도 저장 (초기화 후 로컬 로그인 보장)
     final account = Account(id: email, password: password, nickname: nickname);
     _saveAccounts(prefs, [...accounts, account]);
     await _saveSession(prefs, account);
     return null;
+  }
+
+  /// 이메일 인증 메일 재발송
+  Future<String?> resendSignupEmail(String email) async {
+    if (!SupabaseService.isReady) return '서버 연결을 확인해주세요.';
+
+    final status = await _authRepo.checkEmailSignupStatus(email.trim());
+    if (status == EmailSignupStatus.registered) {
+      return '이미 가입이 완료된 이메일이에요. 로그인해주세요.';
+    }
+    if (status == EmailSignupStatus.available) {
+      return '가입 요청이 없는 이메일이에요. 회원가입을 먼저 진행해주세요.';
+    }
+
+    try {
+      await SupabaseService.client.auth.resend(
+        type: OtpType.signup,
+        email: email.trim(),
+        emailRedirectTo: Env.authRedirectUrl,
+      );
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      debugPrint('[Supabase] resend failed: $e');
+      return '메일 재발송에 실패했어요.';
+    }
+  }
+
+  void _bindAuthListener() {
+    _authSub?.cancel();
+    _authSub = SupabaseService.client.auth.onAuthStateChange.listen((data) async {
+      if (data.event == AuthChangeEvent.signedIn && data.session != null) {
+        final user = data.session!.user;
+        if (user.emailConfirmedAt != null) {
+          await _onSupabaseSignedIn(user);
+        }
+      }
+    });
+  }
+
+  Future<void> _onSupabaseSignedIn(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
+      _showSignupCompleteMessage = true;
+      await prefs.remove(_kAwaitingEmailConfirm);
+    }
+
+    await _profileRepo.upsertFromAuthUser(user);
+    final profile = await _profileRepo.fetch(user.id);
+
+    final meta = user.userMetadata;
+    final appMeta = user.appMetadata;
+    final nickname =
+        profile?.nickname ?? meta?['nickname'] as String? ?? _generateNickname();
+    final role = profile?.role ??
+        appMeta['role'] as String? ??
+        meta?['role'] as String? ??
+        'user';
+    final restaurantIds = (meta?['restaurant_ids'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    final remoteBookmarks = meta?['bookmarks'];
+    if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
+      await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
+    }
+
+    await _saveSession(
+      prefs,
+      Account(
+        id: user.email ?? user.id,
+        password: '',
+        nickname: nickname,
+        role: role,
+        restaurantIds: restaurantIds,
+      ),
+    );
   }
 
   Future<void> _saveSession(SharedPreferences prefs, Account account) async {
@@ -292,6 +431,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (SupabaseService.isReady) {
+      try {
+        await SupabaseService.client.auth.signOut();
+      } catch (e) {
+        debugPrint('[Supabase] signOut: $e');
+      }
+    }
     final prefs = await SharedPreferences.getInstance();
     await _clearSession(prefs);
     _stage = 'login';
@@ -358,7 +504,7 @@ class AppProvider extends ChangeNotifier {
             source: _userRole == 'owner' ? 'owner' : 'user',
             userId: userId,
             nickname: _nickname);
-        _restaurants = await repo.fetchAll();
+        _restaurants = _withOperatingHours(await repo.fetchAll());
         notifyListeners();
         return;
       } catch (e, st) {
@@ -460,13 +606,65 @@ class AppProvider extends ChangeNotifier {
     await _saveSession(prefs, fakeAccount);
   }
 
+  /// Google Places로 매장 등록. 성공 시 6자리 ownerCode 반환.
+  Future<String?> addRestaurantFromGooglePlace({
+    required String placeId,
+    required String name,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required String category,
+    required String area,
+    String imageUrl = '',
+    String hours = BusinessHoursData.defaultHours,
+    String hoursDisplay = '',
+    List<Map<String, dynamic>> hoursPeriods = const [],
+  }) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    if (!_canAdminOps) {
+      debugPrint('[addRestaurantFromGooglePlace] 관리자 로그인 필요');
+      return null;
+    }
+
+    try {
+      final existing = await repo.findRestaurantIdByGooglePlaceId(placeId);
+      if (existing != null) return null;
+
+      final restaurant = await repo.insert({
+        'name': name,
+        'category': category,
+        'area': area,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+        'image_url': imageUrl,
+        'hours': hours,
+        if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,
+        if (hoursPeriods.isNotEmpty) 'hours_periods': hoursPeriods,
+        'google_place_id': placeId,
+      });
+
+      _restaurants = _withOperatingHours(await repo.fetchAll());
+      notifyListeners();
+      return restaurant.ownerCode;
+    } catch (e, st) {
+      debugPrint('[Supabase] addRestaurantFromGooglePlace failed: $e\n$st');
+      return null;
+    }
+  }
+
   // ── 어드민: 매장 관리 ──
   Future<void> addRestaurant(Map<String, dynamic> data) async {
     final repo = _restaurantRepo;
     if (repo != null) {
+      if (!_canAdminOps) {
+        debugPrint('[addRestaurant] 관리자 로그인 필요');
+        return;
+      }
       try {
         await repo.insert(data);
-        _restaurants = await repo.fetchAll();
+        _restaurants = _withOperatingHours(await repo.fetchAll());
         notifyListeners();
         return;
       } catch (e, st) {
@@ -484,6 +682,8 @@ class AppProvider extends ChangeNotifier {
       updated: 0,
       imageUrl: data['image_url'] as String? ?? '',
       distance: 200,
+      latitude: (data['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (data['longitude'] as num?)?.toDouble() ?? 0,
       x: (data['x'] as num?)?.toDouble() ?? 50,
       y: (data['y'] as num?)?.toDouble() ?? 50,
       hours: data['hours'] as String? ?? '11:00 - 21:00',
@@ -501,9 +701,13 @@ class AppProvider extends ChangeNotifier {
   Future<void> editRestaurant(String id, Map<String, dynamic> data) async {
     final repo = _restaurantRepo;
     if (repo != null) {
+      if (!_canAdminOps) {
+        debugPrint('[editRestaurant] 관리자 로그인 필요');
+        return;
+      }
       try {
         await repo.update(id, data);
-        _restaurants = await repo.fetchAll();
+        _restaurants = _withOperatingHours(await repo.fetchAll());
         notifyListeners();
         return;
       } catch (e, st) {
@@ -523,6 +727,8 @@ class AppProvider extends ChangeNotifier {
         updated: r.updated,
         imageUrl: data['image_url'] as String? ?? r.imageUrl,
         distance: r.distance,
+        latitude: r.latitude,
+        longitude: r.longitude,
         x: r.x,
         y: r.y,
         hours: data['hours'] as String? ?? r.hours,
@@ -544,6 +750,10 @@ class AppProvider extends ChangeNotifier {
   Future<void> deleteRestaurant(String id) async {
     final repo = _restaurantRepo;
     if (repo != null) {
+      if (!_canAdminOps) {
+        debugPrint('[deleteRestaurant] 관리자 로그인 필요');
+        return;
+      }
       try {
         await repo.delete(id);
         _restaurants = _restaurants.where((r) => r.id != id).toList();
@@ -572,6 +782,10 @@ class AppProvider extends ChangeNotifier {
   Future<void> generateOwnerCode(String restaurantId) async {
     final repo = _restaurantRepo;
     if (repo == null) return;
+    if (!_canAdminOps) {
+      debugPrint('[generateOwnerCode] 관리자 로그인 필요');
+      return;
+    }
     try {
       final code = await repo.generateOwnerCode(restaurantId);
       _restaurants = _restaurants.map((r) {
@@ -586,6 +800,8 @@ class AppProvider extends ChangeNotifier {
           updated: r.updated,
           imageUrl: r.imageUrl,
           distance: r.distance,
+          latitude: r.latitude,
+          longitude: r.longitude,
           x: r.x,
           y: r.y,
           hours: r.hours,
@@ -594,6 +810,7 @@ class AppProvider extends ChangeNotifier {
           popularityScore: r.popularityScore,
           manualRank: r.manualRank,
           ownerCode: code,
+          ownerRegistered: r.ownerRegistered,
         );
       }).toList();
       notifyListeners();
@@ -603,23 +820,35 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<String?> verifyOwnerCode(String code) async {
-    // 로컬 restaurants에서 먼저 확인
-    final found = _restaurants.where((r) => r.ownerCode == code);
-    String? restaurantId = found.isEmpty ? null : found.first.id;
+    final trimmed = code.trim();
+    if (trimmed.length != 6) return 'INVALID_CODE';
 
-    // 로컬에 없으면 DB에서 조회
-    if (restaurantId == null) {
-      final repo = _restaurantRepo;
-      if (repo != null) {
-        try {
-          restaurantId = await repo.findRestaurantIdByOwnerCode(code);
-        } catch (e) {
-          debugPrint('[verifyOwnerCode] DB lookup failed: $e');
-        }
+    final repo = _restaurantRepo;
+    String? restaurantId;
+
+    if (repo != null) {
+      try {
+        restaurantId = await repo.claimOwnerByCode(trimmed);
+      } on PostgrestException catch (e) {
+        final msg = e.message;
+        if (msg.contains('ALREADY_USED')) return 'ALREADY_USED';
+        debugPrint('[verifyOwnerCode] RPC: $msg');
+        return 'INVALID_CODE';
+      } catch (e) {
+        debugPrint('[verifyOwnerCode] RPC failed: $e');
+        // 오프라인/미배포 RPC: 로컬 폴백
+        final found =
+            _restaurants.where((r) => r.ownerCode == trimmed);
+        if (found.isEmpty) return 'INVALID_CODE';
+        if (found.first.ownerRegistered) return 'ALREADY_USED';
+        restaurantId = found.first.id;
       }
+    } else {
+      final found = _restaurants.where((r) => r.ownerCode == trimmed);
+      if (found.isEmpty) return 'INVALID_CODE';
+      if (found.first.ownerRegistered) return 'ALREADY_USED';
+      restaurantId = found.first.id;
     }
-
-    if (restaurantId == null) return 'INVALID_CODE';
 
     try {
       _userRole = 'owner';
@@ -629,17 +858,13 @@ class AppProvider extends ChangeNotifier {
       await prefs.setString(_kUserRole, 'owner');
       await prefs.setString(_kOwnerIds, jsonEncode([restaurantId]));
 
-      // Supabase Auth metadata에 role 저장 (로그인 후에도 유지)
       await _syncMetadata({
         'role': 'owner',
-        'restaurant_ids': [restaurantId]
+        'restaurant_ids': [restaurantId],
       });
 
-      // 해당 매장을 오너 등록 완료로 표시
-      final repo = _restaurantRepo;
       if (repo != null) {
-        await repo.markOwnerRegistered(restaurantId);
-        _restaurants = await repo.fetchAll();
+        _restaurants = _withOperatingHours(await repo.fetchAll());
       }
 
       _stage = 'owner';
@@ -730,10 +955,28 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final fetched = await repo.fetchAll();
-      if (fetched.isNotEmpty) _restaurants = fetched;
+      if (fetched.isNotEmpty) {
+        _restaurants = fetched.map(_applyOperatingHours).toList();
+      }
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
     }
+  }
+
+  /// 영업시간 외에는 혼잡도 오버라이드보다 영업안함 우선
+  List<Restaurant> _withOperatingHours(List<Restaurant> list) =>
+      list.map(_applyOperatingHours).toList();
+
+  Restaurant _applyOperatingHours(Restaurant r) {
+    final bh = BusinessHoursData.fromDescription({
+      'hours': r.hours,
+      'hours_display': r.hours,
+      'hours_periods': r.hoursPeriods,
+    });
+    if (!bh.isOpenAt(DateTime.now())) {
+      return r.copyWith(status: '영업안함', updated: 0);
+    }
+    return r;
   }
 
   Future<void> devReset() async {

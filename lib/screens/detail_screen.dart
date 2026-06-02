@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../widgets/business_hours_section.dart';
 import '../widgets/report_sheet.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -133,11 +134,14 @@ class _DetailScreenState extends State<DetailScreen> {
                       children: [
                         Text(
                           r.name,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF111827),
                             letterSpacing: -0.96,
+                            height: 1.15,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -145,45 +149,34 @@ class _DetailScreenState extends State<DetailScreen> {
                           r.area == r.category
                               ? r.area
                               : '${r.area} · ${r.category}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                               fontSize: 13, color: Color(0xFF9CA3AF)),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    r.status,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: statusColor,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      r.status,
+                      maxLines: 2,
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: statusColor,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // ── 영업시간 ──
-            if (r.hours.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.access_time,
-                        size: 16, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 8),
-                    Text(
-                      r.hours,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            BusinessHoursSection(hours: r.hours),
 
             // ── 액션 버튼 ──
             Padding(

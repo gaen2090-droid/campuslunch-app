@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>캠퍼스런치 · 이메일 인증 완료</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #f0fdf4 0%, #ffffff 55%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #111827;
+    }
+    .card {
+      max-width: 400px;
+      width: 100%;
+      background: #fff;
+      border-radius: 24px;
+      padding: 36px 28px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 8px 32px rgba(0,0,0,.06);
+      text-align: center;
+    }
+    .icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 20px;
+      background: #f0fdf4;
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+  p {
+      font-size: 15px;
+      color: #6b7280;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+      border: none;
+      border-radius: 16px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn.secondary {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+      margin-top: 10px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 16px;
+    }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" id="icon">✓</div>
+    <h1 id="title">회원가입이 완료되었어요</h1>
+    <p id="message">이메일 인증이 끝났습니다.<br>캠퍼스런치 앱으로 돌아가 로그인해주세요.</p>
+    <a class="btn" id="openApp" href="#">앱 열기</a>
+    <p class="hint" id="hint">앱이 자동으로 열리지 않으면 위 버튼을 눌러주세요.</p>
+  </div>
+  <script>
+    (function () {
+      var APP_SCHEME = 'campuslunch';
+      var APP_HOST = 'login-callback';
+
+      var params = new URLSearchParams(window.location.search);
+      var hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      var code = params.get('code') || hash.get('code');
+      var error = params.get('error_description') || params.get('error') || hash.get('error_description');
+
+      var title = document.getElementById('title');
+      var message = document.getElementById('message');
+      var icon = document.getElementById('icon');
+      var openApp = document.getElementById('openApp');
+      var hint = document.getElementById('hint');
+
+      function buildAppUrl() {
+        var q = window.location.search || '';
+        var h = window.location.hash || '';
+        if (q || h) {
+          return APP_SCHEME + '://' + APP_HOST + q + h;
+        }
+        return APP_SCHEME + '://' + APP_HOST;
+      }
+
+      if (error) {
+        icon.textContent = '!';
+        title.textContent = '인증에 실패했어요';
+        message.innerHTML = '<span class="error">' + decodeURIComponent(error.replace(/\+/g, ' ')) + '</span>';
+        openApp.style.display = 'none';
+        hint.textContent = '앱에서 다시 회원가입하거나 인증 메일을 재발송해주세요.';
+        return;
+      }
+
+      var appUrl = buildAppUrl();
+      openApp.href = appUrl;
+
+      if (code || hash.get('access_token')) {
+        setTimeout(function () { window.location.href = appUrl; }, 600);
+      }
+    })();
+  </script>
+</body>
+</html>

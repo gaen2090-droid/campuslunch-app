@@ -67,16 +67,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (pw != cf) { setState(() { _error = '비밀번호가 일치하지 않아요.'; _loading = false; }); return; }
       final err = await provider.register(email, pw, '');
       if (!mounted) return;
-      if (err != null) {
-        setState(() { _error = err; _loading = false; });
-      } else {
-        setState(() { _loading = false; });
+      setState(() => _loading = false);
+      if (err == 'pending_email') {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => _EmailVerifyScreen(email: email),
           ),
         );
+      } else if (err != null) {
+        setState(() => _error = err);
       }
     }
   }
@@ -424,12 +424,36 @@ class _GoogleIcon extends StatelessWidget {
   }
 }
 
-class _EmailVerifyScreen extends StatelessWidget {
+class _EmailVerifyScreen extends StatefulWidget {
   final String email;
   const _EmailVerifyScreen({required this.email});
 
   @override
+  State<_EmailVerifyScreen> createState() => _EmailVerifyScreenState();
+}
+
+class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
+  bool _resending = false;
+  String? _resendMsg;
+
+  Future<void> _resend() async {
+    setState(() {
+      _resending = true;
+      _resendMsg = null;
+    });
+    final err =
+        await context.read<AppProvider>().resendSignupEmail(widget.email);
+    if (!mounted) return;
+    setState(() {
+      _resending = false;
+      _resendMsg = err ?? '인증 메일을 다시 보냈어요.';
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final loggedIn = context.watch<AppProvider>().isLoggedIn;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -476,7 +500,9 @@ class _EmailVerifyScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '$email\n으로 인증 메일을 보냈어요.\n메일의 링크를 클릭하면 로그인이 가능해요.',
+                '${widget.email}\n으로 인증 메일을 보냈어요.\n'
+                '메일의 링크를 누르면 캠퍼스런치 앱이 열리고 가입이 완료돼요.\n'
+                '(별도 웹사이트는 없어요.)',
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF6B7280),
@@ -485,13 +511,69 @@ class _EmailVerifyScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                '메일이 안 보이면 스팸함도 확인해주세요.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                '메일이 안 보이면 스팸함·프로모션함을 확인해주세요.\n'
+                '에뮬레이터도 실제 이메일 주소(Gmail 등)로 가입하면 메일은 폰/PC 메일함으로 옵니다.\n'
+                'Supabase 기본 메일은 시간당 발송 제한이 있어 1~2분 후에도 없으면 「다시 보내기」를 눌러주세요.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF), height: 1.5),
               ),
+              if (_resendMsg != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _resendMsg!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _resendMsg!.contains('실패') || _resendMsg!.contains('확인')
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF16A34A),
+                  ),
+                ),
+              ],
+              if (loggedIn) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  '이메일 인증이 완료됐어요!',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF16A34A),
+                  ),
+                ),
+              ],
 
               const Spacer(),
 
-              // 로그인 하러 가기
+              if (!loggedIn)
+                GestureDetector(
+                  onTap: _resending ? null : _resend,
+                  child: Container(
+                    height: 52,
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Center(
+                      child: _resending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              '인증 메일 다시 보내기',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF374151),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
@@ -501,9 +583,9 @@ class _EmailVerifyScreen extends StatelessWidget {
                     color: const Color(0xFF16A34A),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      '로그인 하러 가기',
+                      loggedIn ? '시작하기' : '로그인 하러 가기',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,

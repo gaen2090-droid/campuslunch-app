@@ -24,9 +24,13 @@ class Restaurant {
   final String ownerCode;
   final bool ownerRegistered;
   final double distance;
+  final double latitude;
+  final double longitude;
   final double x;
   final double y;
   final String hours;
+  /// Google Places `opening_hours.periods` (요일별 영업 판단용)
+  final List<Map<String, dynamic>> hoursPeriods;
   Map<String, int> reports;
   final List<MenuItem> menu;
 
@@ -44,9 +48,12 @@ class Restaurant {
     this.ownerCode = '',
     this.ownerRegistered = false,
     required this.distance,
+    this.latitude = 0,
+    this.longitude = 0,
     required this.x,
     required this.y,
     required this.hours,
+    this.hoursPeriods = const [],
     required this.reports,
     required this.menu,
   });
@@ -70,15 +77,21 @@ class Restaurant {
         ownerCode: ownerCode,
         ownerRegistered: ownerRegistered,
         distance: distance,
+        latitude: latitude,
+        longitude: longitude,
         x: x,
         y: y,
         hours: hours,
+        hoursPeriods: hoursPeriods,
         reports: reports ?? Map.from(this.reports),
         menu: menu,
       );
 
   int get totalReports =>
       reports.values.fold(0, (sum, v) => sum + v);
+
+  bool get hasMapLocation =>
+      latitude.abs() > 0.0001 && longitude.abs() > 0.0001;
 }
 
 class StatusMeta {

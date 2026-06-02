@@ -27,6 +27,7 @@ migrate_working_dir/
 .env.local
 .env.*.local
 .env.secrets
+ios/Flutter/Secrets.xcconfig
 
 # Flutter/Dart/Pub related
 **/doc/api/

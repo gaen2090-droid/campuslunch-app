@@ -2,8 +2,6 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +9,9 @@ import 'package:provider/provider.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/business_hours.dart';
+import '../utils/csv_export.dart';
+import 'admin_map_register_tab.dart';
 
 // ── Mock data ──────────────────────────────────────────────────────────────
 const _mau = 1843;
@@ -182,7 +183,9 @@ class _AdminScreenState extends State<AdminScreen> {
                 // Tab pills
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: Row(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                     children: [
                       _TabPill(
                         label: '핵심 지표',
@@ -201,7 +204,14 @@ class _AdminScreenState extends State<AdminScreen> {
                         active: _tab == 'popularity',
                         onTap: () => setState(() => _tab = 'popularity'),
                       ),
+                      const SizedBox(width: 8),
+                      _TabPill(
+                        label: '지도 등록',
+                        active: _tab == 'map_register',
+                        onTap: () => setState(() => _tab = 'map_register'),
+                      ),
                     ],
+                    ),
                   ),
                 ),
 
@@ -219,7 +229,9 @@ class _AdminScreenState extends State<AdminScreen> {
                           )
                         : _tab == 'restaurants'
                             ? _RestaurantsTab(restaurants: restaurants)
-                            : _PopularityTab(restaurants: restaurants),
+                            : _tab == 'popularity'
+                                ? _PopularityTab(restaurants: restaurants)
+                                : const AdminMapRegisterTab(),
                   ),
                 ),
               ],
@@ -1931,17 +1943,12 @@ class _ExportSheetState extends State<_ExportSheet> {
     return buf.toString();
   }
 
-  void _export() {
+  Future<void> _export() async {
     final csv = _buildCsv();
     // UTF-8 BOM 추가 (Excel에서 한글 깨짐 방지)
     final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csv)];
-    final blob = html.Blob([bytes], 'text/csv;charset=utf-8;');
-    final url = html.Url.createObjectUrlFromBlob(blob);
     final filename = 'campuslunch_${_fmt(_startDate)}_${_fmt(_endDate)}.csv';
-    html.AnchorElement(href: url)
-      ..setAttribute('download', filename)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await exportCsvFile(filename, bytes);
     widget.onClose();
   }
 
@@ -2503,15 +2510,11 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
   }
 
   List<_TimeRange> _parseTimeRanges(String hours) {
-    if (hours.isEmpty) return [_TimeRange('11:00', '21:00')];
-    final ranges = hours.split(',').map((s) {
-      final parts = s.trim().split(' - ');
-      return _TimeRange(
-        parts.isNotEmpty ? parts[0].trim() : '11:00',
-        parts.length > 1 ? parts[1].trim() : '21:00',
-      );
-    }).toList();
-    return ranges.isEmpty ? [_TimeRange('11:00', '21:00')] : ranges;
+    final parsed = BusinessHoursData.rangesForEdit(hours);
+    if (parsed.isEmpty) return [_TimeRange('11:00', '21:00')];
+    return parsed
+        .map((r) => _TimeRange(r.from, r.to))
+        .toList();
   }
 
   Future<void> _pickImage() async {

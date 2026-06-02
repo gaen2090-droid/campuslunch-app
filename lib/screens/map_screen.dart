@@ -5,6 +5,7 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
+import '../widgets/restaurant_google_map.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
@@ -65,11 +66,12 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         // ── 지도 (풀스크린) ──
         Positioned.fill(
-          child: _FakeMap(
+          child: RestaurantGoogleMap(
             restaurants: filtered,
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
             onDeselect: () => setState(() => _selected = null),
+            myLocationEnabled: _isLocated,
           ),
         ),
 
@@ -364,7 +366,7 @@ class _MapScreenState extends State<MapScreen> {
                   showLocationPermissionDialog(context);
                   return;
                 }
-                setState(() => _isLocated = true);
+                setState(() => _isLocated = !_isLocated);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),

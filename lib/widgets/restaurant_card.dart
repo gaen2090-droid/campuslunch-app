@@ -68,22 +68,30 @@ class RestaurantCard extends StatelessWidget {
               ),
             ),
             // 상태 뱃지
-            if (meta != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Color(meta.bgColor),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  r.status,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: Color(meta.color),
+            if (meta != null) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color(meta.bgColor),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    r.status,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(meta.color),
+                    ),
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),
@@ -183,6 +191,8 @@ class HeroRestaurantCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       r.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
