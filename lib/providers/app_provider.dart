@@ -187,7 +187,6 @@ class AppProvider extends ChangeNotifier {
                   .toList() ??
               [];
           final prefs = await SharedPreferences.getInstance();
-          // 북마크 복원
           final remoteBookmarks = meta?['bookmarks'];
           if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
             await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
@@ -204,8 +203,14 @@ class AppProvider extends ChangeNotifier {
           return true;
         }
       } on AuthException catch (e) {
+        final msg = e.message.toLowerCase();
+        if (msg.contains('email not confirmed') || msg.contains('not confirmed')) {
+          // 이메일 미인증 → 로컬 폴백 없이 바로 false 반환 (메시지 별도 처리)
+          debugPrint('[Supabase] email not confirmed: ${e.message}');
+          return false;
+        }
         debugPrint('[Supabase] login AuthException: ${e.message}');
-        // 로컬 폴백으로 진행
+        // 그 외 Supabase 에러 → 로컬 폴백으로 진행
       } catch (e) {
         debugPrint('[Supabase] login failed: $e');
       }
@@ -350,7 +355,9 @@ class AppProvider extends ChangeNotifier {
             ? (SupabaseService.client.auth.currentUser?.id ?? _accountId)
             : _accountId;
         await repo.reportStatus(restaurantId, status,
-            source: _userRole == 'owner' ? 'owner' : 'user', userId: userId);
+            source: _userRole == 'owner' ? 'owner' : 'user',
+            userId: userId,
+            nickname: _nickname);
         _restaurants = await repo.fetchAll();
         notifyListeners();
         return;
@@ -520,6 +527,8 @@ class AppProvider extends ChangeNotifier {
         y: r.y,
         hours: data['hours'] as String? ?? r.hours,
         reports: r.reports,
+        ownerCode: r.ownerCode,
+        ownerRegistered: r.ownerRegistered,
         menu: data['menu'] != null
             ? ((data['menu'] as List<dynamic>))
                 .map((m) => MenuItem(

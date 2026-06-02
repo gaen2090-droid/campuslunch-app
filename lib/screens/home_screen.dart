@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool? _prevLocationMode;
   final _searchCtrl = TextEditingController();
 
-  static const _regionOpts = ['학식', '정문', '중문', '후문'];
+  static const _regionOpts = ['학교', '정문', '중문', '후문'];
   static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['인기순', '가까운순', '여유로운순'];
 
@@ -63,9 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_sortBy == '여유로운순') {
         const pri = {'여유로움': 0, '약간혼잡': 1, '자리없음': 2, '영업안함': 3};
         final d = (pri[a.status] ?? 9) - (pri[b.status] ?? 9);
-        return d != 0 ? d : popularScore(b).compareTo(popularScore(a));
+        if (d != 0) return d;
+        final sd = popularScore(b).compareTo(popularScore(a));
+        return sd != 0 ? sd : a.name.compareTo(b.name);
       }
-      return popularScore(b).compareTo(popularScore(a));
+      final sd = popularScore(b).compareTo(popularScore(a));
+      return sd != 0 ? sd : a.name.compareTo(b.name);
     });
     return list;
   }

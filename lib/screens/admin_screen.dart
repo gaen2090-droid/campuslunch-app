@@ -38,10 +38,10 @@ final _weekDates = List.generate(7, (i) {
   return '${d.month}/${d.day}';
 });
 
-const _regions = ['학식', '정문', '중문', '후문'];
+const _regions = ['학교', '정문', '중문', '후문'];
 const _cuisines = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
 const _areaByRegion = {
-  '학식': '학생회관',
+  '학교': '학생회관',
   '정문': '정문 근처',
   '중문': '중문 근처',
   '후문': '후문 골목',
@@ -234,8 +234,8 @@ class _AdminScreenState extends State<AdminScreen> {
           if (_detail != null)
             _DetailSheet(
               detailKey: _detail!,
-              restaurants: context.read<AppProvider>().restaurants,
-              metrics: context.read<AppProvider>().metrics,
+              restaurants: restaurants,
+              metrics: metrics,
               onClose: () => setState(() => _detail = null),
             ),
 
@@ -552,6 +552,15 @@ class _MetricsTab extends StatelessWidget {
     required this.onDauDetail,
   });
 
+  String _displayName(String raw) {
+    // 닉네임이면 그대로
+    if (!raw.contains('@') && raw.length < 30) return raw;
+    // 이메일이면 @ 앞부분
+    if (raw.contains('@')) return raw.split('@').first;
+    // UUID면 뒤 4자리
+    return '유저 ${raw.substring(raw.length - 4)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final todayReports = metrics.todayReports > 0
@@ -586,13 +595,13 @@ class _MetricsTab extends StatelessWidget {
           ),
           childrenDelegate: SliverChildListDelegate([
             _MetricCard(
-              label: 'DAU',
+              label: 'DAU (연동 예정)',
               value: '$todayDau',
               unit: '명',
               onTap: onDauDetail,
             ),
             _MetricCard(
-              label: 'MAU',
+              label: 'MAU (연동 예정)',
               value: _mau.toString().replaceAllMapped(
                   RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                   (m) => '${m[1]},'),
@@ -721,9 +730,7 @@ class _MetricsTab extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              e.value.$1.length > 8
-                                  ? '${e.value.$1.substring(0, 8)}...'
-                                  : e.value.$1,
+                              _displayName(e.value.$1),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -890,10 +897,11 @@ class _PopularityTab extends StatelessWidget {
         ? ([...restaurants]..sort((a, b) {
             final aScore = a.popularityScore > 0 ? a.popularityScore : a.totalReports;
             final bScore = b.popularityScore > 0 ? b.popularityScore : b.totalReports;
-            return bScore.compareTo(aScore);
+            final diff = bScore.compareTo(aScore);
+            return diff != 0 ? diff : a.name.compareTo(b.name);
           }))
         : ([...restaurants]..sort((a, b) {
-            if (a.manualRank == 0 && b.manualRank == 0) return 0;
+            if (a.manualRank == 0 && b.manualRank == 0) return a.name.compareTo(b.name);
             if (a.manualRank == 0) return 1;
             if (b.manualRank == 0) return -1;
             return a.manualRank.compareTo(b.manualRank);
@@ -1054,23 +1062,62 @@ class _RestaurantsTab extends StatefulWidget {
 
 class _RestaurantsTabState extends State<_RestaurantsTab> {
   String? _confirmDeleteId;
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
-    final sorted = widget.restaurants;
+    final sorted = [...widget.restaurants]
+      ..sort((a, b) => a.name.compareTo(b.name));
+    final filtered = _query.isEmpty
+        ? sorted
+        : sorted.where((r) =>
+            r.name.toLowerCase().contains(_query.toLowerCase()) ||
+            r.area.contains(_query) ||
+            r.category.contains(_query)).toList();
 
     return Stack(
       children: [
         Column(
           children: [
+            // 검색창
+            TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+              decoration: InputDecoration(
+                hintText: '매장명, 지역, 카테고리 검색',
+                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFFD1D5DB)),
+                prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)),
+                suffixIcon: _query.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () { _searchCtrl.clear(); setState(() => _query = ''); },
+                        child: const Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 12),
             // Add button
             GestureDetector(
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => _AddRestaurantPage(
-                    onAdd: (data) => provider.addRestaurant(data),
+                    onAdd: (data) async => provider.addRestaurant(data),
                   ),
                 ),
               ),
@@ -1105,7 +1152,15 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
             const SizedBox(height: 16),
 
             // Restaurant list
-            ...sorted.asMap().entries.map((entry) {
+            if (filtered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text('검색 결과가 없어요',
+                      style: TextStyle(fontSize: 14, color: Color(0xFFD1D5DB))),
+                ),
+              ),
+            ...filtered.asMap().entries.map((entry) {
               final idx = entry.key;
               final r = entry.value;
               final isConfirming = _confirmDeleteId == r.id;
@@ -1207,7 +1262,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                     MaterialPageRoute(
                                       builder: (_) => _EditRestaurantPage(
                                         restaurant: r,
-                                        onSave: (data) => provider.editRestaurant(r.id, data),
+                                        onSave: (data) async => provider.editRestaurant(r.id, data),
                                       ),
                                     ),
                                   );
@@ -1436,7 +1491,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
     final diff = current - vals[vals.length - 2];
 
     return _SheetBase(
-      title: 'DAU (일별 제보 활동)',
+      title: 'DAU (일간 활성 사용자)',
       onClose: widget.onClose,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -1491,7 +1546,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
             ),
             const SizedBox(height: 12),
             const Text(
-              '최근 7일 제보 활동량',
+              '방문 연동 전 임시 데이터 · 추후 실제 방문자 수로 대체 예정',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
             ),
@@ -1616,7 +1671,7 @@ class _DetailSheet extends StatelessWidget {
       body = _restaurantBarList(metrics.weekByRestaurant, metrics.weekTotal);
     } else {
       final configs = {
-        'mau': ('월간 활성 사용자 추이',
+        'mau': ('MAU (연동 예정)',
             _mauMonthly.map((v) => v.toDouble()).toList(),
             _months6.toList(),
             const Color(0xFF16A34A)),
@@ -1628,39 +1683,84 @@ class _DetailSheet extends StatelessWidget {
 
       if (detailKey == 'ownerStatus') {
         title = '오너 등록 현황';
+        final registered = restaurants.where((r) => r.ownerRegistered).toList();
+        final unregistered = restaurants.where((r) => !r.ownerRegistered).toList();
         body = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            const Text(
-              '오너 미등록 매장',
-              style: TextStyle(
+            Text(
+              '등록 완료 (${registered.length})',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF16A34A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (registered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text('아직 없어요', style: TextStyle(fontSize: 13, color: Color(0xFFD1D5DB))),
+              )
+            else
+              ...registered.map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, size: 16, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 8),
+                          Text(r.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF374151),
+                              )),
+                        ],
+                      ),
+                    ),
+                  )),
+            const SizedBox(height: 12),
+            Text(
+              '미등록 (${unregistered.length})',
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF9CA3AF),
               ),
             ),
             const SizedBox(height: 8),
-            ...restaurants.map((r) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF5F5),
-                      borderRadius: BorderRadius.circular(12),
+            if (unregistered.isEmpty)
+              const Text('모든 매장이 등록됐어요', style: TextStyle(fontSize: 13, color: Color(0xFFD1D5DB)))
+            else
+              ...unregistered.map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF5F5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.radio_button_unchecked, size: 16, color: Color(0xFFD1D5DB)),
+                          const SizedBox(width: 8),
+                          Text(r.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF374151),
+                              )),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(r.name,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF374151),
-                            )),
-                      ],
-                    ),
-                  ),
-                )),
+                  )),
           ],
         );
       } else if (configs.containsKey(detailKey)) {
@@ -2044,7 +2144,7 @@ class _ExportSheetState extends State<_ExportSheet> {
 
 // ── Add restaurant sheet ───────────────────────────────────────────────────
 class _AddRestaurantPage extends StatefulWidget {
-  final ValueChanged<Map<String, dynamic>> onAdd;
+  final Future<void> Function(Map<String, dynamic>) onAdd;
 
   const _AddRestaurantPage({required this.onAdd});
 
@@ -2107,7 +2207,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
         .where((m) => m.name.isNotEmpty)
         .map((m) => {'name': m.name, 'price': int.tryParse(m.price) ?? 0})
         .toList();
-    widget.onAdd({
+    await widget.onAdd({
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,
@@ -2349,7 +2449,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
 // ── Edit restaurant page ──────────────────────────────────────────────────
 class _EditRestaurantPage extends StatefulWidget {
   final Restaurant restaurant;
-  final ValueChanged<Map<String, dynamic>> onSave;
+  final Future<void> Function(Map<String, dynamic>) onSave;
 
   const _EditRestaurantPage({
     required this.restaurant,
@@ -2440,7 +2540,7 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
         .where((m) => m.name.isNotEmpty)
         .map((m) => {'name': m.name, 'price': int.tryParse(m.price) ?? 0})
         .toList();
-    widget.onSave({
+    await widget.onSave({
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,

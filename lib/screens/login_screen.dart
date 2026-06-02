@@ -58,12 +58,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_isLogin) {
       final ok = await provider.login(email, pw);
-      if (!ok && mounted) setState(() { _error = '이메일 또는 비밀번호가 올바르지 않아요.'; _loading = false; });
+      if (!ok && mounted) setState(() {
+        _error = '이메일 또는 비밀번호가 올바르지 않아요.\n이메일 인증을 완료했는지 확인해주세요.';
+        _loading = false;
+      });
     } else {
       final cf = _cfCtrl.text;
       if (pw != cf) { setState(() { _error = '비밀번호가 일치하지 않아요.'; _loading = false; }); return; }
       final err = await provider.register(email, pw, '');
-      if (err != null && mounted) setState(() { _error = err; _loading = false; });
+      if (!mounted) return;
+      if (err != null) {
+        setState(() { _error = err; _loading = false; });
+      } else {
+        setState(() { _loading = false; });
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _EmailVerifyScreen(email: email),
+          ),
+        );
+      }
     }
   }
 
@@ -406,6 +420,103 @@ class _GoogleIcon extends StatelessWidget {
       decoration: BoxDecoration(
           border: Border.all(color: const Color(0xFFDADCE0)), shape: BoxShape.circle),
       child: const Center(child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontSize: 11, fontWeight: FontWeight.w900))),
+    );
+  }
+}
+
+class _EmailVerifyScreen extends StatelessWidget {
+  final String email;
+  const _EmailVerifyScreen({required this.email});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 40, 28, 36),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 뒤로가기
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 16, color: Color(0xFF374151)),
+                ),
+              ),
+              const SizedBox(height: 48),
+
+              // 아이콘
+              Container(
+                width: 72, height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Center(
+                  child: Icon(Icons.mark_email_unread_outlined, size: 36, color: Color(0xFF16A34A)),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              const Text(
+                '이메일을 확인해주세요',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$email\n으로 인증 메일을 보냈어요.\n메일의 링크를 클릭하면 로그인이 가능해요.',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF6B7280),
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '메일이 안 보이면 스팸함도 확인해주세요.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+              ),
+
+              const Spacer(),
+
+              // 로그인 하러 가기
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  height: 56,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '로그인 하러 가기',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -78,7 +78,7 @@ class SupabaseRestaurantRepository {
   }
 
   Future<void> reportStatus(String restaurantId, String uiStatus,
-      {String source = 'user', String? userId}) async {
+      {String source = 'user', String? userId, String? nickname}) async {
     await _client.from('crowd_reports').insert({
       'restaurant_id': restaurantId,
       'level': CrowdLevelMapper.toDb(uiStatus),
@@ -86,6 +86,7 @@ class SupabaseRestaurantRepository {
       'metadata': {
         'status': uiStatus,
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
+        if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
       },
     });
   }
@@ -100,10 +101,11 @@ class SupabaseRestaurantRepository {
         .select('created_at, metadata, restaurant_id')
         .gte('created_at', weekAgo.toIso8601String());
 
-    // 일별 제보 수 집계 (최근 7일)
-    final dailyCounts = List.filled(7, 0);
+    // 일별 DAU (고유 유저 수) 집계 (최근 7일)
+    final dailyUsers = List.generate(7, (_) => <String>{});
     int todayTotal = 0;
     final userCounts = <String, int>{};
+    final userNicknames = <String, String>{};
 
     for (final row in rows) {
       final createdAt =
@@ -111,24 +113,34 @@ class SupabaseRestaurantRepository {
       final dayIndex = now
           .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
           .inDays;
+
+      final meta = row['metadata'];
+      final uid = meta is Map ? (meta['user_id'] as String?) : null;
+
       if (dayIndex >= 0 && dayIndex < 7) {
-        dailyCounts[6 - dayIndex]++;
+        if (uid != null && uid.isNotEmpty) {
+          dailyUsers[6 - dayIndex].add(uid);
+        }
       }
       if (dayIndex == 0) todayTotal++;
 
-      final meta = row['metadata'];
       if (meta is Map) {
-        final uid = meta['user_id'] as String?;
         if (uid != null && uid.isNotEmpty) {
           userCounts[uid] = (userCounts[uid] ?? 0) + 1;
+          final nick = meta['nickname'] as String?;
+          if (nick != null && nick.isNotEmpty) {
+            userNicknames[uid] = nick;
+          }
         }
       }
     }
 
+    final dailyCounts = dailyUsers.map((s) => s.length).toList();
+
     final topReporters = (userCounts.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value)))
         .take(3)
-        .map((e) => (e.key, e.value))
+        .map((e) => (userNicknames[e.key] ?? e.key, e.value))
         .toList();
 
     // 매장별 오늘 / 최근 7일 제보 수 집계
