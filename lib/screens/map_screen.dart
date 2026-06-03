@@ -21,16 +21,25 @@ class _MapScreenState extends State<MapScreen> {
   Restaurant? _selected;
   bool _isLocated = false;
   bool _showBookmarked = false;
-  String _sortBy = '인기순';
-  Set<String> _regions = {};
-  Set<String> _cuisines = {};
+  static const _allLabel = '전체';
+  Set<String> _regions = {_allLabel};
+  Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
   bool _searchActive = false;
   final _searchCtrl = TextEditingController();
 
-  static const _regionOpts = ['학교', '정문', '중문', '후문'];
-  static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
-  static const _sortOpts = ['인기순', '가까운순', '여유로운순'];
+  static const _regionOpts = [_allLabel, '학교', '정문', '중문', '후문'];
+  static const _cuisineOpts = [
+    _allLabel,
+    '학식',
+    '한식',
+    '중식',
+    '일식',
+    '양식',
+    '아시아',
+    '분식',
+    '카페',
+  ];
 
   @override
   void dispose() {
@@ -42,11 +51,37 @@ class _MapScreenState extends State<MapScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
   }
 
+  bool _isAllFilter(Set<String> values) =>
+      values.contains(_allLabel) && values.length == 1;
+
+  String _filterChipLabel(Set<String> values, String fallback) {
+    if (_isAllFilter(values) || values.isEmpty) return fallback;
+    if (values.length == 1) return values.first;
+    return '${values.first} 외 ${values.length - 1}';
+  }
+
+  void _toggleFilter(Set<String> target, String value) {
+    if (value == _allLabel) {
+      target
+        ..clear()
+        ..add(_allLabel);
+      return;
+    }
+    target.remove(_allLabel);
+    if (target.contains(value)) {
+      target.remove(value);
+    } else {
+      target.add(value);
+    }
+    if (target.isEmpty) target.add(_allLabel);
+  }
+
   List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     return all.where((r) {
       final q = _searchCtrl.text.trim().toLowerCase();
-      final regionOk = _regions.isEmpty || _regions.contains(r.area);
-      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
+      final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
+      final cuisineOk =
+          _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       final searchOk = q.isEmpty || '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(q);
       final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
       return regionOk && cuisineOk && searchOk && bookmarkOk;
@@ -154,35 +189,21 @@ class _MapScreenState extends State<MapScreen> {
                           child: Row(
                             children: [
                               _MapFilterChip(
-                                label: _sortBy,
-                                active: _sortBy != '인기순',
-                                open: _openDropdown == 'sort',
-                                onTap: () => setState(() =>
-                                    _openDropdown = _openDropdown == 'sort' ? null : 'sort'),
-                              ),
-                              const SizedBox(width: 8),
-                              _MapFilterChip(
-                                label: _regions.isEmpty
-                                    ? '구역'
-                                    : _regions.length == 1
-                                        ? _regions.first
-                                        : '${_regions.first} 외 ${_regions.length - 1}',
-                                active: _regions.isNotEmpty,
+                                label: _filterChipLabel(_regions, '구역'),
+                                active: !_isAllFilter(_regions),
                                 open: _openDropdown == 'region',
                                 onTap: () => setState(() =>
-                                    _openDropdown = _openDropdown == 'region' ? null : 'region'),
+                                    _openDropdown =
+                                        _openDropdown == 'region' ? null : 'region'),
                               ),
                               const SizedBox(width: 8),
                               _MapFilterChip(
-                                label: _cuisines.isEmpty
-                                    ? '음식종류'
-                                    : _cuisines.length == 1
-                                        ? _cuisines.first
-                                        : '${_cuisines.first} 외 ${_cuisines.length - 1}',
-                                active: _cuisines.isNotEmpty,
+                                label: _filterChipLabel(_cuisines, '음식종류'),
+                                active: !_isAllFilter(_cuisines),
                                 open: _openDropdown == 'cuisine',
                                 onTap: () => setState(() =>
-                                    _openDropdown = _openDropdown == 'cuisine' ? null : 'cuisine'),
+                                    _openDropdown =
+                                        _openDropdown == 'cuisine' ? null : 'cuisine'),
                               ),
                             ],
                           ),
@@ -212,50 +233,40 @@ class _MapScreenState extends State<MapScreen> {
                   ),
 
                   // 드롭다운 패널
-                  if (_openDropdown != null) ...[
-                    const SizedBox(height: 8),
+                  if (_openDropdown != null)
                     Container(
+                      margin: const EdgeInsets.only(top: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x24000000), blurRadius: 22, offset: Offset(0, 0)),
+                          BoxShadow(
+                              color: Color(0x24000000),
+                              blurRadius: 22,
+                              offset: Offset(0, 0)),
                         ],
                       ),
-                      padding: const EdgeInsets.all(12),
-                      child: _openDropdown == 'sort'
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                      clipBehavior: Clip.antiAlias,
+                      child: _openDropdown == 'region'
                           ? _DropdownGrid(
-                              items: _sortOpts,
-                              selected: {_sortBy},
-                              onSelect: (v) {
-                                if (v == '가까운순' && !context.read<AppProvider>().locationMode) {
-                                  showLocationPermissionDialog(context, onGranted: () {
-                                    setState(() { _sortBy = '가까운순'; _openDropdown = null; });
-                                  });
-                                  return;
-                                }
-                                setState(() { _sortBy = v; _openDropdown = null; });
-                              },
+                              items: _regionOpts,
+                              selected: _regions,
+                              onSelect: (v) => setState(() => _toggleFilter(_regions, v)),
                             )
-                          : _openDropdown == 'region'
-                              ? _DropdownGrid(
-                                  items: _regionOpts,
-                                  selected: _regions,
-                                  multiSelect: true,
-                                  onSelect: (v) => setState(() {
-                                    _regions.contains(v) ? _regions.remove(v) : _regions.add(v);
-                                  }),
-                                  onReset: () => setState(() => _regions.clear()),
-                                )
-                              : _DropdownGrid(
-                                  items: _cuisineOpts,
-                                  selected: _cuisines,
-                                  multiSelect: true,
-                                  onSelect: (v) => setState(() {
-                                    _cuisines.contains(v) ? _cuisines.remove(v) : _cuisines.add(v);
-                                  }),
-                                  onReset: () => setState(() => _cuisines.clear()),
-                                ),
+                          : _DropdownGrid(
+                              items: _cuisineOpts,
+                              selected: _cuisines,
+                              onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
+                            ),
+                    ),
+
+                  // 범례 (필터 펼침 시 아래로 밀림)
+                  if (!_searchActive) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _CrowdLegend(),
                     ),
                   ],
                 ],
@@ -263,33 +274,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
         ),
-
-        // ── 범례 ──
-        if (!_searchActive)
-          Positioned(
-            top: safeTop + 108,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(230),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 0)),
-                ],
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _LegendItem(color: Color(0xFF22C55E), label: '여유로움'),
-                  SizedBox(height: 4),
-                  _LegendItem(color: Color(0xFFF59E0B), label: '약간혼잡'),
-                  SizedBox(height: 4),
-                  _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
-                ],
-              ),
-            ),
-          ),
 
         // ── 검색 결과 오버레이 ──
         if (_searchActive && q.isNotEmpty)
@@ -430,6 +414,35 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── 혼잡도 범례 ──
+class _CrowdLegend extends StatelessWidget {
+  const _CrowdLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(230),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 0)),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _LegendItem(color: Color(0xFF22C55E), label: '여유로움'),
+          SizedBox(height: 4),
+          _LegendItem(color: Color(0xFFF59E0B), label: '약간혼잡'),
+          SizedBox(height: 4),
+          _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
+        ],
+      ),
     );
   }
 }
@@ -637,73 +650,68 @@ class _MapFilterChip extends StatelessWidget {
 class _DropdownGrid extends StatelessWidget {
   final List<String> items;
   final Set<String> selected;
-  final bool multiSelect;
   final ValueChanged<String> onSelect;
-  final VoidCallback? onReset;
 
   const _DropdownGrid({
     required this.items,
     required this.selected,
-    this.multiSelect = false,
     required this.onSelect,
-    this.onReset,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (multiSelect && selected.isNotEmpty)
-          GestureDetector(
-            onTap: onReset,
-            child: const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('초기화',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF16A34A))),
-            ),
-          ),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: items.length <= 3 ? items.length : 4,
-          childAspectRatio: items.length <= 3 ? 2.8 : 2.2,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
+    const spacing = 6.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = items.length <= 3 ? items.length : 4;
+        final itemWidth =
+            (constraints.maxWidth - spacing * (cols - 1)) / cols;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
           children: items.map((opt) {
             final on = selected.contains(opt);
-            return GestureDetector(
-              onTap: () => onSelect(opt),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(opt,
+            return SizedBox(
+              width: itemWidth,
+              child: GestureDetector(
+                onTap: () => onSelect(opt),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          opt,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
-                            color: on ? const Color(0xFF16A34A) : const Color(0xFF374151),
+                            color: on
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFF374151),
                           ),
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
-                  ],
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (on)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child: Icon(Icons.check,
+                              size: 14, color: Color(0xFF16A34A)),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
           }).toList(),
-        ),
-      ],
+        );
+      },
     );
   }
 }

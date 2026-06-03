@@ -16,6 +16,11 @@ class Env {
 
   static bool get isGoogleMapsConfigured => googleMapsApiKey.isNotEmpty;
 
+  static String get kakaoNativeAppKey =>
+      dotenv.env['KAKAO_NATIVE_APP_KEY']?.trim() ?? '';
+
+  static bool get isKakaoConfigured => kakaoNativeAppKey.isNotEmpty;
+
   /// 이메일 인증 후 바로 앱으로 돌아오는 주소 (웹 배포 불필요)
   /// Supabase Redirect URLs / Site URL 에 동일하게 등록
   static String get authRedirectUrl =>

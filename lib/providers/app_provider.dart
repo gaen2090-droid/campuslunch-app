@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env.dart';
+import '../utils/nickname_generator.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
 import '../data/restaurants.dart';
@@ -12,6 +13,7 @@ import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
+import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
 
@@ -78,6 +80,7 @@ class AppProvider extends ChangeNotifier {
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
+  static const _kAuthProvider = 'cl_auth_provider';
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -258,7 +261,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<String?> register(String email, String password, String nick) async {
-    final nickname = nick.isEmpty ? _generateNickname() : nick;
+    final nickname = nick.isEmpty ? generateNickname() : nick;
     final trimmedEmail = email.trim();
 
     if (SupabaseService.isReady) {
@@ -368,13 +371,20 @@ class AppProvider extends ChangeNotifier {
       await prefs.remove(_kAwaitingEmailConfirm);
     }
 
-    await _profileRepo.upsertFromAuthUser(user);
     final profile = await _profileRepo.fetch(user.id);
 
     final meta = user.userMetadata;
     final appMeta = user.appMetadata;
-    final nickname =
-        profile?.nickname ?? meta?['nickname'] as String? ?? _generateNickname();
+    var nickname = profile?.nickname ?? meta?['nickname'] as String?;
+    if (isPlaceholderNickname(nickname)) {
+      nickname = generateNickname();
+      await _syncMetadata({'nickname': nickname});
+    }
+    nickname ??= generateNickname();
+
+    await _profileRepo.upsertFromAuthUser(
+      SupabaseService.client.auth.currentUser ?? user,
+    );
     final role = profile?.role ??
         appMeta['role'] as String? ??
         meta?['role'] as String? ??
@@ -389,6 +399,11 @@ class AppProvider extends ChangeNotifier {
       await prefs.setString(_kBookmarks, jsonEncode(remoteBookmarks));
     }
 
+    final authProvider =
+        meta?['auth_provider'] as String? ??
+        user.appMetadata['provider'] as String? ??
+        'email';
+
     await _saveSession(
       prefs,
       Account(
@@ -398,10 +413,15 @@ class AppProvider extends ChangeNotifier {
         role: role,
         restaurantIds: restaurantIds,
       ),
+      authProvider: authProvider,
     );
   }
 
-  Future<void> _saveSession(SharedPreferences prefs, Account account) async {
+  Future<void> _saveSession(
+    SharedPreferences prefs,
+    Account account, {
+    String authProvider = 'email',
+  }) async {
     _isLoggedIn = true;
     _nickname = account.nickname;
     _accountId = account.id;
@@ -415,6 +435,7 @@ class AppProvider extends ChangeNotifier {
     await prefs.setString(_kOwnerIds, jsonEncode(account.restaurantIds));
     await prefs.setInt(_kSessionExp,
         DateTime.now().add(_sessionDuration).millisecondsSinceEpoch);
+    await prefs.setString(_kAuthProvider, authProvider);
 
     final locationStored = prefs.containsKey(_kLocation);
     _locationMode = prefs.getBool(_kLocation) ?? false;
@@ -431,6 +452,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    final authProvider = prefs.getString(_kAuthProvider) ?? '';
+
+    if (authProvider == 'kakao') {
+      await KakaoAuthService.logoutKakao();
+    }
+
     if (SupabaseService.isReady) {
       try {
         await SupabaseService.client.auth.signOut();
@@ -438,10 +466,69 @@ class AppProvider extends ChangeNotifier {
         debugPrint('[Supabase] signOut: $e');
       }
     }
-    final prefs = await SharedPreferences.getInstance();
+
     await _clearSession(prefs);
     _stage = 'login';
     notifyListeners();
+  }
+
+  /// 회원 탈퇴 (카카오 연결 해제 + Supabase 계정 삭제)
+  Future<String?> withdrawAccount() async {
+    if (!_hasSupabaseSession) {
+      return '로그인된 계정이 없어요.';
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final authProvider = prefs.getString(_kAuthProvider) ?? '';
+
+    try {
+      if (authProvider == 'kakao') {
+        await KakaoAuthService.unlinkKakao();
+      }
+      await _profileRepo.deleteOwnAccount();
+      await SupabaseService.client.auth.signOut();
+      await _clearSession(prefs);
+      _stage = 'login';
+      notifyListeners();
+      return null;
+    } on PostgrestException catch (e) {
+      debugPrint('[withdraw] RPC: ${e.message}');
+      return '탈퇴 처리에 실패했어요. (${e.message})';
+    } catch (e) {
+      debugPrint('[withdraw] $e');
+      return '탈퇴 처리에 실패했어요.';
+    }
+  }
+
+  /// 카카오 로그인 (Supabase Auth + public.users)
+  Future<String?> loginWithKakao() async {
+    if (!KakaoAuthService.isConfigured) {
+      return 'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.';
+    }
+    if (!SupabaseService.isReady) {
+      return 'Supabase 연결을 확인해주세요.';
+    }
+
+    try {
+      final result = await KakaoAuthService.signInWithSupabase();
+      await _onSupabaseSignedIn(result.user);
+      return null;
+    } on AuthException catch (e) {
+      if (e.message.contains('Unacceptable audience in id_token')) {
+        return 'Supabase Kakao 설정을 확인해주세요.\n'
+            'Authentication → Providers → Kakao → '
+            'Native App Key(또는 REST API Key 칸)에 '
+            '네이티브 앱 키(${Env.kakaoNativeAppKey})를 넣어야 합니다.';
+      }
+      return e.message;
+    } catch (e) {
+      debugPrint('[Kakao] loginWithKakao: $e');
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel') || msg.contains('canceled')) {
+        return '로그인이 취소되었어요.';
+      }
+      return e.toString().replaceFirst('Exception: ', '');
+    }
   }
 
   Future<void> _clearSession(SharedPreferences prefs) async {
@@ -449,6 +536,7 @@ class AppProvider extends ChangeNotifier {
     await prefs.remove(_kNickname);
     await prefs.remove(_kSessionExp);
     await prefs.remove(_kAccountId);
+    await prefs.remove(_kAuthProvider);
     _isLoggedIn = false;
     _nickname = '';
     _accountId = '';
@@ -581,30 +669,52 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  String _generateNickname() {
-    const fruits = ['딸기', '사과', '포도', '수박', '레몬', '망고', '복숭아', '바나나'];
-    final idx = DateTime.now().millisecondsSinceEpoch % fruits.length;
-    final num = DateTime.now().millisecondsSinceEpoch % 9000 + 1000;
-    return '앙대${fruits[idx]}$num';
-  }
+  /// 닉네임 변경. 성공 시 null, 실패 시 메시지 반환.
+  Future<String?> updateNickname(String nick) async {
+    final trimmed = nick.trim();
+    if (trimmed.isEmpty) return '닉네임을 입력해주세요.';
+    if (trimmed == _nickname.trim()) return null;
 
-  Future<void> updateNickname(String nick) async {
+    if (_hasSupabaseSession) {
+      final available = await _profileRepo.isNicknameAvailable(trimmed);
+      if (available == false) {
+        return '이미 사용 중인 닉네임이에요.';
+      }
+      if (available == null) {
+        return '닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    _nickname = nick;
-    await prefs.setString(_kNickname, nick);
-    await _syncMetadata({'nickname': nick});
+
+    if (_hasSupabaseSession) {
+      await _syncMetadata({'nickname': trimmed});
+      final user = SupabaseService.client.auth.currentUser;
+      if (user != null) {
+        try {
+          final updated = await _profileRepo.updateNickname(user.id, trimmed);
+          if (!updated) {
+            await _profileRepo.upsertNickname(
+              SupabaseService.client.auth.currentUser ?? user,
+              trimmed,
+            );
+          }
+        } on PostgrestException catch (e) {
+          if (e.code == '23505') {
+            return '이미 사용 중인 닉네임이에요.';
+          }
+          debugPrint('[Profile] updateNickname: ${e.message}');
+          return '닉네임 저장에 실패했어요.';
+        }
+      }
+    }
+
+    _nickname = trimmed;
+    await prefs.setString(_kNickname, trimmed);
     notifyListeners();
+    return null;
   }
 
-  Future<void> socialLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final nick = prefs.getString(_kNickname) ?? _generateNickname();
-    final fakeAccount = Account(
-        id: 'social_${DateTime.now().millisecondsSinceEpoch}',
-        password: '',
-        nickname: nick);
-    await _saveSession(prefs, fakeAccount);
-  }
 
   /// Google Places로 매장 등록. 성공 시 6자리 ownerCode 반환.
   Future<String?> addRestaurantFromGooglePlace({

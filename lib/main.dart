@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'services/kakao_auth_service.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -18,6 +19,8 @@ import 'screens/admin_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+
+  await KakaoAuthService.initialize();
 
   if (Env.isSupabaseConfigured) {
     await SupabaseService.initialize();

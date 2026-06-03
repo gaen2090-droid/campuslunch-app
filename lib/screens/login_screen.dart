@@ -81,7 +81,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _socialLogin() => context.read<AppProvider>().socialLogin();
+  Future<void> _loginWithKakao() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+    final err = await context.read<AppProvider>().loginWithKakao();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (err != null) _error = err;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 카카오
                   GestureDetector(
-                    onTap: _socialLogin,
+                    onTap: _loading ? null : _loginWithKakao,
                     child: Container(
                       height: 52,
                       width: double.infinity,
@@ -253,9 +264,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 구글
+                  // 구글 (미연동)
                   GestureDetector(
-                    onTap: _socialLogin,
+                    onTap: _loading
+                        ? null
+                        : () => setState(() => _error = 'Google 로그인은 준비 중이에요.'),
                     child: Container(
                       height: 52,
                       width: double.infinity,

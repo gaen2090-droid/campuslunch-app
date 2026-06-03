@@ -1,7 +1,19 @@
--- 참고: 프로젝트 DB는 이미 아래 구조로 생성되어 있습니다.
--- restaurants: uuid id, name, category, area, address, latitude, longitude,
---              image_url, description, owner_id, is_active, created_at, updated_at
--- crowd_reports: level (crowd_level enum: normal|full|closed),
---                source (crowd_source enum: user|owner|system), metadata jsonb
+-- Supabase 실제 스키마 (2026-03 점검)
 --
--- 앱 연동 전 필수: supabase/policies.sql 실행
+-- public.users          ← 앱 회원 프로필 (profiles 아님!)
+--   id uuid PK (= auth.users.id)
+--   email, nickname, role (user_role enum)
+--   provider, kakao_user_id, avatar_url, last_login_at
+--   created_at, updated_at
+--
+-- public.restaurants
+-- public.crowd_reports  (level: closed|relaxed|normal|full)
+-- public.bookmarks, notification_settings, user_devices, ...
+--
+-- 필수 SQL (Dashboard → SQL Editor, 순서):
+--   1. supabase/users_auth.sql
+--   2. supabase/policies.sql
+--   3. supabase/rpc_email_signup_status.sql
+--   4. supabase/rpc_claim_owner.sql
+--   5. supabase/rpc_delete_own_account.sql
+--   6. supabase/rpc_nickname_available.sql

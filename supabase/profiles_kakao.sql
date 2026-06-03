@@ -1,0 +1,2 @@
+-- ⚠️ profiles 테이블 없음 → supabase/users_auth.sql 사용
+-- 이 파일은 users_auth.sql 에 통합되었습니다. 실행 불필요.

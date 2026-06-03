@@ -122,57 +122,66 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
 
-            // ── 기본 정보 ──
+            // ── 기본 정보 (좁은 화면·큰 글꼴에서도 오버플로우 없음) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r.name,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
-                            letterSpacing: -0.96,
-                            height: 1.15,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final statusMaxW = constraints.maxWidth * 0.36;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r.name,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827),
+                                letterSpacing: -0.96,
+                                height: 1.15,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              r.area == r.category
+                                  ? r.area
+                                  : '${r.area} · ${r.category}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF9CA3AF)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: statusMaxW),
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: Text(
+                            r.status,
+                            maxLines: 2,
+                            textAlign: TextAlign.right,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: statusColor,
+                              height: 1.15,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          r.area == r.category
-                              ? r.area
-                              : '${r.area} · ${r.category}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF9CA3AF)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      r.status,
-                      maxLines: 2,
-                      textAlign: TextAlign.end,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: statusColor,
-                        height: 1.15,
                       ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -305,6 +314,8 @@ class _DetailScreenState extends State<DetailScreen> {
                                 Expanded(
                                   child: Text(
                                     e.value.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
@@ -312,8 +323,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Text(
                                   '${_formatPrice(e.value.price)}원',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
@@ -333,7 +347,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ),
 
-            const SizedBox(height: 40),
+            SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
           ],
         ),
       ),

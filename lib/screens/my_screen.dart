@@ -37,10 +37,19 @@ class _MyScreenState extends State<MyScreen> {
     });
   }
 
-  void _saveNickname() {
+  Future<void> _saveNickname() async {
     final trimmed = _editNickname.trim();
-    if (trimmed.isNotEmpty) {
-      context.read<AppProvider>().updateNickname(trimmed);
+    if (trimmed.isEmpty) {
+      setState(() => _showEditSheet = false);
+      return;
+    }
+    final err = await context.read<AppProvider>().updateNickname(trimmed);
+    if (!mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
+      return;
     }
     setState(() => _showEditSheet = false);
   }
@@ -144,6 +153,28 @@ class _MyScreenState extends State<MyScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => _confirmWithdraw(context),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFEE2E2)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '회원 탈퇴',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFEF4444),
+                            ),
                           ),
                         ),
                       ),
@@ -560,6 +591,44 @@ class _MyScreenState extends State<MyScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  void _confirmWithdraw(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('회원 탈퇴',
+            style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text(
+          '계정과 프로필이 삭제되며 복구할 수 없어요.\n'
+          '카카오 로그인 계정은 카카오 연결도 해제됩니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소',
+                style: TextStyle(color: Color(0xFF9CA3AF))),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final err =
+                  await context.read<AppProvider>().withdrawAccount();
+              if (!context.mounted) return;
+              if (err != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err)),
+                );
+              }
+            },
+            child: const Text('탈퇴하기',
+                style: TextStyle(
+                    color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 

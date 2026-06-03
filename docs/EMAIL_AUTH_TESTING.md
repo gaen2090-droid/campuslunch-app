@@ -55,7 +55,7 @@ Users에서 해당 유저 삭제 후 다시 가입하거나, **인증 메일 다
 
 Dashboard → Authentication → **Users** → 해당 유저 → **Confirm user** (또는 이메일 확인 처리)
 
-그다음 앱에서 **로그인**하면 됩니다. (`profiles.sql` 실행되어 있어야 DB 프로필도 생성됨)
+그다음 앱에서 **로그인**하면 됩니다. (`users_auth.sql` 실행되어 있어야 DB 회원 row도 생성됨)
 
 ---
 

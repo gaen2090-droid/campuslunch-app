@@ -70,24 +70,23 @@ class RestaurantCard extends StatelessWidget {
             // 상태 뱃지
             if (meta != null) ...[
               const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Color(meta.bgColor),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    r.status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(meta.color),
-                    ),
+              Container(
+                constraints: const BoxConstraints(maxWidth: 72),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Color(meta.bgColor),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  r.status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Color(meta.color),
                   ),
                 ),
               ),

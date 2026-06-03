@@ -26,9 +26,11 @@ dart run tool/sync_env_to_native.dart
 
 순서대로 실행:
 
-1. `supabase/profiles.sql` — 회원 프로필 테이블 + 가입 트리거
-2. `supabase/policies.sql` — RLS (활성 매장만 조회, 제보는 로그인 사용자, 매장 CUD는 관리자만)
-3. `supabase/rpc_claim_owner.sql` — 사장님 6자리 코드 인증 RPC
+1. `supabase/users_auth.sql` — 회원 `public.users` + Auth 트리거
+2. `supabase/policies.sql` — RLS
+3. `supabase/rpc_email_signup_status.sql`
+4. `supabase/rpc_claim_owner.sql`
+5. `supabase/rpc_delete_own_account.sql`
 
 ## 3. 이메일 회원가입 인증 (웹 배포 없음)
 

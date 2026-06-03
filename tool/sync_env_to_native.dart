@@ -6,6 +6,7 @@ import 'dart:io';
 Future<void> main() async {
   final env = await _readEnv('.env');
   final mapsKey = env['GOOGLE_MAPS_API_KEY'] ?? '';
+  final kakaoKey = env['KAKAO_NATIVE_APP_KEY'] ?? '';
   if (mapsKey.isEmpty) {
     stderr.writeln('`.env`에 GOOGLE_MAPS_API_KEY가 없습니다.');
     exit(1);
@@ -16,6 +17,7 @@ Future<void> main() async {
   await iosSecrets.writeAsString('''
 // 자동 생성 — Git 커밋 금지 (tool/sync_env_to_native.dart)
 GOOGLE_MAPS_API_KEY=$mapsKey
+KAKAO_NATIVE_APP_KEY=$kakaoKey
 ''');
   print('Wrote ${iosSecrets.path}');
 
@@ -35,7 +37,20 @@ GOOGLE_MAPS_API_KEY=$mapsKey
     }
   }
   if (!found) out.add('GOOGLE_MAPS_API_KEY=$mapsKey');
-  await localProps.writeAsString('${out.join('\n')}\n');
+  var kakaoFound = false;
+  final out2 = <String>[];
+  for (final line in out) {
+    if (line.startsWith('KAKAO_NATIVE_APP_KEY=')) {
+      out2.add('KAKAO_NATIVE_APP_KEY=$kakaoKey');
+      kakaoFound = true;
+    } else {
+      out2.add(line);
+    }
+  }
+  if (!kakaoFound && kakaoKey.isNotEmpty) {
+    out2.add('KAKAO_NATIVE_APP_KEY=$kakaoKey');
+  }
+  await localProps.writeAsString('${out2.join('\n')}\n');
   print('Updated ${localProps.path}');
 }
 
