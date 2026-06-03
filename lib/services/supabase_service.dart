@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
-import 'auth_deep_link_handler.dart';
 
 class SupabaseService {
   static bool _initialized = false;
@@ -27,12 +26,8 @@ class SupabaseService {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
-      ),
     );
-    await AuthDeepLinkHandler.init();
     _initialized = true;
-    debugPrint('[Supabase] auth redirect: ${Env.authRedirectUrl}');
+    debugPrint('[Supabase] initialized (email OTP auth)');
   }
 }

@@ -1,6 +1,8 @@
 ﻿import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../constants/email_auth.dart';
 import '../providers/app_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -59,7 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLogin) {
       final ok = await provider.login(email, pw);
       if (!ok && mounted) setState(() {
-        _error = '이메일 또는 비밀번호가 올바르지 않아요.\n이메일 인증을 완료했는지 확인해주세요.';
+        _error = '이메일 또는 비밀번호가 올바르지 않아요.\n'
+            '가입 후 이메일 인증번호 입력을 완료했는지 확인해주세요.';
         _loading = false;
       });
     } else {
@@ -446,27 +449,58 @@ class _EmailVerifyScreen extends StatefulWidget {
 }
 
 class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
+  final _otpCtrl = TextEditingController();
   bool _resending = false;
+  bool _verifying = false;
   String? _resendMsg;
+  String? _error;
+  bool _verified = false;
+
+  @override
+  void dispose() {
+    _otpCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _resend() async {
     setState(() {
       _resending = true;
       _resendMsg = null;
+      _error = null;
     });
     final err =
         await context.read<AppProvider>().resendSignupEmail(widget.email);
     if (!mounted) return;
     setState(() {
       _resending = false;
-      _resendMsg = err ?? '인증 메일을 다시 보냈어요.';
+      _resendMsg = err ?? '인증번호를 다시 보냈어요.';
     });
+  }
+
+  Future<void> _verify() async {
+    setState(() {
+      _verifying = true;
+      _error = null;
+    });
+    final err = await context.read<AppProvider>()
+        .verifySignupOtp(widget.email, _otpCtrl.text);
+    if (!mounted) return;
+    setState(() {
+      _verifying = false;
+      if (err != null) {
+        _error = err;
+      } else {
+        _verified = true;
+      }
+    });
+  }
+
+  void _finish() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
-    final loggedIn = context.watch<AppProvider>().isLoggedIn;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -475,35 +509,35 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 뒤로가기
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new, size: 16, color: Color(0xFF374151)),
+                  child: const Icon(Icons.arrow_back_ios_new,
+                      size: 16, color: Color(0xFF374151)),
                 ),
               ),
               const SizedBox(height: 48),
-
-              // 아이콘
               Container(
-                width: 72, height: 72,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Center(
-                  child: Icon(Icons.mark_email_unread_outlined, size: 36, color: Color(0xFF16A34A)),
+                  child: Icon(Icons.pin_outlined,
+                      size: 36, color: Color(0xFF16A34A)),
                 ),
               ),
               const SizedBox(height: 28),
-
               const Text(
-                '이메일을 확인해주세요',
+                '인증번호를 입력해주세요',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
@@ -513,9 +547,8 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '${widget.email}\n으로 인증 메일을 보냈어요.\n'
-                '메일의 링크를 누르면 캠퍼스런치 앱이 열리고 가입이 완료돼요.\n'
-                '(별도 웹사이트는 없어요.)',
+                '${widget.email}\n으로 ${emailSignupOtpLength}자리 인증번호를 보냈어요.\n'
+                '메일에 적힌 번호를 아래에 입력하면 가입이 완료돼요.',
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF6B7280),
@@ -524,25 +557,80 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                '메일이 안 보이면 스팸함·프로모션함을 확인해주세요.\n'
-                '에뮬레이터도 실제 이메일 주소(Gmail 등)로 가입하면 메일은 폰/PC 메일함으로 옵니다.\n'
-                'Supabase 기본 메일은 시간당 발송 제한이 있어 1~2분 후에도 없으면 「다시 보내기」를 눌러주세요.',
+                '메일에 6자리 숫자가 보여야 해요. 링크만 있다면\n'
+                'Supabase → Email Templates → Magic Link 를\n'
+                'docs/EMAIL_OTP_SETUP.md 대로 바꾸거나\n'
+                'dart run tool/apply_supabase_email_templates.dart 를 실행하세요.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF), height: 1.5),
               ),
+              const SizedBox(height: 28),
+              TextField(
+                controller: _otpCtrl,
+                enabled: !_verified && !_verifying,
+                keyboardType: TextInputType.number,
+                maxLength: emailSignupOtpLength,
+                textAlign: TextAlign.center,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => setState(() => _error = null),
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 12,
+                  color: Color(0xFF111827),
+                ),
+                decoration: InputDecoration(
+                  hintText: List.filled(emailSignupOtpLength, '0').join(),
+                  hintStyle: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 12,
+                    color: Color(0xFFD1D5DB),
+                  ),
+                  counterText: '',
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ],
               if (_resendMsg != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   _resendMsg!,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: _resendMsg!.contains('실패') || _resendMsg!.contains('확인')
+                    color: _resendMsg!.contains('실패') ||
+                            _resendMsg!.contains('없')
                         ? const Color(0xFFEF4444)
                         : const Color(0xFF16A34A),
                   ),
                 ),
               ],
-              if (loggedIn) ...[
+              if (_verified) ...[
                 const SizedBox(height: 16),
                 const Text(
                   '이메일 인증이 완료됐어요!',
@@ -553,10 +641,42 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   ),
                 ),
               ],
-
               const Spacer(),
-
-              if (!loggedIn)
+              if (!_verified) ...[
+                GestureDetector(
+                  onTap: (_verifying ||
+                          _otpCtrl.text.length != emailSignupOtpLength)
+                      ? null
+                      : _verify,
+                  child: Container(
+                    height: 56,
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: (_verifying ||
+                              _otpCtrl.text.length != emailSignupOtpLength)
+                          ? const Color(0xFF86EFAC)
+                          : const Color(0xFF16A34A),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Center(
+                      child: _verifying
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text(
+                              '인증하기',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
                 GestureDetector(
                   onTap: _resending ? null : _resend,
                   child: Container(
@@ -573,10 +693,9 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                              child: CircularProgressIndicator(strokeWidth: 2))
                           : const Text(
-                              '인증 메일 다시 보내기',
+                              '인증번호 다시 받기',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -586,23 +705,26 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     ),
                   ),
                 ),
-
+              ],
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: _verified ? _finish : () => Navigator.pop(context),
                 child: Container(
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
+                    color: _verified
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Center(
                     child: Text(
-                      loggedIn ? '시작하기' : '로그인 하러 가기',
+                      _verified ? '시작하기' : '로그인 화면으로',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color:
+                            _verified ? Colors.white : const Color(0xFF374151),
                       ),
                     ),
                   ),

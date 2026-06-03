@@ -17,3 +17,6 @@
 --   4. supabase/rpc_claim_owner.sql
 --   5. supabase/rpc_delete_own_account.sql
 --   6. supabase/rpc_nickname_available.sql
+--
+-- 이메일 가입 OTP 메일: supabase/email_templates/ → Dashboard Confirm signup
+--   docs/EMAIL_OTP_SETUP.md

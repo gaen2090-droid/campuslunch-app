@@ -12,6 +12,16 @@ val localProperties = Properties().apply {
     if (file.exists()) load(FileInputStream(file))
 }
 
+/// Git에 포함된 팀 공용 키 (private repo). sdk.dir 은 local.properties 만 사용.
+val keysProperties = Properties().apply {
+    val file = rootProject.file("keys.properties")
+    if (file.exists()) load(FileInputStream(file))
+}
+
+fun prop(key: String): String =
+    keysProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: localProperties.getProperty(key, "")
+
 android {
     namespace = "com.campuslunch.app"
     compileSdk = flutter.compileSdkVersion
@@ -31,9 +41,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
-            localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")
-        val kakaoKey = localProperties.getProperty("KAKAO_NATIVE_APP_KEY", "")
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = prop("GOOGLE_MAPS_API_KEY")
+        val kakaoKey = prop("KAKAO_NATIVE_APP_KEY")
             .ifEmpty { " " }
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
         resValue("string", "kakao_native_app_key", kakaoKey.trim())

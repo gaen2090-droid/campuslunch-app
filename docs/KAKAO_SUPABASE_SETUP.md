@@ -60,10 +60,10 @@ https://vkacsvoknnlmcyplprft.supabase.co/auth/v1/callback
 KAKAO_NATIVE_APP_KEY=4365f2a2d44f911f29d65544f88b8cc6
 ```
 
-Android `local.properties` (선택, 네이티브 메타데이터용):
+Android `android/keys.properties` / iOS `ios/Flutter/Secrets.xcconfig` (Git 포함, `.env` 와 동기화):
 
-```properties
-KAKAO_NATIVE_APP_KEY=4365f2a2d44f911f29d65544f88b8cc6
+```bash
+dart run tool/sync_env_to_native.dart
 ```
 
 iOS `ios/Flutter/Secrets.xcconfig`:

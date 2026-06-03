@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/email_auth.dart';
 import '../config/env.dart';
 import '../utils/nickname_generator.dart';
 import '../data/auth_repository.dart';
@@ -80,6 +81,8 @@ class AppProvider extends ChangeNotifier {
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
+  static const _kPendingSignupPassword = 'cl_pending_signup_password';
+  static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
   static const _kAuthProvider = 'cl_auth_provider';
 
   static const _sessionDuration = Duration(days: 30);
@@ -268,9 +271,13 @@ class AppProvider extends ChangeNotifier {
       final status = await _authRepo.checkEmailSignupStatus(trimmedEmail);
       switch (status) {
         case EmailSignupStatus.registered:
-          return '이미 가입된 이메일이에요. 로그인해주세요.';
+          return _emailAlreadyRegisteredMessage(trimmedEmail);
         case EmailSignupStatus.pending:
-          return '이미 가입 요청된 이메일이에요. 메일함의 인증 링크를 확인하거나, 인증 화면에서 메일을 다시 보내주세요.';
+          await _storePendingSignupCredentials(
+            password: password,
+            nickname: nickname,
+          );
+          return await _resumePendingSignup(trimmedEmail);
         case EmailSignupStatus.invalid:
           return '이메일 형식을 확인해주세요.';
         case EmailSignupStatus.available:
@@ -279,35 +286,22 @@ class AppProvider extends ChangeNotifier {
       }
 
       try {
-        final res = await SupabaseService.client.auth.signUp(
-          email: trimmedEmail,
+        await _storePendingSignupCredentials(
           password: password,
-          data: {'nickname': nickname},
-          emailRedirectTo: Env.authRedirectUrl,
+          nickname: nickname,
         );
-        if (res.user == null) return '회원가입에 실패했어요.';
-
-        if (res.user!.identities != null && res.user!.identities!.isEmpty) {
-          return '이미 가입된 이메일이에요. 로그인해주세요.';
-        }
-
-        if (res.session != null) {
-          await _onSupabaseSignedIn(res.user!);
-          return null;
-        }
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_kAwaitingEmailConfirm, true);
-        return 'pending_email';
+        return await _sendSignupOtpEmail(
+          trimmedEmail,
+          data: {'nickname': nickname},
+        );
       } on AuthException catch (e) {
         final msg = e.message.toLowerCase();
         if (msg.contains('already') || msg.contains('registered')) {
-          return '이미 가입된 이메일이에요. 로그인해주세요.';
+          return _emailAlreadyRegisteredMessage(trimmedEmail);
         }
         if (msg.contains('rate') || msg.contains('limit')) {
-          return '메일 발송 한도에 걸렸어요. 30분 후 다시 시도하거나 다른 이메일로 가입해주세요.';
-        }
-        if (msg.contains('redirect') || msg.contains('url')) {
-          return '인증 주소 설정 오류예요. Supabase Redirect URLs에 campuslunch://login-callback 을 등록해주세요.';
+          return '메일 발송 한도에 걸렸어요.\n'
+              '잠시 후 다시 시도하거나 docs/EMAIL_OTP_SETUP.md 의 Rate limits 를 확인해주세요.';
         }
         return e.message;
       } catch (e) {
@@ -325,7 +319,129 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
-  /// 이메일 인증 메일 재발송
+  static String _emailAlreadyRegisteredMessage(String email) =>
+      '이미 가입된 이메일이에요.\n'
+      'Table Editor의 public.users 만 지운 경우 auth.users 에 남아 있을 수 있어요.\n'
+      'Supabase → Authentication → Users 에서 삭제하거나\n'
+      'dart run tool/purge_auth_user.dart --email=$email';
+
+  Future<void> _storePendingSignupCredentials({
+    required String password,
+    required String nickname,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kPendingSignupPassword, password);
+    await prefs.setString(_kPendingSignupNickname, nickname);
+  }
+
+  Future<void> _clearPendingSignupCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kPendingSignupPassword);
+    await prefs.remove(_kPendingSignupNickname);
+  }
+
+  /// signInWithOtp → Magic Link 템플릿에 {{ .Token }} 이 있으면 6자리 메일 발송
+  Future<String?> _sendSignupOtpEmail(
+    String email, {
+    Map<String, dynamic>? data,
+  }) async {
+    await SupabaseService.client.auth.signInWithOtp(
+      email: email.trim(),
+      shouldCreateUser: true,
+      data: data,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAwaitingEmailConfirm, true);
+    return 'pending_email';
+  }
+
+  /// auth.users 에는 있으나 인증 미완료 — OTP 재발송 후 인증 화면으로
+  Future<String?> _resumePendingSignup(String email) async {
+    try {
+      await SupabaseService.client.auth.signInWithOtp(
+        email: email.trim(),
+        shouldCreateUser: false,
+      );
+    } on AuthException catch (e) {
+      debugPrint('[Supabase] resend pending signup OTP: ${e.message}');
+      return '인증번호 재발송에 실패했어요. (${e.message})';
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAwaitingEmailConfirm, true);
+    return 'pending_email';
+  }
+
+  /// 이메일 가입 인증번호 확인 (6자리, Supabase 최소값)
+  Future<String?> verifySignupOtp(String email, String code) async {
+    if (!SupabaseService.isReady) return '서버 연결을 확인해주세요.';
+
+    final token = code.trim();
+    if (!RegExp('^\\d{$emailSignupOtpLength}\$').hasMatch(token)) {
+      return '${emailSignupOtpLength}자리 인증번호를 입력해주세요.';
+    }
+
+    try {
+      AuthResponse res;
+      try {
+        res = await SupabaseService.client.auth.verifyOTP(
+          type: OtpType.email,
+          email: email.trim(),
+          token: token,
+        );
+      } on AuthException catch (e) {
+        final msg = e.message.toLowerCase();
+        if (msg.contains('invalid') ||
+            msg.contains('otp') ||
+            msg.contains('token')) {
+          res = await SupabaseService.client.auth.verifyOTP(
+            type: OtpType.signup,
+            email: email.trim(),
+            token: token,
+          );
+        } else {
+          rethrow;
+        }
+      }
+      final user = res.user;
+      if (user == null) return '인증에 실패했어요.';
+
+      final prefs = await SharedPreferences.getInstance();
+      final pendingPassword = prefs.getString(_kPendingSignupPassword);
+      final pendingNickname = prefs.getString(_kPendingSignupNickname);
+      if (pendingPassword != null && pendingPassword.length >= 6) {
+        final data = <String, dynamic>{};
+        if (pendingNickname != null && pendingNickname.isNotEmpty) {
+          data['nickname'] = pendingNickname;
+        }
+        await SupabaseService.client.auth.updateUser(
+          UserAttributes(
+            password: pendingPassword,
+            data: data.isEmpty ? null : data,
+          ),
+        );
+      }
+
+      await prefs.remove(_kAwaitingEmailConfirm);
+      await _clearPendingSignupCredentials();
+      await _onSupabaseSignedIn(user);
+      notifyListeners();
+      return null;
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('expired') || msg.contains('otp_expired')) {
+        return '인증번호가 만료됐어요. 다시 받아주세요.';
+      }
+      if (msg.contains('invalid') || msg.contains('otp')) {
+        return '인증번호가 올바르지 않아요.';
+      }
+      return e.message;
+    } catch (e) {
+      debugPrint('[Supabase] verifyOTP failed: $e');
+      return '인증에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
+  /// 이메일 인증번호 재발송
   Future<String?> resendSignupEmail(String email) async {
     if (!SupabaseService.isReady) return '서버 연결을 확인해주세요.';
 
@@ -338,16 +454,15 @@ class AppProvider extends ChangeNotifier {
     }
 
     try {
-      await SupabaseService.client.auth.resend(
-        type: OtpType.signup,
+      await SupabaseService.client.auth.signInWithOtp(
         email: email.trim(),
-        emailRedirectTo: Env.authRedirectUrl,
+        shouldCreateUser: false,
       );
       return null;
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      debugPrint('[Supabase] resend failed: $e');
+      debugPrint('[Supabase] resend OTP failed: $e');
       return '메일 재발송에 실패했어요.';
     }
   }
