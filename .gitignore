@@ -23,11 +23,10 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
-.env
+# 로컬·팀 비밀 (GitHub Push Protection — Supabase secret/token 은 push 불가)
+.env.secrets
 .env.local
 .env.*.local
-.env.secrets
-ios/Flutter/Secrets.xcconfig
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -35,6 +34,7 @@ ios/Flutter/Secrets.xcconfig
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/Flutter/ephemeral/
+# sdk.dir 등 기기별 경로 — Flutter가 자동 생성 (키는 android/keys.properties)
 android/local.properties
 .dart_tool/
 .flutter-plugins-dependencies
