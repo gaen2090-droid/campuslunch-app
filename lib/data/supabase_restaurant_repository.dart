@@ -27,15 +27,37 @@ class SupabaseRestaurantRepository {
 
   Future<List<Restaurant>> fetchAll() async {
     final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(hours: 1)).toUtc().toIso8601String();
+
     final rows = await _client
         .from('restaurants')
         .select()
         .eq('is_active', true)
         .order('created_at');
 
-    final reports = await _client.from('crowd_reports').select();
+    // 오늘 영업 시작 이후 제보만 가져옴 (자정 기준으로 충분히 커버)
+    final todayStart = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+    final reports = await _client
+        .from('crowd_reports')
+        .select()
+        .gte('created_at', todayStart);
     final reportsByRestaurant = _groupReports(reports);
     final crowdStatusByRestaurant = await _fetchCrowdStatusMap();
+
+    // 1시간 이내 사장님 업데이트만 가져와서 매장별 최신 시각 매핑
+    final ownerRows = await _client
+        .from('owner_seat_updates')
+        .select('restaurant_id, created_at')
+        .gte('created_at', cutoff)
+        .order('created_at', ascending: false);
+    final ownerUpdatedAt = <String, DateTime>{};
+    for (final raw in ownerRows) {
+      final rid = raw['restaurant_id'] as String;
+      if (!ownerUpdatedAt.containsKey(rid)) {
+        ownerUpdatedAt[rid] =
+            DateTime.parse(raw['created_at'] as String).toLocal();
+      }
+    }
 
     return rows.map((row) {
       final id = row['id'] as String;
@@ -53,6 +75,8 @@ class SupabaseRestaurantRepository {
           userReports,
           crowdStatus: crowdStatusByRestaurant[id],
           now: now,
+          ownerUpdatedAt: ownerUpdatedAt[id],
+          isOpen: true,
         );
       }
       return _mergeRow(
@@ -60,7 +84,9 @@ class SupabaseRestaurantRepository {
         allReports,
         crowdStatus: crowdStatusByRestaurant[id],
         now: now,
-      ).copyWith(status: '영업안함', updated: 0);
+        ownerUpdatedAt: ownerUpdatedAt[id],
+        isOpen: false,
+      ).copyWith(status: '영업안함', updated: 0, hasCrowdUpdate: false);
     }).toList();
   }
 
@@ -399,12 +425,15 @@ class SupabaseRestaurantRepository {
     Map<String, dynamic>? crowdStatus,
     DateTime? sessionStart,
   ) {
-    if (sessionStart == null || crowdStatus == null) return false;
+    if (crowdStatus == null) return false;
     final startedRaw = crowdStatus['status_started_at'] as String?;
     final updatedRaw = crowdStatus['updated_at'] as String?;
     final anchorStr = startedRaw ?? updatedRaw;
     if (anchorStr == null) return true;
-    return DateTime.parse(anchorStr).toLocal().isBefore(sessionStart);
+    final anchor = DateTime.parse(anchorStr).toLocal();
+    // sessionStart 파싱 불가 시, 오늘 자정 기준으로 이전 데이터면 새 세션으로 간주
+    final boundary = sessionStart ?? DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    return anchor.isBefore(boundary);
   }
 
   Restaurant _mergeRow(
@@ -412,6 +441,8 @@ class SupabaseRestaurantRepository {
     List<Map<String, dynamic>> reports, {
     Map<String, dynamic>? crowdStatus,
     DateTime? now,
+    DateTime? ownerUpdatedAt,
+    bool isOpen = true,
   }) {
     final at = now ?? DateTime.now();
     final id = row['id'] as String;
@@ -423,7 +454,14 @@ class SupabaseRestaurantRepository {
 
     final parsedLevel = parseDisplayLevel(crowdStatus?['display_level']);
     final hasCrowdStatus = parsedLevel != null;
-    final hasReports = reports.isNotEmpty;
+    // 이번 영업 세션 시작 이후 제보만 유효하게 봄
+    final hasReports = sessionStart != null
+        ? reports.any((r) {
+            final createdAt = r['created_at'] as String?;
+            if (createdAt == null) return false;
+            return DateTime.parse(createdAt).toLocal().isAfter(sessionStart);
+          })
+        : reports.isNotEmpty;
 
     final computed = computeStatusFromReports(
       reports: reports,
@@ -433,19 +471,20 @@ class SupabaseRestaurantRepository {
     );
 
     late final String finalStatus;
-    var hasCrowdUpdate = false;
     var updated = 0;
+    var hasCrowdUpdate = false;
 
-    if (hasCrowdStatus && !newSession && !hasReports) {
-      finalStatus = crowdLevelToStatus(parsedLevel!);
-      hasCrowdUpdate = true;
-      updated = minutesSinceUpdated(crowdStatus!);
-    } else if (hasCrowdStatus && !newSession && hasReports) {
+    if (hasCrowdStatus && !newSession && hasReports) {
       finalStatus = computed.displayStatus;
-      hasCrowdUpdate = computed.refreshUpdatedAt;
-      updated = minutesSinceUpdated(crowdStatus!);
+      updated = minutesSinceUpdated(crowdStatus);
+      hasCrowdUpdate = true;
+    } else if (hasCrowdStatus && !newSession && !hasReports) {
+      // crowd_status는 있지만 이번 세션 ��보 없음 → 제보 필요 상태
+      finalStatus = computed.displayStatus;
+      hasCrowdUpdate = false;
     } else {
       finalStatus = computed.displayStatus;
+      hasCrowdUpdate = false;
     }
 
     final snapshot = extra?['reports_snapshot'];
@@ -478,7 +517,6 @@ class SupabaseRestaurantRepository {
       area: row['area'] as String,
       address: row['address'] as String? ?? row['area'] as String,
       status: finalStatus,
-      updated: updated,
       imageUrl: row['image_url'] as String? ?? seed?.imageUrl ?? '',
       distance: (extra?['distance'] as num?)?.toDouble() ?? seed?.distance ?? 200,
       latitude: (row['latitude'] as num?)?.toDouble() ?? 0,
@@ -498,8 +536,21 @@ class SupabaseRestaurantRepository {
       ownerRegistered: extra?['owner_registered'] == true,
       crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
       crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
-      hasCrowdUpdate: hasCrowdUpdate,
+      hasCrowdUpdate: hasCrowdUpdate || ownerUpdatedAt != null,
+      updated: _effectiveUpdated(updated, ownerUpdatedAt, at),
+      createdAt: row['created_at'] != null
+          ? DateTime.tryParse(row['created_at'] as String)?.toLocal()
+          : null,
+      ownerUpdatedAt: ownerUpdatedAt,
     );
+  }
+
+  /// 사장님 업데이트가 더 최신이면 그 분 수를 반환
+  int _effectiveUpdated(int crowdMinutes, DateTime? ownerAt, DateTime now) {
+    if (ownerAt == null) return crowdMinutes;
+    final ownerMinutes = now.difference(ownerAt).inMinutes.clamp(0, 99999);
+    if (crowdMinutes <= 0) return ownerMinutes;
+    return ownerMinutes < crowdMinutes ? ownerMinutes : crowdMinutes;
   }
 
   Future<List<RecentCrowdReport>> fetchRecentReports(

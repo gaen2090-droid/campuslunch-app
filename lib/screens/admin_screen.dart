@@ -42,14 +42,8 @@ String _formatRate(double rate) {
   return rate.toStringAsFixed(1);
 }
 
-const _regions = ['학교', '정문', '중문', '후문'];
-const _cuisines = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
-const _areaByRegion = {
-  '학교': '학생회관',
-  '정문': '정문 근처',
-  '중문': '중문 근처',
-  '후문': '후문 골목',
-};
+const _regions = ['정문', '중문', '후문'];
+const _cuisines = ['한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
 
 // ── Admin screen ────────────────────────────────────────────────────────────
 class AdminScreen extends StatefulWidget {
@@ -822,7 +816,7 @@ class _MetricsTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          '푸시: 월~금 12:00·18:00 KST, 추천 배너 매장 구역 기준',
+          '푸시: 평일 12:00·18:00 KST, 추천 배너 매장 구역 기준',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
         ),
@@ -2625,7 +2619,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,
-      'address': _areaByRegion[_region] ?? _region,
+      'address': _region,
       'hours': hours,
       'menu': validMenu,
       if (imageUrl.isNotEmpty) 'image_url': imageUrl,
@@ -2954,7 +2948,7 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,
-      'address': _areaByRegion[_region] ?? _region,
+      'address': _region,
       'hours': hours,
       'menu': validMenu,
       if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,

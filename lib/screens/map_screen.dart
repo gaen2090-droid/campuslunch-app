@@ -29,10 +29,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _searchActive = false;
   final _searchCtrl = TextEditingController();
 
-  static const _regionOpts = [_allLabel, '학교', '정문', '중문', '후문'];
+  static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [
     _allLabel,
-    '학식',
     '한식',
     '중식',
     '일식',

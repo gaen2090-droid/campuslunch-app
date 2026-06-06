@@ -37,6 +37,8 @@ class Restaurant {
   final String crowdConfidence;
   /// crowd_status 행 기준 실제 업데이트가 있을 때만 `n분 전 업데이트` 표시
   final bool hasCrowdUpdate;
+  final DateTime? createdAt;
+  final DateTime? ownerUpdatedAt;
 
   Restaurant({
     required this.id,
@@ -63,6 +65,8 @@ class Restaurant {
     this.crowdBaseSource = '',
     this.crowdConfidence = '',
     this.hasCrowdUpdate = true,
+    this.createdAt,
+    this.ownerUpdatedAt,
   });
 
   Restaurant copyWith({
@@ -98,6 +102,8 @@ class Restaurant {
         crowdBaseSource: crowdBaseSource ?? this.crowdBaseSource,
         crowdConfidence: crowdConfidence ?? this.crowdConfidence,
         hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
+        createdAt: createdAt,
+        ownerUpdatedAt: ownerUpdatedAt,
       );
 
   int get totalReports =>

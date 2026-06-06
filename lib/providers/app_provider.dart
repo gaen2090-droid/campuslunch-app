@@ -112,6 +112,7 @@ class AppProvider extends ChangeNotifier {
   bool get _canAdminOps => _userRole == 'admin' || SupabaseService.isAdmin;
 
   StreamSubscription<AuthState>? _authSub;
+  RealtimeChannel? _realtimeChannel;
   final ProfileRepository _profileRepo = ProfileRepository();
   final AuthRepository _authRepo = AuthRepository();
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
@@ -119,6 +120,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSub?.cancel();
+    _unsubscribeRealtime();
     super.dispose();
   }
 
@@ -129,6 +131,7 @@ class AppProvider extends ChangeNotifier {
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
+    _subscribeRealtime();
 
     // 저장된 혼잡도 오버라이드 적용
     final overridesJson = prefs.getString(_kOverrides);
@@ -888,6 +891,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> _syncPushNotifications() async {
+    if (kIsWeb) return;
     final lunchOn = _notificationEnabled && _lunchPushEnabled;
     final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
     final recommended =
@@ -1614,6 +1618,31 @@ class AppProvider extends ChangeNotifier {
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
     }
+  }
+
+  void _subscribeRealtime() {
+    if (!SupabaseService.isReady) return;
+    _realtimeChannel?.unsubscribe();
+    _realtimeChannel = SupabaseService.client
+        .channel('crowd_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'crowd_status',
+          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'owner_seat_updates',
+          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
+        )
+        .subscribe();
+  }
+
+  void _unsubscribeRealtime() {
+    _realtimeChannel?.unsubscribe();
+    _realtimeChannel = null;
   }
 
   /// 영업시간 외에는 혼잡도 오버라이드보다 영업안함 우선

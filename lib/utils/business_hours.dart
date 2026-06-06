@@ -124,6 +124,30 @@ class BusinessHoursData {
     return false;
   }
 
+  /// 다음 영업 시작까지 남은 분 수 (영업 중이면 0, 파싱 불가 시 999999).
+  int minutesUntilNextOpen(DateTime now) {
+    if (isOpenAt(now)) return 0;
+    var ranges = parseCanonicalRanges(hoursCanonical);
+    if (ranges.isEmpty) {
+      final today = parseTodayFromWeekdayBlob(hoursDisplay, now);
+      if (today != null) ranges = parseCanonicalRanges(today);
+    }
+    if (ranges.isEmpty) return 999999;
+    final nowMins = now.hour * 60 + now.minute;
+    // 오늘 아직 안 온 영업 시작 시각 중 가장 가까운 것
+    int? best;
+    for (final r in ranges) {
+      if (r.$1 > nowMins) {
+        final diff = r.$1 - nowMins;
+        if (best == null || diff < best) best = diff;
+      }
+    }
+    if (best != null) return best;
+    // 오늘 모두 지났으면 내일 첫 영업 시작
+    final earliest = ranges.map((r) => r.$1).reduce((a, b) => a < b ? a : b);
+    return (24 * 60 - nowMins) + earliest;
+  }
+
   /// 현재 영업 구간 시작 시각 (영업 중이 아니면 null).
   /// `11:00-14:00, 17:00-19:00` 이면 12:00→11:00, 18:00→17:00.
   DateTime? sessionStartAt(DateTime now) {

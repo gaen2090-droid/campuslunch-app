@@ -1,8 +1,8 @@
 ﻿import '../models/restaurant.dart';
 
-const List<String> regionTabs = ['전체', '학교', '정문', '중문', '후문'];
-const List<String> cuisineFilters = ['전체', '학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
-const List<String> sortOptions = ['인기순', '가까운순', '여유로운순'];
+const List<String> regionTabs = ['전체', '정문', '중문', '후문'];
+const List<String> cuisineFilters = ['전체', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+const List<String> sortOptions = ['최신순', '인기순', '가까운순', '여유로운순'];
 
 final List<Restaurant> initialRestaurants = [
   Restaurant(

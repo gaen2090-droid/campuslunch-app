@@ -13,16 +13,30 @@ class BookmarkListScreen extends StatefulWidget {
 }
 
 class _BookmarkListScreenState extends State<BookmarkListScreen> {
+  static const _allLabel = '전체';
   String _sortBy = '최신순';
-  Set<String> _regions = {};
-  Set<String> _cuisines = {};
+  Set<String> _regions = {_allLabel};
+  Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
   bool _editMode = false;
   Set<String> _selectedIds = {};
 
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
-  static const _regionOpts = ['학교', '정문', '중문', '후문'];
-  static const _cuisineOpts = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+  static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+
+  bool _isAll(Set<String> values) =>
+      values.contains(_allLabel) && values.length == 1;
+
+  void _toggleFilter(Set<String> target, String value) {
+    if (value == _allLabel) {
+      target..clear()..add(_allLabel);
+      return;
+    }
+    target.remove(_allLabel);
+    target.contains(value) ? target.remove(value) : target.add(value);
+    if (target.isEmpty) target.add(_allLabel);
+  }
 
   List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     final useAlgo = context.read<AppProvider>().useAlgorithmRanking;
@@ -31,8 +45,8 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
         : (r.manualRank > 0 ? -r.manualRank : -9999);
 
     var list = all.where((r) {
-      final regionOk = _regions.isEmpty || _regions.contains(r.area);
-      final cuisineOk = _cuisines.isEmpty || _cuisines.contains(r.category);
+      final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
+      final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       return bookmarks.contains(r.id) && regionOk && cuisineOk;
     }).toList();
     list.sort((a, b) {
@@ -144,12 +158,12 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
-                      label: _regions.isEmpty
+                      label: _isAll(_regions) || _regions.isEmpty
                           ? '구역'
                           : _regions.length == 1
                               ? _regions.first
                               : '${_regions.first} 외 ${_regions.length - 1}',
-                      active: _regions.isNotEmpty,
+                      active: !_isAll(_regions) && _regions.isNotEmpty,
                       open: _openDropdown == 'region',
                       onTap: () => setState(() =>
                           _openDropdown =
@@ -157,12 +171,12 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
-                      label: _cuisines.isEmpty
+                      label: _isAll(_cuisines) || _cuisines.isEmpty
                           ? '음식종류'
                           : _cuisines.length == 1
                               ? _cuisines.first
                               : '${_cuisines.first} 외 ${_cuisines.length - 1}',
-                      active: _cuisines.isNotEmpty,
+                      active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
                       open: _openDropdown == 'cuisine',
                       onTap: () => setState(() =>
                           _openDropdown =
@@ -198,23 +212,21 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                               items: _regionOpts,
                               selected: _regions,
                               multiSelect: true,
-                              onSelect: (v) => setState(() {
-                                _regions.contains(v)
-                                    ? _regions.remove(v)
-                                    : _regions.add(v);
+                              onSelect: (v) => setState(() => _toggleFilter(_regions, v)),
+                              onReset: () => setState(() {
+                                _regions.clear();
+                                _regions.add(_allLabel);
                               }),
-                              onReset: () => setState(() => _regions.clear()),
                             )
                           : _DropdownGrid(
                               items: _cuisineOpts,
                               selected: _cuisines,
                               multiSelect: true,
-                              onSelect: (v) => setState(() {
-                                _cuisines.contains(v)
-                                    ? _cuisines.remove(v)
-                                    : _cuisines.add(v);
+                              onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
+                              onReset: () => setState(() {
+                                _cuisines.clear();
+                                _cuisines.add(_allLabel);
                               }),
-                              onReset: () => setState(() => _cuisines.clear()),
                             ),
                 ),
               ),
@@ -430,12 +442,15 @@ class _DropdownGrid extends StatelessWidget {
     this.onReset,
   });
 
+  static bool _isAllSelected(Set<String> s) =>
+      s.length == 1 && s.contains('전체');
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (multiSelect && selected.isNotEmpty)
+        if (multiSelect && selected.isNotEmpty && !_isAllSelected(selected))
           GestureDetector(
             onTap: onReset,
             child: const Padding(

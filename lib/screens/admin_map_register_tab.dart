@@ -30,9 +30,9 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
   String? _error;
 
   static const _categories = [
-    '학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페',
+    '한식', '중식', '일식', '양식', '아시아', '분식', '카페',
   ];
-  static const _areas = ['학식', '정문', '중문', '후문'];
+  static const _areas = ['정문', '중문', '후문'];
 
   @override
   void dispose() {

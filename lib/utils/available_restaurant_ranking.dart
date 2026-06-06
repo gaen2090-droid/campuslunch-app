@@ -1,4 +1,3 @@
-import '../data/crowd_status_algorithm.dart';
 import '../models/restaurant.dart';
 
 int availablePopularScore(Restaurant r, bool useAlgorithmRanking) =>
@@ -17,24 +16,26 @@ int availableStatusPriority(String status) {
   }
 }
 
-/// 바로 입장 가능: 여유로움 우선 → freshness → 인기순
+/// 바로 입장 가능: 1시간 단위 그룹 → 그룹 내 여유로움 우선 → 최신순 → 인기순
 List<Restaurant> sortAvailableRestaurants(
   List<Restaurant> available,
   bool useAlgorithmRanking,
 ) {
   final list = List<Restaurant>.from(available);
   list.sort((a, b) {
+    final aGroup = a.updated ~/ 60;
+    final bGroup = b.updated ~/ 60;
+    if (aGroup != bGroup) return aGroup.compareTo(bGroup);
+
     final statusDiff =
         availableStatusPriority(a.status) - availableStatusPriority(b.status);
     if (statusDiff != 0) return statusDiff;
 
-    final freshDiff = freshnessScore(b.updated) - freshnessScore(a.updated);
-    if (freshDiff != 0) return freshDiff;
+    final updatedDiff = a.updated.compareTo(b.updated);
+    if (updatedDiff != 0) return updatedDiff;
 
-    final scoreDiff = availablePopularScore(b, useAlgorithmRanking)
+    return availablePopularScore(b, useAlgorithmRanking)
         .compareTo(availablePopularScore(a, useAlgorithmRanking));
-    if (scoreDiff != 0) return scoreDiff;
-    return a.name.compareTo(b.name);
   });
   return list;
 }
@@ -67,16 +68,39 @@ AvailableSection buildAvailableSection(
   List<Restaurant> filtered,
   bool useAlgorithmRanking,
 ) {
-  final sorted = sortAvailableRestaurants(
-    filterAvailableRestaurants(filtered),
-    useAlgorithmRanking,
-  );
-  if (sorted.isEmpty) {
-    return const AvailableSection(recommended: null, cards: []);
-  }
-  final recommended = sorted.first;
+  final available = filterAvailableRestaurants(filtered);
+
+  // 추천 배너: 여유로움 15분 이내 → 없으면 약간혼잡 15분 이내 → 없으면 숨김
+  // 각 후보군 내: 최신순 → 인기순
+  int Function(Restaurant, Restaurant) recSort(bool useAlgo) =>
+      (a, b) {
+        final ud = a.updated.compareTo(b.updated);
+        if (ud != 0) return ud;
+        return availablePopularScore(b, useAlgo)
+            .compareTo(availablePopularScore(a, useAlgo));
+      };
+
+  final relaxedRecent = available
+      .where((r) => r.status == '여유로움' && r.hasCrowdUpdate && r.updated <= 15)
+      .toList()
+    ..sort(recSort(useAlgorithmRanking));
+
+  final busyRecent = available
+      .where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && r.updated <= 15)
+      .toList()
+    ..sort(recSort(useAlgorithmRanking));
+
+  final recommended = relaxedRecent.isNotEmpty
+      ? relaxedRecent.first
+      : busyRecent.isNotEmpty
+          ? busyRecent.first
+          : null;
+
+  final sorted = sortAvailableRestaurants(available, useAlgorithmRanking);
   return AvailableSection(
     recommended: recommended,
-    cards: sorted.skip(1).toList(),
+    cards: recommended == null
+        ? sorted
+        : sorted.where((r) => r.id != recommended.id).toList(),
   );
 }

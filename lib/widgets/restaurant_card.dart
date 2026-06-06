@@ -73,26 +73,34 @@ class RestaurantCard extends StatelessWidget {
               const SizedBox(width: 8),
               Container(
                 constraints: const BoxConstraints(maxWidth: 140),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Color(meta.bgColor),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                          child: Text(
-                            formatCrowdStatusLine(
-                              r.status,
-                              updatedMinutes: r.updated,
-                              hasCrowdUpdate: r.hasCrowdUpdate,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: Color(meta.color),
+                child: Text.rich(
+                  TextSpan(
+                    text: r.status,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(meta.color),
+                    ),
+                    children: [
+                      if (r.status != '영업안함' && r.hasCrowdUpdate)
+                        TextSpan(
+                          text: ' · ${formatUpdateAge(r.updated)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                    ],
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -111,7 +119,7 @@ class _IconBox extends StatelessWidget {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(color: Color(0xFFF0FDF4)),
+      decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
       child: const Center(
         child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
       ),
@@ -228,6 +236,15 @@ class HeroRestaurantCard extends StatelessWidget {
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white),
                           ),
+                          if (r.status != '영업안함' && r.hasCrowdUpdate)
+                            TextSpan(
+                              text: ' · ${formatUpdateAge(r.updated)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withAlpha(150),
+                              ),
+                            ),
                         ],
                       ),
                     ),

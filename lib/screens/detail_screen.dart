@@ -78,7 +78,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   child: RestaurantImage(
                     url: r.imageUrl,
                     fallback: () => Container(
-                      color: const Color(0xFFF0FDF4),
+                      color: const Color(0xFF2D2D2D),
                       child: const Center(
                         child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
                       ),
@@ -134,7 +134,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 builder: (context, constraints) {
                   final statusMaxW = constraints.maxWidth * 0.36;
                   return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
                         child: Column(
@@ -168,24 +168,35 @@ class _DetailScreenState extends State<DetailScreen> {
                       const SizedBox(width: 12),
                       ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: statusMaxW),
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: Text(
-                            formatCrowdStatusLine(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
                               r.status,
-                              updatedMinutes: r.updated,
-                              hasCrowdUpdate: r.hasCrowdUpdate,
+                              maxLines: 1,
+                              textAlign: TextAlign.right,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: statusColor,
+                                height: 1.15,
+                              ),
                             ),
-                            maxLines: 3,
-                            textAlign: TextAlign.right,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: statusColor,
-                              height: 1.15,
-                            ),
-                          ),
+                            if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                formatUpdateAge(r.updated),
+                                maxLines: 1,
+                                textAlign: TextAlign.right,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF9CA3AF),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
