@@ -18,8 +18,21 @@ val keysProperties = Properties().apply {
     if (file.exists()) load(FileInputStream(file))
 }
 
+val dotEnv = Properties().apply {
+    val file = rootProject.file("../.env")
+    if (file.exists()) {
+        file.readLines().forEach { line ->
+            val t = line.trim()
+            if (t.isEmpty() || t.startsWith("#")) return@forEach
+            val i = t.indexOf('=')
+            if (i > 0) setProperty(t.substring(0, i).trim(), t.substring(i + 1).trim())
+        }
+    }
+}
+
 fun prop(key: String): String =
     keysProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: dotEnv.getProperty(key)?.takeIf { it.isNotBlank() }
         ?: localProperties.getProperty(key, "")
 
 android {
@@ -42,10 +55,14 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = prop("GOOGLE_MAPS_API_KEY")
-        val kakaoKey = prop("KAKAO_NATIVE_APP_KEY")
-            .ifEmpty { " " }
+        val kakaoKey = prop("KAKAO_NATIVE_APP_KEY").trim()
+        if (kakaoKey.isEmpty()) {
+            throw GradleException(
+                "KAKAO_NATIVE_APP_KEY 가 없습니다. git pull 후 android/keys.properties 또는 .env 를 확인하세요.\n" +
+                    "또는: dart run tool/sync_env_to_native.dart",
+            )
+        }
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
-        resValue("string", "kakao_native_app_key", kakaoKey.trim())
     }
 
     buildTypes {

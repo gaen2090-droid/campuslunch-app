@@ -81,9 +81,55 @@ KAKAO_NATIVE_APP_KEY=4365f2a2d44f911f29d65544f88b8cc6
 | 로그아웃 | 카카오 SDK logout + Supabase signOut |
 | 탈퇴 | 카카오 unlink + `delete_own_account` RPC |
 
-## 6. 자주 나는 에러
+## 6. 팀원이 pull 후 KOE101 (앱 관리자 설정 오류)
+
+**원인:** 잘못된/빈 **네이티브 앱 키**, 또는 **Android 키 해시 미등록** (PC마다 디버그 키가 다름).
+
+### 파트너(개발자) 체크
+
+```bash
+git pull origin develop
+cat .env | grep KAKAO
+cat android/keys.properties | grep KAKAO
+flutter clean && flutter pub get && flutter run
+```
+
+`KAKAO_NATIVE_APP_KEY=4365f2a2d44f911f29d65544f88b8cc6` 가 보여야 합니다.
+
+### Android — 키 해시 등록 (필수)
+
+파트너 Mac에서:
+
+```bash
+dart run tool/print_kakao_android_key_hash.dart
+```
+
+Android Studio에서 signingReport가 안 보이면 터미널:
+
+```bash
+cd android && ./gradlew :app:signingReport
+```
+
+(Gradle Sync 성공 후 실행)
+
+출력된 해시를 **리드**가 카카오 콘솔에 추가:
+
+developers.kakao.com → 앱 → **플랫폼** → **Android**  
+→ 패키지 `com.campuslunch.app` → **키 해시** (기존 + 파트너 해시 줄바꿈)
+
+### iOS
+
+- 플랫폼에 **Bundle ID** `com.campuslunch.app` 등록
+- `ios/Flutter/Secrets.xcconfig` pull 포함 여부 확인 (`Debug.xcconfig`가 include)
+
+### 카카오 로그인 ON
+
+**제품 설정 → 카카오 로그인 → 활성화**, **OpenID Connect** ON.
+
+## 7. 자주 나는 에러
 
 | 메시지 | 원인 | 해결 |
 |--------|------|------|
+| **KOE101** / 앱 관리자 설정 오류 | 빈 키, REST 키 사용, 키 해시 미등록 | 위 §6 |
 | `Unacceptable audience in id_token:[4365f2a2d44f911f29d65544f88b8cc6]` | Supabase에 REST API 키만 넣음 | Kakao → **Native App Key**(또는 REST API Key 칸)에 **네이티브 앱 키** 입력 |
 | `카카오 OpenID 토큰이 없습니다` | 카카오 콘솔 OpenID Connect 미활성 | 카카오 개발자 → 카카오 로그인 → OpenID Connect ON |

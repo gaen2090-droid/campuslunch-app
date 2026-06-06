@@ -4,7 +4,7 @@
 
 | 파일 | 내용 |
 |------|------|
-| `.env` | 앱: Supabase URL·anon, Maps, Kakao |
+| `.env` | 앱: Supabase URL·anon, Maps, Kakao, Google OAuth |
 | `android/keys.properties` | Android 네이티브 키 |
 | `ios/Flutter/Secrets.xcconfig` | iOS 네이티브 키 |
 | `.env.secrets.example` | 비밀 파일 **양식만** |
@@ -32,10 +32,41 @@ cp .env.secrets.example .env.secrets
 git clone <repo>
 cd campuslunch-app
 git checkout develop
+git pull
 # .env.secrets 받아서 루트에 저장
 flutter pub get
 flutter run
 ```
+
+> **실행 대상:** `iPhone 시뮬레이터` 또는 `Android 에뮬레이터`  
+> Android Studio / Cursor에서 **Chrome(web)** 으로 실행하지 마세요.  
+> · 카카오·Google 로그인: 네이티브(iOS/Android) 전용  
+> · Chrome 실행 시 `Unable to terminate com.campuslunch.app on …simctl` 메시지는  
+>   이전에 켜 둔 iOS 시뮬레이터를 Flutter가 종료하려다 나는 **도구 경고**로, 앱 버그가 아닙니다.  
+> · 이메일 가입 오류는 웹 때문이 아니라 Resend/SMTP 이슈인 경우가 많음 (아래 SMTP 문서)
+
+### 이메일 가입 `Error sending confirmation email`
+
+1. 가입에 쓴 주소가 **Resend 가입 이메일**인지 확인 (`onboarding@resend.dev` 테스트 한도)  
+2. [Resend Logs](https://resend.com/logs) 에서 실패 사유 확인  
+3. `docs/SMTP_SETUP.md` §4 참고  
+
+### 카카오 로그인 KOE101 이 뜨면
+
+1. `.env` / `android/keys.properties` 에 `KAKAO_NATIVE_APP_KEY` 있는지 확인  
+2. `dart run tool/print_kakao_android_key_hash.dart` → 나온 해시를 **리드에게 전달**  
+3. 리드가 [카카오 콘솔](https://developers.kakao.com) Android 키 해시에 추가  
+4. `flutter clean && flutter run`  
+
+자세히: `docs/KAKAO_SUPABASE_SETUP.md` §6
+
+### Google 로그인이 안 되면
+
+1. `.env`에 `GOOGLE_OAUTH_WEB_CLIENT_ID`, `GOOGLE_OAUTH_IOS_CLIENT_ID` 확인  
+2. `dart run tool/sync_env_to_native.dart`  
+3. Supabase Google Provider Client ID = **웹** Client ID인지 확인  
+
+자세히: `docs/GOOGLE_SUPABASE_SETUP.md`
 
 ## 리드: `.env` 변경 시
 

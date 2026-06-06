@@ -97,6 +97,19 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+    final err = await context.read<AppProvider>().loginWithGoogle();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (err != null) _error = err;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -267,11 +280,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 구글 (미연동)
+                  // Google
                   GestureDetector(
-                    onTap: _loading
-                        ? null
-                        : () => setState(() => _error = 'Google 로그인은 준비 중이에요.'),
+                    onTap: _loading ? null : _loginWithGoogle,
                     child: Container(
                       height: 52,
                       width: double.infinity,

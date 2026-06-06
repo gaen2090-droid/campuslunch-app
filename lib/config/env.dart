@@ -20,4 +20,15 @@ class Env {
       dotenv.env['KAKAO_NATIVE_APP_KEY']?.trim() ?? '';
 
   static bool get isKakaoConfigured => kakaoNativeAppKey.isNotEmpty;
+
+  /// Google Cloud OAuth 2.0 — **웹** Client ID (Android serverClientId + Supabase)
+  static String get googleOAuthWebClientId =>
+      dotenv.env['GOOGLE_OAUTH_WEB_CLIENT_ID']?.trim() ?? '';
+
+  /// Google Cloud OAuth 2.0 — **iOS** Client ID
+  static String get googleOAuthIosClientId =>
+      dotenv.env['GOOGLE_OAUTH_IOS_CLIENT_ID']?.trim() ?? '';
+
+  static bool get isGoogleOAuthConfigured =>
+      googleOAuthWebClientId.isNotEmpty;
 }

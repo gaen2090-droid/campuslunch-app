@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/email_auth.dart';
@@ -14,6 +15,7 @@ import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
+import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
@@ -141,7 +143,7 @@ class AppProvider extends ChangeNotifier {
       final user = SupabaseService.client.auth.currentUser;
       if (session != null &&
           user != null &&
-          user.emailConfirmedAt != null) {
+          _isSupabaseSessionRestorable(user)) {
         await _onSupabaseSignedIn(user);
         await Future.delayed(const Duration(seconds: 2));
         notifyListeners();
@@ -303,6 +305,16 @@ class AppProvider extends ChangeNotifier {
           return '메일 발송 한도에 걸렸어요.\n'
               '잠시 후 다시 시도하거나 docs/EMAIL_OTP_SETUP.md 의 Rate limits 를 확인해주세요.';
         }
+        if (msg.contains('confirmation email') ||
+            msg.contains('sending confirmation') ||
+            msg.contains('unexpected_failure')) {
+          return '인증 메일 발송에 실패했어요.\n'
+              '· Resend 테스트 발신(onboarding@resend.dev)은 Resend 가입 이메일로만 '
+              '받을 수 있는 경우가 많아요.\n'
+              '· 다른 주소로 테스트하려면 Resend 도메인 인증 후 SMTP 발신 주소 변경.\n'
+              '· Chrome(웹)이 아니라 iOS/Android 시뮬레이터로 테스트해 보세요.\n'
+              '· Resend 대시보드 → Logs 에서 거절 사유 확인.';
+        }
         return e.message;
       } catch (e) {
         debugPrint('[Supabase] register failed: $e');
@@ -324,6 +336,24 @@ class AppProvider extends ChangeNotifier {
       'Table Editor의 public.users 만 지운 경우 auth.users 에 남아 있을 수 있어요.\n'
       'Supabase → Authentication → Users 에서 삭제하거나\n'
       'dart run tool/purge_auth_user.dart --email=$email';
+
+  static String _oauthLoginBlockedMessage(OAuthLoginEmailStatus status) {
+    switch (status) {
+      case OAuthLoginEmailStatus.blockedEmail:
+        return '이 이메일은 이미 이메일 가입으로 등록되어 있어요.\n'
+            '이메일·비밀번호로 로그인해주세요.';
+      case OAuthLoginEmailStatus.pending:
+        return '이 이메일은 가입 인증이 진행 중이에요.\n'
+            '메일의 인증번호 입력을 먼저 완료해주세요.';
+      case OAuthLoginEmailStatus.blockedOther:
+        return '이 이메일은 이미 다른 방식으로 가입된 계정이에요.\n'
+            '가입할 때 사용한 로그인 방법을 이용해주세요.';
+      case OAuthLoginEmailStatus.invalid:
+        return '이메일을 확인할 수 없어요. 다른 계정으로 시도해주세요.';
+      default:
+        return '이 이메일로는 Google 로그인을 할 수 없어요.';
+    }
+  }
 
   Future<void> _storePendingSignupCredentials({
     required String password,
@@ -467,12 +497,24 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  bool _isSupabaseSessionRestorable(User user) {
+    if (user.emailConfirmedAt != null) return true;
+    final provider = user.appMetadata['provider'] as String?;
+    if (provider == 'google' || provider == 'kakao') return true;
+    for (final identity in user.identities ?? const []) {
+      if (identity.provider == 'google' || identity.provider == 'kakao') {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _bindAuthListener() {
     _authSub?.cancel();
     _authSub = SupabaseService.client.auth.onAuthStateChange.listen((data) async {
       if (data.event == AuthChangeEvent.signedIn && data.session != null) {
         final user = data.session!.user;
-        if (user.emailConfirmedAt != null) {
+        if (_isSupabaseSessionRestorable(user)) {
           await _onSupabaseSignedIn(user);
         }
       }
@@ -572,6 +614,8 @@ class AppProvider extends ChangeNotifier {
 
     if (authProvider == 'kakao') {
       await KakaoAuthService.logoutKakao();
+    } else if (authProvider == 'google') {
+      await GoogleAuthService.signOut();
     }
 
     if (SupabaseService.isReady) {
@@ -599,6 +643,8 @@ class AppProvider extends ChangeNotifier {
     try {
       if (authProvider == 'kakao') {
         await KakaoAuthService.unlinkKakao();
+      } else if (authProvider == 'google') {
+        await GoogleAuthService.disconnect();
       }
       await _profileRepo.deleteOwnAccount();
       await SupabaseService.client.auth.signOut();
@@ -638,6 +684,72 @@ class AppProvider extends ChangeNotifier {
       return e.message;
     } catch (e) {
       debugPrint('[Kakao] loginWithKakao: $e');
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel') || msg.contains('canceled')) {
+        return '로그인이 취소되었어요.';
+      }
+      if (msg.contains('koe101') ||
+          msg.contains('invalid_client') ||
+          msg.contains('invalidclient') ||
+          msg.contains('misconfigured')) {
+        return '카카오 앱 설정 오류(KOE101).\n'
+            '1) git pull 후 .env · android/keys.properties 확인\n'
+            '2) flutter clean && flutter pub get && flutter run\n'
+            '3) Android: dart run tool/print_kakao_android_key_hash.dart 로 '
+            '키 해시를 카카오 콘솔에 등록 (docs/KAKAO_SUPABASE_SETUP.md)\n'
+            '4) iOS: Bundle ID com.campuslunch.app 등록 여부 확인';
+      }
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  /// Google 로그인 (Supabase Auth + public.users)
+  Future<String?> loginWithGoogle() async {
+    if (!GoogleAuthService.isConfigured) {
+      return 'GOOGLE_OAUTH_WEB_CLIENT_ID가 .env에 없습니다.\n'
+          'docs/GOOGLE_SUPABASE_SETUP.md 참고.';
+    }
+    if (!SupabaseService.isReady) {
+      return 'Supabase 연결을 확인해주세요.';
+    }
+
+    try {
+      final result = await GoogleAuthService.signInWithSupabase();
+      await _onSupabaseSignedIn(result.user);
+      return null;
+    } on GoogleSignInCancelled {
+      return '로그인이 취소되었어요.';
+    } on GoogleEmailBlocked catch (e) {
+      return _oauthLoginBlockedMessage(e.status);
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('already') ||
+          msg.contains('registered') ||
+          msg.contains('exists')) {
+        return '이 이메일은 이미 이메일 가입으로 등록되어 있어요.\n'
+            '이메일·비밀번호로 로그인해주세요.';
+      }
+      if (msg.contains('nonce')) {
+        return 'Google 로그인 검증 오류가 발생했어요.\n'
+            '앱을 완전히 종료한 뒤 다시 시도해주세요.\n'
+            '계속되면 Supabase → Google Provider → '
+            '「Skip nonce check」를 켜주세요. (docs/GOOGLE_SUPABASE_SETUP.md)';
+      }
+      if (e.message.contains('Unacceptable audience in id_token') ||
+          e.message.contains('audience')) {
+        return 'Supabase Google 설정을 확인해주세요.\n'
+            'Authentication → Providers → Google → Client ID에 '
+            '웹 Client ID(${Env.googleOAuthWebClientId})를 넣어야 합니다.';
+      }
+      return e.message;
+    } catch (e) {
+      debugPrint('[Google] loginWithGoogle: $e');
+      if (e is GoogleSignInException) {
+        if (e.code == GoogleSignInExceptionCode.canceled ||
+            e.code == GoogleSignInExceptionCode.interrupted) {
+          return '로그인이 취소되었어요.';
+        }
+      }
       final msg = e.toString().toLowerCase();
       if (msg.contains('cancel') || msg.contains('canceled')) {
         return '로그인이 취소되었어요.';

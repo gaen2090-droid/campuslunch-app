@@ -19,10 +19,23 @@ class KakaoAuthService {
   static bool get isConfigured => Env.isKakaoConfigured;
 
   static Future<void> initialize() async {
-    if (!isConfigured) return;
-    KakaoSdk.init(nativeAppKey: Env.kakaoNativeAppKey);
-    debugPrint('[Kakao] SDK initialized');
+    if (!isConfigured) {
+      debugPrint('[Kakao] KAKAO_NATIVE_APP_KEY 없음 — .env / keys.properties 확인');
+      return;
+    }
+    final key = Env.kakaoNativeAppKey;
+    if (!_looksLikeNativeAppKey(key)) {
+      debugPrint(
+        '[Kakao] 키 형식이 이상합니다(32자 hex 아님). '
+        'REST API 키가 아닌 네이티브 앱 키인지 확인하세요. len=${key.length}',
+      );
+    }
+    KakaoSdk.init(nativeAppKey: key);
+    debugPrint('[Kakao] SDK initialized (key …${key.substring(key.length - 4)})');
   }
+
+  static bool _looksLikeNativeAppKey(String key) =>
+      RegExp(r'^[0-9a-fA-F]{32}$').hasMatch(key);
 
   /// 카카오 로그인 → Supabase Auth 세션 (로그인 유지는 Supabase가 처리)
   /// 닉네임은 AppProvider에서 앙대+과일+숫자 형식으로 생성

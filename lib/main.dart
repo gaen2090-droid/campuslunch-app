@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
   await KakaoAuthService.initialize();
+  await GoogleAuthService.initialize();
 
   if (Env.isSupabaseConfigured) {
     await SupabaseService.initialize();
