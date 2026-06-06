@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
@@ -14,6 +15,15 @@ class _OwnerScreenState extends State<OwnerScreen> {
   String? _selectedId;
   String? _toast;
   bool _showAddSheet = false;
+  final _seatCtrl = TextEditingController();
+  bool _seatSubmitting = false;
+  String? _seatSuccessMessage;
+
+  @override
+  void dispose() {
+    _seatCtrl.dispose();
+    super.dispose();
+  }
 
   static const _opts = [
     _StatusOpt(
@@ -47,6 +57,46 @@ class _OwnerScreenState extends State<OwnerScreen> {
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => _toast = null);
     });
+  }
+
+  int? _parseSeatInput() {
+    final text = _seatCtrl.text.trim();
+    if (text.isEmpty) return null;
+    final value = int.tryParse(text);
+    if (value == null || value < 0) return null;
+    return value;
+  }
+
+  Future<void> _submitSeatUpdate(
+    AppProvider provider,
+    String restaurantId,
+  ) async {
+    final seats = _parseSeatInput();
+    if (seats == null) {
+      _showToast('0 이상의 숫자를 입력해주세요');
+      return;
+    }
+    setState(() {
+      _seatSubmitting = true;
+      _seatSuccessMessage = null;
+    });
+    final err = await provider.submitOwnerSeatUpdate(restaurantId, seats);
+    if (!mounted) return;
+    setState(() => _seatSubmitting = false);
+    if (err != null) {
+      _showToast(err);
+      return;
+    }
+    setState(() {
+      _seatSuccessMessage = '입장 가능 인원이 반영되었어요.\n1시간 동안 유저 화면에 표시됩니다.';
+    });
+  }
+
+  String _seatPreviewText() {
+    final seats = _parseSeatInput();
+    if (seats == null) return '지금 [   ]명 입장 가능해요';
+    if (seats == 0) return '지금은 바로 입장이 어려워요.';
+    return '지금 $seats명 입장 가능해요';
   }
 
   @override
@@ -110,7 +160,11 @@ class _OwnerScreenState extends State<OwnerScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedId = r.id.toString()),
+                            onTap: () => setState(() {
+                              _selectedId = r.id.toString();
+                              _seatCtrl.clear();
+                              _seatSuccessMessage = null;
+                            }),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
                               padding: const EdgeInsets.symmetric(
@@ -183,24 +237,33 @@ class _OwnerScreenState extends State<OwnerScreen> {
 
                 const SizedBox(height: 40),
 
-                // Status buttons
+                // Status + 입장 가능 인원
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                     child: Column(
-                      children: _opts.map((opt) {
-                        final selected = current == opt.key;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                      children: [
+                        ..._opts.map((opt) {
+                          final selected = current == opt.key;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: GestureDetector(
-                              onTap: () {
+                              onTap: () async {
                                 if (selected) return;
-                                provider.reportStatus(restaurant.id, opt.key);
+                                final err = await provider.reportStatus(
+                                  restaurant.id,
+                                  opt.key,
+                                );
+                                if (!context.mounted) return;
+                                if (err != null) {
+                                  _showToast(err);
+                                  return;
+                                }
                                 _showToast(
                                     '\'${restaurant.name}\' 혼잡도를 \'${opt.key}\'으로 업데이트했어요');
                               },
                               child: AnimatedContainer(
+                                height: 72,
                                 duration: const Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
                                   color: selected ? opt.activeBg : Colors.white,
@@ -213,7 +276,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                   ),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 28),
                                   child: Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -232,7 +296,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                           Text(
                                             opt.key,
                                             style: TextStyle(
-                                              fontSize: 26,
+                                              fontSize: 22,
                                               fontWeight: FontWeight.w900,
                                               letterSpacing: -0.78,
                                               color: selected
@@ -248,7 +312,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                               horizontal: 12, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: opt.activeLabelBg,
-                                            borderRadius: BorderRadius.circular(20),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
                                           ),
                                           child: const Text(
                                             '현재',
@@ -264,9 +329,150 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 ),
                               ),
                             ),
+                          );
+                        }),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
                           ),
-                        );
-                      }).toList(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '지금 몇 명까지 입장 가능한가요?',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _seatCtrl,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      onChanged: (_) => setState(() {
+                                        _seatSuccessMessage = null;
+                                      }),
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        filled: true,
+                                        fillColor: const Color(0xFFF9FAFB),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5E7EB),
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5E7EB),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF16A34A),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '명',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                _seatPreviewText(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              GestureDetector(
+                                onTap: _seatSubmitting
+                                    ? null
+                                    : () => _submitSeatUpdate(
+                                          provider,
+                                          restaurant.id.toString(),
+                                        ),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: _seatSubmitting
+                                        ? const Color(0xFF86EFAC)
+                                        : const Color(0xFF16A34A),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Center(
+                                    child: _seatSubmitting
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Text(
+                                            '반영하기',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              if (_seatSuccessMessage != null) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _seatSuccessMessage!,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF16A34A),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),

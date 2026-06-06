@@ -5,16 +5,20 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
+import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
 import 'crowd_level_mapper.dart';
+import 'crowd_status_algorithm.dart';
+import 'crowd_status_helpers.dart';
 import 'restaurants.dart';
 
 /// Supabase 실제 스키마:
 /// - restaurants: uuid id, name, category, area, address, image_url, description, latitude, longitude, ...
-/// - crowd_reports: level (enum), source (enum), metadata (jsonb), restaurant_id
+/// - crowd_reports: level (crowd_level enum), source (crowd_source enum), metadata (jsonb)
 class SupabaseRestaurantRepository {
   SupabaseRestaurantRepository({SupabaseClient? client})
       : _client = client ?? SupabaseService.client;
@@ -31,6 +35,7 @@ class SupabaseRestaurantRepository {
 
     final reports = await _client.from('crowd_reports').select();
     final reportsByRestaurant = _groupReports(reports);
+    final crowdStatusByRestaurant = await _fetchCrowdStatusMap();
 
     return rows.map((row) {
       final id = row['id'] as String;
@@ -40,21 +45,90 @@ class SupabaseRestaurantRepository {
       final isOpen = bh.isOpenAt(now);
 
       if (isOpen) {
-        // 영업 중: 과거 system 제보는 무시하고 사용자/사장 제보만 반영
         final userReports = allReports
             .where((r) => (r['source'] as String?) != 'system')
             .toList();
-        return _mergeRow(row, userReports);
+        return _mergeRow(
+          row,
+          userReports,
+          crowdStatus: crowdStatusByRestaurant[id],
+          now: now,
+        );
       }
-      // 영업 외: DB에 쓰지 않고 클라이언트에서만 영업안함 표시
-      return _mergeRow(row, allReports)
-          .copyWith(status: '영업안함', updated: 0);
+      return _mergeRow(
+        row,
+        allReports,
+        crowdStatus: crowdStatusByRestaurant[id],
+        now: now,
+      ).copyWith(status: '영업안함', updated: 0);
     }).toList();
   }
 
-  Future<void> reportStatus(String restaurantId, String uiStatus,
-      {String source = 'user', String? userId, String? nickname}) async {
-    await _client.from('crowd_reports').insert({
+  Future<int> fetchOwnerInfluence() async {
+    try {
+      final raw = await _client.rpc('get_owner_influence');
+      if (raw is num) return raw.toInt().clamp(0, 100);
+    } catch (_) {
+      try {
+        final row = await _client
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'owner_influence')
+            .maybeSingle();
+        final value = int.tryParse(row?['value']?.toString() ?? '');
+        if (value != null) return value.clamp(0, 100);
+      } catch (_) {}
+    }
+    return 80;
+  }
+
+  Future<void> setOwnerInfluence(int value) async {
+    await _client.rpc('set_owner_influence', params: {'p_value': value});
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _fetchCrowdStatusMap() async {
+    try {
+      final rows = await _client.from('crowd_status').select();
+      final map = <String, Map<String, dynamic>>{};
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        map[row['restaurant_id'] as String] = row;
+      }
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> reportStatus(
+    String restaurantId,
+    String uiStatus, {
+    String source = 'user',
+    String? userId,
+    String? nickname,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      await _client.rpc('submit_crowd_report', params: {
+        'p_restaurant_id': restaurantId,
+        'p_status': uiStatus,
+        'p_source': source,
+        'p_lat': latitude,
+        'p_lng': longitude,
+      });
+      return;
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' ||
+          e.message.contains('submit_crowd_report') ||
+          e.message.contains('Could not find')) {
+        debugPrint('[Supabase] submit_crowd_report RPC missing, fallback insert');
+      } else {
+        rethrow;
+      }
+    }
+
+    final payload = <String, dynamic>{
       'restaurant_id': restaurantId,
       'level': CrowdLevelMapper.toDb(uiStatus),
       'source': source,
@@ -62,55 +136,139 @@ class SupabaseRestaurantRepository {
         'status': uiStatus,
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
         if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
+        if (latitude != null) 'lat': latitude,
+        if (longitude != null) 'lng': longitude,
       },
-    });
+    };
+    if (_isUuid(userId)) {
+      payload['user_id'] = userId;
+    }
+    await _client.from('crowd_reports').insert(payload);
+  }
+
+  static bool _isUuid(String? value) {
+    if (value == null || value.isEmpty) return false;
+    return RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value);
   }
 
   Future<DashboardMetrics> fetchMetrics() async {
-    final now = DateTime.now().toLocal();
-    final todayStart = DateTime(now.year, now.month, now.day).toUtc();
-    final weekAgo = todayStart.subtract(const Duration(days: 6));
-
-    final rows = await _client
-        .from('crowd_reports')
-        .select('created_at, metadata, restaurant_id')
-        .gte('created_at', weekAgo.toIso8601String());
-
-    // 일별 DAU (고유 유저 수) 집계 (최근 7일)
-    final dailyUsers = List.generate(7, (_) => <String>{});
-    int todayTotal = 0;
-    final userCounts = <String, int>{};
-    final userNicknames = <String, String>{};
-
-    for (final row in rows) {
-      final createdAt =
-          DateTime.parse(row['created_at'] as String).toLocal();
-      final dayIndex = now
-          .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
-          .inDays;
-
-      final meta = row['metadata'];
-      final uid = meta is Map ? (meta['user_id'] as String?) : null;
-
-      if (dayIndex >= 0 && dayIndex < 7) {
-        if (uid != null && uid.isNotEmpty) {
-          dailyUsers[6 - dayIndex].add(uid);
-        }
+    try {
+      final raw = await _client.rpc('admin_dashboard_metrics');
+      if (raw is! Map) {
+        throw StateError('admin_dashboard_metrics returned non-object: $raw');
       }
-      if (dayIndex == 0) todayTotal++;
+      return _parseMetricsMap(Map<String, dynamic>.from(raw));
+    } catch (e, st) {
+      debugPrint('[Metrics] RPC failed, using client fallback: $e\n$st');
+      return _fetchMetricsClientFallback();
+    }
+  }
 
-      if (meta is Map) {
-        if (uid != null && uid.isNotEmpty) {
-          userCounts[uid] = (userCounts[uid] ?? 0) + 1;
-          final nick = meta['nickname'] as String?;
-          if (nick != null && nick.isNotEmpty) {
-            userNicknames[uid] = nick;
-          }
+  DashboardMetrics _parseMetricsMap(Map<String, dynamic> map) {
+    List<int> parseIntList(dynamic value, int length) {
+      if (value is! List) return List.filled(length, 0);
+      return value
+          .map((e) => e is num ? e.toInt() : int.tryParse('$e') ?? 0)
+          .toList();
+    }
+
+    List<double> parseDoubleList(dynamic value, int length) {
+      if (value is! List) return List.filled(length, 0);
+      return value
+          .map((e) => e is num ? e.toDouble() : double.tryParse('$e') ?? 0)
+          .toList();
+    }
+
+    Map<String, int> parseCountMap(dynamic value) {
+      if (value is! Map) return {};
+      return value.map(
+        (k, v) => MapEntry(k.toString(), v is num ? v.toInt() : 0),
+      );
+    }
+
+    final topReporters = <(String, int)>[];
+    final reportersRaw = map['top_reporters'];
+    if (reportersRaw is List) {
+      for (final item in reportersRaw) {
+        if (item is List && item.length >= 2) {
+          topReporters.add((
+            item[0]?.toString() ?? '익명',
+            item[1] is num ? item[1].toInt() : 0,
+          ));
         }
       }
     }
 
-    final dailyCounts = dailyUsers.map((s) => s.length).toList();
+    return DashboardMetrics(
+      dauToday: (map['dau_today'] as num?)?.toInt() ?? 0,
+      mau: (map['mau'] as num?)?.toInt() ?? 0,
+      dailyDau: parseIntList(map['daily_dau'], 7),
+      monthlyMau: parseIntList(map['monthly_mau'], 6),
+      todayReports: (map['today_reports'] as num?)?.toInt() ?? 0,
+      weekReports: (map['week_reports'] as num?)?.toInt() ?? 0,
+      bannerClickRate: (map['banner_click_rate'] as num?)?.toDouble() ?? 0,
+      dailyClickRates: parseDoubleList(map['daily_click_rates'], 7),
+      pushOpenRate: (map['push_open_rate'] as num?)?.toDouble() ?? 0,
+      dailyPushOpenRates: parseDoubleList(map['daily_push_open_rates'], 7),
+      topReporters: topReporters,
+      todayByRestaurant: parseCountMap(map['today_by_restaurant']),
+      weekByRestaurant: parseCountMap(map['week_by_restaurant']),
+    );
+  }
+
+  /// RPC 미적용·실패 시 제보 수만이라도 crowd_reports에서 집계
+  Future<DashboardMetrics> _fetchMetricsClientFallback() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final weekStart = todayStart.subtract(const Duration(days: 6));
+
+    final rows = await _client
+        .from('crowd_reports')
+        .select('created_at, metadata, restaurant_id, source')
+        .gte('created_at', weekStart.toUtc().toIso8601String());
+
+    var todayReports = 0;
+    var weekReports = 0;
+    final todayByRestaurant = <String, int>{};
+    final weekByRestaurant = <String, int>{};
+    final userCounts = <String, int>{};
+    final userNicknames = <String, String>{};
+
+    for (final row in rows) {
+      final source = row['source'] as String?;
+      if (source != 'user' && source != 'owner') continue;
+
+      final createdAt =
+          DateTime.parse(row['created_at'] as String).toLocal();
+      final day = DateTime(createdAt.year, createdAt.month, createdAt.day);
+      final dayIndex = todayStart.difference(day).inDays;
+
+      if (dayIndex >= 0 && dayIndex < 7) {
+        weekReports++;
+        final rid = row['restaurant_id']?.toString();
+        if (rid != null) {
+          weekByRestaurant[rid] = (weekByRestaurant[rid] ?? 0) + 1;
+        }
+      }
+      if (dayIndex == 0) {
+        todayReports++;
+        final rid = row['restaurant_id']?.toString();
+        if (rid != null) {
+          todayByRestaurant[rid] = (todayByRestaurant[rid] ?? 0) + 1;
+        }
+        final meta = row['metadata'];
+        if (meta is Map) {
+          final uid = meta['user_id'] as String?;
+          if (uid != null && uid.isNotEmpty) {
+            userCounts[uid] = (userCounts[uid] ?? 0) + 1;
+            final nick = meta['nickname'] as String?;
+            if (nick != null && nick.isNotEmpty) userNicknames[uid] = nick;
+          }
+        }
+      }
+    }
 
     final topReporters = (userCounts.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value)))
@@ -118,27 +276,17 @@ class SupabaseRestaurantRepository {
         .map((e) => (userNicknames[e.key] ?? e.key, e.value))
         .toList();
 
-    // 매장별 오늘 / 최근 7일 제보 수 집계
-    final todayByRestaurant = <String, int>{};
-    final weekByRestaurant = <String, int>{};
-
-    for (final row in rows) {
-      final rid = row['restaurant_id'] as String?;
-      if (rid == null) continue;
-      final createdAt =
-          DateTime.parse(row['created_at'] as String).toLocal();
-      final dayIndex = now
-          .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
-          .inDays;
-      weekByRestaurant[rid] = (weekByRestaurant[rid] ?? 0) + 1;
-      if (dayIndex == 0) {
-        todayByRestaurant[rid] = (todayByRestaurant[rid] ?? 0) + 1;
-      }
-    }
-
     return DashboardMetrics(
-      todayReports: todayTotal,
-      dailyReports: dailyCounts,
+      dauToday: 0,
+      mau: 0,
+      dailyDau: List.filled(7, 0),
+      monthlyMau: List.filled(6, 0),
+      todayReports: todayReports,
+      weekReports: weekReports,
+      bannerClickRate: 0,
+      dailyClickRates: List.filled(7, 0),
+      pushOpenRate: 0,
+      dailyPushOpenRates: List.filled(7, 0),
       topReporters: topReporters,
       todayByRestaurant: todayByRestaurant,
       weekByRestaurant: weekByRestaurant,
@@ -247,32 +395,58 @@ class SupabaseRestaurantRepository {
     return map;
   }
 
+  bool _isNewBusinessSession(
+    Map<String, dynamic>? crowdStatus,
+    DateTime? sessionStart,
+  ) {
+    if (sessionStart == null || crowdStatus == null) return false;
+    final startedRaw = crowdStatus['status_started_at'] as String?;
+    final updatedRaw = crowdStatus['updated_at'] as String?;
+    final anchorStr = startedRaw ?? updatedRaw;
+    if (anchorStr == null) return true;
+    return DateTime.parse(anchorStr).toLocal().isBefore(sessionStart);
+  }
+
   Restaurant _mergeRow(
     Map<String, dynamic> row,
-    List<Map<String, dynamic>> reports,
-  ) {
+    List<Map<String, dynamic>> reports, {
+    Map<String, dynamic>? crowdStatus,
+    DateTime? now,
+  }) {
+    final at = now ?? DateTime.now();
     final id = row['id'] as String;
     final extra = _parseDescription(row['description']);
     final seed = extra == null ? _seedByName(row['name'] as String?) : null;
+    final bh = BusinessHoursData.fromDescription(extra);
+    final sessionStart = bh.sessionStartAt(at);
+    final newSession = _isNewBusinessSession(crowdStatus, sessionStart);
 
-    final sorted = List<Map<String, dynamic>>.from(reports)
-      ..sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
+    final parsedLevel = parseDisplayLevel(crowdStatus?['display_level']);
+    final hasCrowdStatus = parsedLevel != null;
+    final hasReports = reports.isNotEmpty;
 
-    final latest = sorted.isNotEmpty ? sorted.first : null;
-    final status = latest == null
-        ? (seed?.status ?? '여유로움')
-        : CrowdLevelMapper.fromDb(
-            latest['level'] as String,
-            metadata: Map<String, dynamic>.from(
-              latest['metadata'] as Map? ?? {},
-            ),
-          );
+    final computed = computeStatusFromReports(
+      reports: reports,
+      existingStatus: crowdStatus,
+      now: at,
+      businessSessionStart: sessionStart,
+    );
 
-    final updated = latest?['created_at'] != null
-        ? DateTime.now()
-            .difference(DateTime.parse(latest!['created_at'] as String).toLocal())
-            .inMinutes
-        : 0;
+    late final String finalStatus;
+    var hasCrowdUpdate = false;
+    var updated = 0;
+
+    if (hasCrowdStatus && !newSession && !hasReports) {
+      finalStatus = crowdLevelToStatus(parsedLevel!);
+      hasCrowdUpdate = true;
+      updated = minutesSinceUpdated(crowdStatus!);
+    } else if (hasCrowdStatus && !newSession && hasReports) {
+      finalStatus = computed.displayStatus;
+      hasCrowdUpdate = computed.refreshUpdatedAt;
+      updated = minutesSinceUpdated(crowdStatus!);
+    } else {
+      finalStatus = computed.displayStatus;
+    }
 
     final snapshot = extra?['reports_snapshot'];
     final reportCounts = <String, int>{};
@@ -303,7 +477,7 @@ class SupabaseRestaurantRepository {
       category: row['category'] as String,
       area: row['area'] as String,
       address: row['address'] as String? ?? row['area'] as String,
-      status: status,
+      status: finalStatus,
       updated: updated,
       imageUrl: row['image_url'] as String? ?? seed?.imageUrl ?? '',
       distance: (extra?['distance'] as num?)?.toDouble() ?? seed?.distance ?? 200,
@@ -322,6 +496,84 @@ class SupabaseRestaurantRepository {
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
       ownerCode: extra?['owner_code'] as String? ?? '',
       ownerRegistered: extra?['owner_registered'] == true,
+      crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
+      crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
+      hasCrowdUpdate: hasCrowdUpdate,
+    );
+  }
+
+  Future<List<RecentCrowdReport>> fetchRecentReports(
+    String restaurantId, {
+    int limit = 20,
+  }) async {
+    final rows = await _client
+        .from('crowd_reports')
+        .select('id, level, source, metadata, created_at, user_id')
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return rows.map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final meta = Map<String, dynamic>.from(row['metadata'] as Map? ?? {});
+      return RecentCrowdReport(
+        id: row['id'] as String,
+        status: CrowdLevelMapper.fromDb(
+          row['level'] as String,
+          metadata: meta,
+        ),
+        source: row['source'] as String? ?? 'user',
+        createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+        userId: row['user_id'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {
+    try {
+      final raw = await _client.rpc(
+        'get_owner_seat_update',
+        params: {'p_restaurant_id': restaurantId},
+      );
+      if (raw is List && raw.isNotEmpty) {
+        return OwnerSeatUpdate.fromMap(
+          Map<String, dynamic>.from(raw.first as Map),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnerSeatUpdate failed: $e\n$st');
+    }
+    return null;
+  }
+
+  Future<OwnerSeatUpdate?> fetchLatestOwnerSeatUpdate(
+    String restaurantId,
+  ) async {
+    try {
+      final row = await _client
+          .from('owner_seat_updates')
+          .select('available_seats, created_at')
+          .eq('restaurant_id', restaurantId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (row == null) return null;
+      return OwnerSeatUpdate.fromMap(Map<String, dynamic>.from(row));
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchLatestOwnerSeatUpdate failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<void> submitOwnerSeatUpdate(
+    String restaurantId,
+    int availableSeats,
+  ) async {
+    await _client.rpc(
+      'submit_owner_seat_update',
+      params: {
+        'p_restaurant_id': restaurantId,
+        'p_available_seats': availableSeats,
+      },
     );
   }
 

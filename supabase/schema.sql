@@ -7,7 +7,8 @@
 --   created_at, updated_at
 --
 -- public.restaurants
--- public.crowd_reports  (level: closed|relaxed|normal|full)
+-- public.crowd_reports  (level: crowd_level enum closed|relaxed|normal|full)
+--                       (source: crowd_source enum user|owner|system)
 -- public.bookmarks, notification_settings, user_devices, ...
 --
 -- 필수 SQL (Dashboard → SQL Editor, 순서):
@@ -17,6 +18,15 @@
 --   4. supabase/rpc_claim_owner.sql
 --   5. supabase/rpc_delete_own_account.sql
 --   6. supabase/rpc_nickname_available.sql
+--   7. supabase/rpc_oauth_login_email_check.sql
+--   8. supabase/analytics_events.sql
+--   9. supabase/crowd_status.sql          (스키마·헬퍼·submit_crowd_report)
+--  10. supabase/crowd_status_v2_compute.sql (v2 계산·트리거·백필)
+--  11. supabase/push_analytics.sql
+--  12. supabase/owner_seat_updates.sql
+--
+-- 타입 오류 hotfix (level/source enum):
+--   supabase/hotfix_crowd_report_types.sql
 --
 -- 이메일 가입 OTP 메일: supabase/email_templates/ → Dashboard Confirm signup
 --   docs/EMAIL_OTP_SETUP.md

@@ -13,13 +13,12 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _index = 0;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      context.read<AppProvider>().recordAppSession();
       final provider = context.read<AppProvider>();
       if (!provider.showSignupCompleteMessage) return;
       provider.clearSignupCompleteMessage();
@@ -54,12 +53,14 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final index = context.watch<AppProvider>().mainTabIndex;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F7),
-      body: IndexedStack(index: _index, children: _tabs),
+      body: IndexedStack(index: index, children: _tabs),
       bottomNavigationBar: _BottomNav(
-        current: _index,
-        onTap: (i) => setState(() => _index = i),
+        current: index,
+        onTap: (i) => context.read<AppProvider>().setMainTabIndex(i),
       ),
     );
   }

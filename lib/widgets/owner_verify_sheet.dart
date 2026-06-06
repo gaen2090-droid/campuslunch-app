@@ -176,7 +176,9 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                     Text(
                       _errorCode == 'ALREADY_USED'
                           ? '이미 사용된 인증번호예요.\n관리자에게 문의해주세요.'
-                          : '인증번호가 일치하지 않아요.\n다시 확인해주세요.',
+                          : _errorCode == 'LOGIN_REQUIRED'
+                              ? '로그인 후 인증해주세요.\n계정으로 로그인한 뒤 다시 시도해주세요.'
+                              : '인증번호가 일치하지 않아요.\n다시 확인해주세요.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,

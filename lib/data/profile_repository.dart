@@ -91,6 +91,31 @@ class ProfileRepository {
     }
   }
 
+  /// public.users role 즉시 반영 (RLS: 본인 row만)
+  Future<bool> updateRole(String userId, String role) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    try {
+      final rows = await _client
+          .from(_table)
+          .update({
+            'role': role,
+            'updated_at': now,
+          })
+          .eq('id', userId)
+          .select('id');
+      return rows.isNotEmpty;
+    } catch (e, st) {
+      debugPrint('[Profile] updateRole failed: $e\n$st');
+      rethrow;
+    }
+  }
+
+  static String _resolveRole(String? existing, String? metaRole) {
+    if (metaRole == 'owner' || metaRole == 'admin') return metaRole!;
+    if (existing == 'owner' || existing == 'admin') return existing!;
+    return existing ?? metaRole ?? 'user';
+  }
+
   /// users row가 없을 때 닉네임 저장용 (기존 role 유지)
   Future<void> upsertNickname(User user, String nickname) async {
     final existing = await fetch(user.id);
@@ -105,7 +130,7 @@ class ProfileRepository {
         'id': user.id,
         'email': user.email,
         'nickname': nickname,
-        'role': existing?.role ?? 'user',
+        'role': _resolveRole(existing?.role, meta?['role'] as String?),
         'provider': provider,
         if (meta?['kakao_user_id'] != null) 'kakao_user_id': meta!['kakao_user_id'],
         if (meta?['avatar_url'] != null) 'avatar_url': meta!['avatar_url'],
@@ -131,7 +156,7 @@ class ProfileRepository {
         'id': user.id,
         'email': user.email,
         'nickname': nickname,
-        'role': existing?.role ?? 'user',
+        'role': _resolveRole(existing?.role, meta?['role'] as String?),
         'provider': provider,
         'kakao_user_id': meta?['kakao_user_id'],
         'avatar_url': meta?['avatar_url'],

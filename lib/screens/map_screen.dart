@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_google_map.dart';
@@ -391,22 +392,11 @@ class _MapScreenState extends State<MapScreen> {
                 onReport: _selected!.status == '영업안함' ? null : () => ReportSheet.show(
                   context,
                   _selected!,
-                  (status) {
-                    context.read<AppProvider>().reportStatus(_selected!.id, status);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text(
-                        '제보가 반영됐어요. 감사해요!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                      backgroundColor: const Color(0xFF111827),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                      duration: const Duration(milliseconds: 1600),
-                      elevation: 0,
-                    ));
-                  },
+                  (status) => submitCrowdReportFeedback(
+                    context,
+                    _selected!.id,
+                    status,
+                  ),
                 ),
                 onDismiss: () => setState(() => _selected = null),
                 safeBottom: safeBottom,

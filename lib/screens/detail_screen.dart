@@ -4,7 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/crowd_status_label.dart';
 import '../widgets/business_hours_section.dart';
+import '../widgets/owner_seat_message_card.dart';
+import '../models/owner_seat_update.dart';
+import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -16,6 +20,8 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
+  OwnerSeatUpdate? _ownerSeatUpdate;
+
   @override
   void initState() {
     super.initState();
@@ -26,24 +32,23 @@ class _DetailScreenState extends State<DetailScreen> {
         (x) => x.id == widget.restaurant.id,
         orElse: () => widget.restaurant,
       );
-      if (r.status == '영업안함') return;
+      if (r.status == '영업안함') {
+        _loadOwnerSeatUpdate();
+        return;
+      }
       ReportSheet.show(context, r, (status) {
-        provider.reportStatus(r.id, status);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text(
-            '제보가 반영됐어요. 감사해요!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF111827),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-          duration: const Duration(milliseconds: 1600),
-          elevation: 0,
-        ));
+        submitCrowdReportFeedback(context, r.id, status);
       });
+      _loadOwnerSeatUpdate();
     });
+  }
+
+  Future<void> _loadOwnerSeatUpdate() async {
+    final update = await context
+        .read<AppProvider>()
+        .fetchOwnerSeatUpdate(widget.restaurant.id);
+    if (!mounted) return;
+    setState(() => _ownerSeatUpdate = update);
   }
 
   @override
@@ -166,8 +171,12 @@ class _DetailScreenState extends State<DetailScreen> {
                         child: Align(
                           alignment: Alignment.topRight,
                           child: Text(
-                            r.status,
-                            maxLines: 2,
+                            formatCrowdStatusLine(
+                              r.status,
+                              updatedMinutes: r.updated,
+                              hasCrowdUpdate: r.hasCrowdUpdate,
+                            ),
+                            maxLines: 3,
                             textAlign: TextAlign.right,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -187,6 +196,10 @@ class _DetailScreenState extends State<DetailScreen> {
 
             BusinessHoursSection(hours: r.hours),
 
+            if (_ownerSeatUpdate != null &&
+                _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
+              OwnerSeatMessageCard(update: _ownerSeatUpdate!),
+
             // ── 액션 버튼 ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -198,22 +211,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
                       context,
                       r,
-                      (status) {
-                        context.read<AppProvider>().reportStatus(r.id, status);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: const Text(
-                            '제보가 반영됐어요. 감사해요!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
-                          backgroundColor: const Color(0xFF111827),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                          duration: const Duration(milliseconds: 1600),
-                          elevation: 0,
-                        ));
-                      },
+                      (status) => submitCrowdReportFeedback(context, r.id, status),
                     ),
                     child: Container(
                       height: 52,

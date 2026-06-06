@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/push_notification_service.dart';
 
 class NotificationPermissionScreen extends StatelessWidget {
   const NotificationPermissionScreen({super.key});
@@ -60,7 +61,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        '점심과 저녁 피크 시간대에\n지금 바로 갈 만한 매장을 추천해드려요.',
+                        '월~금 점심(12:00)과 저녁(18:00)에\n지금 바로 입장 가능한 매장을 알려드려요.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -78,10 +79,12 @@ class NotificationPermissionScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       GestureDetector(
-                        onTap: () {
+                        onTap: () async {
+                          await PushNotificationService.instance.requestPermission();
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '피크 시간대에 여유로운 매장을 추천드릴게요!',
+                              '월~금 12:00·18:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
@@ -92,7 +95,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                             duration: const Duration(milliseconds: 1600),
                             elevation: 0,
                           ));
-                          provider.completeNotificationPermission(true);
+                          await provider.completeNotificationPermission(true);
                         },
                         child: Container(
                           height: 56,

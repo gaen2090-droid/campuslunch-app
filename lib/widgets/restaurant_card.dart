@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
+import '../utils/crowd_status_label.dart';
 import 'restaurant_image.dart';
 
 class RestaurantCard extends StatelessWidget {
@@ -71,18 +72,22 @@ class RestaurantCard extends StatelessWidget {
             if (meta != null) ...[
               const SizedBox(width: 8),
               Container(
-                constraints: const BoxConstraints(maxWidth: 72),
+                constraints: const BoxConstraints(maxWidth: 140),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Color(meta.bgColor),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  r.status,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
+                          child: Text(
+                            formatCrowdStatusLine(
+                              r.status,
+                              updatedMinutes: r.updated,
+                              hasCrowdUpdate: r.hasCrowdUpdate,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,

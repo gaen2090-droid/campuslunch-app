@@ -6,38 +6,41 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/business_hours.dart';
+import '../utils/crowd_status_label.dart';
+import '../utils/owner_seat_label.dart';
 import '../utils/csv_export.dart';
 import 'admin_map_register_tab.dart';
-
-// ── Mock data ──────────────────────────────────────────────────────────────
-const _mau = 1843;
-const _clickRate = 68.4;
-const _pushOpenRate = 41.2;
-
-const _topReporters = [
-  ('앙대딸기2391', 23),
-  ('앙대망고4782', 18),
-  ('앙대키위8104', 15),
-];
-
-const _rankEmoji = ['🥇', '🥈', '🥉'];
-
-final _dauWeek = [98, 112, 105, 134, 127, 89, 103];
-
-const _mauMonthly = [1240, 1380, 1520, 1690, 1780, 1843];
-const _months6 = ['1월', '2월', '3월', '4월', '5월', '6월'];
-
-final _clickWeekly = [62.1, 65.3, 70.2, 68.4, 71.0, 59.8, 66.7];
-final _pushWeekly = [38.2, 40.1, 43.5, 41.2, 44.8, 37.9, 42.3];
 
 final _weekDates = List.generate(7, (i) {
   final d = DateTime.now().subtract(Duration(days: 6 - i));
   return '${d.month}/${d.day}';
 });
+
+const _rankEmoji = ['🥇', '🥈', '🥉'];
+
+List<String> get _monthLabels6 {
+  final now = DateTime.now();
+  return List.generate(6, (i) {
+    final d = DateTime(now.year, now.month - (5 - i), 1);
+    return '${d.month}월';
+  });
+}
+
+String _formatCount(int n) =>
+    n.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+
+String _formatRate(double rate) {
+  if (rate == rate.roundToDouble()) return rate.toStringAsFixed(0);
+  return rate.toStringAsFixed(1);
+}
 
 const _regions = ['학교', '정문', '중문', '후문'];
 const _cuisines = ['학식', '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
@@ -47,9 +50,6 @@ const _areaByRegion = {
   '중문': '중문 근처',
   '후문': '후문 골목',
 };
-
-int _totalReports(Restaurant r) =>
-    r.reports.values.fold(0, (s, v) => s + v);
 
 // ── Admin screen ────────────────────────────────────────────────────────────
 class AdminScreen extends StatefulWidget {
@@ -69,7 +69,9 @@ class _AdminScreenState extends State<AdminScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppProvider>().fetchMetrics();
+      final provider = context.read<AppProvider>();
+      provider.fetchMetrics();
+      provider.loadOwnerInfluence();
     });
   }
 
@@ -217,10 +219,14 @@ class _AdminScreenState extends State<AdminScreen> {
 
                 // Content
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                        24, 4, 24, MediaQuery.of(context).padding.bottom + 40),
-                    child: _tab == 'metrics'
+                  child: RefreshIndicator(
+                    onRefresh: () => context.read<AppProvider>().fetchMetrics(),
+                    color: const Color(0xFF16A34A),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                          24, 4, 24, MediaQuery.of(context).padding.bottom + 40),
+                      child: _tab == 'metrics'
                         ? _MetricsTab(
                             restaurants: restaurants,
                             metrics: metrics,
@@ -232,6 +238,7 @@ class _AdminScreenState extends State<AdminScreen> {
                             : _tab == 'popularity'
                                 ? _PopularityTab(restaurants: restaurants)
                                 : const AdminMapRegisterTab(),
+                    ),
                   ),
                 ),
               ],
@@ -575,22 +582,17 @@ class _MetricsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final todayReports = metrics.todayReports > 0
-        ? metrics.todayReports
-        : restaurants.fold(0, (s, r) => s + _totalReports(r));
-    final weekTotal = metrics.weekTotal > 0
-        ? metrics.weekTotal
-        : restaurants.fold(0, (s, r) => s + _totalReports(r));
-    final weekAvg = restaurants.isEmpty
-        ? 0.0
-        : (weekTotal / restaurants.length * 10).round() / 10;
-    final dauData = metrics.dailyReports.any((v) => v > 0)
-        ? metrics.dailyReports
-        : _dauWeek;
-    final todayDau = dauData.last;
+    final todayReports = metrics.todayReports;
+    final weekTotal = metrics.weekReports;
+    final todayDau = metrics.dauToday;
+    final clickRate = metrics.bannerClickRate;
+    final pushOpenRate = metrics.pushOpenRate;
 
     final sorted = [...restaurants]
-      ..sort((a, b) => _totalReports(b) - _totalReports(a));
+      ..sort(
+        (a, b) => (metrics.todayByRestaurant[b.id] ?? 0)
+            .compareTo(metrics.todayByRestaurant[a.id] ?? 0),
+      );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,16 +609,14 @@ class _MetricsTab extends StatelessWidget {
           ),
           childrenDelegate: SliverChildListDelegate([
             _MetricCard(
-              label: 'DAU (연동 예정)',
+              label: 'DAU',
               value: '$todayDau',
               unit: '명',
               onTap: onDauDetail,
             ),
             _MetricCard(
-              label: 'MAU (연동 예정)',
-              value: _mau.toString().replaceAllMapped(
-                  RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                  (m) => '${m[1]},'),
+              label: 'MAU',
+              value: _formatCount(metrics.mau),
               unit: '명',
               onTap: () => onDetail('mau'),
             ),
@@ -634,13 +634,13 @@ class _MetricsTab extends StatelessWidget {
             ),
             _MetricCard(
               label: '추천 배너 클릭률',
-              value: '$_clickRate',
+              value: _formatRate(clickRate),
               unit: '%',
               onTap: () => onDetail('clickRate'),
             ),
             _MetricCard(
               label: '푸시 오픈율',
-              value: '$_pushOpenRate',
+              value: _formatRate(pushOpenRate),
               unit: '%',
               onTap: () => onDetail('pushOpenRate'),
             ),
@@ -689,7 +689,7 @@ class _MetricsTab extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${_totalReports(e.value)}건',
+                          '${metrics.todayByRestaurant[e.value.id] ?? 0}건',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
@@ -821,9 +821,8 @@ class _MetricsTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-
         const Text(
-          'DAU · MAU · 클릭률은 백엔드 연동 후 실시간 반영돼요',
+          '푸시: 월~금 12:00·18:00 KST, 추천 배너 매장 구역 기준',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
         ),
@@ -895,6 +894,124 @@ class _AlgorithmToggleCard extends StatelessWidget {
   }
 }
 
+// ── Owner influence (혼잡도 계산) ─────────────────────────────────────────
+class _OwnerInfluenceCard extends StatefulWidget {
+  const _OwnerInfluenceCard();
+
+  @override
+  State<_OwnerInfluenceCard> createState() => _OwnerInfluenceCardState();
+}
+
+class _OwnerInfluenceCardState extends State<_OwnerInfluenceCard> {
+  double? _draft;
+  bool _saving = false;
+
+  String _modeLabel(int value) {
+    if (value >= 80) return '사장님 우선';
+    if (value >= 50) return '균형';
+    return '유저 중심';
+  }
+
+  Future<void> _save(int value) async {
+    setState(() => _saving = true);
+    final err = await context.read<AppProvider>().setOwnerInfluence(value);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _draft = null;
+    });
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err), backgroundColor: const Color(0xFFEF4444)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final value = (_draft ?? provider.ownerInfluence.toDouble()).round();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '혼잡도 계산 설정',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '사장님 영향력 · 유저 제보는 충분히 모일 때만 반영',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$value',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF16A34A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _modeLabel(value),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          Slider(
+            value: (_draft ?? provider.ownerInfluence.toDouble())
+                .clamp(0, 100),
+            min: 0,
+            max: 100,
+            divisions: 20,
+            activeColor: const Color(0xFF16A34A),
+            onChanged: _saving
+                ? null
+                : (v) => setState(() => _draft = v.roundToDouble()),
+            onChangeEnd: _saving ? null : (v) => _save(v.round()),
+          ),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('0 유저 중심',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+              Text('50 균형',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+              Text('100 사장님',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Popularity tab ───────────────────────────────────────────────────────
 class _PopularityTab extends StatelessWidget {
   final List<Restaurant> restaurants;
@@ -923,6 +1040,7 @@ class _PopularityTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _AlgorithmToggleCard(),
+        const SizedBox(height: 12),
         const SizedBox(height: 20),
         const Text('인기 순위',
             style: TextStyle(
@@ -1074,8 +1192,29 @@ class _RestaurantsTab extends StatefulWidget {
 
 class _RestaurantsTabState extends State<_RestaurantsTab> {
   String? _confirmDeleteId;
+  String? _expandedReportsId;
+  final Map<String, List<RecentCrowdReport>> _reportsCache = {};
+  final Set<String> _reportsLoading = {};
   final _searchCtrl = TextEditingController();
   String _query = '';
+
+  Future<void> _toggleRecentReports(String id, AppProvider provider) async {
+    if (_expandedReportsId == id) {
+      setState(() => _expandedReportsId = null);
+      return;
+    }
+    setState(() {
+      _expandedReportsId = id;
+      if (!_reportsCache.containsKey(id)) _reportsLoading.add(id);
+    });
+    if (_reportsCache.containsKey(id)) return;
+    final reports = await provider.fetchRecentCrowdReports(id);
+    if (!mounted) return;
+    setState(() {
+      _reportsCache[id] = reports;
+      _reportsLoading.remove(id);
+    });
+  }
 
   @override
   void dispose() {
@@ -1210,6 +1349,83 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF9CA3AF),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  formatCrowdStatusLine(
+                                    r.status,
+                                    updatedMinutes: r.updated,
+                                    hasCrowdUpdate: r.hasCrowdUpdate,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: statusMetaMap[r.status]?.color != null
+                                        ? Color(statusMetaMap[r.status]!.color)
+                                        : const Color(0xFF6B7280),
+                                  ),
+                                ),
+                                if (r.crowdBaseSource.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'source ${r.crowdBaseSource} · ${r.crowdConfidence}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 4),
+                                FutureBuilder(
+                                  future: provider.fetchLatestOwnerSeatUpdate(r.id),
+                                  builder: (context, snapshot) {
+                                    final update = snapshot.data;
+                                    if (update == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final visible = update.isVisibleAt(DateTime.now());
+                                    return Text(
+                                      '사장님 한마디: ${ownerSeatMessage(update)}'
+                                      '${visible ? '' : ' (만료)'} · '
+                                      '${update.createdAt.month}/${update.createdAt.day} '
+                                      '${update.createdAt.hour.toString().padLeft(2, '0')}:'
+                                      '${update.createdAt.minute.toString().padLeft(2, '0')}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: visible
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFF9CA3AF),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 6),
+                                GestureDetector(
+                                  onTap: () => _toggleRecentReports(r.id, provider),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _expandedReportsId == r.id
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                        size: 16,
+                                        color: const Color(0xFF16A34A),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '최근 제보',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: _expandedReportsId == r.id
+                                              ? const Color(0xFF16A34A)
+                                              : const Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -1381,6 +1597,14 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                           ),
                         ),
                       ],
+
+                      if (_expandedReportsId == r.id) ...[
+                        const SizedBox(height: 12),
+                        _AdminRecentReportsPanel(
+                          loading: _reportsLoading.contains(r.id),
+                          reports: _reportsCache[r.id] ?? const [],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1392,6 +1616,178 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
       ],
     );
   }
+}
+
+class _AdminRecentReportsPanel extends StatelessWidget {
+  final bool loading;
+  final List<RecentCrowdReport> reports;
+
+  const _AdminRecentReportsPanel({
+    required this.loading,
+    required this.reports,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    if (reports.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          '제보 내역이 없어요',
+          style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+        ),
+      );
+    }
+
+    final cutoff = DateTime.now().subtract(const Duration(minutes: 20));
+    final user20 =
+        reports.where((r) => r.isUser && r.createdAt.isAfter(cutoff)).toList();
+    final levelCounts = <String, int>{};
+    for (final r in user20) {
+      levelCounts[r.status] = (levelCounts[r.status] ?? 0) + 1;
+    }
+    String? latestOwner;
+    for (final r in reports) {
+      if (r.isOwner) {
+        latestOwner = r.status;
+        break;
+      }
+    }
+
+    final levelSummary = ['여유로움', '약간혼잡', '자리없음']
+        .where((s) => (levelCounts[s] ?? 0) > 0)
+        .map((s) => '$s ${levelCounts[s]}')
+        .join(' · ');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '20분 유저 제보 ${user20.length}건'
+            '${levelSummary.isNotEmpty ? ' · $levelSummary' : ''}'
+            '${latestOwner != null ? ' · 사장님 최근 $latestOwner' : ''}',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...reports.take(15).map((report) {
+            final meta = statusMetaMap[report.status];
+            final userLabel = report.userId == null
+                ? '-'
+                : report.userId!.length <= 8
+                    ? report.userId!
+                    : '${report.userId!.substring(0, 8)}…';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Text(
+                                _reportSourceLabel(report.source),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              report.status,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: meta != null
+                                    ? Color(meta.color)
+                                    : const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_formatReportTime(report.createdAt)} · $userLabel',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+String _reportSourceLabel(String source) {
+  switch (source) {
+    case 'owner':
+      return '사장님';
+    case 'system':
+      return '시스템';
+    default:
+      return '유저';
+  }
+}
+
+String _formatReportTime(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 1) return '방금';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+  if (diff.inHours < 24) return '${diff.inHours}시간 전';
+  final h = dt.hour.toString().padLeft(2, '0');
+  final m = dt.minute.toString().padLeft(2, '0');
+  return '${dt.month}/${dt.day} $h:$m';
 }
 
 // ── Shared sheet base ─────────────────────────────────────────────────────
@@ -1494,13 +1890,11 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final metrics = context.watch<AppProvider>().metrics;
-    final rawVals = metrics.dailyReports.any((v) => v > 0)
-        ? metrics.dailyReports
-        : _dauWeek;
-    final vals = rawVals.map((v) => v.toDouble()).toList();
+    final vals = metrics.dailyDau.map((v) => v.toDouble()).toList();
     final lbls = _weekLabels;
-    final current = vals.last;
-    final diff = current - vals[vals.length - 2];
+    final current = vals.isEmpty ? 0.0 : vals.last;
+    final prev = vals.length >= 2 ? vals[vals.length - 2] : 0.0;
+    final diff = current - prev;
 
     return _SheetBase(
       title: 'DAU (일간 활성 사용자)',
@@ -1558,7 +1952,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
             ),
             const SizedBox(height: 12),
             const Text(
-              '방문 연동 전 임시 데이터 · 추후 실제 방문자 수로 대체 예정',
+              '로그인 사용자 기준 · KST 일별 집계',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
             ),
@@ -1683,14 +2077,24 @@ class _DetailSheet extends StatelessWidget {
       body = _restaurantBarList(metrics.weekByRestaurant, metrics.weekTotal);
     } else {
       final configs = {
-        'mau': ('MAU (연동 예정)',
-            _mauMonthly.map((v) => v.toDouble()).toList(),
-            _months6.toList(),
-            const Color(0xFF16A34A)),
-        'clickRate': ('추천 배너 클릭률 추이', _clickWeekly, _weekDates,
-            const Color(0xFF16A34A)),
-        'pushOpenRate': ('푸시 오픈율 추이', _pushWeekly, _weekDates,
-            const Color(0xFF16A34A)),
+        'mau': (
+          'MAU (최근 30일 ${metrics.mau}명)',
+          metrics.monthlyMau.map((v) => v.toDouble()).toList(),
+          _monthLabels6,
+          const Color(0xFF16A34A),
+        ),
+        'clickRate': (
+          '추천 배너 클릭률 추이',
+          metrics.dailyClickRates,
+          _weekDates,
+          const Color(0xFF16A34A),
+        ),
+        'pushOpenRate': (
+          '푸시 오픈율 추이',
+          metrics.dailyPushOpenRates,
+          _weekDates,
+          const Color(0xFF2563EB),
+        ),
       };
 
       if (detailKey == 'ownerStatus') {
@@ -1787,7 +2191,7 @@ class _DetailSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              '백엔드 연동 전 목업 데이터예요',
+              'KST 기준 실시간 집계',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Color(0xFFD1D5DB)),
             ),
@@ -1890,6 +2294,7 @@ class _ExportSheetState extends State<_ExportSheet> {
     final buf = StringBuffer();
     final period = '${_fmt(_startDate)} ~ ${_fmt(_endDate)}';
     final rs = widget.restaurants;
+    final metrics = context.read<AppProvider>().metrics;
 
     void section(String title, List<List<String>> rows) {
       buf.writeln('[$title] 기간: $period');
@@ -1902,10 +2307,12 @@ class _ExportSheetState extends State<_ExportSheet> {
     if (_selected.contains('사용자 지표')) {
       section('사용자 지표', [
         ['항목', '값'],
-        ['DAU', '$_mau명 (오늘 ${_dauWeek.last}명)'],
-        ['MAU', '$_mau명'],
-        ['추천 배너 클릭률', '$_clickRate%'],
-        ['푸시 오픈율', '$_pushOpenRate%'],
+        ['DAU (오늘)', '${metrics.dauToday}명'],
+        ['MAU (최근 30일)', '${metrics.mau}명'],
+        ['오늘 누적 제보', '${metrics.todayReports}건'],
+        ['최근 7일 누적 제보', '${metrics.weekReports}건'],
+        ['추천 배너 클릭률 (오늘)', '${_formatRate(metrics.bannerClickRate)}%'],
+        ['푸시 오픈율 (오늘)', '${_formatRate(metrics.pushOpenRate)}%'],
       ]);
     }
     if (_selected.contains('매장 현황')) {

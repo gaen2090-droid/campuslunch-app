@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
@@ -24,9 +25,9 @@ class _MyScreenState extends State<MyScreen> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      final enabled = context.read<AppProvider>().notificationEnabled;
-      _lunchPush = enabled;
-      _dinnerPush = enabled;
+      final provider = context.read<AppProvider>();
+      _lunchPush = provider.lunchPushEnabled;
+      _dinnerPush = provider.dinnerPushEnabled;
     }
   }
 
@@ -291,15 +292,17 @@ class _MyScreenState extends State<MyScreen> {
                     const Divider(color: Color(0xFFE5E7EB), height: 1),
                     _ToggleRow(
                       title: '점심 피크 추천 알림',
-                      desc: '매일 12:00에 여유로운 매장을 추천해드려요',
+                      desc: '월~금 12:00 · 추천 매장 기준 정문/중문/후문 안내',
                       enabled: _lunchPush,
-                      onToggle: () {
+                      onToggle: () async {
                         final next = !_lunchPush;
                         setState(() => _lunchPush = next);
+                        await context.read<AppProvider>().setLunchPush(next);
+                        if (!context.mounted) return;
                         if (next) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '매일 12:00에 알림을 보내드릴게요!',
+                              '월~금 12:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
@@ -316,15 +319,17 @@ class _MyScreenState extends State<MyScreen> {
                     const Divider(color: Color(0xFFE5E7EB), height: 1),
                     _ToggleRow(
                       title: '저녁 피크 추천 알림',
-                      desc: '매일 18:00에 여유로운 매장을 추천해드려요',
+                      desc: '월~금 18:00 · 추천 매장 기준 정문/중문/후문 안내',
                       enabled: _dinnerPush,
-                      onToggle: () {
+                      onToggle: () async {
                         final next = !_dinnerPush;
                         setState(() => _dinnerPush = next);
+                        await context.read<AppProvider>().setDinnerPush(next);
+                        if (!context.mounted) return;
                         if (next) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '매일 18:00에 알림을 보내드릴게요!',
+                              '월~금 18:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
@@ -388,6 +393,81 @@ class _MyScreenState extends State<MyScreen> {
                           color: Color(0xFFD1D5DB)),
                     ),
                     const SizedBox(height: 12),
+                    if (kDebugMode) ...[
+                      GestureDetector(
+                        onTap: () async {
+                          final msg = await context
+                              .read<AppProvider>()
+                              .debugSchedulePushTest();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(msg),
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '30초 후 푸시 테스트 (앱 종료 후 확인)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF16A34A),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          final msg = await context
+                              .read<AppProvider>()
+                              .debugPushDiagnostics();
+                          if (!context.mounted) return;
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('푸시 디버그'),
+                              content: Text(msg),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('닫기'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '푸시 예약 상태 보기',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     GestureDetector(
                       onTap: () => _confirmReset(context),
                       child: Container(

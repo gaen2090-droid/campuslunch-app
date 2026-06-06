@@ -2,22 +2,28 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/email_auth.dart';
 import '../config/env.dart';
 import '../utils/nickname_generator.dart';
+import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
 import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
+import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
+import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
+import '../services/push_notification_service.dart';
+import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -51,11 +57,19 @@ class AppProvider extends ChangeNotifier {
   // ── 설정 ──
   bool _locationMode = false;
   bool _notificationEnabled = false;
+  bool _lunchPushEnabled = true;
+  bool _dinnerPushEnabled = true;
   bool _useAlgorithmRanking = true;
+  int _ownerInfluence = 80;
+  int _mainTabIndex = 0;
 
   bool get locationMode => _locationMode;
   bool get notificationEnabled => _notificationEnabled;
+  bool get lunchPushEnabled => _lunchPushEnabled;
+  bool get dinnerPushEnabled => _dinnerPushEnabled;
   bool get useAlgorithmRanking => _useAlgorithmRanking;
+  int get ownerInfluence => _ownerInfluence;
+  int get mainTabIndex => _mainTabIndex;
 
   // ── 식당 ──
   List<Restaurant> _restaurants = [];
@@ -74,6 +88,8 @@ class AppProvider extends ChangeNotifier {
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';
+  static const _kLunchPush = 'cl_push_lunch';
+  static const _kDinnerPush = 'cl_push_dinner';
   static const _kSessionExp = 'cl_session_exp';
   static const _kUserRole = 'cl_user_role';
   static const _kOwnerIds = 'cl_owner_restaurant_ids';
@@ -98,6 +114,7 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<AuthState>? _authSub;
   final ProfileRepository _profileRepo = ProfileRepository();
   final AuthRepository _authRepo = AuthRepository();
+  final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
 
   @override
   void dispose() {
@@ -171,6 +188,8 @@ class AppProvider extends ChangeNotifier {
           jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
       _locationMode = prefs.getBool(_kLocation) ?? false;
       _notificationEnabled = prefs.getBool(_kPush) ?? false;
+      _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
+      _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
       await Future.delayed(const Duration(seconds: 2));
       _stage = _userRole == 'owner' && _ownerRestaurantIds.isNotEmpty
@@ -542,10 +561,14 @@ class AppProvider extends ChangeNotifier {
     await _profileRepo.upsertFromAuthUser(
       SupabaseService.client.auth.currentUser ?? user,
     );
-    final role = profile?.role ??
-        appMeta['role'] as String? ??
-        meta?['role'] as String? ??
-        'user';
+    final metaRole = meta?['role'] as String?;
+    final profileRole = profile?.role;
+    final role = (metaRole == 'owner' || profileRole == 'owner')
+        ? 'owner'
+        : (profileRole ??
+            appMeta['role'] as String? ??
+            metaRole ??
+            'user');
     final restaurantIds = (meta?['restaurant_ids'] as List?)
             ?.map((e) => e.toString())
             .toList() ??
@@ -572,6 +595,8 @@ class AppProvider extends ChangeNotifier {
       ),
       authProvider: authProvider,
     );
+    await recordAppSession();
+    await _syncPushNotifications();
   }
 
   Future<void> _saveSession(
@@ -597,6 +622,8 @@ class AppProvider extends ChangeNotifier {
     final locationStored = prefs.containsKey(_kLocation);
     _locationMode = prefs.getBool(_kLocation) ?? false;
     _notificationEnabled = prefs.getBool(_kPush) ?? false;
+    _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
+    _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
     if (account.role == 'owner' && account.restaurantIds.isNotEmpty) {
       _stage = 'owner';
@@ -794,7 +821,15 @@ class AppProvider extends ChangeNotifier {
   Future<void> completeNotificationPermission(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     _notificationEnabled = enabled;
+    _lunchPushEnabled = enabled;
+    _dinnerPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
+    await prefs.setBool(_kLunchPush, enabled);
+    await prefs.setBool(_kDinnerPush, enabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+    }
+    await _syncPushNotifications();
     _stage = 'app';
     notifyListeners();
   }
@@ -803,27 +838,155 @@ class AppProvider extends ChangeNotifier {
   Future<void> setNotificationEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     _notificationEnabled = enabled;
+    _lunchPushEnabled = enabled;
+    _dinnerPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
+    await prefs.setBool(_kLunchPush, enabled);
+    await prefs.setBool(_kDinnerPush, enabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+    }
+    await _syncPushNotifications();
     notifyListeners();
   }
 
+  Future<void> setLunchPush(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    _lunchPushEnabled = enabled;
+    _notificationEnabled = _lunchPushEnabled || _dinnerPushEnabled;
+    await prefs.setBool(_kLunchPush, enabled);
+    await prefs.setBool(_kPush, _notificationEnabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+    }
+    await _syncPushNotifications();
+    notifyListeners();
+  }
+
+  Future<void> setDinnerPush(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    _dinnerPushEnabled = enabled;
+    _notificationEnabled = _lunchPushEnabled || _dinnerPushEnabled;
+    await prefs.setBool(_kDinnerPush, enabled);
+    await prefs.setBool(_kPush, _notificationEnabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+    }
+    await _syncPushNotifications();
+    notifyListeners();
+  }
+
+  void setMainTabIndex(int index) {
+    if (_mainTabIndex == index) return;
+    _mainTabIndex = index;
+    notifyListeners();
+  }
+
+  void openHomeFromPush([String? restaurantId]) {
+    _mainTabIndex = 0;
+    notifyListeners();
+  }
+
+  Future<void> _syncPushNotifications() async {
+    final lunchOn = _notificationEnabled && _lunchPushEnabled;
+    final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
+    final recommended =
+        pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
+
+    await PushNotificationService.instance.syncDeliveredAnalytics(
+      lunchEnabled: lunchOn,
+      dinnerEnabled: dinnerOn,
+      restaurantId: recommended?.id,
+    );
+    await PushNotificationService.instance.refreshSchedules(
+      lunchEnabled: lunchOn,
+      dinnerEnabled: dinnerOn,
+      restaurants: _restaurants,
+      useAlgorithmRanking: _useAlgorithmRanking,
+    );
+    if (kDebugMode) {
+      await PushNotificationService.instance.logPendingNotifications();
+    }
+  }
+
+  /// 디버그: N초 후 테스트 푸시 예약 (앱 종료 후 수신 확인)
+  Future<String> debugSchedulePushTest({
+    Duration delay = const Duration(seconds: 30),
+  }) async {
+    if (!kDebugMode) return '디버그 빌드에서만 사용할 수 있어요.';
+    final granted = await PushNotificationService.instance.requestPermission();
+    if (!granted) {
+      return '알림 권한이 없어요. 설정 → 캠퍼스런치 → 알림을 켜주세요.';
+    }
+    return PushNotificationService.instance.scheduleDebugNotification(
+      restaurants: _restaurants,
+      useAlgorithmRanking: _useAlgorithmRanking,
+      delay: delay,
+    );
+  }
+
+  /// 디버그: 스케줄/권한 상태 요약
+  Future<String> debugPushDiagnostics() async {
+    if (!kDebugMode) return '';
+    final lunchOn = _notificationEnabled && _lunchPushEnabled;
+    final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
+    final recommended =
+        pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
+    final pending =
+        await PushNotificationService.instance.pendingNotificationSummaries();
+    final now = DateTime.now();
+    final weekday = isWeekdayKst(now);
+
+    return [
+      '알림 ON: ${lunchOn ? '점심 ' : ''}${dinnerOn ? '저녁' : ''}${!lunchOn && !dinnerOn ? '없음' : ''}',
+      '평일(KST): $weekday (주말이면 12/18 스케줄 없음)',
+      '추천 매장: ${recommended?.name ?? '없음'}',
+      '예약 대기: ${pending.length}건',
+      if (pending.isNotEmpty) pending.take(3).join('\n'),
+    ].join('\n');
+  }
+
   // ── 혼잡도 제보 ──
-  Future<void> reportStatus(String restaurantId, String status) async {
+  /// 성공 시 null, 실패 시 사용자에게 보여줄 메시지
+  Future<String?> reportStatus(String restaurantId, String status) async {
     final repo = _restaurantRepo;
-    if (repo != null) {
+    final authUser = SupabaseService.client.auth.currentUser;
+
+    if (repo != null && authUser != null) {
       try {
-        final userId = SupabaseService.isReady
-            ? (SupabaseService.client.auth.currentUser?.id ?? _accountId)
-            : _accountId;
-        await repo.reportStatus(restaurantId, status,
-            source: _userRole == 'owner' ? 'owner' : 'user',
-            userId: userId,
-            nickname: _nickname);
+        final source = _userRole == 'owner' ? 'owner' : 'user';
+        double? lat;
+        double? lng;
+        if (source == 'user') {
+          final pos = await _currentPosition();
+          if (pos == null) {
+            return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
+          }
+          lat = pos.latitude;
+          lng = pos.longitude;
+        }
+
+        await repo.reportStatus(
+          restaurantId,
+          status,
+          source: source,
+          userId: authUser.id,
+          nickname: _nickname,
+          latitude: lat,
+          longitude: lng,
+        );
         _restaurants = _withOperatingHours(await repo.fetchAll());
+        await _syncPushNotifications();
         notifyListeners();
-        return;
+        return null;
+      } on PostgrestException catch (e) {
+        debugPrint('[Supabase] reportStatus failed: ${e.message}');
+        final msg = e.message.trim();
+        if (msg.isNotEmpty) return msg;
+        return '제보에 실패했어요. 잠시 후 다시 시도해주세요.';
       } catch (e, st) {
         debugPrint('[Supabase] reportStatus failed: $e\n$st');
+        return '제보에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
     }
 
@@ -846,6 +1009,59 @@ class AppProvider extends ChangeNotifier {
       return r.copyWith(status: status, updated: 0, reports: next);
     }).toList();
     notifyListeners();
+    return null;
+  }
+
+  Future<Position?> _currentPosition() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+      return Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> loadOwnerInfluence() async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    try {
+      _ownerInfluence = await repo.fetchOwnerInfluence();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Supabase] loadOwnerInfluence failed: $e');
+    }
+  }
+
+  Future<String?> setOwnerInfluence(int value) async {
+    if (!_canAdminOps) return '관리자만 변경할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return 'Supabase 연결이 필요해요.';
+    try {
+      final clamped = value.clamp(0, 100);
+      await repo.setOwnerInfluence(clamped);
+      _ownerInfluence = clamped;
+      _restaurants = _withOperatingHours(await repo.fetchAll());
+      notifyListeners();
+      return null;
+    } on PostgrestException catch (e) {
+      return e.message.trim().isNotEmpty
+          ? e.message.trim()
+          : '설정 저장에 실패했어요.';
+    } catch (e, st) {
+      debugPrint('[Supabase] setOwnerInfluence failed: $e\n$st');
+      return '설정 저장에 실패했어요.';
+    }
   }
 
   // ── 북마크 ──
@@ -1017,6 +1233,7 @@ class AppProvider extends ChangeNotifier {
       address: data['address'] as String? ?? data['area'] as String,
       status: '여유로움',
       updated: 0,
+      hasCrowdUpdate: false,
       imageUrl: data['image_url'] as String? ?? '',
       distance: 200,
       latitude: (data['latitude'] as num?)?.toDouble() ?? 0,
@@ -1105,6 +1322,75 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<RecentCrowdReport>> fetchRecentCrowdReports(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return [];
+    try {
+      return await repo.fetchRecentReports(restaurantId);
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchRecentCrowdReports failed: $e\n$st');
+      return [];
+    }
+  }
+
+  Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    try {
+      return await repo.fetchOwnerSeatUpdate(restaurantId);
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnerSeatUpdate failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<OwnerSeatUpdate?> fetchLatestOwnerSeatUpdate(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    try {
+      return await repo.fetchLatestOwnerSeatUpdate(restaurantId);
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchLatestOwnerSeatUpdate failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<String?> submitOwnerSeatUpdate(
+    String restaurantId,
+    int availableSeats,
+  ) async {
+    if (_userRole != 'owner') {
+      return '사장님만 입력할 수 있어요.';
+    }
+    if (!_ownerRestaurantIds.contains(restaurantId)) {
+      return '본인 매장만 입력할 수 있어요.';
+    }
+    if (availableSeats < 0) {
+      return '0 이상의 숫자만 입력할 수 있어요.';
+    }
+
+    final repo = _restaurantRepo;
+    if (repo == null) {
+      return '서버에 연결할 수 없어요.';
+    }
+    try {
+      await repo.submitOwnerSeatUpdate(restaurantId, availableSeats);
+      return null;
+    } on PostgrestException catch (e) {
+      debugPrint('[Supabase] submitOwnerSeatUpdate: ${e.message}');
+      if (e.message.contains('본인 매장')) {
+        return '본인 매장만 입력할 수 있어요.';
+      }
+      if (e.message.contains('0 이상')) {
+        return '0 이상의 숫자만 입력할 수 있어요.';
+      }
+      return '반영에 실패했어요. 잠시 후 다시 시도해주세요.';
+    } catch (e, st) {
+      debugPrint('[Supabase] submitOwnerSeatUpdate failed: $e\n$st');
+      return '반영에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
   Future<String?> uploadRestaurantImage(Uint8List bytes, String ext) async {
     final repo = _restaurantRepo;
     if (repo == null) return null;
@@ -1160,6 +1446,10 @@ class AppProvider extends ChangeNotifier {
     final trimmed = code.trim();
     if (trimmed.length != 6) return 'INVALID_CODE';
 
+    if (!_hasSupabaseSession) {
+      return 'LOGIN_REQUIRED';
+    }
+
     final repo = _restaurantRepo;
     String? restaurantId;
 
@@ -1169,6 +1459,7 @@ class AppProvider extends ChangeNotifier {
       } on PostgrestException catch (e) {
         final msg = e.message;
         if (msg.contains('ALREADY_USED')) return 'ALREADY_USED';
+        if (msg.contains('LOGIN_REQUIRED')) return 'LOGIN_REQUIRED';
         debugPrint('[verifyOwnerCode] RPC: $msg');
         return 'INVALID_CODE';
       } catch (e) {
@@ -1200,6 +1491,15 @@ class AppProvider extends ChangeNotifier {
         'restaurant_ids': [restaurantId],
       });
 
+      final user = SupabaseService.client.auth.currentUser;
+      if (user != null) {
+        try {
+          await _profileRepo.updateRole(user.id, 'owner');
+        } catch (e, st) {
+          debugPrint('[verifyOwnerCode] updateRole failed: $e\n$st');
+        }
+      }
+
       if (repo != null) {
         _restaurants = _withOperatingHours(await repo.fetchAll());
       }
@@ -1211,6 +1511,20 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[verifyOwnerCode] $e');
       return 'INVALID_CODE';
     }
+  }
+
+  Future<void> recordAppSession() async {
+    if (!SupabaseService.isReady) return;
+    if (SupabaseService.client.auth.currentUser == null) return;
+    await _analyticsRepo.recordAppSession();
+  }
+
+  Future<void> recordBannerImpression(String restaurantId) async {
+    await _analyticsRepo.recordBannerImpression(restaurantId);
+  }
+
+  Future<void> recordBannerClick(String restaurantId) async {
+    await _analyticsRepo.recordBannerClick(restaurantId);
   }
 
   Future<void> fetchMetrics() async {
@@ -1245,6 +1559,7 @@ class AppProvider extends ChangeNotifier {
         return;
       }
     }
+    await _syncPushNotifications();
     notifyListeners();
   }
 
@@ -1295,6 +1610,7 @@ class AppProvider extends ChangeNotifier {
       if (fetched.isNotEmpty) {
         _restaurants = fetched.map(_applyOperatingHours).toList();
       }
+      await _syncPushNotifications();
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
     }

@@ -4,6 +4,8 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/nearby_prompt.dart';
 import '../widgets/restaurant_card.dart';
+import '../utils/available_restaurant_ranking.dart';
+import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
@@ -24,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showBookmarked = false;
   bool _showNearby = false;
   bool? _prevLocationMode;
+  String? _lastBannerImpressionId;
   final _searchCtrl = TextEditingController();
 
   static const _regionOpts = ['학교', '정문', '중문', '후문'];
@@ -84,24 +87,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openDetail(Restaurant r) => Navigator.push(
       context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
 
+  void _openRecommendedDetail(Restaurant r) {
+    context.read<AppProvider>().recordBannerClick(r.id);
+    _openDetail(r);
+  }
+
+  void _trackBannerImpression(Restaurant? recommended) {
+    if (recommended == null) return;
+    if (_lastBannerImpressionId == recommended.id) return;
+    _lastBannerImpressionId = recommended.id;
+    context.read<AppProvider>().recordBannerImpression(recommended.id);
+  }
+
   void _openReport(Restaurant r) {
     if (r.status == '영업안함') return;
     ReportSheet.show(context, r, (status) {
-    context.read<AppProvider>().reportStatus(r.id, status);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text(
-        '제보가 반영됐어요. 감사해요!',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-      ),
-      backgroundColor: const Color(0xFF111827),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-      duration: const Duration(milliseconds: 1600),
-      elevation: 0,
-    ));
-  });
+      submitCrowdReportFeedback(context, r.id, status);
+    });
   }
 
   @override
@@ -112,17 +114,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final filtered = _filter(all, provider.bookmarks);
     final searchResults = _search(all, _searchCtrl.text);
 
-    final available = filtered.where((r) => r.status == '여유로움' || r.status == '약간혼잡').toList();
+    final availableSection = buildAvailableSection(filtered, provider.useAlgorithmRanking);
+    final recommended = availableSection.recommended;
+    final availableCards = availableSection.cards;
     final busy = filtered.where((r) => r.status == '자리없음').toList();
     final closed = filtered.where((r) => r.status == '영업안함').toList();
-    final useAlgo = provider.useAlgorithmRanking;
-    int _score(Restaurant r) => useAlgo
-        ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
-        : (r.manualRank > 0 ? -r.manualRank : -9999);
-    final recommended = available.isNotEmpty
-        ? available.reduce((a, b) => _score(a) >= _score(b) ? a : b)
-        : null;
-    final availableCards = available.where((r) => r.id != recommended?.id).toList();
+    _trackBannerImpression(recommended);
 
     return Stack(
       fit: StackFit.expand,
@@ -464,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: HeroRestaurantCard(
                   restaurant: recommended,
-                  onDetail: () => _openDetail(recommended),
+                  onDetail: () => _openRecommendedDetail(recommended),
                   onReport: () => _openReport(recommended),
                 ),
               ),

@@ -7,6 +7,7 @@ import 'config/env.dart';
 import 'providers/app_provider.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
+import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -32,13 +33,22 @@ Future<void> main() async {
     );
   }
 
+  await PushNotificationService.instance.initialize(
+    onOpenHome: (_) {},
+  );
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AppProvider()..init(),
+      create: (_) {
+        final provider = AppProvider()..init();
+        PushNotificationService.instance.onOpenHome = (_) =>
+            provider.openHomeFromPush();
+        return provider;
+      },
       child: const CampusLunchApp(),
     ),
   );

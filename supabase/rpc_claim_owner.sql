@@ -10,7 +10,12 @@ as $$
 declare
   rid uuid;
   desc_json jsonb;
+  uid uuid := auth.uid();
 begin
+  if uid is null then
+    raise exception 'LOGIN_REQUIRED';
+  end if;
+
   if p_code is null or length(trim(p_code)) <> 6 then
     raise exception 'INVALID_CODE';
   end if;
@@ -28,18 +33,43 @@ begin
   end if;
 
   if (desc_json ->> 'owner_registered')::boolean = true then
-    raise exception 'ALREADY_USED';
+    if exists (
+      select 1
+      from public.restaurants r
+      where r.id = rid
+        and r.owner_id is not null
+        and r.owner_id <> uid
+    ) then
+      raise exception 'ALREADY_USED';
+    end if;
+  else
+    desc_json := jsonb_set(desc_json, '{owner_registered}', 'true'::jsonb, true);
   end if;
 
-  desc_json := jsonb_set(desc_json, '{owner_registered}', 'true'::jsonb, true);
-
   update restaurants
-  set description = desc_json::text
+  set
+    description = desc_json::text,
+    owner_id = uid
   where id = rid;
+
+  update public.users
+  set
+    role = 'owner'::public.user_role,
+    updated_at = now()
+  where id = uid;
 
   return rid;
 end;
 $$;
+
+-- 이미 owner_id만 연결된 계정 role 백필
+update public.users u
+set
+  role = 'owner'::public.user_role,
+  updated_at = now()
+from public.restaurants r
+where r.owner_id = u.id
+  and u.role <> 'owner'::public.user_role;
 
 revoke all on function public.claim_owner_by_code(text) from public;
 grant execute on function public.claim_owner_by_code(text) to anon, authenticated;

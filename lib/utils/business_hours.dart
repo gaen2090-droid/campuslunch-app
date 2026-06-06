@@ -124,6 +124,93 @@ class BusinessHoursData {
     return false;
   }
 
+  /// 현재 영업 구간 시작 시각 (영업 중이 아니면 null).
+  /// `11:00-14:00, 17:00-19:00` 이면 12:00→11:00, 18:00→17:00.
+  DateTime? sessionStartAt(DateTime now) {
+    if (!isOpenAt(now)) return null;
+
+    if (periods.isNotEmpty) {
+      return _sessionStartFromGooglePeriods(now, periods);
+    }
+
+    var ranges = parseCanonicalRanges(hoursCanonical);
+    if (ranges.isEmpty) {
+      final today = parseTodayFromWeekdayBlob(hoursDisplay, now);
+      if (today != null) ranges = parseCanonicalRanges(today);
+    }
+    if (ranges.isEmpty) return null;
+
+    return _sessionStartFromRanges(now, ranges);
+  }
+
+  static DateTime? _sessionStartFromRanges(
+    DateTime now,
+    List<(int startMin, int endMin)> ranges,
+  ) {
+    final nowMins = now.hour * 60 + now.minute;
+    for (final r in ranges) {
+      if (!_minuteInRange(nowMins, r)) continue;
+      var day = DateTime(now.year, now.month, now.day);
+      if (r.$2 > 24 * 60 && nowMins < r.$1) {
+        day = day.subtract(const Duration(days: 1));
+      }
+      return day.add(Duration(minutes: r.$1));
+    }
+    return null;
+  }
+
+  static DateTime? _sessionStartFromGooglePeriods(
+    DateTime now,
+    List<Map<String, dynamic>> periods,
+  ) {
+    final nowMin = _weekMinute(_googleDay(now), now.hour * 60 + now.minute);
+    DateTime? best;
+    var bestStart = -1;
+
+    for (final p in periods) {
+      final open = p['open'] as Map<String, dynamic>?;
+      final close = p['close'] as Map<String, dynamic>?;
+      if (open == null || close == null) continue;
+
+      var start = _weekMinute(
+        (open['day'] as num).toInt(),
+        _parseGoogleTime(open['time'] as String?),
+      );
+      var end = _weekMinute(
+        (close['day'] as num).toInt(),
+        _parseGoogleTime(close['time'] as String?),
+      );
+      if (end <= start) end += 7 * 1440;
+
+      var cmp = nowMin;
+      if (cmp < start) cmp += 7 * 1440;
+      if (cmp < start || cmp >= end) continue;
+
+      if (start > bestStart) {
+        bestStart = start;
+        final openDay = (open['day'] as num).toInt();
+        final googleToday = _googleDay(now);
+        var dayOffset = openDay - googleToday;
+        if (dayOffset > 3) dayOffset -= 7;
+        if (dayOffset < -3) dayOffset += 7;
+        final day = DateTime(now.year, now.month, now.day)
+            .add(Duration(days: dayOffset));
+        best = day.add(
+          Duration(minutes: _parseGoogleTime(open['time'] as String?)),
+        );
+      }
+    }
+    return best;
+  }
+
+  static bool _minuteInRange(int nowMins, (int startMin, int endMin) r) {
+    if (r.$2 <= 24 * 60) {
+      return nowMins >= r.$1 && nowMins < r.$2;
+    }
+    final end = r.$2 % (24 * 60);
+    return nowMins >= r.$1 || nowMins < end;
+  }
+
   Map<String, dynamic> toDescriptionFields() => {
         'hours': hoursCanonical,
         if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,

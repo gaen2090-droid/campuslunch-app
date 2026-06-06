@@ -33,6 +33,10 @@ class Restaurant {
   final List<Map<String, dynamic>> hoursPeriods;
   Map<String, int> reports;
   final List<MenuItem> menu;
+  final String crowdBaseSource;
+  final String crowdConfidence;
+  /// crowd_status 행 기준 실제 업데이트가 있을 때만 `n분 전 업데이트` 표시
+  final bool hasCrowdUpdate;
 
   Restaurant({
     required this.id,
@@ -56,12 +60,18 @@ class Restaurant {
     this.hoursPeriods = const [],
     required this.reports,
     required this.menu,
+    this.crowdBaseSource = '',
+    this.crowdConfidence = '',
+    this.hasCrowdUpdate = true,
   });
 
   Restaurant copyWith({
     String? status,
     int? updated,
     Map<String, int>? reports,
+    String? crowdBaseSource,
+    String? crowdConfidence,
+    bool? hasCrowdUpdate,
   }) =>
       Restaurant(
         id: id,
@@ -85,6 +95,9 @@ class Restaurant {
         hoursPeriods: hoursPeriods,
         reports: reports ?? Map.from(this.reports),
         menu: menu,
+        crowdBaseSource: crowdBaseSource ?? this.crowdBaseSource,
+        crowdConfidence: crowdConfidence ?? this.crowdConfidence,
+        hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
       );
 
   int get totalReports =>
