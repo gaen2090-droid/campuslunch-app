@@ -347,7 +347,7 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              // ── 사장님 인증 ──
+              // ── 사장님 ──
               if (!isOwner) ...[
                 const SizedBox(height: 16),
                 GestureDetector(
@@ -366,6 +366,30 @@ class _MyScreenState extends State<MyScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF9CA3AF)),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (provider.hasOwnerTab) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => provider.setMainTabIndex(0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF86EFAC)),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '내 매장 혼잡도 관리',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF16A34A),
+                        ),
                       ),
                     ),
                   ),
@@ -502,7 +526,10 @@ class _MyScreenState extends State<MyScreen> {
           Positioned.fill(
             child: OwnerVerifySheet(
               onClose: () => setState(() => _showOwnerVerify = false),
-              onSuccess: (_) => setState(() => _showOwnerVerify = false),
+              onSuccess: (_) {
+                setState(() => _showOwnerVerify = false);
+                context.read<AppProvider>().setMainTabIndex(0);
+              },
             ),
           ),
 

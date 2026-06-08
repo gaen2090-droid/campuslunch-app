@@ -660,6 +660,23 @@ class SupabaseRestaurantRepository {
     return result as String;
   }
 
+  /// DB 기준 본인 소유 매장 ID (restaurants.owner_id)
+  Future<List<String>> fetchOwnedRestaurantIds() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return [];
+    try {
+      final rows = await _client
+          .from('restaurants')
+          .select('id')
+          .eq('is_active', true)
+          .eq('owner_id', uid);
+      return rows.map((row) => row['id'] as String).toList();
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnedRestaurantIds failed: $e\n$st');
+      return [];
+    }
+  }
+
   Future<String> uploadImage(Uint8List bytes, String ext) async {
     const bucket = 'restaurant-images';
     final path = 'restaurants/${DateTime.now().millisecondsSinceEpoch}.$ext';

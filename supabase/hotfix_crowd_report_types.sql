@@ -68,6 +68,18 @@ begin
   v_level := public.ui_level_to_crowd_level(v_ui_level);
   v_source := public.text_to_crowd_source(p_source);
 
+  if p_source = 'owner' then
+    if not exists (
+      select 1
+      from public.restaurants r
+      where r.id = p_restaurant_id
+        and r.is_active = true
+        and r.owner_id = v_uid
+    ) then
+      raise exception '본인 매장만 변경할 수 있어요.';
+    end if;
+  end if;
+
   if p_source = 'user' then
     if p_lat is null or p_lng is null then
       raise exception '현재 위치를 확인할 수 없어요. 위치 권한을 확인해주세요.';

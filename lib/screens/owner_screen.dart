@@ -17,6 +17,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
   bool _showAddSheet = false;
   final _seatCtrl = TextEditingController();
   bool _seatSubmitting = false;
+  bool _statusSubmitting = false;
   String? _seatSuccessMessage;
 
   @override
@@ -118,15 +119,50 @@ class _OwnerScreenState extends State<OwnerScreen> {
         .toList();
 
     if (ownedList.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFAFAF8),
+      return Scaffold(
+        backgroundColor: const Color(0xFFFAFAF8),
         body: Center(
-          child: Text(
-            '매장 정보를 불러올 수 없어요.',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF9CA3AF),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '매장 정보를 불러올 수 없어요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    await provider.refreshRestaurants();
+                    if (!mounted) return;
+                    setState(() {});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16A34A),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Text(
+                      '다시 불러오기',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -249,12 +285,14 @@ class _OwnerScreenState extends State<OwnerScreen> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: GestureDetector(
                               onTap: () async {
-                                if (selected) return;
+                                if (selected || _statusSubmitting) return;
+                                setState(() => _statusSubmitting = true);
                                 final err = await provider.reportStatus(
                                   restaurant.id,
                                   opt.key,
                                 );
                                 if (!context.mounted) return;
+                                setState(() => _statusSubmitting = false);
                                 if (err != null) {
                                   _showToast(err);
                                   return;

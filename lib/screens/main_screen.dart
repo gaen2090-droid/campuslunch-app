@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
+import 'owner_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -45,37 +46,94 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  static const _tabs = [
-    HomeScreen(),
-    MapScreen(),
-    MyScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final index = context.watch<AppProvider>().mainTabIndex;
+    final provider = context.watch<AppProvider>();
+    final hasOwner = provider.hasOwnerTab;
+    final index = provider.mainTabIndex.clamp(0, hasOwner ? 3 : 2);
+
+    final tabs = hasOwner
+        ? const [
+            OwnerScreen(),
+            HomeScreen(),
+            MapScreen(),
+            MyScreen(),
+          ]
+        : const [
+            HomeScreen(),
+            MapScreen(),
+            MyScreen(),
+          ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F7),
-      body: IndexedStack(index: index, children: _tabs),
+      body: IndexedStack(index: index, children: tabs),
       bottomNavigationBar: _BottomNav(
+        hasOwnerTab: hasOwner,
         current: index,
-        onTap: (i) => context.read<AppProvider>().setMainTabIndex(i),
+        onTap: (i) => provider.setMainTabIndex(i),
       ),
     );
   }
 }
 
 class _BottomNav extends StatelessWidget {
+  final bool hasOwnerTab;
   final int current;
   final ValueChanged<int> onTap;
-  const _BottomNav({required this.current, required this.onTap});
+
+  const _BottomNav({
+    required this.hasOwnerTab,
+    required this.current,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final items = hasOwnerTab
+        ? const [
+            _NavItem(
+              icon: Icons.storefront_outlined,
+              activeIcon: Icons.storefront,
+              label: '사장님',
+            ),
+            _NavItem(
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home,
+              label: '홈',
+            ),
+            _NavItem(
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map,
+              label: '지도',
+            ),
+            _NavItem(
+              icon: Icons.account_circle_outlined,
+              activeIcon: Icons.account_circle_outlined,
+              label: 'MY',
+            ),
+          ]
+        : const [
+            _NavItem(
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home,
+              label: '홈',
+            ),
+            _NavItem(
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map,
+              label: '지도',
+            ),
+            _NavItem(
+              icon: Icons.account_circle_outlined,
+              activeIcon: Icons.account_circle_outlined,
+              label: 'MY',
+            ),
+          ];
+
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xF2FFFFFF), // white/95
+        color: Color(0xF2FFFFFF),
         border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
       ),
       child: SafeArea(
@@ -84,9 +142,13 @@ class _BottomNav extends StatelessWidget {
           height: 60,
           child: Row(
             children: [
-              _NavTab(index: 0, current: current, icon: Icons.home_outlined, activeIcon: Icons.home, label: '홈', onTap: onTap),
-              _NavTab(index: 1, current: current, icon: Icons.map_outlined, activeIcon: Icons.map, label: '지도', onTap: onTap),
-              _NavTab(index: 2, current: current, icon: Icons.account_circle_outlined, activeIcon: Icons.account_circle_outlined, label: 'MY', onTap: onTap),
+              for (var i = 0; i < items.length; i++)
+                _NavTab(
+                  index: i,
+                  current: current,
+                  item: items[i],
+                  onTap: onTap,
+                ),
             ],
           ),
         ),
@@ -95,20 +157,28 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _NavTab extends StatelessWidget {
-  final int index;
-  final int current;
+class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+}
+
+class _NavTab extends StatelessWidget {
+  final int index;
+  final int current;
+  final _NavItem item;
   final ValueChanged<int> onTap;
 
   const _NavTab({
     required this.index,
     required this.current,
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
+    required this.item,
     required this.onTap,
   });
 
@@ -123,17 +193,18 @@ class _NavTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              active ? activeIcon : icon,
+              active ? item.activeIcon : item.icon,
               size: 22,
               color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
             ),
             const SizedBox(height: 2),
             Text(
-              label,
+              item.label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                color:
+                    active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
               ),
             ),
           ],

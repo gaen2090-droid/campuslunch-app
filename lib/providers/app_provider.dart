@@ -28,7 +28,7 @@ import '../utils/business_hours.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
-  String _stage = 'splash'; // splash | onboarding | login | app | owner | admin
+  String _stage = 'splash'; // splash | onboarding | login | app | admin
   String get stage => _stage;
 
   // ── 인증 ──
@@ -63,6 +63,13 @@ class AppProvider extends ChangeNotifier {
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
 
+  /// 사장님 인증 완료 시 하단 「사장님」 탭 표시
+  bool get hasOwnerTab =>
+      _userRole == 'owner' && _ownerRestaurantIds.isNotEmpty;
+
+  /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
+  int get homeTabIndex => hasOwnerTab ? 1 : 0;
+
   bool get locationMode => _locationMode;
   bool get notificationEnabled => _notificationEnabled;
   bool get lunchPushEnabled => _lunchPushEnabled;
@@ -74,6 +81,8 @@ class AppProvider extends ChangeNotifier {
   // ── 식당 ──
   List<Restaurant> _restaurants = [];
   List<Restaurant> get restaurants => _restaurants;
+  bool _supabaseRestaurantsLoaded = false;
+  int _restaurantRefreshGen = 0;
 
   // ── 북마크 ──
   Set<String> _bookmarks = {};
@@ -135,21 +144,23 @@ class AppProvider extends ChangeNotifier {
     await _loadRestaurantsFromSupabase();
     _subscribeRealtime();
 
-    // 저장된 혼잡도 오버라이드 적용
-    final overridesJson = prefs.getString(_kOverrides);
-    if (overridesJson != null) {
-      final overrides = jsonDecode(overridesJson) as Map<String, dynamic>;
-      _restaurants = _restaurants.map((r) {
-        final ov = overrides[r.id.toString()] as Map<String, dynamic>?;
-        if (ov == null) return r;
-        final updatedAt = ov['updatedAt'] as int? ?? 0;
-        final diffMin =
-            ((DateTime.now().millisecondsSinceEpoch - updatedAt) / 60000)
-                .floor();
-        return r.copyWith(status: ov['status'] as String, updated: diffMin);
-      }).toList();
+    // Supabase 미연결·로드 실패 시에만 로컬 혼잡도 오버라이드 적용
+    if (!_supabaseRestaurantsLoaded) {
+      final overridesJson = prefs.getString(_kOverrides);
+      if (overridesJson != null) {
+        final overrides = jsonDecode(overridesJson) as Map<String, dynamic>;
+        _restaurants = _restaurants.map((r) {
+          final ov = overrides[r.id.toString()] as Map<String, dynamic>?;
+          if (ov == null) return r;
+          final updatedAt = ov['updatedAt'] as int? ?? 0;
+          final diffMin =
+              ((DateTime.now().millisecondsSinceEpoch - updatedAt) / 60000)
+                  .floor();
+          return r.copyWith(status: ov['status'] as String, updated: diffMin);
+        }).toList();
+      }
+      _restaurants = _restaurants.map(_applyOperatingHours).toList();
     }
-    _restaurants = _restaurants.map(_applyOperatingHours).toList();
 
     // 북마크 복원
     final bookmarksJson = prefs.getString(_kBookmarks);
@@ -191,17 +202,26 @@ class AppProvider extends ChangeNotifier {
       _userRole = prefs.getString(_kUserRole) ?? 'user';
       _ownerRestaurantIds = List<String>.from(
           jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
+      if (_userRole == 'owner' &&
+          SupabaseService.isReady &&
+          SupabaseService.client.auth.currentUser != null) {
+        _ownerRestaurantIds = await _resolveOwnerRestaurantIds(
+          fallbackIds: _ownerRestaurantIds,
+        );
+        await prefs.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
+      }
       _locationMode = prefs.getBool(_kLocation) ?? false;
       _notificationEnabled = prefs.getBool(_kPush) ?? false;
       _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
       _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
       await Future.delayed(const Duration(seconds: 2));
-      _stage = _userRole == 'owner' && _ownerRestaurantIds.isNotEmpty
-          ? 'owner'
-          : _userRole == 'admin'
-              ? 'admin'
-              : 'app';
+      if (_userRole == 'admin') {
+        _stage = 'admin';
+      } else {
+        _stage = 'app';
+        if (hasOwnerTab) _mainTabIndex = 0;
+      }
     } else {
       final locationStored = prefs.containsKey(_kLocation);
       await Future.delayed(const Duration(seconds: 2));
@@ -574,10 +594,15 @@ class AppProvider extends ChangeNotifier {
             appMeta['role'] as String? ??
             metaRole ??
             'user');
-    final restaurantIds = (meta?['restaurant_ids'] as List?)
+    var restaurantIds = (meta?['restaurant_ids'] as List?)
             ?.map((e) => e.toString())
             .toList() ??
         [];
+    if (role == 'owner') {
+      restaurantIds = await _resolveOwnerRestaurantIds(
+        fallbackIds: restaurantIds,
+      );
+    }
 
     final remoteBookmarks = meta?['bookmarks'];
     if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
@@ -630,12 +655,13 @@ class AppProvider extends ChangeNotifier {
     _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
     _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
-    if (account.role == 'owner' && account.restaurantIds.isNotEmpty) {
-      _stage = 'owner';
-    } else if (account.role == 'admin') {
+    if (account.role == 'admin') {
       _stage = 'admin';
     } else {
       _stage = locationStored ? 'app' : 'location_permission';
+      if (account.role == 'owner' && account.restaurantIds.isNotEmpty) {
+        _mainTabIndex = 0;
+      }
     }
     notifyListeners();
   }
@@ -796,6 +822,8 @@ class AppProvider extends ChangeNotifier {
     await prefs.remove(_kSessionExp);
     await prefs.remove(_kAccountId);
     await prefs.remove(_kAuthProvider);
+    await prefs.remove(_kUserRole);
+    await prefs.remove(_kOwnerIds);
     _isLoggedIn = false;
     _nickname = '';
     _accountId = '';
@@ -803,6 +831,37 @@ class AppProvider extends ChangeNotifier {
     _ownerRestaurantIds = [];
     _locationMode = false;
     _notificationEnabled = false;
+    _mainTabIndex = 0;
+  }
+
+  bool _ownsRestaurant(String restaurantId) =>
+      _ownerRestaurantIds.contains(restaurantId);
+
+  Future<List<String>> _resolveOwnerRestaurantIds({
+    List<String> fallbackIds = const [],
+  }) async {
+    final repo = _restaurantRepo;
+    if (repo != null) {
+      final owned = await repo.fetchOwnedRestaurantIds();
+      if (owned.isNotEmpty) return owned;
+    }
+    return fallbackIds;
+  }
+
+  Future<void> refreshRestaurants() async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    final gen = ++_restaurantRefreshGen;
+    try {
+      final fetched = await repo.fetchAll();
+      if (gen != _restaurantRefreshGen) return;
+      _supabaseRestaurantsLoaded = true;
+      _restaurants = fetched;
+      await _syncPushNotifications();
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[Supabase] refreshRestaurants failed: $e\n$st');
+    }
   }
 
   // ── 위치 권한 ──
@@ -882,13 +941,15 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setMainTabIndex(int index) {
-    if (_mainTabIndex == index) return;
-    _mainTabIndex = index;
+    final max = hasOwnerTab ? 3 : 2;
+    final next = index.clamp(0, max);
+    if (_mainTabIndex == next) return;
+    _mainTabIndex = next;
     notifyListeners();
   }
 
   void openHomeFromPush([String? restaurantId]) {
-    _mainTabIndex = 0;
+    _mainTabIndex = homeTabIndex;
     notifyListeners();
   }
 
@@ -960,7 +1021,9 @@ class AppProvider extends ChangeNotifier {
 
     if (repo != null && authUser != null) {
       try {
-        final source = _userRole == 'owner' ? 'owner' : 'user';
+        final isOwnerReport =
+            _userRole == 'owner' && _ownsRestaurant(restaurantId);
+        final source = isOwnerReport ? 'owner' : 'user';
 
         // 사장님은 5분 제한 없음
         if (source == 'user') {
@@ -1009,7 +1072,14 @@ class AppProvider extends ChangeNotifier {
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
         }
-        _restaurants = _withOperatingHours(await repo.fetchAll());
+        final gen = ++_restaurantRefreshGen;
+        final fetched = await repo.fetchAll();
+        if (gen == _restaurantRefreshGen) {
+          _supabaseRestaurantsLoaded = true;
+          _restaurants = fetched;
+        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_kOverrides);
         await _syncPushNotifications();
         notifyListeners();
         return null;
@@ -1396,7 +1466,7 @@ class AppProvider extends ChangeNotifier {
     if (_userRole != 'owner') {
       return '사장님만 입력할 수 있어요.';
     }
-    if (!_ownerRestaurantIds.contains(restaurantId)) {
+    if (!_ownsRestaurant(restaurantId)) {
       return '본인 매장만 입력할 수 있어요.';
     }
     if (availableSeats < 0) {
@@ -1498,7 +1568,8 @@ class AppProvider extends ChangeNotifier {
         return 'INVALID_CODE';
       } catch (e) {
         debugPrint('[verifyOwnerCode] RPC failed: $e');
-        // 오프라인/미배포 RPC: 로컬 폴백
+        if (_hasSupabaseSession) return 'INVALID_CODE';
+        // 오프라인/미배포 RPC: 로컬 폴백 (Supabase 세션 없을 때만)
         final found =
             _restaurants.where((r) => r.ownerCode == trimmed);
         if (found.isEmpty) return 'INVALID_CODE';
@@ -1514,15 +1585,26 @@ class AppProvider extends ChangeNotifier {
 
     try {
       _userRole = 'owner';
-      _ownerRestaurantIds = [restaurantId];
+      final ownedIds = repo != null
+          ? await _resolveOwnerRestaurantIds(
+              fallbackIds: [
+                ..._ownerRestaurantIds,
+                if (restaurantId != null) restaurantId,
+              ],
+            )
+          : [
+              ..._ownerRestaurantIds,
+              if (restaurantId != null) restaurantId,
+            ];
+      _ownerRestaurantIds = ownedIds.toSet().toList();
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kUserRole, 'owner');
-      await prefs.setString(_kOwnerIds, jsonEncode([restaurantId]));
+      await prefs.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
 
       await _syncMetadata({
         'role': 'owner',
-        'restaurant_ids': [restaurantId],
+        'restaurant_ids': _ownerRestaurantIds,
       });
 
       final user = SupabaseService.client.auth.currentUser;
@@ -1535,10 +1617,11 @@ class AppProvider extends ChangeNotifier {
       }
 
       if (repo != null) {
-        _restaurants = _withOperatingHours(await repo.fetchAll());
+        await refreshRestaurants();
       }
 
-      _stage = 'owner';
+      _stage = 'app';
+      _mainTabIndex = 0;
       notifyListeners();
       return null;
     } catch (e) {
@@ -1640,10 +1723,11 @@ class AppProvider extends ChangeNotifier {
     if (repo == null) return;
 
     try {
+      final gen = ++_restaurantRefreshGen;
       final fetched = await repo.fetchAll();
-      if (fetched.isNotEmpty) {
-        _restaurants = fetched.map(_applyOperatingHours).toList();
-      }
+      if (gen != _restaurantRefreshGen) return;
+      _supabaseRestaurantsLoaded = true;
+      _restaurants = fetched;
       await _syncPushNotifications();
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
@@ -1681,7 +1765,7 @@ class AppProvider extends ChangeNotifier {
     _realtimeChannel = null;
   }
 
-  /// 영업시간 외에는 혼잡도 오버라이드보다 영업안함 우선
+  /// 영업시간 외에는 혼잡도 오버라이드보다 영업안함 우선 (오프라인/시드 전용)
   List<Restaurant> _withOperatingHours(List<Restaurant> list) =>
       list.map(_applyOperatingHours).toList();
 

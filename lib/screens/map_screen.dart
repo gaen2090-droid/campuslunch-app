@@ -491,7 +491,7 @@ class _FakeMap extends StatelessWidget {
         ...restaurants.map((r) {
           final left = r.x / 100 * size.width;
           final top = r.y / 100 * size.height;
-          final meta = statusMetaMap[r.status];
+          final meta = crowdStatusMeta(r.status);
           final isSelected = selected?.id == r.id;
           final pinSize = isSelected ? 40.0 : 28.0;
           return Positioned(
@@ -508,7 +508,7 @@ class _FakeMap extends StatelessWidget {
                     height: pinSize * 1.4,
                     child: CustomPaint(
                       painter: _MapPinPainter(
-                        fillColor: meta != null ? Color(meta.color) : const Color(0xFF9CA3AF),
+                        fillColor: Color(meta.color),
                         borderWidth: isSelected ? 3.0 : 2.0,
                         shadowAlpha: isSelected ? 40 : 20,
                         shadowBlur: isSelected ? 12.0 : 6.0,
@@ -787,8 +787,8 @@ class _SelectedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = restaurant;
-    final meta = statusMetaMap[r.status];
-    final statusColor = meta != null ? Color(meta.color) : const Color(0xFF9CA3AF);
+    final meta = crowdStatusMeta(r.status);
+    final statusColor = Color(meta.color);
 
     return Container(
       decoration: const BoxDecoration(

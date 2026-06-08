@@ -17,7 +17,11 @@ class CrowdLevelMapper {
 
   static String fromDb(String dbLevel, {Map<String, dynamic>? metadata}) {
     final fromMeta = metadata?['status'];
-    if (fromMeta is String && fromMeta.isNotEmpty) return fromMeta;
+    if (fromMeta is String &&
+        fromMeta.isNotEmpty &&
+        _toDb.containsKey(fromMeta)) {
+      return fromMeta;
+    }
     return _fromDb[dbLevel] ?? '여유로움';
   }
 }

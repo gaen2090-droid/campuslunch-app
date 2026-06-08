@@ -131,3 +131,11 @@ const Map<String, StatusMeta> statusMetaMap = {
   '자리없음': StatusMeta(label: '자리없음', color: 0xFFEF4444, bgColor: 0xFFFEE2E2),
   '영업안함': StatusMeta(label: '영업안함', color: 0xFF9CA3AF, bgColor: 0xFFF3F4F6),
 };
+
+StatusMeta crowdStatusMeta(String status) =>
+    statusMetaMap[status] ??
+    const StatusMeta(
+      label: '알 수 없음',
+      color: 0xFF9CA3AF,
+      bgColor: 0xFFF3F4F6,
+    );

@@ -637,6 +637,24 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
                 )),
           ],
+
+          if (recommended == null &&
+              available.isEmpty &&
+              busy.isEmpty &&
+              closed.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 48, 20, 0),
+              child: Center(
+                child: Text(
+                  '표시할 매장이 없어요.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
