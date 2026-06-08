@@ -1063,7 +1063,7 @@ class AppProvider extends ChangeNotifier {
               pos.latitude, pos.longitude,
               restaurant.latitude, restaurant.longitude,
             );
-            if (dist > 80) {
+            if (dist > 150) {
               return '식당 근처에서만 혼잡도를 제보할 수 있어요.';
             }
           }

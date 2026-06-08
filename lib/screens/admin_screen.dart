@@ -985,7 +985,7 @@ class _ReportLimitToggles extends StatelessWidget {
           const SizedBox(height: 16),
           _toggle(
             title: 'GPS 반경 제한',
-            subtitle: '유저 제보 시 식당 80m 이내만 허용',
+            subtitle: '유저 제보 시 식당 150m 이내만 허용',
             value: provider.gpsReportLimit,
             onTap: () => provider.toggleGpsReportLimit(),
           ),
