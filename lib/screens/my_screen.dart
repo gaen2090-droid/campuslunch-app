@@ -292,7 +292,7 @@ class _MyScreenState extends State<MyScreen> {
                     const Divider(color: Color(0xFFE5E7EB), height: 1),
                     _ToggleRow(
                       title: '점심 피크 추천 알림',
-                      desc: '월~금 12:00 · 추천 매장 기준 정문/중문/후문 안내',
+                      desc: '평일 12:00에 여유로운 매장을 알려드려요!',
                       enabled: _lunchPush,
                       onToggle: () async {
                         final next = !_lunchPush;
@@ -302,7 +302,7 @@ class _MyScreenState extends State<MyScreen> {
                         if (next) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '월~금 12:00에 알림을 보내드릴게요!',
+                              '평일 12:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
@@ -319,7 +319,7 @@ class _MyScreenState extends State<MyScreen> {
                     const Divider(color: Color(0xFFE5E7EB), height: 1),
                     _ToggleRow(
                       title: '저녁 피크 추천 알림',
-                      desc: '월~금 18:00 · 추천 매장 기준 정문/중문/후문 안내',
+                      desc: '평일 18:00에 여유로운 매장을 알려드려요!',
                       enabled: _dinnerPush,
                       onToggle: () async {
                         final next = !_dinnerPush;
@@ -329,7 +329,7 @@ class _MyScreenState extends State<MyScreen> {
                         if (next) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '월~금 18:00에 알림을 보내드릴게요!',
+                              '평일 18:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),

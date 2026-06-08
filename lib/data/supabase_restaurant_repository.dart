@@ -111,6 +111,35 @@ class SupabaseRestaurantRepository {
     await _client.rpc('set_owner_influence', params: {'p_value': value});
   }
 
+  Future<Map<String, bool>> fetchReportLimitSettings() async {
+    try {
+      final rows = await _client
+          .from('system_settings')
+          .select('key, value')
+          .inFilter('key', ['gps_report_limit', 'cooldown_report_limit']);
+      final map = <String, bool>{};
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        map[row['key'] as String] = row['value']?.toString() != 'false';
+      }
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setReportLimitSetting(String key, bool value) async {
+    try {
+      await _client.from('system_settings').upsert(
+        {'key': key, 'value': value.toString()},
+        onConflict: 'key',
+      );
+      debugPrint('[ReportLimit] saved $key=$value to Supabase');
+    } catch (e) {
+      debugPrint('[ReportLimit] save error $key: $e');
+    }
+  }
+
   Future<Map<String, Map<String, dynamic>>> _fetchCrowdStatusMap() async {
     try {
       final rows = await _client.from('crowd_status').select();

@@ -13,7 +13,7 @@ import '../utils/gate_label.dart';
 
 enum PeakPushSlot { lunch, dinner }
 
-/// 월~금 12:00·18:00 KST 피크 추천 로컬 푸시
+/// 평일 12:00·18:00 KST 피크 추천 로컬 푸시
 class PushNotificationService {
   PushNotificationService._();
 
@@ -57,7 +57,7 @@ class PushNotificationService {
           const AndroidNotificationChannel(
             _channelId,
             _channelName,
-            description: '월~금 점심·저녁 피크 시간대 추천 매장 알림',
+            description: '평일 점심·저녁 피크 시간대 추천 매장 알림',
             importance: Importance.high,
           ),
         );
@@ -210,7 +210,7 @@ class PushNotificationService {
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
-          channelDescription: '월~금 점심·저녁 피크 시간대 추천 매장 알림',
+          channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -270,7 +270,7 @@ class PushNotificationService {
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
-          channelDescription: '월~금 점심·저녁 피크 시간대 추천 매장 알림',
+          channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
           importance: Importance.high,
           priority: Priority.high,
         ),

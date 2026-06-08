@@ -206,6 +206,12 @@ class _AdminScreenState extends State<AdminScreen> {
                         active: _tab == 'map_register',
                         onTap: () => setState(() => _tab = 'map_register'),
                       ),
+                      const SizedBox(width: 8),
+                      _TabPill(
+                        label: '테스트 관리',
+                        active: _tab == 'test_settings',
+                        onTap: () => setState(() => _tab = 'test_settings'),
+                      ),
                     ],
                     ),
                   ),
@@ -231,7 +237,9 @@ class _AdminScreenState extends State<AdminScreen> {
                             ? _RestaurantsTab(restaurants: restaurants)
                             : _tab == 'popularity'
                                 ? _PopularityTab(restaurants: restaurants)
-                                : const AdminMapRegisterTab(),
+                                : _tab == 'map_register'
+                                    ? const AdminMapRegisterTab()
+                                    : _TestSettingsTab(),
                     ),
                   ),
                 ),
@@ -888,6 +896,21 @@ class _AlgorithmToggleCard extends StatelessWidget {
   }
 }
 
+// ── 테스트 관리 탭 ────────────────────────────────────────────────────────────
+class _TestSettingsTab extends StatelessWidget {
+  const _TestSettingsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ReportLimitToggles(),
+      ],
+    );
+  }
+}
+
 // ── 테스트용 제보 제한 토글 ──────────────────────────────────────────────────
 class _ReportLimitToggles extends StatelessWidget {
   const _ReportLimitToggles();
@@ -1125,8 +1148,6 @@ class _PopularityTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _AlgorithmToggleCard(),
-        const SizedBox(height: 12),
-        const _ReportLimitToggles(),
         const SizedBox(height: 20),
         const Text('인기 순위',
             style: TextStyle(
@@ -1447,9 +1468,11 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: statusMetaMap[r.status]?.color != null
-                                        ? Color(statusMetaMap[r.status]!.color)
-                                        : const Color(0xFF6B7280),
+                                    color: !r.hasCrowdUpdate
+                                        ? const Color(0xFF9CA3AF)
+                                        : statusMetaMap[r.status]?.color != null
+                                            ? Color(statusMetaMap[r.status]!.color)
+                                            : const Color(0xFF6B7280),
                                   ),
                                 ),
                                 if (r.crowdBaseSource.isNotEmpty) ...[

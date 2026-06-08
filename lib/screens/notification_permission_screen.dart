@@ -61,7 +61,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        '월~금 점심(12:00)과 저녁(18:00)에\n지금 바로 입장 가능한 매장을 알려드려요.',
+                        '평일 점심(12:00)과 저녁(18:00)에\n지금 바로 입장 가능한 매장을 알려드려요.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -84,7 +84,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text(
-                              '월~금 12:00·18:00에 알림을 보내드릴게요!',
+                              '평일 12:00·18:00에 알림을 보내드릴게요!',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                             ),

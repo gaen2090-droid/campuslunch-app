@@ -112,8 +112,8 @@ class AppProvider extends ChangeNotifier {
   static const _kBookmarks = 'cl_bookmarks';
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
-  static const _kGpsReportLimit = 'cl_gps_report_limit';
-  static const _kCooldownReportLimit = 'cl_cooldown_report_limit';
+  static const _kGpsReportLimit = 'cl_gps_report_limit_v2';
+  static const _kCooldownReportLimit = 'cl_cooldown_report_limit_v2';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
   static const _kPendingSignupPassword = 'cl_pending_signup_password';
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
@@ -151,6 +151,7 @@ class AppProvider extends ChangeNotifier {
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
+    await _loadReportLimitSettingsFromSupabase();
     _subscribeRealtime();
 
     // Supabase 미연결·로드 실패 시에만 로컬 혼잡도 오버라이드 적용
@@ -1688,18 +1689,45 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadReportLimitSettingsFromSupabase() async {
+    try {
+      final repo = _restaurantRepo;
+      if (repo == null) {
+        debugPrint('[ReportLimit] repo null, skip');
+        return;
+      }
+      final settings = await repo.fetchReportLimitSettings();
+      debugPrint('[ReportLimit] fetched from Supabase: $settings');
+      final prefs = await SharedPreferences.getInstance();
+      if (settings.containsKey('gps_report_limit')) {
+        _gpsReportLimit = settings['gps_report_limit']!;
+        await prefs.setBool(_kGpsReportLimit, _gpsReportLimit);
+      }
+      if (settings.containsKey('cooldown_report_limit')) {
+        _cooldownReportLimit = settings['cooldown_report_limit']!;
+        await prefs.setBool(_kCooldownReportLimit, _cooldownReportLimit);
+      }
+      debugPrint('[ReportLimit] gps=$_gpsReportLimit cooldown=$_cooldownReportLimit');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[ReportLimit] load error: $e');
+    }
+  }
+
   Future<void> toggleGpsReportLimit() async {
     _gpsReportLimit = !_gpsReportLimit;
+    notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kGpsReportLimit, _gpsReportLimit);
-    notifyListeners();
+    _restaurantRepo?.setReportLimitSetting('gps_report_limit', _gpsReportLimit);
   }
 
   Future<void> toggleCooldownReportLimit() async {
     _cooldownReportLimit = !_cooldownReportLimit;
+    notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kCooldownReportLimit, _cooldownReportLimit);
-    notifyListeners();
+    _restaurantRepo?.setReportLimitSetting('cooldown_report_limit', _cooldownReportLimit);
   }
 
   Future<void> setManualRanks(List<String> orderedIds) async {
