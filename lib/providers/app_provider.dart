@@ -62,6 +62,11 @@ class AppProvider extends ChangeNotifier {
   bool _useAlgorithmRanking = true;
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
+  bool _gpsReportLimit = true;
+  bool _cooldownReportLimit = true;
+
+  bool get gpsReportLimit => _gpsReportLimit;
+  bool get cooldownReportLimit => _cooldownReportLimit;
 
   /// 사장님 인증 완료 시 하단 「사장님」 탭 표시
   bool get hasOwnerTab =>
@@ -107,6 +112,8 @@ class AppProvider extends ChangeNotifier {
   static const _kBookmarks = 'cl_bookmarks';
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
+  static const _kGpsReportLimit = 'cl_gps_report_limit';
+  static const _kCooldownReportLimit = 'cl_cooldown_report_limit';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
   static const _kPendingSignupPassword = 'cl_pending_signup_password';
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
@@ -139,6 +146,8 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
+    _gpsReportLimit = prefs.getBool(_kGpsReportLimit) ?? true;
+    _cooldownReportLimit = prefs.getBool(_kCooldownReportLimit) ?? true;
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
@@ -1026,7 +1035,7 @@ class AppProvider extends ChangeNotifier {
         final source = isOwnerReport ? 'owner' : 'user';
 
         // 사장님은 5분 제한 없음
-        if (source == 'user') {
+        if (source == 'user' && _cooldownReportLimit) {
           final last = _lastReportTime[restaurantId];
           if (last != null &&
               DateTime.now().difference(last).inMinutes < 5) {
@@ -1035,7 +1044,7 @@ class AppProvider extends ChangeNotifier {
         }
         double? lat;
         double? lng;
-        if (source == 'user') {
+        if (source == 'user' && _gpsReportLimit) {
           final pos = await _currentPosition();
           if (pos == null) {
             return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
@@ -1043,7 +1052,6 @@ class AppProvider extends ChangeNotifier {
           lat = pos.latitude;
           lng = pos.longitude;
 
-          // 식당 반경 80m 제한
           final restaurant = _restaurants.firstWhere(
             (r) => r.id == restaurantId,
             orElse: () => _restaurants.first,
@@ -1677,6 +1685,20 @@ class AppProvider extends ChangeNotifier {
       }
     }
     await _syncPushNotifications();
+    notifyListeners();
+  }
+
+  Future<void> toggleGpsReportLimit() async {
+    _gpsReportLimit = !_gpsReportLimit;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kGpsReportLimit, _gpsReportLimit);
+    notifyListeners();
+  }
+
+  Future<void> toggleCooldownReportLimit() async {
+    _cooldownReportLimit = !_cooldownReportLimit;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCooldownReportLimit, _cooldownReportLimit);
     notifyListeners();
   }
 

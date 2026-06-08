@@ -14,6 +14,6 @@ String formatCrowdStatusLine(
   bool hasCrowdUpdate = true,
 }) {
   if (status == '영업안함') return status;
-  if (!hasCrowdUpdate) return status;
+  if (!hasCrowdUpdate) return '제보 없음';
   return '$status · ${formatUpdateAge(updatedMinutes)}';
 }
