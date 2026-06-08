@@ -113,6 +113,8 @@ class AppProvider extends ChangeNotifier {
 
   StreamSubscription<AuthState>? _authSub;
   RealtimeChannel? _realtimeChannel;
+  // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
+  final Map<String, DateTime> _lastReportTime = {};
   final ProfileRepository _profileRepo = ProfileRepository();
   final AuthRepository _authRepo = AuthRepository();
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
@@ -959,6 +961,15 @@ class AppProvider extends ChangeNotifier {
     if (repo != null && authUser != null) {
       try {
         final source = _userRole == 'owner' ? 'owner' : 'user';
+
+        // 사장님은 5분 제한 없음
+        if (source == 'user') {
+          final last = _lastReportTime[restaurantId];
+          if (last != null &&
+              DateTime.now().difference(last).inMinutes < 5) {
+            return '방금 제보한 식당이에요.\n잠시 후 다시 제보해주세요.';
+          }
+        }
         double? lat;
         double? lng;
         if (source == 'user') {
@@ -968,6 +979,22 @@ class AppProvider extends ChangeNotifier {
           }
           lat = pos.latitude;
           lng = pos.longitude;
+
+          // 식당 반경 80m 제한
+          final restaurant = _restaurants.firstWhere(
+            (r) => r.id == restaurantId,
+            orElse: () => _restaurants.first,
+          );
+          if (restaurant.latitude.abs() > 0.0001 &&
+              restaurant.longitude.abs() > 0.0001) {
+            final dist = Geolocator.distanceBetween(
+              pos.latitude, pos.longitude,
+              restaurant.latitude, restaurant.longitude,
+            );
+            if (dist > 80) {
+              return '식당 근처에서만 혼잡도를 제보할 수 있어요.';
+            }
+          }
         }
 
         await repo.reportStatus(
@@ -979,6 +1006,9 @@ class AppProvider extends ChangeNotifier {
           latitude: lat,
           longitude: lng,
         );
+        if (source == 'user') {
+          _lastReportTime[restaurantId] = DateTime.now();
+        }
         _restaurants = _withOperatingHours(await repo.fetchAll());
         await _syncPushNotifications();
         notifyListeners();
@@ -1629,6 +1659,12 @@ class AppProvider extends ChangeNotifier {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'crowd_status',
+          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'crowd_reports',
           callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
         )
         .onPostgresChanges(

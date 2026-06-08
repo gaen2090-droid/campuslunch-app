@@ -478,7 +478,7 @@ CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
       !params.ownerJustReported &&
       !isStrongUserSignal(users)) {
     final elapsed = params.now.difference(statusStartedAt);
-    if (elapsed.inMinutes < 10) {
+    if (elapsed.inMinutes < 5) {
       display = current;
       refresh = false;
     }

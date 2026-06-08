@@ -220,8 +220,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       filtered.where((r) => r.status == '자리없음').toList(),
       isBusy: true,
     );
+    // 영업안함은 필터 무관하게 항상 전체 표시
+    final closedAll = all.where((r) => r.status == '영업안함').toList();
     final closed = _sortSection(
-      filtered.where((r) => r.status == '영업안함').toList(),
+      closedAll,
       isClosed: true,
     );
     _trackBannerImpression(recommended);
@@ -544,7 +546,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
         children: [
           // 바로 입장 가능
-          if (recommended != null || available.isNotEmpty) ...[
+          if (recommended != null || available.isNotEmpty || needsReport.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
               child: Row(

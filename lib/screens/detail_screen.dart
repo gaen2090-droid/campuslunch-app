@@ -134,7 +134,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 builder: (context, constraints) {
                   final statusMaxW = constraints.maxWidth * 0.36;
                   return Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Column(
@@ -172,14 +172,20 @@ class _DetailScreenState extends State<DetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              r.status,
+                              r.status == '영업안함'
+                                  ? r.status
+                                  : r.hasCrowdUpdate
+                                      ? r.status
+                                      : '제보필요',
                               maxLines: 1,
                               textAlign: TextAlign.right,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
-                                color: statusColor,
+                                color: (r.status != '영업안함' && !r.hasCrowdUpdate)
+                                    ? const Color(0xFF9CA3AF)
+                                    : statusColor,
                                 height: 1.15,
                               ),
                             ),

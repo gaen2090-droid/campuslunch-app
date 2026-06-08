@@ -12,7 +12,6 @@ import '../models/restaurant.dart';
 import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
 import 'crowd_level_mapper.dart';
-import 'crowd_status_algorithm.dart';
 import 'crowd_status_helpers.dart';
 import 'restaurants.dart';
 
@@ -421,21 +420,6 @@ class SupabaseRestaurantRepository {
     return map;
   }
 
-  bool _isNewBusinessSession(
-    Map<String, dynamic>? crowdStatus,
-    DateTime? sessionStart,
-  ) {
-    if (crowdStatus == null) return false;
-    final startedRaw = crowdStatus['status_started_at'] as String?;
-    final updatedRaw = crowdStatus['updated_at'] as String?;
-    final anchorStr = startedRaw ?? updatedRaw;
-    if (anchorStr == null) return true;
-    final anchor = DateTime.parse(anchorStr).toLocal();
-    // sessionStart 파싱 불가 시, 오늘 자정 기준으로 이전 데이터면 새 세션으로 간주
-    final boundary = sessionStart ?? DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    return anchor.isBefore(boundary);
-  }
-
   Restaurant _mergeRow(
     Map<String, dynamic> row,
     List<Map<String, dynamic>> reports, {
@@ -450,39 +434,75 @@ class SupabaseRestaurantRepository {
     final seed = extra == null ? _seedByName(row['name'] as String?) : null;
     final bh = BusinessHoursData.fromDescription(extra);
     final sessionStart = bh.sessionStartAt(at);
-    final newSession = _isNewBusinessSession(crowdStatus, sessionStart);
 
-    final parsedLevel = parseDisplayLevel(crowdStatus?['display_level']);
-    final hasCrowdStatus = parsedLevel != null;
-    // 이번 영업 세션 시작 이후 제보만 유효하게 봄
-    final hasReports = sessionStart != null
-        ? reports.any((r) {
+    // 이번 영업 세션 시작 이후 제보만 유효
+    final sessionReports = sessionStart != null
+        ? reports.where((r) {
             final createdAt = r['created_at'] as String?;
             if (createdAt == null) return false;
             return DateTime.parse(createdAt).toLocal().isAfter(sessionStart);
-          })
-        : reports.isNotEmpty;
+          }).toList()
+        : reports;
+
+    final hasReports = sessionReports.isNotEmpty;
+
+    // 이번 세션에 새 owner 제보가 crowd_status.updated_at보다 최신이면 즉시 반영
+    final latestOwnerReport = sessionReports
+        .where((r) => (r['source'] as String?) == 'owner')
+        .fold<Map<String, dynamic>?>(null, (best, r) {
+          if (best == null) return r;
+          final a = DateTime.parse(r['created_at'] as String).toLocal();
+          final b = DateTime.parse(best['created_at'] as String).toLocal();
+          return a.isAfter(b) ? r : best;
+        });
+    final crowdUpdatedAt = crowdStatus?['updated_at'] as String?;
+    final ownerJustReported = latestOwnerReport != null &&
+        (crowdUpdatedAt == null ||
+            DateTime.parse(latestOwnerReport['created_at'] as String)
+                .toLocal()
+                .isAfter(DateTime.parse(crowdUpdatedAt).toLocal()));
 
     final computed = computeStatusFromReports(
-      reports: reports,
+      reports: sessionReports,
       existingStatus: crowdStatus,
       now: at,
       businessSessionStart: sessionStart,
+      ownerJustReported: ownerJustReported,
     );
 
     late final String finalStatus;
     var updated = 0;
     var hasCrowdUpdate = false;
 
-    if (hasCrowdStatus && !newSession && hasReports) {
+    // crowd_status가 이번 세션 이후 업데이트됐는지 체크
+    final crowdStatusUpdatedAt = () {
+      final raw = crowdStatus?['updated_at'] as String?;
+      if (raw == null) return null;
+      return DateTime.tryParse(raw)?.toLocal();
+    }();
+    final crowdStatusIsThisSession = sessionStart != null &&
+        crowdStatusUpdatedAt != null &&
+        crowdStatusUpdatedAt.isAfter(sessionStart);
+
+    if (hasReports || crowdStatusIsThisSession) {
       finalStatus = computed.displayStatus;
-      updated = minutesSinceUpdated(crowdStatus);
+      // 업데이트 시간: 제보 최신 시각 vs crowd_status 업데이트 시각 중 더 최신
+      final latestReportTime = sessionReports.isNotEmpty
+          ? sessionReports
+              .map((r) => DateTime.parse(r['created_at'] as String).toLocal())
+              .reduce((a, b) => a.isAfter(b) ? a : b)
+          : null;
+      final latestTime = [
+        if (latestReportTime != null) latestReportTime,
+        if (crowdStatusUpdatedAt != null) crowdStatusUpdatedAt,
+      ].fold<DateTime?>(null, (best, t) =>
+          best == null || t.isAfter(best) ? t : best);
+      updated = latestTime != null
+          ? at.difference(latestTime).inMinutes.clamp(0, 99999)
+          : 0;
       hasCrowdUpdate = true;
-    } else if (hasCrowdStatus && !newSession && !hasReports) {
-      // crowd_status는 있지만 이번 세션 ��보 없음 → 제보 필요 상태
-      finalStatus = computed.displayStatus;
-      hasCrowdUpdate = false;
     } else {
+      // 이번 세션 제보도 없고 crowd_status도 이번 세션 데이터 아님 → 제보필요
       finalStatus = computed.displayStatus;
       hasCrowdUpdate = false;
     }
@@ -536,7 +556,10 @@ class SupabaseRestaurantRepository {
       ownerRegistered: extra?['owner_registered'] == true,
       crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
       crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
-      hasCrowdUpdate: hasCrowdUpdate || ownerUpdatedAt != null,
+      hasCrowdUpdate: hasCrowdUpdate ||
+          (ownerUpdatedAt != null &&
+              sessionStart != null &&
+              ownerUpdatedAt.isAfter(sessionStart)),
       updated: _effectiveUpdated(updated, ownerUpdatedAt, at),
       createdAt: row['created_at'] != null
           ? DateTime.tryParse(row['created_at'] as String)?.toLocal()
