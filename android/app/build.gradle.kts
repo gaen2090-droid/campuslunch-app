@@ -18,6 +18,12 @@ val keysProperties = Properties().apply {
     if (file.exists()) load(FileInputStream(file))
 }
 
+/// 릴리스 서명용 keystore 정보 (git 제외 — android/key.properties).
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) load(FileInputStream(file))
+}
+
 val dotEnv = Properties().apply {
     val file = rootProject.file("../.env")
     if (file.exists()) {
@@ -66,11 +72,27 @@ android {
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null) {
+                storeFile = rootProject.file("app/$storeFilePath")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // key.properties 가 있으면 릴리스 키로, 없으면 debug 키로 서명한다.
+            // (팀원이 keystore 없이도 디버그 빌드를 돌릴 수 있도록)
+            signingConfig = if (keystoreProperties.getProperty("storeFile") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
