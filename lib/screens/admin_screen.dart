@@ -2717,8 +2717,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform
-        .pickFiles(type: FileType.image, withData: true);
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
     if (!mounted) return;
     if (result == null || result.files.first.bytes == null) return;
     setState(() {
@@ -3048,8 +3047,7 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform
-        .pickFiles(type: FileType.image, withData: true);
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
     if (!mounted) return;
     if (result == null || result.files.first.bytes == null) return;
     setState(() {
