@@ -9,6 +9,7 @@ import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
+import '../models/reward.dart';
 import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
 import 'crowd_level_mapper.dart';
@@ -154,7 +155,9 @@ class SupabaseRestaurantRepository {
     }
   }
 
-  Future<void> reportStatus(
+  /// submit_crowd_report RPC를 호출하고 스탬프 결과를 반환.
+  /// RPC가 없거나 void를 반환하는 구버전이면 StampResult.none 반환.
+  Future<StampResult> reportStatusWithStamp(
     String restaurantId,
     String uiStatus, {
     String source = 'user',
@@ -164,14 +167,17 @@ class SupabaseRestaurantRepository {
     double? longitude,
   }) async {
     try {
-      await _client.rpc('submit_crowd_report', params: {
+      final raw = await _client.rpc('submit_crowd_report', params: {
         'p_restaurant_id': restaurantId,
         'p_status': uiStatus,
         'p_source': source,
         'p_lat': latitude,
         'p_lng': longitude,
       });
-      return;
+      if (raw is Map) {
+        return StampResult.fromJson(Map<String, dynamic>.from(raw));
+      }
+      return StampResult.none;
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST202' ||
           e.message.contains('submit_crowd_report') ||
@@ -181,7 +187,7 @@ class SupabaseRestaurantRepository {
         rethrow;
       }
     }
-
+    // 폴백: 직접 insert (구버전 DB)
     final payload = <String, dynamic>{
       'restaurant_id': restaurantId,
       'level': CrowdLevelMapper.toDb(uiStatus),
@@ -198,6 +204,23 @@ class SupabaseRestaurantRepository {
       payload['user_id'] = userId;
     }
     await _client.from('crowd_reports').insert(payload);
+    return StampResult.none;
+  }
+
+  Future<void> reportStatus(
+    String restaurantId,
+    String uiStatus, {
+    String source = 'user',
+    String? userId,
+    String? nickname,
+    double? latitude,
+    double? longitude,
+  }) async {
+    await reportStatusWithStamp(
+      restaurantId, uiStatus,
+      source: source, userId: userId, nickname: nickname,
+      latitude: latitude, longitude: longitude,
+    );
   }
 
   static bool _isUuid(String? value) {

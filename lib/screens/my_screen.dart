@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
 import 'bookmark_list_screen.dart';
+import 'reward_screen.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -183,6 +184,11 @@ class _MyScreenState extends State<MyScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // ── 내 리워드 ──
+              _RewardCard(reward: provider.reward),
 
               const SizedBox(height: 16),
 
@@ -762,6 +768,125 @@ class _MyScreenState extends State<MyScreen> {
                     color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RewardCard extends StatelessWidget {
+  final dynamic reward; // UserReward
+
+  const _RewardCard({required this.reward});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = reward.totalStamps as int;
+    final today = reward.todayStamps as int;
+    final remaining = (20 - total).clamp(0, 20);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RewardScreen()),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: total >= 20 ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.stars_rounded, size: 16, color: Color(0xFF16A34A)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '내 리워드',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '오늘 $today / 3',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF16A34A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFFD1D5DB)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '스탬프 $total',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF16A34A),
+                    ),
+                  ),
+                  const Text(
+                    ' / 20',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (total / 20).clamp(0.0, 1.0),
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFF3F4F6),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF16A34A)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                remaining > 0
+                    ? '바나프레소 아메리카노까지 $remaining개 남았어요'
+                    : '쿠폰을 받을 수 있어요!',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: remaining == 0 ? const Color(0xFF16A34A) : const Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

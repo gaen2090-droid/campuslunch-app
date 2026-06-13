@@ -19,6 +19,8 @@ import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
+import '../models/reward.dart';
+import '../data/reward_repository.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
@@ -96,6 +98,15 @@ class AppProvider extends ChangeNotifier {
   // ── 대시보드 지표 ──
   DashboardMetrics _metrics = DashboardMetrics.empty;
   DashboardMetrics get metrics => _metrics;
+
+  // ── 리워드 ──
+  UserReward _reward = UserReward.empty;
+  UserReward get reward => _reward;
+  List<Gifticon> _myGifticons = [];
+  List<Gifticon> get myGifticons => _myGifticons;
+
+  RewardRepository? get _rewardRepo =>
+      SupabaseService.isReady ? RewardRepository(SupabaseService.client) : null;
 
   // ── 키 ──
   static const _kLocation = 'cl_location_mode';
@@ -637,6 +648,8 @@ class AppProvider extends ChangeNotifier {
     );
     await recordAppSession();
     await _syncPushNotifications();
+    await _loadReportLimitSettingsFromSupabase();
+    await fetchMyReward();
   }
 
   Future<void> _saveSession(
@@ -1024,6 +1037,10 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 혼잡도 제보 ──
+  /// 마지막 제보로 지급된 스탬프 결과 (report_feedback.dart에서 읽음)
+  StampResult _lastStampResult = StampResult.none;
+  StampResult get lastStampResult => _lastStampResult;
+
   /// 성공 시 null, 실패 시 사용자에게 보여줄 메시지
   Future<String?> reportStatus(String restaurantId, String status) async {
     final repo = _restaurantRepo;
@@ -1069,7 +1086,7 @@ class AppProvider extends ChangeNotifier {
           }
         }
 
-        await repo.reportStatus(
+        final stampResult = await repo.reportStatusWithStamp(
           restaurantId,
           status,
           source: source,
@@ -1080,6 +1097,17 @@ class AppProvider extends ChangeNotifier {
         );
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
+          _lastStampResult = stampResult;
+          // 리워드 상태 즉시 반영 (네트워크 절약: 로컬 업데이트)
+          if (stampResult.granted) {
+            _reward = UserReward(
+              totalStamps: stampResult.totalStamps,
+              todayStamps: stampResult.todayStamps,
+              lastStampDate: DateTime.now(),
+            );
+          }
+        } else {
+          _lastStampResult = StampResult.none;
         }
         final gen = ++_restaurantRefreshGen;
         final fetched = await repo.fetchAll();
@@ -1213,6 +1241,9 @@ class AppProvider extends ChangeNotifier {
   bool get _hasSupabaseSession =>
       SupabaseService.isReady &&
       SupabaseService.client.auth.currentUser != null;
+
+  /// 실제 Supabase 세션이 있는지 (로컬 편의 계정 제외)
+  bool get hasSupabaseSession => _hasSupabaseSession;
 
   Future<void> _syncMetadata(Map<String, dynamic> data) async {
     if (!_hasSupabaseSession) return;
@@ -1846,6 +1877,76 @@ class AppProvider extends ChangeNotifier {
     _locationMode = false;
     _notificationEnabled = false;
     _stage = 'onboarding';
+    _reward = UserReward.empty;
+    _myGifticons = [];
     notifyListeners();
+  }
+
+  // ── 리워드 ──
+
+  Future<void> fetchMyReward() async {
+    final repo = _rewardRepo;
+    if (repo == null) return;
+    try {
+      final r = await repo.fetchMyReward();
+      final g = await repo.fetchMyGifticons();
+      _reward = r;
+      _myGifticons = g;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Reward] fetchMyReward failed: $e');
+    }
+  }
+
+  /// 쿠폰 교환. 반환: (RedeemResult, Gifticon?)
+  Future<(RedeemResult, Gifticon?)> redeemGifticon() async {
+    final repo = _rewardRepo;
+    if (repo == null) return (RedeemResult.error, null);
+    final result = await repo.redeemGifticon();
+    if (result.$1 == RedeemResult.ok) {
+      // 상태 갱신
+      await fetchMyReward();
+    }
+    return result;
+  }
+
+  // ── 어드민: 기프티콘 ──
+
+  List<Gifticon> _adminGifticons = [];
+  List<Gifticon> get adminGifticons => _adminGifticons;
+
+  Future<void> adminFetchGifticons() async {
+    final repo = _rewardRepo;
+    if (repo == null) return;
+    try {
+      _adminGifticons = await repo.adminListGifticons();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Reward] adminFetchGifticons failed: $e');
+    }
+  }
+
+  Future<String?> adminRegisterGifticon({
+    required String brand,
+    required String productName,
+    required String imageUrl,
+    DateTime? expiresAt,
+  }) async {
+    final repo = _rewardRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    final err = await repo.adminRegisterGifticon(
+      brand: brand,
+      productName: productName,
+      imageUrl: imageUrl,
+      expiresAt: expiresAt,
+    );
+    if (err == null) await adminFetchGifticons();
+    return err;
+  }
+
+  Future<String?> adminUploadGifticonImage(String fileName, Uint8List bytes) async {
+    final repo = _rewardRepo;
+    if (repo == null) return null;
+    return repo.uploadGifticonImage(fileName, bytes);
   }
 }

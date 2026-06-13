@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/restaurant.dart';
+import '../models/reward.dart';
 import '../providers/app_provider.dart';
 import '../utils/business_hours.dart';
 import '../utils/crowd_status_label.dart';
@@ -212,6 +213,15 @@ class _AdminScreenState extends State<AdminScreen> {
                         active: _tab == 'test_settings',
                         onTap: () => setState(() => _tab = 'test_settings'),
                       ),
+                      const SizedBox(width: 8),
+                      _TabPill(
+                        label: '기프티콘',
+                        active: _tab == 'gifticons',
+                        onTap: () {
+                          setState(() => _tab = 'gifticons');
+                          context.read<AppProvider>().adminFetchGifticons();
+                        },
+                      ),
                     ],
                     ),
                   ),
@@ -239,7 +249,9 @@ class _AdminScreenState extends State<AdminScreen> {
                                 ? _PopularityTab(restaurants: restaurants)
                                 : _tab == 'map_register'
                                     ? const AdminMapRegisterTab()
-                                    : _TestSettingsTab(),
+                                    : _tab == 'gifticons'
+                                        ? const _GifticonTab()
+                                        : _TestSettingsTab(),
                     ),
                   ),
                 ),
@@ -3684,4 +3696,336 @@ InputDecoration _inputDecoration(String hint) {
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
   );
+}
+
+// ── 어드민 기프티콘 탭 ────────────────────────────────────────────────────────
+class _GifticonTab extends StatefulWidget {
+  const _GifticonTab();
+
+  @override
+  State<_GifticonTab> createState() => _GifticonTabState();
+}
+
+class _GifticonTabState extends State<_GifticonTab> {
+  bool _showForm = false;
+  bool _saving = false;
+  Uint8List? _imageBytes;
+  String _imageFileName = '';
+
+  final _brandCtrl = TextEditingController();
+  final _productCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _brandCtrl.dispose();
+    _productCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+    setState(() {
+      _imageBytes = file.bytes;
+      _imageFileName = file.name;
+    });
+  }
+
+  Future<void> _submit() async {
+    final brand = _brandCtrl.text.trim();
+    final product = _productCtrl.text.trim();
+    if (brand.isEmpty || product.isEmpty || _imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('모든 항목을 입력해주세요.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final provider = context.read<AppProvider>();
+
+    final imageUrl = await provider.adminUploadGifticonImage(_imageFileName, _imageBytes!);
+    if (!mounted) return;
+    if (imageUrl == null) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이미지 업로드에 실패했어요.')),
+      );
+      return;
+    }
+
+    final err = await provider.adminRegisterGifticon(
+      brand: brand,
+      productName: product,
+      imageUrl: imageUrl,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    _brandCtrl.clear();
+    _productCtrl.clear();
+    setState(() {
+      _showForm = false;
+      _imageBytes = null;
+      _imageFileName = '';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('기프티콘이 등록되었어요.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final list = provider.adminGifticons;
+
+    // 로컬 편의 어드민(admin/admin123)은 Supabase 세션이 없어 RPC 사용 불가
+    if (!provider.hasSupabaseSession) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFFB923C).withValues(alpha: 0.4)),
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Supabase 어드민 계정 필요',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFEA580C))),
+            SizedBox(height: 10),
+            Text(
+              '기프티콘 관리는 실제 Supabase 어드민 계정으로 로그인해야 사용할 수 있어요.\n\n'
+              '로그아웃 후 Supabase에 등록된 role=admin 이메일 계정으로 로그인해주세요.',
+              style: TextStyle(fontSize: 14, color: Color(0xFF92400E), height: 1.6),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '기프티콘 관리',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _showForm = !_showForm),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _showForm ? '취소' : '+ 등록',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (_showForm) ...[
+          _AdminCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('기프티콘 등록', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _brandCtrl,
+                  decoration: _inputDecoration('브랜드명 (예: 바나프레소)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _productCtrl,
+                  decoration: _inputDecoration('상품명 (예: 아메리카노)'),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Column(
+                      children: [
+                        if (_imageBytes != null) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(_imageBytes!, height: 120, fit: BoxFit.contain),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_imageFileName, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+                        ] else ...[
+                          const Icon(Icons.image_outlined, size: 28, color: Color(0xFF9CA3AF)),
+                          const SizedBox(height: 6),
+                          const Text('기프티콘 이미지 선택', style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: _saving ? null : _submit,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16A34A),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(
+                              '등록하기',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        if (list.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Text('등록된 기프티콘이 없어요.', style: TextStyle(color: Color(0xFF9CA3AF))),
+            ),
+          )
+        else
+          ...list.map((g) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _AdminGifticonRow(gifticon: g),
+              )),
+      ],
+    );
+  }
+}
+
+class _AdminCard extends StatelessWidget {
+  final Widget child;
+  const _AdminCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _AdminGifticonRow extends StatelessWidget {
+  final Gifticon gifticon;
+  const _AdminGifticonRow({required this.gifticon});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = gifticon.status == 'assigned'
+        ? const Color(0xFF16A34A)
+        : gifticon.status == 'expired'
+            ? const Color(0xFFEF4444)
+            : const Color(0xFF9CA3AF);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      gifticon.brand,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: statusColor.withAlpha(24),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        gifticon.statusLabel,
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: statusColor),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  gifticon.productName,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                ),
+                const SizedBox(height: 4),
+                if (gifticon.expiresLabel.isNotEmpty)
+                  Text(
+                    '유효기간 ${gifticon.expiresLabel}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                  ),
+                if (gifticon.assignedUserId != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '배정 유저: ${gifticon.assignedUserId!.substring(0, 8)}...',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  ),
+                ],
+                if (gifticon.assignedAt != null) ...[
+                  Text(
+                    '배정일: ${gifticon.assignedAt!.toLocal().toString().substring(0, 10)}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

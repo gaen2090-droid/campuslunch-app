@@ -1,0 +1,672 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../models/reward.dart';
+import '../providers/app_provider.dart';
+import '../services/supabase_service.dart';
+
+class RewardScreen extends StatefulWidget {
+  const RewardScreen({super.key});
+
+  @override
+  State<RewardScreen> createState() => _RewardScreenState();
+}
+
+class _RewardScreenState extends State<RewardScreen> {
+  bool _redeeming = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().fetchMyReward();
+    });
+  }
+
+  Future<void> _onRedeem() async {
+    final confirmed = await _showRedeemConfirm();
+    if (!confirmed || !mounted) return;
+    setState(() => _redeeming = true);
+    final (result, gifticon) = await context.read<AppProvider>().redeemGifticon();
+    if (!mounted) return;
+    setState(() => _redeeming = false);
+    switch (result) {
+      case RedeemResult.ok:
+        _showSnack('쿠폰이 지급되었어요! 보유 쿠폰에서 확인하세요.', success: true);
+      case RedeemResult.soldOut:
+        _showSoldOutDialog();
+      case RedeemResult.notEnough:
+        _showSnack('스탬프가 부족해요. 20개를 모아야 교환할 수 있어요.');
+      case RedeemResult.error:
+        _showSnack('쿠폰 교환에 실패했어요. 잠시 후 다시 시도해주세요.');
+    }
+  }
+
+  Future<bool> _showRedeemConfirm() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text(
+              '쿠폰 받기',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            content: const Text(
+              '바나프레소 아메리카노 쿠폰을 받으시겠어요?\n스탬프 20개가 차감됩니다.',
+              style: TextStyle(fontSize: 14, height: 1.6),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소', style: TextStyle(color: Color(0xFF9CA3AF))),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  '받기',
+                  style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  void _showSoldOutDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('쿠폰 소진', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text(
+          '현재 준비된 쿠폰이 모두 소진되었어요.\n새로운 쿠폰이 등록되면 다시 교환할 수 있어요.',
+          style: TextStyle(fontSize: 14, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('확인', style: TextStyle(color: Color(0xFF16A34A))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnack(String msg, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        msg,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+      ),
+      backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFF111827),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      duration: const Duration(milliseconds: 2400),
+      elevation: 0,
+    ));
+  }
+
+  void _showGifticonDetail(Gifticon g) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _GifticonDetailSheet(gifticon: g),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final reward = provider.reward;
+    final gifticons = provider.myGifticons;
+    final total = reward.totalStamps;
+    final today = reward.todayStamps;
+    const target = 20;
+    final remaining = target - total;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0FDF4),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF0FDF4),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '내 리워드',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF16A34A),
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => provider.fetchMyReward(),
+        color: const Color(0xFF16A34A),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── 스탬프 현황 카드 ──
+              _StampSummaryCard(total: total, today: today, remaining: remaining),
+              const SizedBox(height: 20),
+
+              // ── 스탬프북 ──
+              _SectionTitle('스탬프북'),
+              const SizedBox(height: 12),
+              _StampGrid(filled: total, target: target),
+              const SizedBox(height: 20),
+
+              // ── 보상 카드 ──
+              _SectionTitle('보상'),
+              const SizedBox(height: 12),
+              _RewardCard(
+                total: total,
+                target: target,
+                remaining: remaining,
+                redeeming: _redeeming,
+                onRedeem: _onRedeem,
+              ),
+              const SizedBox(height: 24),
+
+              // ── 보유 쿠폰 ──
+              if (gifticons.isNotEmpty) ...[
+                _SectionTitle('보유 쿠폰'),
+                const SizedBox(height: 12),
+                ...gifticons.map(
+                  (g) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _GifticonCard(
+                      gifticon: g,
+                      onView: () => _showGifticonDetail(g),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w900,
+        color: Color(0xFF111827),
+        letterSpacing: -0.3,
+      ),
+    );
+  }
+}
+
+class _StampSummaryCard extends StatelessWidget {
+  final int total;
+  final int today;
+  final int remaining;
+
+  const _StampSummaryCard({required this.total, required this.today, required this.remaining});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  '스탬프 현황',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF374151)),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '오늘 $today / 3',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$total',
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF16A34A), height: 1),
+              ),
+              const Text(
+                ' / 20',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: (total / 20).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: const Color(0xFFF3F4F6),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF16A34A)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            remaining > 0
+                ? '바나프레소 아메리카노까지 $remaining개 남았어요'
+                : '쿠폰을 받을 수 있어요!',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: remaining > 0 ? const Color(0xFF6B7280) : const Color(0xFF16A34A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '하루 최대 3개의 스탬프를 획득할 수 있어요.',
+            style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StampGrid extends StatelessWidget {
+  final int filled;
+  final int target;
+
+  const _StampGrid({required this.filled, required this.target});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 5,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1,
+        ),
+        itemCount: target,
+        itemBuilder: (_, i) => _StampCell(filled: i < filled),
+      ),
+    );
+  }
+}
+
+class _StampCell extends StatelessWidget {
+  final bool filled;
+  const _StampCell({required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: filled ? const Color(0xFFDCFCE7) : const Color(0xFFF9FAFB),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: filled ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+          width: 1.5,
+        ),
+      ),
+      child: Center(
+        child: filled
+            ? const Icon(Icons.restaurant, size: 18, color: Color(0xFF16A34A))
+            : const Icon(Icons.restaurant, size: 18, color: Color(0xFFD1D5DB)),
+      ),
+    );
+  }
+}
+
+class _RewardCard extends StatelessWidget {
+  final int total;
+  final int target;
+  final int remaining;
+  final bool redeeming;
+  final VoidCallback onRedeem;
+
+  const _RewardCard({
+    required this.total,
+    required this.target,
+    required this.remaining,
+    required this.redeeming,
+    required this.onRedeem,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canRedeem = total >= target;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: canRedeem ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(child: Text('☕', style: TextStyle(fontSize: 26))),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '바나프레소 아메리카노',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  canRedeem
+                      ? '쿠폰을 받을 수 있어요!'
+                      : '아직 $remaining개 더 필요해요',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: canRedeem ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: canRedeem && !redeeming ? onRedeem : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: canRedeem ? const Color(0xFF16A34A) : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: redeeming
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      '쿠폰 받기',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: canRedeem ? Colors.white : const Color(0xFF9CA3AF),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GifticonCard extends StatelessWidget {
+  final Gifticon gifticon;
+  final VoidCallback onView;
+
+  const _GifticonCard({required this.gifticon, required this.onView});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(child: Text('🎁', style: TextStyle(fontSize: 24))),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gifticon.productName,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                ),
+                const SizedBox(height: 4),
+                if (gifticon.expiresLabel.isNotEmpty)
+                  Text(
+                    '유효기간 ${gifticon.expiresLabel}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onView,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Text(
+                '쿠폰 보기',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GifticonDetailSheet extends StatefulWidget {
+  final Gifticon gifticon;
+  const _GifticonDetailSheet({required this.gifticon});
+
+  @override
+  State<_GifticonDetailSheet> createState() => _GifticonDetailSheetState();
+}
+
+class _GifticonDetailSheetState extends State<_GifticonDetailSheet> {
+  String? _freshImageUrl;
+  bool _loadingUrl = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshImageUrl();
+  }
+
+  Future<void> _refreshImageUrl() async {
+    final raw = widget.gifticon.imageUrl;
+    if (raw.isEmpty) {
+      setState(() { _freshImageUrl = ''; _loadingUrl = false; });
+      return;
+    }
+    // storage path면 fresh signed URL 생성 (1시간)
+    if (!raw.startsWith('http') && SupabaseService.isReady) {
+      try {
+        final url = await SupabaseService.client.storage
+            .from('gifticons')
+            .createSignedUrl(raw, 3600);
+        if (mounted) setState(() { _freshImageUrl = url; _loadingUrl = false; });
+        return;
+      } catch (_) {}
+    }
+    if (mounted) setState(() { _freshImageUrl = raw; _loadingUrl = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(12, 0, 12, MediaQuery.of(context).padding.bottom + 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.all(Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              widget.gifticon.brand,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              widget.gifticon.productName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+            ),
+            const SizedBox(height: 6),
+            if (widget.gifticon.expiresLabel.isNotEmpty)
+              Text(
+                '유효기간 ${widget.gifticon.expiresLabel}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+              ),
+            const SizedBox(height: 20),
+            // 기프티콘 이미지 (열릴 때 fresh signed URL 생성)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _loadingUrl
+                  ? const SizedBox(
+                      width: double.infinity,
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator(color: Color(0xFF16A34A))),
+                    )
+                  : (_freshImageUrl?.isNotEmpty == true
+                      ? Image.network(
+                          _freshImageUrl!,
+                          width: double.infinity,
+                          height: 260,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => _imageError(),
+                        )
+                      : _imageError()),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    '닫기',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF374151)),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imageError() => Container(
+    width: double.infinity,
+    height: 200,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF3F4F6),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: const Center(
+      child: Text('이미지를 불러올 수 없어요', style: TextStyle(color: Color(0xFF9CA3AF))),
+    ),
+  );
+}
