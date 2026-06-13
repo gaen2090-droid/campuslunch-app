@@ -209,12 +209,6 @@ class _AdminScreenState extends State<AdminScreen> {
                       ),
                       const SizedBox(width: 8),
                       _TabPill(
-                        label: '테스트 관리',
-                        active: _tab == 'test_settings',
-                        onTap: () => setState(() => _tab = 'test_settings'),
-                      ),
-                      const SizedBox(width: 8),
-                      _TabPill(
                         label: '기프티콘',
                         active: _tab == 'gifticons',
                         onTap: () {
@@ -249,9 +243,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 ? _PopularityTab(restaurants: restaurants)
                                 : _tab == 'map_register'
                                     ? const AdminMapRegisterTab()
-                                    : _tab == 'gifticons'
-                                        ? const _GifticonTab()
-                                        : _TestSettingsTab(),
+                                    : const _GifticonTab(),
                     ),
                   ),
                 ),
@@ -901,112 +893,6 @@ class _AlgorithmToggleCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── 테스트 관리 탭 ────────────────────────────────────────────────────────────
-class _TestSettingsTab extends StatelessWidget {
-  const _TestSettingsTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ReportLimitToggles(),
-      ],
-    );
-  }
-}
-
-// ── 테스트용 제보 제한 토글 ──────────────────────────────────────────────────
-class _ReportLimitToggles extends StatelessWidget {
-  const _ReportLimitToggles();
-
-  Widget _toggle({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required VoidCallback onTap,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827))),
-              const SizedBox(height: 4),
-              Text(subtitle,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 56, height: 32,
-            decoration: BoxDecoration(
-              color: value ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 200),
-              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                width: 24, height: 24,
-                margin: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                    color: Colors.white, shape: BoxShape.circle),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('테스트 설정',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF9CA3AF))),
-          const SizedBox(height: 16),
-          _toggle(
-            title: 'GPS 반경 제한',
-            subtitle: '유저 제보 시 식당 150m 이내만 허용',
-            value: provider.gpsReportLimit,
-            onTap: () => provider.toggleGpsReportLimit(),
-          ),
-          const SizedBox(height: 16),
-          _toggle(
-            title: '5분 재제보 제한',
-            subtitle: '같은 식당 5분 내 재제보 금지',
-            value: provider.cooldownReportLimit,
-            onTap: () => provider.toggleCooldownReportLimit(),
           ),
         ],
       ),

@@ -191,6 +191,13 @@ class BusinessHoursData {
     DateTime? best;
     var bestStart = -1;
 
+    // close 없는 단일 period = 24시간 영업 → 세션 시작은 오늘 0시
+    if (periods.length == 1 &&
+        periods.first['open'] != null &&
+        periods.first['close'] == null) {
+      return DateTime(now.year, now.month, now.day);
+    }
+
     for (final p in periods) {
       final open = p['open'] as Map<String, dynamic>?;
       final close = p['close'] as Map<String, dynamic>?;
@@ -251,7 +258,9 @@ class BusinessHoursData {
     for (final p in periods) {
       final open = p['open'] as Map<String, dynamic>?;
       final close = p['close'] as Map<String, dynamic>?;
-      if (open == null || close == null) continue;
+      if (open == null) continue;
+      // close 없는 단일 period = 24시간 영업 (Google Places 표준)
+      if (close == null) return true;
       var start = _weekMinute(
         (open['day'] as num).toInt(),
         _parseGoogleTime(open['time'] as String?),
@@ -284,6 +293,12 @@ class BusinessHoursData {
     List<Map<String, dynamic>> periods,
   ) {
     final day = _googleDay(now);
+    // close 없는 단일 period = 24시간 영업
+    if (periods.length == 1 &&
+        periods.first['open'] != null &&
+        periods.first['close'] == null) {
+      return '00:00 - 24:00';
+    }
     final ranges = <(int, int)>[];
     for (final p in periods) {
       final open = p['open'] as Map<String, dynamic>?;
@@ -303,6 +318,12 @@ class BusinessHoursData {
   static String? _firstCanonicalFromPeriods(
     List<Map<String, dynamic>> periods,
   ) {
+    // close 없는 단일 period = 24시간 영업
+    if (periods.length == 1 &&
+        periods.first['open'] != null &&
+        periods.first['close'] == null) {
+      return '00:00 - 24:00';
+    }
     final byDay = <int, List<(int, int)>>{};
     for (final p in periods) {
       final open = p['open'] as Map<String, dynamic>?;

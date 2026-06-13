@@ -134,7 +134,8 @@ begin
 
   v_total_stamps := v_row.total_stamps;
 
-  if v_today_stamps < 3 then
+  -- 테스트 편의: 하루 스탬프 제한 사실상 해제 (원래 3). UI 문구는 여전히 "/3" 표시.
+  if v_today_stamps < 999 then
     v_today_stamps := v_today_stamps + 1;
     v_total_stamps := v_total_stamps + 1;
     v_granted := true;
@@ -169,9 +170,6 @@ set search_path = public
 as $$
 declare
   v_uid        uuid := auth.uid();
-  v_lat        double precision;
-  v_lng        double precision;
-  v_distance   double precision;
   v_level      public.crowd_level;
   v_source     public.crowd_source;
   v_ui_level   int;
@@ -205,35 +203,7 @@ begin
     end if;
   end if;
 
-  if p_source = 'user' then
-    if p_lat is null or p_lng is null then
-      raise exception '현재 위치를 확인할 수 없어요. 위치 권한을 확인해주세요.';
-    end if;
-
-    if exists (
-      select 1 from public.crowd_reports cr
-      where cr.restaurant_id = p_restaurant_id
-        and cr.user_id = v_uid
-        and cr.source = 'user'::public.crowd_source
-        and cr.created_at >= now() - interval '5 minutes'
-    ) then
-      raise exception E'방금 제보한 식당이에요.\n잠시 후 다시 제보해주세요.';
-    end if;
-
-    select r.latitude, r.longitude
-    into v_lat, v_lng
-    from public.restaurants r
-    where r.id = p_restaurant_id;
-
-    if v_lat is null or v_lng is null then
-      raise exception '식당 위치 정보가 없어요.';
-    end if;
-
-    v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
-    if v_distance > 80 then
-      raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
-    end if;
-  end if;
+  -- 위치/쿨다운 제한은 클라이언트(앱)에서 검사한다. (디버그 빌드는 우회)
 
   insert into public.crowd_reports (
     restaurant_id, level, source, user_id, metadata

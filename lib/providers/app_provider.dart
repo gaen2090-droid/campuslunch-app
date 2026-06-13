@@ -64,11 +64,6 @@ class AppProvider extends ChangeNotifier {
   bool _useAlgorithmRanking = true;
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
-  bool _gpsReportLimit = true;
-  bool _cooldownReportLimit = true;
-
-  bool get gpsReportLimit => _gpsReportLimit;
-  bool get cooldownReportLimit => _cooldownReportLimit;
 
   /// 사장님 인증 완료 시 하단 「사장님」 탭 표시
   bool get hasOwnerTab =>
@@ -123,8 +118,6 @@ class AppProvider extends ChangeNotifier {
   static const _kBookmarks = 'cl_bookmarks';
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
-  static const _kGpsReportLimit = 'cl_gps_report_limit_v2';
-  static const _kCooldownReportLimit = 'cl_cooldown_report_limit_v2';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
   static const _kPendingSignupPassword = 'cl_pending_signup_password';
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
@@ -157,12 +150,9 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
-    _gpsReportLimit = prefs.getBool(_kGpsReportLimit) ?? true;
-    _cooldownReportLimit = prefs.getBool(_kCooldownReportLimit) ?? true;
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
-    await _loadReportLimitSettingsFromSupabase();
     _subscribeRealtime();
 
     // Supabase 미연결·로드 실패 시에만 로컬 혼잡도 오버라이드 적용
@@ -648,7 +638,6 @@ class AppProvider extends ChangeNotifier {
     );
     await recordAppSession();
     await _syncPushNotifications();
-    await _loadReportLimitSettingsFromSupabase();
     await fetchMyReward();
   }
 
@@ -1052,8 +1041,8 @@ class AppProvider extends ChangeNotifier {
             _userRole == 'owner' && _ownsRestaurant(restaurantId);
         final source = isOwnerReport ? 'owner' : 'user';
 
-        // 사장님은 5분 제한 없음
-        if (source == 'user' && _cooldownReportLimit) {
+        // 사장님은 5분 제한 없음. 디버그 빌드(flutter run)는 테스트 위해 제한 우회.
+        if (source == 'user' && !kDebugMode) {
           final last = _lastReportTime[restaurantId];
           if (last != null &&
               DateTime.now().difference(last).inMinutes < 5) {
@@ -1062,7 +1051,7 @@ class AppProvider extends ChangeNotifier {
         }
         double? lat;
         double? lng;
-        if (source == 'user' && _gpsReportLimit) {
+        if (source == 'user' && !kDebugMode) {
           final pos = await _currentPosition();
           if (pos == null) {
             return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
@@ -1718,47 +1707,6 @@ class AppProvider extends ChangeNotifier {
     }
     await _syncPushNotifications();
     notifyListeners();
-  }
-
-  Future<void> _loadReportLimitSettingsFromSupabase() async {
-    try {
-      final repo = _restaurantRepo;
-      if (repo == null) {
-        debugPrint('[ReportLimit] repo null, skip');
-        return;
-      }
-      final settings = await repo.fetchReportLimitSettings();
-      debugPrint('[ReportLimit] fetched from Supabase: $settings');
-      final prefs = await SharedPreferences.getInstance();
-      if (settings.containsKey('gps_report_limit')) {
-        _gpsReportLimit = settings['gps_report_limit']!;
-        await prefs.setBool(_kGpsReportLimit, _gpsReportLimit);
-      }
-      if (settings.containsKey('cooldown_report_limit')) {
-        _cooldownReportLimit = settings['cooldown_report_limit']!;
-        await prefs.setBool(_kCooldownReportLimit, _cooldownReportLimit);
-      }
-      debugPrint('[ReportLimit] gps=$_gpsReportLimit cooldown=$_cooldownReportLimit');
-      notifyListeners();
-    } catch (e) {
-      debugPrint('[ReportLimit] load error: $e');
-    }
-  }
-
-  Future<void> toggleGpsReportLimit() async {
-    _gpsReportLimit = !_gpsReportLimit;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kGpsReportLimit, _gpsReportLimit);
-    _restaurantRepo?.setReportLimitSetting('gps_report_limit', _gpsReportLimit);
-  }
-
-  Future<void> toggleCooldownReportLimit() async {
-    _cooldownReportLimit = !_cooldownReportLimit;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kCooldownReportLimit, _cooldownReportLimit);
-    _restaurantRepo?.setReportLimitSetting('cooldown_report_limit', _cooldownReportLimit);
   }
 
   Future<void> setManualRanks(List<String> orderedIds) async {

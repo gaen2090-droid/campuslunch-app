@@ -414,8 +414,27 @@ grant execute on function public.submit_crowd_report(uuid, text, text, double pr
   to authenticated;
 
 comment on function public.submit_crowd_report is
-  '유저 제보: GPS 80m + 5분 중복 방지. 사장님 제보: GPS 생략.';
+  '유저 제보/사장님 제보. 위치·쿨다운 제한은 클라이언트(앱)에서 검사 (디버그 우회).';
 comment on column public.crowd_status.display_level is
   '1=여유로움, 2=약간혼잡, 3=자리없음. UI 한글은 level_to_ui_status()로 변환.';
 comment on table public.crowd_status is
   '매장별 표시 혼잡도. 계산은 crowd_status_v2_compute.sql 의 recalculate_crowd_status.';
+
+-- ── Realtime 활성화 ──
+-- 앱의 _subscribeRealtime() 이 이 테이블들의 변경을 구독한다.
+-- 이미 publication 에 추가돼 있으면 do $$ 블록으로 중복 에러를 방지한다.
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and tablename = 'crowd_status') then
+    alter publication supabase_realtime add table public.crowd_status;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and tablename = 'crowd_reports') then
+    alter publication supabase_realtime add table public.crowd_reports;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and tablename = 'owner_seat_updates') then
+    alter publication supabase_realtime add table public.owner_seat_updates;
+  end if;
+end $$;
