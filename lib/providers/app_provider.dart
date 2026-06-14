@@ -83,6 +83,10 @@ class AppProvider extends ChangeNotifier {
   // ── 식당 ──
   List<Restaurant> _restaurants = [];
   List<Restaurant> get restaurants => _restaurants;
+  List<Restaurant> _adminRestaurants = [];
+  /// 어드민 화면용 — is_active=false 포함 DB 전체
+  List<Restaurant> get adminRestaurants =>
+      _adminRestaurants.isNotEmpty ? _adminRestaurants : _restaurants;
   bool _supabaseRestaurantsLoaded = false;
   int _restaurantRefreshGen = 0;
 
@@ -128,8 +132,9 @@ class AppProvider extends ChangeNotifier {
   SupabaseRestaurantRepository? get _restaurantRepo =>
       SupabaseService.isReady ? SupabaseRestaurantRepository() : null;
 
-  /// 앱 내 admin/admin123 또는 Supabase JWT role=admin
-  bool get _canAdminOps => _userRole == 'admin' || SupabaseService.isAdmin;
+  /// Supabase admin 세션 + role=admin (로컬 admin/admin123 제외)
+  bool get _canAdminOps =>
+      _hasSupabaseSession && (_userRole == 'admin' || SupabaseService.isAdmin);
 
   StreamSubscription<AuthState>? _authSub;
   RealtimeChannel? _realtimeChannel;
@@ -1345,8 +1350,7 @@ class AppProvider extends ChangeNotifier {
         'google_place_id': placeId,
       });
 
-      _restaurants = _withOperatingHours(await repo.fetchAll());
-      notifyListeners();
+      await _syncRestaurantListsAfterAdminChange();
       return restaurant.ownerCode;
     } catch (e, st) {
       debugPrint('[Supabase] addRestaurantFromGooglePlace failed: $e\n$st');
@@ -1354,119 +1358,75 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshAdminRestaurants() async {
+    if (!_canAdminOps) return;
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    try {
+      _adminRestaurants =
+          _withOperatingHours(await repo.fetchAll(includeInactive: true));
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[Supabase] refreshAdminRestaurants failed: $e\n$st');
+    }
+  }
+
+  Future<void> _syncRestaurantListsAfterAdminChange() async {
+    final repo = _restaurantRepo;
+    if (repo == null) return;
+    _adminRestaurants =
+        _withOperatingHours(await repo.fetchAll(includeInactive: true));
+    _restaurants = _withOperatingHours(await repo.fetchAll());
+    notifyListeners();
+  }
+
   // ── 어드민: 매장 관리 ──
-  Future<void> addRestaurant(Map<String, dynamic> data) async {
-    final repo = _restaurantRepo;
-    if (repo != null) {
-      if (!_canAdminOps) {
-        debugPrint('[addRestaurant] 관리자 로그인 필요');
-        return;
-      }
-      try {
-        await repo.insert(data);
-        _restaurants = _withOperatingHours(await repo.fetchAll());
-        notifyListeners();
-        return;
-      } catch (e, st) {
-        debugPrint('[Supabase] addRestaurant failed: $e\n$st');
-      }
+  Future<String?> addRestaurant(Map<String, dynamic> data) async {
+    if (!_canAdminOps) {
+      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
     }
-
-    final newR = Restaurant(
-      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-      name: data['name'] as String,
-      category: data['category'] as String,
-      area: data['area'] as String,
-      address: data['address'] as String? ?? data['area'] as String,
-      status: '여유로움',
-      updated: 0,
-      hasCrowdUpdate: false,
-      imageUrl: data['image_url'] as String? ?? '',
-      distance: 200,
-      latitude: (data['latitude'] as num?)?.toDouble() ?? 0,
-      longitude: (data['longitude'] as num?)?.toDouble() ?? 0,
-      x: (data['x'] as num?)?.toDouble() ?? 50,
-      y: (data['y'] as num?)?.toDouble() ?? 50,
-      hours: data['hours'] as String? ?? '11:00 - 21:00',
-      reports: {},
-      menu: ((data['menu'] as List<dynamic>?) ?? [])
-          .map((m) => MenuItem(
-              name: (m as Map)['name'] as String,
-              price: (m['price'] as num).toInt()))
-          .toList(),
-    );
-    _restaurants = [..._restaurants, newR];
-    notifyListeners();
+    final repo = _restaurantRepo;
+    if (repo == null) return 'Supabase 연결이 필요해요.';
+    try {
+      await repo.insert(data);
+      await _syncRestaurantListsAfterAdminChange();
+      return null;
+    } catch (e, st) {
+      debugPrint('[Supabase] addRestaurant failed: $e\n$st');
+      return '매장 추가에 실패했어요.';
+    }
   }
 
-  Future<void> editRestaurant(String id, Map<String, dynamic> data) async {
-    final repo = _restaurantRepo;
-    if (repo != null) {
-      if (!_canAdminOps) {
-        debugPrint('[editRestaurant] 관리자 로그인 필요');
-        return;
-      }
-      try {
-        await repo.update(id, data);
-        _restaurants = _withOperatingHours(await repo.fetchAll());
-        notifyListeners();
-        return;
-      } catch (e, st) {
-        debugPrint('[Supabase] editRestaurant failed: $e\n$st');
-      }
+  Future<String?> editRestaurant(String id, Map<String, dynamic> data) async {
+    if (!_canAdminOps) {
+      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
     }
-
-    _restaurants = _restaurants.map((r) {
-      if (r.id != id) return r;
-      return Restaurant(
-        id: r.id,
-        name: data['name'] as String? ?? r.name,
-        category: data['category'] as String? ?? r.category,
-        area: data['area'] as String? ?? r.area,
-        address: data['address'] as String? ?? r.address,
-        status: r.status,
-        updated: r.updated,
-        imageUrl: data['image_url'] as String? ?? r.imageUrl,
-        distance: r.distance,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        x: r.x,
-        y: r.y,
-        hours: data['hours'] as String? ?? r.hours,
-        reports: r.reports,
-        ownerCode: r.ownerCode,
-        ownerRegistered: r.ownerRegistered,
-        menu: data['menu'] != null
-            ? ((data['menu'] as List<dynamic>))
-                .map((m) => MenuItem(
-                    name: (m as Map)['name'] as String,
-                    price: (m['price'] as num).toInt()))
-                .toList()
-            : r.menu,
-      );
-    }).toList();
-    notifyListeners();
+    final repo = _restaurantRepo;
+    if (repo == null) return 'Supabase 연결이 필요해요.';
+    try {
+      await repo.update(id, data);
+      await _syncRestaurantListsAfterAdminChange();
+      return null;
+    } catch (e, st) {
+      debugPrint('[Supabase] editRestaurant failed: $e\n$st');
+      return '매장 수정에 실패했어요.';
+    }
   }
 
-  Future<void> deleteRestaurant(String id) async {
-    final repo = _restaurantRepo;
-    if (repo != null) {
-      if (!_canAdminOps) {
-        debugPrint('[deleteRestaurant] 관리자 로그인 필요');
-        return;
-      }
-      try {
-        await repo.delete(id);
-        _restaurants = _restaurants.where((r) => r.id != id).toList();
-        notifyListeners();
-        return;
-      } catch (e, st) {
-        debugPrint('[Supabase] deleteRestaurant failed: $e\n$st');
-      }
+  Future<String?> deleteRestaurant(String id) async {
+    if (!_canAdminOps) {
+      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
     }
-
-    _restaurants = _restaurants.where((r) => r.id != id).toList();
-    notifyListeners();
+    final repo = _restaurantRepo;
+    if (repo == null) return 'Supabase 연결이 필요해요.';
+    try {
+      await repo.delete(id);
+      await _syncRestaurantListsAfterAdminChange();
+      return null;
+    } catch (e, st) {
+      debugPrint('[Supabase] deleteRestaurant failed: $e\n$st');
+      return '매장 삭제에 실패했어요. supabase/rpc_admin_restaurants.sql 실행 여부를 확인해주세요.';
+    }
   }
 
   Future<List<RecentCrowdReport>> fetchRecentCrowdReports(String restaurantId) async {
@@ -1549,13 +1509,12 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> generateOwnerCode(String restaurantId) async {
-    final repo = _restaurantRepo;
-    if (repo == null) return;
+  Future<String?> generateOwnerCode(String restaurantId) async {
     if (!_canAdminOps) {
-      debugPrint('[generateOwnerCode] 관리자 로그인 필요');
-      return;
+      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
     }
+    final repo = _restaurantRepo;
+    if (repo == null) return 'Supabase 연결이 필요해요.';
     try {
       final code = await repo.generateOwnerCode(restaurantId);
       _restaurants = _restaurants.map((r) {
@@ -1584,8 +1543,10 @@ class AppProvider extends ChangeNotifier {
         );
       }).toList();
       notifyListeners();
+      return null;
     } catch (e, st) {
       debugPrint('[Supabase] generateOwnerCode failed: $e\n$st');
+      return '인증번호 발급에 실패했어요.';
     }
   }
 

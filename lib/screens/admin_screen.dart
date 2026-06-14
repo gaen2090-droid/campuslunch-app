@@ -66,14 +66,14 @@ class _AdminScreenState extends State<AdminScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<AppProvider>();
       provider.fetchMetrics();
-      provider.loadOwnerInfluence();
+      provider.refreshAdminRestaurants();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final restaurants = provider.restaurants;
+    final restaurants = provider.adminRestaurants;
     final metrics = provider.metrics;
 
     return Scaffold(
@@ -224,7 +224,10 @@ class _AdminScreenState extends State<AdminScreen> {
                 // Content
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: () => context.read<AppProvider>().fetchMetrics(),
+                    onRefresh: () async {
+                      await context.read<AppProvider>().fetchMetrics();
+                      await context.read<AppProvider>().refreshAdminRestaurants();
+                    },
                     color: const Color(0xFF16A34A),
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -900,124 +903,6 @@ class _AlgorithmToggleCard extends StatelessWidget {
   }
 }
 
-// ── Owner influence (혼잡도 계산) ─────────────────────────────────────────
-class _OwnerInfluenceCard extends StatefulWidget {
-  const _OwnerInfluenceCard();
-
-  @override
-  State<_OwnerInfluenceCard> createState() => _OwnerInfluenceCardState();
-}
-
-class _OwnerInfluenceCardState extends State<_OwnerInfluenceCard> {
-  double? _draft;
-  bool _saving = false;
-
-  String _modeLabel(int value) {
-    if (value >= 80) return '사장님 우선';
-    if (value >= 50) return '균형';
-    return '유저 중심';
-  }
-
-  Future<void> _save(int value) async {
-    setState(() => _saving = true);
-    final err = await context.read<AppProvider>().setOwnerInfluence(value);
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      _draft = null;
-    });
-    if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err), backgroundColor: const Color(0xFFEF4444)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final value = (_draft ?? provider.ownerInfluence.toDouble()).round();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '혼잡도 계산 설정',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '사장님 영향력 · 유저 제보는 충분히 모일 때만 반영',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                '$value',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF16A34A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _modeLabel(value),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-          Slider(
-            value: (_draft ?? provider.ownerInfluence.toDouble())
-                .clamp(0, 100),
-            min: 0,
-            max: 100,
-            divisions: 20,
-            activeColor: const Color(0xFF16A34A),
-            onChanged: _saving
-                ? null
-                : (v) => setState(() => _draft = v.roundToDouble()),
-            onChangeEnd: _saving ? null : (v) => _save(v.round()),
-          ),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('0 유저 중심',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('50 균형',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('100 사장님',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Popularity tab ───────────────────────────────────────────────────────
 class _PopularityTab extends StatelessWidget {
   final List<Restaurant> restaurants;
@@ -1243,6 +1128,28 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
       children: [
         Column(
           children: [
+            if (!provider.hasSupabaseSession)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFB923C).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Text(
+                  '매장 관리는 Supabase 관리자(role=admin) 계정으로 로그인해야 DB에 반영됩니다.\n'
+                  '로컬 admin/admin123 계정으로는 삭제·추가가 저장되지 않아요.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF92400E),
+                    height: 1.5,
+                  ),
+                ),
+              ),
             // 검색창
             TextField(
               controller: _searchCtrl,
@@ -1348,6 +1255,17 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                     color: Color(0xFF111827),
                                   ),
                                 ),
+                                if (!r.isActive) ...[
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'DB 비활성 (삭제 대상)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 2),
                                 Text(
                                   '${r.area} · ${r.category}',
@@ -1464,7 +1382,21 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                       )
                                     else
                                       GestureDetector(
-                                        onTap: () => provider.generateOwnerCode(r.id),
+                                        onTap: () async {
+                                          final err = await provider
+                                              .generateOwnerCode(r.id);
+                                          if (!context.mounted) return;
+                                          if (err != null) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(err),
+                                                backgroundColor:
+                                                    const Color(0xFFEF4444),
+                                              ),
+                                            );
+                                          }
+                                        },
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 2),
@@ -1579,9 +1511,20 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                               ),
                               const SizedBox(width: 6),
                               GestureDetector(
-                                onTap: () {
-                                  provider.deleteRestaurant(r.id);
+                                onTap: () async {
+                                  final err =
+                                      await provider.deleteRestaurant(r.id);
+                                  if (!context.mounted) return;
                                   setState(() => _confirmDeleteId = null);
+                                  if (err != null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(err),
+                                        backgroundColor:
+                                            const Color(0xFFEF4444),
+                                      ),
+                                    );
+                                  }
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -2566,7 +2509,7 @@ class _ExportSheetState extends State<_ExportSheet> {
 
 // ── Add restaurant sheet ───────────────────────────────────────────────────
 class _AddRestaurantPage extends StatefulWidget {
-  final Future<void> Function(Map<String, dynamic>) onAdd;
+  final Future<String?> Function(Map<String, dynamic>) onAdd;
 
   const _AddRestaurantPage({required this.onAdd});
 
@@ -2629,7 +2572,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
         .where((m) => m.name.isNotEmpty)
         .map((m) => {'name': m.name, 'price': int.tryParse(m.price) ?? 0})
         .toList();
-    await widget.onAdd({
+    final err = await widget.onAdd({
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,
@@ -2638,7 +2581,13 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
       'menu': validMenu,
       if (imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    if (err != null) {
+      setState(() => _error = err);
+      return;
+    }
+    Navigator.pop(context);
   }
 
   @override
@@ -2871,7 +2820,7 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
 // ── Edit restaurant page ──────────────────────────────────────────────────
 class _EditRestaurantPage extends StatefulWidget {
   final Restaurant restaurant;
-  final Future<void> Function(Map<String, dynamic>) onSave;
+  final Future<String?> Function(Map<String, dynamic>) onSave;
 
   const _EditRestaurantPage({
     required this.restaurant,
@@ -2958,7 +2907,7 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
         .where((m) => m.name.isNotEmpty)
         .map((m) => {'name': m.name, 'price': int.tryParse(m.price) ?? 0})
         .toList();
-    await widget.onSave({
+    final err = await widget.onSave({
       'name': _nameCtrl.text.trim(),
       'area': _region,
       'category': _cuisine,
@@ -2967,7 +2916,13 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
       'menu': validMenu,
       if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
     });
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    if (err != null) {
+      setState(() => _error = err);
+      return;
+    }
+    Navigator.pop(context);
   }
 
   @override

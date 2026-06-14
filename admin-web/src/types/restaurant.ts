@@ -24,6 +24,7 @@ export interface AdminRestaurant {
   crowdConfidence: string;
   hasCrowdUpdate: boolean;
   updated: number;
+  isActive: boolean;
 }
 
 export interface RecentCrowdReport {

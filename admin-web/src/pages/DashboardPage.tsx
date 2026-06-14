@@ -1,5 +1,4 @@
 import { MetricCard } from "../components/MetricCard";
-import { OwnerInfluenceCard } from "../components/OwnerInfluenceCard";
 import { TrendChart } from "../components/TrendChart";
 import {
   displayReporterName,
@@ -55,8 +54,6 @@ export function DashboardPage({ metrics, restaurants }: Props) {
           unit="%"
         />
       </section>
-
-      <OwnerInfluenceCard />
 
       <section className="panel owner-stats">
         <p className="field-label">오너 등록 현황</p>

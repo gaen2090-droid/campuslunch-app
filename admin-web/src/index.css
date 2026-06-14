@@ -139,6 +139,12 @@ input {
   font-size: 0.875rem;
 }
 
+.alert.success {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
 .dashboard {
   display: grid;
   gap: 16px;
@@ -722,6 +728,13 @@ code {
 
 .export-actions {
   margin-bottom: 8px;
+}
+
+.inactive-tag {
+  margin: 4px 0 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #ef4444;
 }
 
 @media (max-width: 640px) {

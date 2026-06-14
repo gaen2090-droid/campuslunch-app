@@ -39,6 +39,8 @@ class Restaurant {
   final bool hasCrowdUpdate;
   final DateTime? createdAt;
   final DateTime? ownerUpdatedAt;
+  /// DB is_active. 일반 앱 목록은 true 만 로드, 어드민은 false 포함 가능.
+  final bool isActive;
 
   Restaurant({
     required this.id,
@@ -67,6 +69,7 @@ class Restaurant {
     this.hasCrowdUpdate = true,
     this.createdAt,
     this.ownerUpdatedAt,
+    this.isActive = true,
   });
 
   Restaurant copyWith({
@@ -104,6 +107,7 @@ class Restaurant {
         hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
         createdAt: createdAt,
         ownerUpdatedAt: ownerUpdatedAt,
+        isActive: isActive,
       );
 
   int get totalReports =>

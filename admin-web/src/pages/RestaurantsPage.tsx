@@ -25,6 +25,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
   const [editTarget, setEditTarget] = useState<AdminRestaurant | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const sorted = [...restaurants].sort((a, b) =>
@@ -65,9 +66,11 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
   async function handleDelete(id: string) {
     setBusyId(id);
     setError(null);
+    setSuccess(null);
     try {
       await deleteRestaurant(id);
       setConfirmDeleteId(null);
+      setSuccess("매장을 삭제했어요.");
       onReload();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -79,8 +82,10 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
   async function handleGenerateCode(id: string) {
     setBusyId(id);
     setError(null);
+    setSuccess(null);
     try {
-      await generateOwnerCode(id);
+      const code = await generateOwnerCode(id);
+      setSuccess(`사장님 코드 ${code} 발급 완료`);
       onReload();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -92,6 +97,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
   return (
     <div className="page">
       {error && <div className="alert">{error}</div>}
+      {success && <div className="alert success">{success}</div>}
 
       <input
         className="search-input"
@@ -126,6 +132,9 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                 <div className="card-top">
                   <div>
                     <h3>{r.name}</h3>
+                    {!r.isActive && (
+                      <p className="inactive-tag">DB 비활성 (삭제 대상)</p>
+                    )}
                     <p className="muted sm">
                       {r.area} · {r.category}
                     </p>

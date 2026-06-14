@@ -25,6 +25,7 @@
 --  11. supabase/push_analytics.sql
 --  12. supabase/owner_seat_updates.sql
 --  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환)
+--  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
 --
 -- 타입 오류 hotfix (level/source enum):
 --   supabase/hotfix_crowd_report_types.sql

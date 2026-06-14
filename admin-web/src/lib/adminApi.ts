@@ -150,6 +150,7 @@ function mergeRestaurant(
     crowdConfidence,
     hasCrowdUpdate,
     updated,
+    isActive: row.is_active !== false,
   };
 }
 
@@ -164,11 +165,7 @@ export async function fetchAdminRestaurants(): Promise<AdminRestaurant[]> {
   weekAgo.setDate(weekAgo.getDate() - 6);
 
   const [rowsRes, reportsRes, crowdRes, weekReportsRes] = await Promise.all([
-    supabase
-      .from("restaurants")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at"),
+    supabase.from("restaurants").select("*").order("created_at"),
     supabase
       .from("crowd_reports")
       .select("restaurant_id, level, metadata, created_at, source")
@@ -284,19 +281,50 @@ export async function updateRestaurant(
     patch.description = JSON.stringify(desc);
   }
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("restaurants")
     .update(patch)
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) throw error;
+  if (!updatedRows?.length) {
+    throw new Error("매장 수정 실패: 관리자 권한을 확인하세요.");
+  }
 }
 
 export async function deleteRestaurant(id: string): Promise<void> {
-  const { error } = await supabase
+  try {
+    const { error } = await supabase.rpc("admin_delete_restaurant", {
+      p_restaurant_id: id,
+    });
+    if (error) throw error;
+    return;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (
+      !msg.includes("admin_delete_restaurant") &&
+      !msg.includes("Could not find")
+    ) {
+      throw e;
+    }
+  }
+
+  await supabase.from("crowd_reports").delete().eq("restaurant_id", id);
+  await supabase.from("owner_seat_updates").delete().eq("restaurant_id", id);
+  await supabase.from("crowd_status").delete().eq("restaurant_id", id);
+  await supabase.from("analytics_events").delete().eq("restaurant_id", id);
+
+  const { data, error } = await supabase
     .from("restaurants")
-    .update({ is_active: false })
-    .eq("id", id);
+    .delete()
+    .eq("id", id)
+    .select("id");
   if (error) throw error;
+  if (!data?.length) {
+    throw new Error(
+      "매장 삭제 실패: supabase/rpc_admin_restaurants.sql 실행·관리자 권한을 확인하세요.",
+    );
+  }
 }
 
 export async function generateOwnerCode(restaurantId: string): Promise<string> {
@@ -309,11 +337,15 @@ export async function generateOwnerCode(restaurantId: string): Promise<string> {
   if (fetchErr) throw fetchErr;
   const desc = parseDescription(existing?.description) ?? {};
   desc.owner_code = code;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("restaurants")
     .update({ description: JSON.stringify(desc) })
-    .eq("id", restaurantId);
+    .eq("id", restaurantId)
+    .select("id");
   if (error) throw error;
+  if (!data?.length) {
+    throw new Error("인증번호 저장 실패: 관리자 권한을 확인하세요.");
+  }
   return code;
 }
 
@@ -322,8 +354,7 @@ export async function findRestaurantIdByGooglePlaceId(
 ): Promise<string | null> {
   const { data, error } = await supabase
     .from("restaurants")
-    .select("id, description")
-    .eq("is_active", true);
+    .select("id, description");
   if (error) throw error;
   for (const raw of data ?? []) {
     const row = raw as Record<string, unknown>;
@@ -345,11 +376,15 @@ export async function updateManualRanks(
     if (fetchErr) throw fetchErr;
     const desc = parseDescription(existing?.description) ?? {};
     desc.manual_rank = rank;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("restaurants")
       .update({ description: JSON.stringify(desc) })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
     if (error) throw error;
+    if (!data?.length) {
+      throw new Error(`순위 저장 실패: ${id}`);
+    }
   }
 }
 
@@ -405,37 +440,6 @@ export async function uploadRestaurantImage(
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
-}
-
-export async function fetchOwnerInfluence(): Promise<number> {
-  try {
-    const { data, error } = await supabase.rpc("get_owner_influence");
-    if (!error && typeof data === "number") {
-      return Math.min(100, Math.max(0, Math.trunc(data)));
-    }
-  } catch {
-    /* fallback below */
-  }
-  try {
-    const { data } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "owner_influence")
-      .maybeSingle();
-    const value = Number.parseInt(String(data?.value ?? ""), 10);
-    if (!Number.isNaN(value)) return Math.min(100, Math.max(0, value));
-  } catch {
-    /* ignore */
-  }
-  return 80;
-}
-
-export async function setOwnerInfluence(value: number): Promise<void> {
-  const clamped = Math.min(100, Math.max(0, Math.trunc(value)));
-  const { error } = await supabase.rpc("set_owner_influence", {
-    p_value: clamped,
-  });
-  if (error) throw error;
 }
 
 async function resolveGifticonImageUrl(raw: string | null | undefined): Promise<string> {
@@ -523,9 +527,3 @@ export const CATEGORIES = [
   "분식",
   "카페",
 ] as const;
-
-export function ownerInfluenceLabel(value: number): string {
-  if (value >= 80) return "사장님 우선";
-  if (value >= 50) return "균형";
-  return "유저 중심";
-}
