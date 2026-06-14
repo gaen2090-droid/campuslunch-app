@@ -108,6 +108,20 @@ class GoogleAuthService {
         throw GoogleSignInCancelled();
       }
       rethrow;
+    } catch (e) {
+      final s = e.toString();
+      if (s.contains('ApiException: 10') ||
+          s.contains('DEVELOPER_ERROR') ||
+          s.contains('sign_in_failed')) {
+        throw Exception(
+          'Google Android OAuth 설정 오류(DEVELOPER_ERROR).\n'
+          'Google Cloud Console → Android OAuth 클라이언트에\n'
+          '패키지 com.campuslunch.app + APK 서명 SHA-1을 등록하세요.\n'
+          'cd android && ./gradlew :app:signingReport\n'
+          'docs/GOOGLE_SUPABASE_SETUP.md 참고',
+        );
+      }
+      rethrow;
     }
 
     final email = account.email;

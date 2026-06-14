@@ -731,6 +731,20 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// OAuth SDK가 설정 오류를 cancel로 반환할 때 APK용 안내
+  String _oauthCancelledMessage() {
+    if (kReleaseMode) {
+      return '로그인이 취소되었어요.\n\n'
+          'APK(릴리스)는 flutter run과 서명 키가 다를 수 있어요.\n'
+          '• Google: Cloud Console Android OAuth에 SHA-1 등록\n'
+          '• Kakao: 개발자 콘솔 Android 키 해시 등록\n'
+          '  dart run tool/print_kakao_android_key_hash.dart --release\n'
+          '  (또는 cd android && ./gradlew :app:signingReport)\n'
+          'docs/GOOGLE_SUPABASE_SETUP.md · docs/KAKAO_SUPABASE_SETUP.md';
+    }
+    return '로그인이 취소되었어요.';
+  }
+
   /// 카카오 로그인 (Supabase Auth + public.users)
   Future<String?> loginWithKakao() async {
     if (!KakaoAuthService.isConfigured) {
@@ -756,7 +770,7 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[Kakao] loginWithKakao: $e');
       final msg = e.toString().toLowerCase();
       if (msg.contains('cancel') || msg.contains('canceled')) {
-        return '로그인이 취소되었어요.';
+        return _oauthCancelledMessage();
       }
       if (msg.contains('koe101') ||
           msg.contains('invalid_client') ||
@@ -788,7 +802,7 @@ class AppProvider extends ChangeNotifier {
       await _onSupabaseSignedIn(result.user);
       return null;
     } on GoogleSignInCancelled {
-      return '로그인이 취소되었어요.';
+      return _oauthCancelledMessage();
     } on GoogleEmailBlocked catch (e) {
       return _oauthLoginBlockedMessage(e.status);
     } on AuthException catch (e) {
@@ -817,12 +831,12 @@ class AppProvider extends ChangeNotifier {
       if (e is GoogleSignInException) {
         if (e.code == GoogleSignInExceptionCode.canceled ||
             e.code == GoogleSignInExceptionCode.interrupted) {
-          return '로그인이 취소되었어요.';
+          return _oauthCancelledMessage();
         }
       }
       final msg = e.toString().toLowerCase();
       if (msg.contains('cancel') || msg.contains('canceled')) {
-        return '로그인이 취소되었어요.';
+        return _oauthCancelledMessage();
       }
       return e.toString().replaceFirst('Exception: ', '');
     }

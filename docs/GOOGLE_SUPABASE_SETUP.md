@@ -19,10 +19,19 @@
 ### Android SHA-1 등록
 
 ```bash
-cd android && ./gradlew signingReport
+cd android && ./gradlew :app:signingReport
 ```
 
 `Variant: debug` / `release` 의 SHA-1을 Android OAuth 클라이언트에 각각 등록합니다.
+
+**APK 테스트(`flutter build apk`) 시:** `flutter run`과 서명 키가 다를 수 있습니다.
+`key.properties`로 릴리스 keystore를 쓰면 **release SHA-1**을 반드시 등록하세요.
+키 해시·SHA-1 한 번에 보려면:
+
+```bash
+dart run tool/print_kakao_android_key_hash.dart
+dart run tool/print_kakao_android_key_hash.dart --release
+```
 
 ## 2. `.env` 설정
 
@@ -86,7 +95,8 @@ supabase/rpc_oauth_login_email_check.sql
 | `passed nonce and nonce in id_token` | 앱이 raw nonce를 Google·Supabase에 함께 전달함. 계속되면 Supabase **Skip nonce check** ON |
 | `Unacceptable audience in id_token` | Supabase Google Client ID ≠ 웹 Client ID |
 | iOS 로그인 실패 | `GOOGLE_OAUTH_IOS_CLIENT_ID`, `Info.plist` URL scheme |
-| Android `DEVELOPER_ERROR` (10) | 패키지명 `com.campuslunch.app` + SHA-1 등록 |
+| Android `DEVELOPER_ERROR` (10) | 패키지명 `com.campuslunch.app` + **APK 서명 SHA-1** 등록 |
+| APK에서만 「로그인 취소」 | SHA-1 미등록 시 SDK가 cancel로 반환 — release variant SHA-1 추가 |
 
 ## 7. 팀 공유
 

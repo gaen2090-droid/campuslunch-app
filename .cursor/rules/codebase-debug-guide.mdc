@@ -1,0 +1,36 @@
+---
+description: 코드베이스 디버깅 가이드 PDF를 아키텍처·코딩 기준으로 따르고, 변경 시 PDF 동기화
+alwaysApply: true
+---
+
+# 코드베이스 디버깅 가이드 준수
+
+이 프로젝트의 **단일 기준 문서**는 `docs/CODEBASE_DEBUG_GUIDE.pdf`이다.
+작업 전·중에 PDF(또는 생성 스크립트 `tool/generate_codebase_guide_pdf.py`) 내용을 확인하고 따른다.
+
+## 코드 변경 시
+
+- **레이어**: Screen/Widget → AppProvider → Repository → Supabase. Screen에서 Supabase 직접 호출 금지.
+- **상태**: 전역은 `AppProvider`만. 화면 전용 state만 StatefulWidget 로컬 허용.
+- **DB**: enum `crowd_source`/`crowd_level`, 테이블 `public.users`(profiles 없음), RPC·RLS 경로 유지.
+- **사장님**: owner source는 본인 매장(`owner_id`)만. 탭 구조는 MainScreen 기준.
+- **혼잡도**: DB 트리거가 정본, Dart algorithm은 병합·폴백. SQL 실행 순서는 PDF 6장.
+- **에러**: AppProvider는 `String?` 반환, UI는 SnackBar + `context.mounted` 체크.
+
+새 기능은 PDF 8.1 순서: SQL → model → repository → app_provider → UI.
+
+## PDF와 다르게 바꿔야 할 때
+
+부득이하게 아키텍처·플로우·DB 매핑·컨벤션을 바꾸면:
+
+1. `tool/generate_codebase_guide_pdf.py` 해당 섹션 수정
+2. `python3 tool/generate_codebase_guide_pdf.py` 로 PDF 재생성
+3. 사용자에게 **반드시** 아래 형식으로 강조 보고:
+
+   **PDF 가이드 변경 알림**
+   - 변경 이유: (한 줄)
+   - PDF 섹션: (예: 7.2, 8 레이어 분리)
+   - 코드 변경: (파일·요약)
+   - PDF 반영: 완료 / 해당 없음
+
+PDF 미갱신 상태로 구조 변경을 남기지 않는다.

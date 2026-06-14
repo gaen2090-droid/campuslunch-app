@@ -117,6 +117,14 @@ cd android && ./gradlew :app:signingReport
 developers.kakao.com → 앱 → **플랫폼** → **Android**  
 → 패키지 `com.campuslunch.app` → **키 해시** (기존 + 파트너 해시 줄바꿈)
 
+**APK(`flutter build apk`) 테스트:** 릴리스 keystore로 서명하면 디버그 해시만으로는 부족합니다.
+
+```bash
+dart run tool/print_kakao_android_key_hash.dart --release
+```
+
+`android/key.properties`가 없으면 release APK도 debug keystore로 서명되므로 디버그 해시만 등록하면 됩니다.
+
 ### iOS
 
 - 플랫폼에 **Bundle ID** `com.campuslunch.app` 등록
