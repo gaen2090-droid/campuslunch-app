@@ -25,15 +25,14 @@ class SupabaseRestaurantRepository {
 
   final SupabaseClient _client;
 
-  Future<List<Restaurant>> fetchAll() async {
+  Future<List<Restaurant>> fetchAll({bool includeInactive = false}) async {
     final now = DateTime.now();
     final cutoff = now.subtract(const Duration(hours: 1)).toUtc().toIso8601String();
 
-    final rows = await _client
-        .from('restaurants')
-        .select()
-        .eq('is_active', true)
-        .order('created_at');
+    var query = _client.from('restaurants').select();
+    final rows = includeInactive
+        ? await query.order('created_at')
+        : await query.eq('is_active', true).order('created_at');
 
     // 오늘 영업 시작 이후 제보만 가져옴 (자정 기준으로 충분히 커버)
     final todayStart = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
