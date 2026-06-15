@@ -63,12 +63,12 @@ class CampusLunchApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFC2FF89),
+          seedColor: const Color(0xFF16A34A),
           brightness: Brightness.light,
         ),
         fontFamily: 'Pretendard',
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF2FFE4),
+        scaffoldBackgroundColor: const Color(0xFFF0FDF4),
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
         appBarTheme: const AppBarTheme(

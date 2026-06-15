@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/restaurant_image.dart';
@@ -30,7 +30,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 240,
                 height: 240,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFD5FFA8),
+                  color: Color(0xFFBBF7D0),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -45,7 +45,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 220,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC8FF99).withAlpha(180),
+                  color: const Color(0xFFA7F3D0).withAlpha(180),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -65,18 +65,18 @@ class OnboardingScreen extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [
                             BoxShadow(
-                              color: Color(0xFFD5FFA8),
+                              color: Color(0xFFBBF7D0),
                               blurRadius: 20,
                               offset: Offset(0, 8),
                             ),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                        child: const Center(
+                          child: Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -88,7 +88,7 @@ class OnboardingScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF1A1A1A),
+                              color: Color(0xFF16A34A),
                               letterSpacing: -0.8,
                             ),
                           ),
@@ -154,7 +154,7 @@ class OnboardingScreen extends StatelessWidget {
                               width: 8,
                               height: 8,
                               decoration: const BoxDecoration(
-                                color: Color(0xFFA0FF46),
+                                color: Color(0xFF22C55E),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -184,11 +184,11 @@ class OnboardingScreen extends StatelessWidget {
                       height: 60,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC2FF89),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0xFFD5FFA8),
+                            color: Color(0xFFBBF7D0),
                             blurRadius: 24,
                             offset: Offset(0, 8),
                           ),
@@ -200,7 +200,7 @@ class OnboardingScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF1A1A1A),
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -261,7 +261,7 @@ class _RestaurantRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFA0FF46),
+              color: const Color(0xFFDCFCE7),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
@@ -269,7 +269,7 @@ class _RestaurantRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF1A1A1A),
+                color: Color(0xFF22C55E),
               ),
             ),
           ),
@@ -290,7 +290,7 @@ class _InitialCircle extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: const BoxDecoration(
-        color: Color(0xFFF2FFE4),
+        color: Color(0xFFF0FDF4),
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -299,7 +299,7 @@ class _InitialCircle extends StatelessWidget {
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A1A),
+            color: Color(0xFF16A34A),
           ),
         ),
       ),

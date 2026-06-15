@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
               imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
               child: Container(
                 width: 240, height: 240,
-                decoration: const BoxDecoration(color: Color(0xFFD5FFA8), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFBBF7D0), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 width: 220, height: 220,
                 decoration: BoxDecoration(
-                    color: const Color(0xFFC8FF99).withAlpha(180), shape: BoxShape.circle),
+                    color: const Color(0xFFA7F3D0).withAlpha(180), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC2FF89),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -216,13 +216,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const SizedBox(
                                 width: 20, height: 20,
                                 child: CircularProgressIndicator(
-                                    color: Color(0xFF1A1A1A), strokeWidth: 2))
+                                    color: Colors.white, strokeWidth: 2))
                             : Text(
                                 _isLogin ? '로그인' : '가입하기',
                                 style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF1A1A1A)),
+                                    color: Colors.white),
                               ),
                       ),
                     ),
@@ -377,7 +377,7 @@ class _Field extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFFC2FF89), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
       ),
     );
   }
@@ -420,7 +420,7 @@ class _PasswordFieldState extends State<_PasswordField> {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFFC2FF89), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
       ),
     );
   }
@@ -538,12 +538,12 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2FFE4),
+                  color: const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Center(
                   child: Icon(Icons.pin_outlined,
-                      size: 36, color: Color(0xFF1A1A1A)),
+                      size: 36, color: Color(0xFF16A34A)),
                 ),
               ),
               const SizedBox(height: 28),
@@ -612,7 +612,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide:
-                        const BorderSide(color: Color(0xFFC2FF89), width: 1.5),
+                        const BorderSide(color: Color(0xFF16A34A), width: 1.5),
                   ),
                 ),
               ),
@@ -637,7 +637,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     color: _resendMsg!.contains('실패') ||
                             _resendMsg!.contains('없')
                         ? const Color(0xFFEF4444)
-                        : const Color(0xFF1A1A1A),
+                        : const Color(0xFF16A34A),
                   ),
                 ),
               ],
@@ -648,7 +648,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF1A1A1A),
+                    color: Color(0xFF16A34A),
                   ),
                 ),
               ],
@@ -666,8 +666,8 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     decoration: BoxDecoration(
                       color: (_verifying ||
                               _otpCtrl.text.length != emailSignupOtpLength)
-                          ? const Color(0xFFD5FFA8)
-                          : const Color(0xFFC2FF89),
+                          ? const Color(0xFF86EFAC)
+                          : const Color(0xFF16A34A),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Center(
@@ -676,13 +676,13 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Color(0xFF1A1A1A)))
+                                  strokeWidth: 2, color: Colors.white))
                           : const Text(
                               '인증하기',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF1A1A1A),
+                                color: Colors.white,
                               ),
                             ),
                     ),
@@ -724,7 +724,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: _verified
-                        ? const Color(0xFFC2FF89)
+                        ? const Color(0xFF16A34A)
                         : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(18),
                   ),
@@ -735,7 +735,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         color:
-                            _verified ? const Color(0xFF1A1A1A) : const Color(0xFF374151),
+                            _verified ? Colors.white : const Color(0xFF374151),
                       ),
                     ),
                   ),

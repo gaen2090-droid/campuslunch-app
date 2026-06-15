@@ -36,14 +36,14 @@ class NotificationPermissionScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF2FFE4),
+                          color: const Color(0xFFF0FDF4),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.notifications,
                             size: 28,
-                            color: Color(0xFF1A1A1A),
+                            color: Color(0xFF16A34A),
                           ),
                         ),
                       ),
@@ -101,7 +101,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                           height: 56,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFC2FF89),
+                            color: const Color(0xFF16A34A),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Center(
@@ -110,7 +110,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF1A1A1A),
+                                color: Colors.white,
                               ),
                             ),
                           ),

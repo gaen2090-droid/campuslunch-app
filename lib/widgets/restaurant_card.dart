@@ -119,7 +119,7 @@ class _IconBox extends StatelessWidget {
       height: 48,
       decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
       child: const Center(
-        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF1A1A1A)),
+        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
       ),
     );
   }
@@ -176,7 +176,7 @@ class HeroRestaurantCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC2FF89),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -286,7 +286,7 @@ class HeroRestaurantCard extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF1A1A1A)),
+                                      color: Color(0xFF16A34A)),
                                 ),
                               ),
                             ),

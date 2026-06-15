@@ -343,8 +343,7 @@ class SupabaseRestaurantRepository {
   Future<String?> findRestaurantIdByGooglePlaceId(String placeId) async {
     final rows = await _client
         .from('restaurants')
-        .select('id, description')
-        .eq('is_active', true);
+        .select('id, description');
     for (final row in rows) {
       final desc = _parseDescription(row['description']);
       if (desc?['google_place_id'] == placeId) {
@@ -414,12 +413,15 @@ class SupabaseRestaurantRepository {
       patch['description'] = jsonEncode(desc);
     }
 
-    final row = await _client
+    final rows = await _client
         .from('restaurants')
         .update(patch)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
+    if ((rows as List).isEmpty) {
+      throw Exception('매장 수정 실패: 권한 부족이거나 존재하지 않는 ID');
+    }
+    final row = Map<String, dynamic>.from(rows.first as Map);
 
     final reports = await _client
         .from('crowd_reports')
@@ -429,12 +431,35 @@ class SupabaseRestaurantRepository {
   }
 
   Future<void> delete(String id) async {
-    final affected = await _client
+    try {
+      await _client.rpc('admin_delete_restaurant', params: {
+        'p_restaurant_id': id,
+      });
+      return;
+    } on PostgrestException catch (e) {
+      if (e.code != 'PGRST202' &&
+          !e.message.contains('admin_delete_restaurant') &&
+          !e.message.contains('Could not find')) {
+        rethrow;
+      }
+    }
+
+    // RPC 미적용 DB: 관련 데이터 후 직접 DELETE (restaurants_delete_admin 정책 필요)
+    await _client.from('crowd_reports').delete().eq('restaurant_id', id);
+    await _client.from('owner_seat_updates').delete().eq('restaurant_id', id);
+    await _client.from('crowd_status').delete().eq('restaurant_id', id);
+    await _client.from('analytics_events').delete().eq('restaurant_id', id);
+
+    final deleted = await _client
         .from('restaurants')
-        .update({'is_active': false})
+        .delete()
         .eq('id', id)
         .select('id');
-    debugPrint('[delete] id=$id affectedRows=${(affected as List).length}');
+    if ((deleted as List).isEmpty) {
+      throw Exception(
+        '매장 삭제 실패: supabase/rpc_admin_restaurants.sql 실행·관리자 권한 확인',
+      );
+    }
   }
 
   Map<String, List<Map<String, dynamic>>> _groupReports(List<dynamic> rows) {
@@ -592,6 +617,7 @@ class SupabaseRestaurantRepository {
           ? DateTime.tryParse(row['created_at'] as String)?.toLocal()
           : null,
       ownerUpdatedAt: ownerUpdatedAt,
+      isActive: row['is_active'] as bool? ?? true,
     );
   }
 
@@ -771,10 +797,14 @@ class SupabaseRestaurantRepository {
           .single();
       final desc = _parseDescription(existing['description']) ?? {};
       desc['manual_rank'] = entry.value;
-      await _client
+      final updated = await _client
           .from('restaurants')
           .update({'description': jsonEncode(desc)})
-          .eq('id', entry.key);
+          .eq('id', entry.key)
+          .select('id');
+      if ((updated as List).isEmpty) {
+        throw Exception('순위 저장 실패: ${entry.key}');
+      }
     }
   }
 

@@ -80,7 +80,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     fallback: () => Container(
                       color: const Color(0xFF2D2D2D),
                       child: const Center(
-                        child: Icon(Icons.restaurant, size: 56, color: Color(0xFF1A1A1A)),
+                        child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
                       ),
                     ),
                   ),
@@ -109,7 +109,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   : Icons.bookmark_border,
                               size: 16,
                               color: isBookmarked
-                                  ? const Color(0xFF1A1A1A)
+                                  ? const Color(0xFF16A34A)
                                   : const Color(0xFF6B7280),
                             ),
                           ),
@@ -234,21 +234,21 @@ class _DetailScreenState extends State<DetailScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC2FF89),
+                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.edit_outlined,
-                              size: 16, color: Color(0xFF1A1A1A)),
+                              size: 16, color: Colors.white),
                           SizedBox(width: 8),
                           Text(
                             '혼잡도 제보하기',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF1A1A1A),
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -265,20 +265,20 @@ class _DetailScreenState extends State<DetailScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF1A1A1A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.navigation_outlined,
-                              size: 16, color: Color(0xFF1A1A1A)),
+                              size: 16, color: Color(0xFF16A34A)),
                           SizedBox(width: 6),
                           Text(
                             '길찾기',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1A1A),
+                              color: Color(0xFF16A34A),
                             ),
                           ),
                         ],
@@ -346,7 +346,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF1A1A1A),
+                                    color: Color(0xFF16A34A),
                                   ),
                                 ),
                               ],
@@ -371,9 +371,9 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case '여유로움': return const Color(0xFFA0FF46);
-      case '약간혼잡': return const Color(0xFFFFFF00);
-      case '자리없음': return const Color(0xFFF52E7F);
+      case '여유로움': return const Color(0xFF22C55E);
+      case '약간혼잡': return const Color(0xFFF59E0B);
+      case '자리없음': return const Color(0xFFEF4444);
       default: return const Color(0xFF9CA3AF);
     }
   }

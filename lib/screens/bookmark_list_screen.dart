@@ -121,7 +121,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.8,
-                      color: Color(0xFF1A1A1A),
+                      color: Color(0xFF16A34A),
                     ),
                   ),
                 ),
@@ -262,19 +262,19 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                                 margin: const EdgeInsets.only(right: 10),
                                 decoration: BoxDecoration(
                                   color: _selectedIds.contains(r.id)
-                                      ? const Color(0xFFC2FF89)
+                                      ? const Color(0xFF16A34A)
                                       : Colors.white,
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: _selectedIds.contains(r.id)
-                                        ? const Color(0xFFC2FF89)
+                                        ? const Color(0xFF16A34A)
                                         : const Color(0xFFD1D5DB),
                                     width: 2,
                                   ),
                                 ),
                                 child: _selectedIds.contains(r.id)
                                     ? const Icon(Icons.check,
-                                        size: 14, color: Color(0xFF1A1A1A))
+                                        size: 14, color: Colors.white)
                                     : null,
                               ),
                             ),
@@ -352,7 +352,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         child: Container(
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF52E7F),
+                            color: const Color(0xFF16A34A),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
@@ -399,10 +399,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFC2FF89) : Colors.white,
+          color: on ? const Color(0xFF16A34A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFFC2FF89) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -412,13 +412,13 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151)),
+                  color: on ? Colors.white : const Color(0xFF374151)),
             ),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151),
+              color: on ? Colors.white : const Color(0xFF374151),
             ),
           ],
         ),
@@ -459,7 +459,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF1A1A1A))),
+                      color: Color(0xFF16A34A))),
             ),
           ),
         GridView.count(
@@ -475,7 +475,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF2FFE4) : Colors.transparent,
+                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding:
@@ -490,7 +490,7 @@ class _DropdownGrid extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
                           color: on
-                              ? const Color(0xFF1A1A1A)
+                              ? const Color(0xFF16A34A)
                               : const Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -498,7 +498,7 @@ class _DropdownGrid extends StatelessWidget {
                     ),
                     if (on)
                       const Icon(Icons.check,
-                          size: 14, color: Color(0xFF1A1A1A)),
+                          size: 14, color: Color(0xFF16A34A)),
                   ],
                 ),
               ),

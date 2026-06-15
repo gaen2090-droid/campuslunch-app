@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'crowd_level_mapper.dart';
 import 'crowd_status_algorithm.dart';
 
@@ -80,31 +78,6 @@ CrowdStatusResult computeStatusFromReports({
   DateTime? businessSessionStart,
 }) {
   final at = now ?? DateTime.now();
-
-  // 테스트 편의(디버그 빌드): 다수결·5분 제한을 건너뛰고
-  // 가장 최근 제보 1건을 즉시 반영한다. 배포 빌드는 아래 정식 로직 사용.
-  if (kDebugMode && reports.isNotEmpty) {
-    Map<String, dynamic>? latest;
-    for (final r in reports) {
-      if (latest == null) {
-        latest = r;
-        continue;
-      }
-      final rAt = DateTime.parse(r['created_at'] as String).toLocal();
-      final latestAt = DateTime.parse(latest['created_at'] as String).toLocal();
-      if (rAt.isAfter(latestAt)) latest = r;
-    }
-    if (latest != null) {
-      return CrowdStatusResult(
-        displayLevel: _reportLevel(latest),
-        baseSource: (latest['source'] as String?) == 'owner' ? 'owner' : 'user',
-        confidence: 'high',
-        reportCount: 1,
-        refreshUpdatedAt: true,
-      );
-    }
-  }
-
   final user20 = dedupeUserReportLevels(
     reports,
     const Duration(minutes: 20),

@@ -216,7 +216,7 @@ class _MapScreenState extends State<MapScreen> {
                           duration: const Duration(milliseconds: 200),
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                            color: _showBookmarked ? const Color(0xFFC2FF89) : Colors.white,
+                            color: _showBookmarked ? const Color(0xFF16A34A) : Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: const [
                               BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -225,7 +225,7 @@ class _MapScreenState extends State<MapScreen> {
                           child: Icon(
                             _showBookmarked ? Icons.bookmark : Icons.bookmark_border,
                             size: 16,
-                            color: _showBookmarked ? const Color(0xFF1A1A1A) : const Color(0xFF6B7280),
+                            color: _showBookmarked ? Colors.white : const Color(0xFF6B7280),
                           ),
                         ),
                       ),
@@ -357,7 +357,7 @@ class _MapScreenState extends State<MapScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isLocated ? const Color(0xFFF2FFE4) : Colors.white,
+                  color: _isLocated ? const Color(0xFFF0FDF4) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -366,7 +366,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFF1A1A1A) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -425,11 +425,11 @@ class _CrowdLegend extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LegendItem(color: Color(0xFFA0FF46), label: '여유로움'),
+          _LegendItem(color: Color(0xFF22C55E), label: '여유로움'),
           SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFFFFF00), label: '약간혼잡'),
+          _LegendItem(color: Color(0xFFF59E0B), label: '약간혼잡'),
           SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFF52E7F), label: '자리없음'),
+          _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
         ],
       ),
     );
@@ -608,7 +608,7 @@ class _MapFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFC2FF89) : Colors.white,
+          color: on ? const Color(0xFF16A34A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -621,12 +621,12 @@ class _MapFilterChip extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151))),
+                    color: on ? Colors.white : const Color(0xFF374151))),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151),
+              color: on ? Colors.white : const Color(0xFF374151),
             ),
           ],
         ),
@@ -667,7 +667,7 @@ class _DropdownGrid extends StatelessWidget {
                 onTap: () => onSelect(opt),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFFF2FFE4) : Colors.transparent,
+                    color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding:
@@ -681,7 +681,7 @@ class _DropdownGrid extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
                             color: on
-                                ? const Color(0xFF1A1A1A)
+                                ? const Color(0xFF16A34A)
                                 : const Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -691,7 +691,7 @@ class _DropdownGrid extends StatelessWidget {
                         const Padding(
                           padding: EdgeInsets.only(left: 4),
                           child: Icon(Icons.check,
-                              size: 14, color: Color(0xFF1A1A1A)),
+                              size: 14, color: Color(0xFF16A34A)),
                         ),
                     ],
                   ),
@@ -823,7 +823,7 @@ class _SelectedCard extends StatelessWidget {
                     width: 48, height: 48,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2FFE4),
+                      color: const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: RestaurantImage(
@@ -834,7 +834,7 @@ class _SelectedCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF1A1A1A)),
+                              color: Color(0xFF16A34A)),
                         ),
                       ),
                     ),
@@ -880,7 +880,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF1A1A1A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -888,7 +888,7 @@ class _SelectedCard extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF1A1A1A))),
+                                color: Color(0xFF16A34A))),
                       ),
                     ),
                   ),
@@ -902,7 +902,7 @@ class _SelectedCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC2FF89),
+                          color: const Color(0xFF16A34A),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Center(
@@ -910,7 +910,7 @@ class _SelectedCard extends StatelessWidget {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF1A1A1A))),
+                                  color: Colors.white)),
                         ),
                       ),
                     ),
