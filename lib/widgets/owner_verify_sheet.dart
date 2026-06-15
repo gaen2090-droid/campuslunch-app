@@ -102,7 +102,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                     margin: const EdgeInsets.only(top: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: const Color(0xFFF2FFE4),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Column(
@@ -116,7 +116,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                             height: 1.6,
-                            color: Color(0xFF15803D),
+                            color: Color(0xFF1A1A1A),
                           ),
                         ),
                       ],
@@ -167,7 +167,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                        borderSide: const BorderSide(color: Color(0xFFC2FF89), width: 1.5),
                       ),
                     ),
                   ),
@@ -197,7 +197,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                         height: 56,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A),
+                          color: const Color(0xFFC2FF89),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(
@@ -206,7 +206,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
+                                    color: Color(0xFF1A1A1A),
                                     strokeWidth: 2,
                                   ),
                                 )
@@ -215,7 +215,7 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
-                                    color: Colors.white,
+                                    color: Color(0xFF1A1A1A),
                                   ),
                                 ),
                         ),

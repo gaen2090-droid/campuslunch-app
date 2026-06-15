@@ -25,7 +25,7 @@ class NearbyPrompt extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 96),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
+        color: const Color(0xFFF2FFE4),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
@@ -137,9 +137,9 @@ class _IconBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF0FDF4),
+      color: const Color(0xFFF2FFE4),
       child: const Center(
-        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF1A1A1A)),
       ),
     );
   }

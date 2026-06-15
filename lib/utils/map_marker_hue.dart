@@ -6,11 +6,11 @@ import '../models/restaurant.dart';
 double markerHueForStatus(String status) {
   switch (status) {
     case '여유로움':
-      return BitmapDescriptor.hueGreen;
+      return BitmapDescriptor.hueGreen;  // approx #A0FF46 — hue presets only
     case '약간혼잡':
-      return BitmapDescriptor.hueOrange;
+      return BitmapDescriptor.hueYellow;
     case '자리없음':
-      return BitmapDescriptor.hueRed;
+      return BitmapDescriptor.hueRose;
     case '영업안함':
       // 실제 지도는 MapMarkerIcons.closed() 사용 (회색)
       return BitmapDescriptor.hueAzure;

@@ -249,11 +249,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       height: 40,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
                         borderRadius: BorderRadius.circular(11),
                       ),
-                      child: const Center(
-                          child: Icon(Icons.restaurant_menu, color: Colors.white, size: 20)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                      ),
                     ),
                   Expanded(
                     child: Container(
@@ -370,7 +371,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         height: 32,
                         decoration: BoxDecoration(
                           color: _showBookmarked
-                              ? const Color(0xFF16A34A)
+                              ? const Color(0xFFC2FF89)
                               : Colors.white,
                           shape: BoxShape.circle,
                           border: _showBookmarked
@@ -554,7 +555,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   Container(
                     width: 8, height: 8,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E), shape: BoxShape.circle),
+                        color: Color(0xFFA0FF46), shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
                   const Text('바로 입장 가능',
@@ -594,7 +595,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   Container(
                     width: 8, height: 8,
                     decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444), shape: BoxShape.circle),
+                        color: Color(0xFFF52E7F), shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
                   const Text('붐비는 매장',
@@ -698,7 +699,7 @@ class _NeedsReportCard extends StatelessWidget {
                     width: 48, height: 48,
                     decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
                     child: const Center(
-                      child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+                      child: Icon(Icons.restaurant, size: 22, color: Color(0xFF1A1A1A)),
                     ),
                   ),
                 ),
@@ -767,10 +768,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF16A34A) : Colors.white,
+          color: on ? const Color(0xFFC2FF89) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFFC2FF89) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -780,13 +781,13 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: on ? Colors.white : const Color(0xFF374151)),
+                  color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151)),
             ),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? Colors.white : const Color(0xFF374151),
+              color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151),
             ),
           ],
         ),
@@ -827,7 +828,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF16A34A))),
+                      color: Color(0xFF1A1A1A))),
             ),
           ),
         GridView.count(
@@ -843,7 +844,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
+                  color: on ? const Color(0xFFF2FFE4) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -856,13 +857,13 @@ class _DropdownGrid extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF16A34A) : const Color(0xFF374151),
+                          color: on ? const Color(0xFF1A1A1A) : const Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
+                      const Icon(Icons.check, size: 14, color: Color(0xFF1A1A1A)),
                   ],
                 ),
               ),
