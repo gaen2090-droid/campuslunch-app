@@ -470,7 +470,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               items: _reportOpts,
                               labelFor: (v) => _reportOptLabels[v]!,
                               selected: {_reportFilter},
-                              forceFourColumns: true,
                               onSelect: (v) => setState(() {
                                 _reportFilter = v;
                                 _openDropdown = null;

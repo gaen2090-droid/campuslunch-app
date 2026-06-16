@@ -284,7 +284,6 @@ class _MapScreenState extends State<MapScreen> {
                                   items: _reportOpts,
                                   labelFor: (v) => _reportOptLabels[v]!,
                                   selected: {_reportFilter},
-                                  forceFourColumns: true,
                                   onSelect: (v) => setState(() {
                                     _reportFilter = v;
                                     _openDropdown = null;
@@ -717,7 +716,9 @@ class _DropdownGrid extends StatelessWidget {
         final itemWidth =
             (constraints.maxWidth - spacing * (cols - 1)) / cols;
 
-        return Wrap(
+        return SizedBox(
+          width: constraints.maxWidth,
+          child: Wrap(
           spacing: spacing,
           runSpacing: spacing,
           children: items.map((opt) {
@@ -760,6 +761,7 @@ class _DropdownGrid extends StatelessWidget {
               ),
             );
           }).toList(),
+          ),
         );
       },
     );

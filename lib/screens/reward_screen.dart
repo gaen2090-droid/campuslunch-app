@@ -393,10 +393,10 @@ class _StampCell extends StatelessWidget {
       ),
       child: Center(
         child: filled
-            ? const RiceBallIcon(size: 22)
+            ? const RiceBallIcon(size: 30)
             : const Opacity(
                 opacity: 0.35,
-                child: RiceBallIcon(size: 22),
+                child: RiceBallIcon(size: 30),
               ),
       ),
     );

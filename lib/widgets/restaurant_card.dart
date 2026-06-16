@@ -127,7 +127,7 @@ class _IconBox extends StatelessWidget {
 }
 
 // 추천 히어로 카드 (그라디언트 배너)
-class HeroRestaurantCard extends StatelessWidget {
+class HeroRestaurantCard extends StatefulWidget {
   final Restaurant restaurant;
   final VoidCallback onDetail;
   final VoidCallback onReport;
@@ -140,11 +140,25 @@ class HeroRestaurantCard extends StatelessWidget {
   });
 
   @override
+  State<HeroRestaurantCard> createState() => _HeroRestaurantCardState();
+}
+
+class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
+  bool _isFallback = false;
+
+  void _setFallback(bool value) {
+    if (_isFallback == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _isFallback = value);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final r = restaurant;
-    final hasImage = r.imageUrl.isNotEmpty;
+    final r = widget.restaurant;
+    final hasImage = !_isFallback;
     return GestureDetector(
-      onTap: onDetail,
+      onTap: widget.onDetail,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: SizedBox(
@@ -154,7 +168,7 @@ class HeroRestaurantCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // 배경 이미지
-              RestaurantImage(url: r.imageUrl),
+              RestaurantImage(url: r.imageUrl, onFallbackChanged: _setFallback),
 
               // 하단 다크 그라디언트 (텍스트 가독성)
               Container(
@@ -253,7 +267,7 @@ class HeroRestaurantCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: onDetail,
+                            onTap: widget.onDetail,
                             child: Container(
                               height: 40,
                               decoration: BoxDecoration(
@@ -275,7 +289,7 @@ class HeroRestaurantCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: GestureDetector(
-                            onTap: onReport,
+                            onTap: widget.onReport,
                             child: Container(
                               height: 40,
                               decoration: BoxDecoration(
