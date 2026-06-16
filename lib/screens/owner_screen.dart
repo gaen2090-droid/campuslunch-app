@@ -29,11 +29,11 @@ class _OwnerScreenState extends State<OwnerScreen> {
   static const _opts = [
     _StatusOpt(
       key: '여유로움',
-      dotColor: Color(0xFF22C55E),
+      dotColor: Color(0xFF4C9C2A),
       activeBg: Color(0xFFF0FDF4),
       activeRing: Color(0xFF86EFAC),
       activeText: Color(0xFF16A34A),
-      activeLabelBg: Color(0xFF22C55E),
+      activeLabelBg: Color(0xFF4C9C2A),
     ),
     _StatusOpt(
       key: '약간혼잡',

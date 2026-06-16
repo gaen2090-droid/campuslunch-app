@@ -9,7 +9,6 @@ import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_google_map.dart';
 import '../widgets/restaurant_image.dart';
-import '../widgets/rice_ball_icon.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 
@@ -24,8 +23,8 @@ class _MapScreenState extends State<MapScreen> {
   Restaurant? _selected;
   bool _isLocated = false;
   bool _showBookmarked = false;
-  bool _showNeedsReport = false;
   static const _allLabel = '전체';
+  String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
@@ -43,6 +42,8 @@ class _MapScreenState extends State<MapScreen> {
     '분식',
     '카페',
   ];
+  static const _reportOpts = [_allLabel, '제보있음', '제보없음'];
+  static const _reportOptLabels = {_allLabel: '전체', '제보있음': '스탬프 1개', '제보없음': '스탬프 2개'};
 
   @override
   void dispose() {
@@ -87,9 +88,12 @@ class _MapScreenState extends State<MapScreen> {
           _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       final searchOk = q.isEmpty || '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(q);
       final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
-      final needsReportOk = !_showNeedsReport ||
-          (r.status != '영업안함' && !r.hasCrowdUpdate);
-      return regionOk && cuisineOk && searchOk && bookmarkOk && needsReportOk;
+      final reportOk = switch (_reportFilter) {
+        '제보있음' => r.status != '영업안함' && r.hasCrowdUpdate,
+        '제보없음' => r.status != '영업안함' && !r.hasCrowdUpdate,
+        _ => true,
+      };
+      return regionOk && cuisineOk && searchOk && bookmarkOk && reportOk;
     }).toList();
   }
 
@@ -211,10 +215,15 @@ class _MapScreenState extends State<MapScreen> {
                                         _openDropdown == 'cuisine' ? null : 'cuisine'),
                               ),
                               const SizedBox(width: 8),
-                              _StampChip(
-                                active: _showNeedsReport,
-                                onTap: () => setState(
-                                    () => _showNeedsReport = !_showNeedsReport),
+                              _MapFilterChip(
+                                label: _reportFilter == _allLabel
+                                    ? '스탬프 받기'
+                                    : _reportOptLabels[_reportFilter]!,
+                                active: _reportFilter != _allLabel,
+                                open: _openDropdown == 'report',
+                                onTap: () => setState(() =>
+                                    _openDropdown =
+                                        _openDropdown == 'report' ? null : 'report'),
                               ),
                             ],
                           ),
@@ -265,11 +274,22 @@ class _MapScreenState extends State<MapScreen> {
                               selected: _regions,
                               onSelect: (v) => setState(() => _toggleFilter(_regions, v)),
                             )
-                          : _DropdownGrid(
-                              items: _cuisineOpts,
-                              selected: _cuisines,
-                              onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
-                            ),
+                          : _openDropdown == 'cuisine'
+                              ? _DropdownGrid(
+                                  items: _cuisineOpts,
+                                  selected: _cuisines,
+                                  onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
+                                )
+                              : _DropdownGrid(
+                                  items: _reportOpts,
+                                  labelFor: (v) => _reportOptLabels[v]!,
+                                  selected: {_reportFilter},
+                                  forceFourColumns: true,
+                                  onSelect: (v) => setState(() {
+                                    _reportFilter = v;
+                                    _openDropdown = null;
+                                  }),
+                                ),
                     ),
 
                   // 범례 (필터 펼침 시 아래로 밀림)
@@ -462,7 +482,7 @@ class _CrowdLegend extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LegendItem(color: Color(0xFF22C55E), label: '여유로움'),
+          _LegendItem(color: Color(0xFF4C9C2A), label: '여유로움'),
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFF59E0B), label: '약간혼잡'),
           SizedBox(height: 4),
@@ -672,55 +692,20 @@ class _MapFilterChip extends StatelessWidget {
   }
 }
 
-// ── 스탬프 받기(제보필요만 보기) 칩 ──
-class _StampChip extends StatelessWidget {
-  final bool active;
-  final VoidCallback onTap;
-
-  const _StampChip({required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF111827) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RiceBallIcon(
-                size: 14,
-                color: active ? Colors.white : const Color(0xFF374151)),
-            const SizedBox(width: 4),
-            Text('스탬프 2개 받기',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: active ? Colors.white : const Color(0xFF374151))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── 드롭다운 그리드 ──
 class _DropdownGrid extends StatelessWidget {
   final List<String> items;
   final Set<String> selected;
   final ValueChanged<String> onSelect;
+  final String Function(String)? labelFor;
+  final bool forceFourColumns;
 
   const _DropdownGrid({
     required this.items,
     required this.selected,
     required this.onSelect,
+    this.labelFor,
+    this.forceFourColumns = false,
   });
 
   @override
@@ -728,7 +713,7 @@ class _DropdownGrid extends StatelessWidget {
     const spacing = 6.0;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = items.length <= 3 ? items.length : 4;
+        final cols = forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4);
         final itemWidth =
             (constraints.maxWidth - spacing * (cols - 1)) / cols;
 
@@ -752,7 +737,7 @@ class _DropdownGrid extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          opt,
+                          labelFor != null ? labelFor!(opt) : opt,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,

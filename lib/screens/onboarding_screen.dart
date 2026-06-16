@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/rice_ball_icon.dart';
 import '../data/restaurants.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -30,7 +31,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 240,
                 height: 240,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFBBF7D0),
+                  color: Color(0xFFC8E6BA),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -45,7 +46,7 @@ class OnboardingScreen extends StatelessWidget {
                 width: 220,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFA7F3D0).withAlpha(180),
+                  color: const Color(0xFF9ECA8B).withAlpha(180),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -69,14 +70,14 @@ class OnboardingScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [
                             BoxShadow(
-                              color: Color(0xFFBBF7D0),
+                              color: Color(0xFFC8E6BA),
                               blurRadius: 20,
                               offset: Offset(0, 8),
                             ),
                           ],
                         ),
                         child: const Center(
-                          child: Icon(Icons.restaurant_menu, color: Color(0xFF111827), size: 24),
+                          child: RiceBallIcon(size: 26),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -154,7 +155,7 @@ class OnboardingScreen extends StatelessWidget {
                               width: 8,
                               height: 8,
                               decoration: const BoxDecoration(
-                                color: Color(0xFF22C55E),
+                                color: Color(0xFF4C9C2A),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -188,7 +189,7 @@ class OnboardingScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0xFFBBF7D0),
+                            color: Color(0xFFC8E6BA),
                             blurRadius: 24,
                             offset: Offset(0, 8),
                           ),
@@ -261,7 +262,7 @@ class _RestaurantRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFDCFCE7),
+              color: const Color(0xFFDAFFCA),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
@@ -269,7 +270,7 @@ class _RestaurantRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF22C55E),
+                color: Color(0xFF4C9C2A),
               ),
             ),
           ),

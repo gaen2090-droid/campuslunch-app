@@ -5,7 +5,7 @@ import '../providers/app_provider.dart';
 import 'bookmark_list_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/stamp_icon.dart';
+import '../widgets/rice_ball_icon.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -655,7 +655,12 @@ class _RewardCard extends StatelessWidget {
                           ),
                         ),
                         child: Center(
-                          child: StampIcon(size: cellSize * 0.55, filled: filled),
+                          child: filled
+                              ? RiceBallIcon(size: cellSize * 0.55)
+                              : Opacity(
+                                  opacity: 0.35,
+                                  child: RiceBallIcon(size: cellSize * 0.55),
+                                ),
                         ),
                       );
                     }),

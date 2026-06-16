@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _sortBy = '최신순';
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
-  String _reportFilter = '전체'; // '전체' | '제보있음' | '제보없음'
+  String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | 'report' | null
   bool _searchActive = false;
   bool _showBookmarked = false;
@@ -37,7 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
-  static const _reportOpts = ['전체', '제보있음', '제보없음'];
+  static const _reportOpts = [_allLabel, '제보있음', '제보없음'];
+  static const _reportOptLabels = {_allLabel: '전체', '제보있음': '스탬프 1개', '제보없음': '스탬프 2개'};
 
   @override
   void didChangeDependencies() {
@@ -232,7 +233,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     // 제보여부 필터: 제보있음 → 제보필요/영업종료 매장 숨김, 제보없음 → 제보필요 매장만 표시
     final showNeedsReport = _reportFilter != '제보있음';
-    final showClosed = _reportFilter == '전체';
+    final showClosed = _reportFilter == _allLabel;
     final availableCardsFiltered = _reportFilter == '제보없음' ? <Restaurant>[] : availableCards;
     final recommendedFiltered = _reportFilter == '제보없음' ? null : recommended;
     final busyFiltered = _reportFilter == '제보없음' ? <Restaurant>[] : busy;
@@ -266,7 +267,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: const Center(
-                          child: Icon(Icons.restaurant_menu, color: Color(0xFF111827), size: 20)),
+                          child: RiceBallIcon(size: 22)),
                     ),
                   Expanded(
                     child: Container(
@@ -373,8 +374,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             ),
                             const SizedBox(width: 8),
                             _FilterChip(
-                              label: _reportFilter == '전체' ? '제보여부' : _reportFilter,
-                              active: _reportFilter != '전체',
+                              label: _reportFilter == _allLabel
+                                  ? '스탬프 받기'
+                                  : _reportOptLabels[_reportFilter]!,
+                              active: _reportFilter != _allLabel,
                               open: _openDropdown == 'report',
                               onTap: () => setState(() =>
                                   _openDropdown = _openDropdown == 'report' ? null : 'report'),
@@ -465,7 +468,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             )
                           : _DropdownGrid(
                               items: _reportOpts,
+                              labelFor: (v) => _reportOptLabels[v]!,
                               selected: {_reportFilter},
+                              forceFourColumns: true,
                               onSelect: (v) => setState(() {
                                 _reportFilter = v;
                                 _openDropdown = null;
@@ -599,7 +604,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   Container(
                     width: 8, height: 8,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E), shape: BoxShape.circle),
+                        color: Color(0xFF4C9C2A), shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
                   const Text('바로 입장 가능',
@@ -768,7 +773,7 @@ class _NeedsReportCard extends StatelessWidget {
                     width: 48, height: 48,
                     decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
                     child: const Center(
-                      child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
+                      child: RiceBallIcon(size: 22),
                     ),
                   ),
                 ),
@@ -871,6 +876,8 @@ class _DropdownGrid extends StatelessWidget {
   final bool multiSelect;
   final ValueChanged<String> onSelect;
   final VoidCallback? onReset;
+  final String Function(String)? labelFor;
+  final bool forceFourColumns;
 
   const _DropdownGrid({
     required this.items,
@@ -878,6 +885,8 @@ class _DropdownGrid extends StatelessWidget {
     this.multiSelect = false,
     required this.onSelect,
     this.onReset,
+    this.labelFor,
+    this.forceFourColumns = false,
   });
 
   static bool _isAllSelected(Set<String> s) =>
@@ -903,8 +912,8 @@ class _DropdownGrid extends StatelessWidget {
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: items.length <= 3 ? items.length : 4,
-          childAspectRatio: items.length <= 3 ? 2.8 : 2.2,
+          crossAxisCount: forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4),
+          childAspectRatio: forceFourColumns ? 2.2 : (items.length <= 3 ? 2.8 : 2.2),
           crossAxisSpacing: 6,
           mainAxisSpacing: 6,
           children: items.map((opt) {
@@ -922,7 +931,7 @@ class _DropdownGrid extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        opt,
+                        labelFor != null ? labelFor!(opt) : opt,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,

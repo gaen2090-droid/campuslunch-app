@@ -140,7 +140,7 @@ class _IconBox extends StatelessWidget {
     return Container(
       color: const Color(0xFFF3F8F0),
       child: const Center(
-        child: RiceBallIcon(size: 22, color: Color(0xFF5E8C4A)),
+        child: RiceBallIcon(size: 22),
       ),
     );
   }

@@ -120,7 +120,7 @@ class _IconBox extends StatelessWidget {
       height: 48,
       decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
       child: const Center(
-        child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
+        child: RiceBallIcon(size: 22),
       ),
     );
   }
@@ -142,6 +142,7 @@ class HeroRestaurantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = restaurant;
+    final hasImage = r.imageUrl.isNotEmpty;
     return GestureDetector(
       onTap: onDetail,
       child: ClipRRect(
@@ -173,11 +174,11 @@ class HeroRestaurantCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 추천 뱃지 (초록 유지)
+                    // 추천 뱃지 (사진 없는 매장은 배경색과 겹치므로 흰색으로 전환)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: hasImage ? const Color(0xFF9ECA8B) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(

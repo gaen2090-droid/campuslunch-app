@@ -21,7 +21,7 @@ class RestaurantImage extends StatelessWidget {
         Container(
           color: const Color(0xFF9ECA8B),
           child: const Center(
-            child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
+            child: RiceBallIcon(size: 22),
           ),
         );
 

@@ -81,7 +81,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     fallback: () => Container(
                       color: const Color(0xFF9ECA8B),
                       child: const Center(
-                        child: RiceBallIcon(size: 56, color: Color(0xFF111827)),
+                        child: RiceBallIcon(size: 56),
                       ),
                     ),
                   ),
@@ -372,7 +372,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case '여유로움': return const Color(0xFF22C55E);
+      case '여유로움': return const Color(0xFF4C9C2A);
       case '약간혼잡': return const Color(0xFFF59E0B);
       case '자리없음': return const Color(0xFFEF4444);
       default: return const Color(0xFF9CA3AF);

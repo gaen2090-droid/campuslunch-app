@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
               imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
               child: Container(
                 width: 240, height: 240,
-                decoration: const BoxDecoration(color: Color(0xFFBBF7D0), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFC8E6BA), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 width: 220, height: 220,
                 decoration: BoxDecoration(
-                    color: const Color(0xFFA7F3D0).withAlpha(180), shape: BoxShape.circle),
+                    color: const Color(0xFF9ECA8B).withAlpha(180), shape: BoxShape.circle),
               ),
             ),
           ),
