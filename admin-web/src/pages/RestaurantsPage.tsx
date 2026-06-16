@@ -131,7 +131,12 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
               <li key={r.id} className="card">
                 <div className="card-top">
                   <div>
-                    <h3>{r.name}</h3>
+                    <div className="card-title-row">
+                      <h3>{r.name}</h3>
+                      {r.ownerRegistered && (
+                        <span className="owner-registered-tag">등록 완료</span>
+                      )}
+                    </div>
                     {!r.isActive && (
                       <p className="inactive-tag">DB 비활성 (삭제 대상)</p>
                     )}

@@ -16,6 +16,7 @@ interface Props {
   values: number[];
   kind?: "line" | "bar";
   suffix?: string;
+  hideTitle?: boolean;
 }
 
 export function TrendChart({
@@ -24,6 +25,7 @@ export function TrendChart({
   values,
   kind = "line",
   suffix = "",
+  hideTitle = false,
 }: Props) {
   const data = labels.map((label, i) => ({
     label,
@@ -31,8 +33,8 @@ export function TrendChart({
   }));
 
   return (
-    <section className="panel chart-panel">
-      <h2>{title}</h2>
+    <section className={`panel chart-panel${hideTitle ? " no-title" : ""}`}>
+      {!hideTitle && <h2>{title}</h2>}
       <div className="chart-wrap">
         <ResponsiveContainer width="100%" height={220}>
           {kind === "bar" ? (

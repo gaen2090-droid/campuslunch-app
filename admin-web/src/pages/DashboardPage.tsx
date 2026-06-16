@@ -1,4 +1,9 @@
+import { useState } from "react";
 import { MetricCard } from "../components/MetricCard";
+import {
+  MetricDetailModal,
+  type MetricDetailKey,
+} from "../components/MetricDetailModal";
 import { TrendChart } from "../components/TrendChart";
 import {
   displayReporterName,
@@ -18,6 +23,8 @@ interface Props {
 }
 
 export function DashboardPage({ metrics, restaurants }: Props) {
+  const [detailKey, setDetailKey] = useState<MetricDetailKey | null>(null);
+
   const topRestaurants = [...restaurants]
     .sort(
       (a, b) =>
@@ -31,29 +38,52 @@ export function DashboardPage({ metrics, restaurants }: Props) {
   return (
     <div className="dashboard">
       <section className="metric-grid">
-        <MetricCard label="DAU" value={String(metrics.dauToday)} unit="명" />
-        <MetricCard label="MAU" value={formatCount(metrics.mau)} unit="명" />
+        <MetricCard
+          label="DAU"
+          value={String(metrics.dauToday)}
+          unit="명"
+          onClick={() => setDetailKey("dau")}
+        />
+        <MetricCard
+          label="MAU"
+          value={formatCount(metrics.mau)}
+          unit="명"
+          onClick={() => setDetailKey("mau")}
+        />
         <MetricCard
           label="오늘 누적 제보"
           value={String(metrics.todayReports)}
           unit="건"
+          onClick={() => setDetailKey("reports")}
         />
         <MetricCard
           label="최근 7일 누적 제보"
           value={String(metrics.weekReports)}
           unit="건"
+          onClick={() => setDetailKey("weekAvg")}
         />
         <MetricCard
           label="추천 배너 클릭률"
           value={formatRate(metrics.bannerClickRate)}
           unit="%"
+          onClick={() => setDetailKey("clickRate")}
         />
         <MetricCard
           label="푸시 오픈율"
           value={formatRate(metrics.pushOpenRate)}
           unit="%"
+          onClick={() => setDetailKey("pushOpenRate")}
         />
       </section>
+
+      {detailKey && (
+        <MetricDetailModal
+          detailKey={detailKey}
+          metrics={metrics}
+          restaurants={restaurants}
+          onClose={() => setDetailKey(null)}
+        />
+      )}
 
       <section className="panel owner-stats">
         <p className="field-label">오너 등록 현황</p>

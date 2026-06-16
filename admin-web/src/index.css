@@ -164,6 +164,23 @@ input {
   min-height: 88px;
 }
 
+.metric-card.clickable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.metric-card.clickable:hover {
+  border-color: #4c9c2a;
+  box-shadow: 0 4px 12px rgba(76, 156, 42, 0.08);
+}
+
+.metric-card.clickable:focus-visible {
+  outline: 2px solid #4c9c2a;
+  outline-offset: 2px;
+}
+
 .metric-label {
   margin: 0 0 8px;
   font-size: 0.75rem;
@@ -773,6 +790,131 @@ code {
   font-size: 0.6875rem;
   font-weight: 700;
   color: #ef4444;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.card-title-row h3 {
+  margin: 0;
+}
+
+.owner-registered-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #4c9c2a;
+}
+
+.restaurant-bar-list .avg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: #f3f8f0;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #4c9c2a;
+}
+
+.restaurant-bar-list .avg-pill strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.restaurant-bar-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.restaurant-bar-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.restaurant-bar-list .bar-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.restaurant-bar-list .bar-track-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.restaurant-bar-list .bar-track {
+  flex: 1;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.restaurant-bar-list .bar-fill {
+  height: 100%;
+  background: #4c9c2a;
+  border-radius: 3px;
+}
+
+.restaurant-bar-list .bar-count {
+  width: 28px;
+  text-align: right;
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+
+.dau-detail .dau-hero {
+  margin: 0 0 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.dau-detail .dau-hero strong {
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dau-detail .diff-up {
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: #22c55e;
+  margin-bottom: 4px;
+}
+
+.dau-detail .diff-down {
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: #ef4444;
+  margin-bottom: 4px;
+}
+
+.chart-panel.no-title {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.muted.center {
+  text-align: center;
 }
 
 @media (max-width: 640px) {
