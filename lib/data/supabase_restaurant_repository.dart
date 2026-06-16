@@ -859,9 +859,9 @@ class SupabaseRestaurantRepository {
   }
 
   String _hoursLabel(Map<String, dynamic>? extra, String? seedHours) {
-    final display = extra?['hours_display'] as String?;
-    if (display != null && display.trim().isNotEmpty) return display.trim();
-    return extra?['hours'] as String? ?? seedHours ?? BusinessHoursData.defaultHours;
+    final hours = extra?['hours'] as String?;
+    if (hours != null && hours.trim().isNotEmpty) return hours.trim();
+    return seedHours ?? BusinessHoursData.defaultHours;
   }
 
   List<(int, int)> _parseHoursRanges(String hours) =>

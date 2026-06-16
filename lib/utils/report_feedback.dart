@@ -41,7 +41,7 @@ Future<void> submitCrowdReportFeedback(
     // 사장님 제보 또는 Supabase 미연결
     message = '소중한 제보 감사드려요!';
   } else if (stamp.granted) {
-    message = '혼잡도 제보가 등록되었어요.\n스탬프 ${stamp.grantedCount}개가 적립되었어요! (오늘 ${stamp.todayStamps}/3)';
+    message = '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/3)';
   } else {
     message = '혼잡도 제보가 등록되었어요.\n오늘 스탬프를 모두 받았어요. 내일 다시 받을 수 있어요.';
   }

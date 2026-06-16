@@ -574,6 +574,7 @@ class _RewardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = reward.totalStamps as int;
     final today = reward.todayStamps as int;
+    final remaining = (20 - total).clamp(0, 20);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -606,7 +607,7 @@ class _RewardCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      '내 스탬프',
+                      '오늘 모은 스탬프',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -667,9 +668,11 @@ class _RewardCard extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 10),
-              const Text(
-                '하루 최대 3개의 스탬프를 획득할 수 있어요.',
-                style: TextStyle(
+              Text(
+                remaining > 0
+                    ? '아메리카노 쿠폰까지 $remaining개 남았어요'
+                    : '아메리카노 쿠폰을 받을 수 있어요!',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF6B7280),

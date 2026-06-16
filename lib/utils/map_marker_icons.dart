@@ -8,11 +8,19 @@ import '../models/restaurant.dart';
 /// 목록 `영업안함` 뱃지와 동일한 회색(0xFF9CA3AF) 마커
 class MapMarkerIcons {
   static BitmapDescriptor? _closed;
+  static BitmapDescriptor? _noReport;
 
   static Future<BitmapDescriptor> closed() async {
     if (_closed != null) return _closed!;
     _closed = await _pinMarker(const Color(0xFF9CA3AF));
     return _closed!;
+  }
+
+  /// 제보 없는 매장 마커 (검정)
+  static Future<BitmapDescriptor> noReport() async {
+    if (_noReport != null) return _noReport!;
+    _noReport = await _pinMarker(const Color(0xFF111827));
+    return _noReport!;
   }
 
   static Future<BitmapDescriptor> _pinMarker(Color color) async {

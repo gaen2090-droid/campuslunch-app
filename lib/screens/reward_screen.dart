@@ -178,27 +178,27 @@ class _RewardScreenState extends State<RewardScreen> {
                   MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: const Color(0xFFE5E7EB)),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 1)),
+                      BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: 52,
+                        height: 52,
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFFBEB),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Center(child: Text('🎁', style: TextStyle(fontSize: 22))),
+                        child: const Center(child: Text('🎁', style: TextStyle(fontSize: 26))),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,7 +318,7 @@ class _StampSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             remaining > 0
-                ? '바나프레소 아메리카노까지 $remaining개 남았어요'
+                ? '아메리카노 쿠폰까지 $remaining개 남았어요'
                 : '쿠폰을 받을 수 있어요!',
             style: TextStyle(
               fontSize: 13,
@@ -446,7 +446,7 @@ class _RewardCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '바나프레소 아메리카노',
+                  '아메리카노 쿠폰',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
                 ),
                 const SizedBox(height: 4),

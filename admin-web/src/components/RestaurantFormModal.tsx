@@ -21,12 +21,23 @@ interface TimeRange {
   to: string;
 }
 
+const ALWAYS_OPEN_HOURS = "00:00 - 24:00";
+
+function pad2(s: string): string {
+  const [h, m] = s.split(":");
+  return `${h.padStart(2, "0")}:${m}`;
+}
+
+function isAlwaysOpen(hours: string): boolean {
+  return hours.trim() === ALWAYS_OPEN_HOURS;
+}
+
 function parseHours(hours: string): TimeRange[] {
   const parts = hours.split(",").map((s) => s.trim()).filter(Boolean);
   if (!parts.length) return [{ from: "11:00", to: "21:00" }];
   return parts.map((part) => {
     const m = part.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-    if (m) return { from: m[1], to: m[2] };
+    if (m) return { from: pad2(m[1]), to: pad2(m[2]) };
     return { from: "11:00", to: "21:00" };
   });
 }
@@ -42,8 +53,13 @@ export function RestaurantFormModal({
   const [category, setCategory] = useState(
     restaurant?.category ?? CATEGORIES[0],
   );
+  const [alwaysOpen, setAlwaysOpen] = useState(
+    isAlwaysOpen(restaurant?.hours ?? ""),
+  );
   const [times, setTimes] = useState<TimeRange[]>(() =>
-    parseHours(restaurant?.hours ?? "11:00 - 21:00"),
+    isAlwaysOpen(restaurant?.hours ?? "")
+      ? [{ from: "11:00", to: "21:00" }]
+      : parseHours(restaurant?.hours ?? "11:00 - 21:00"),
   );
   const [menu, setMenu] = useState<MenuItem[]>(
     restaurant?.menu.length ? restaurant.menu : [{ name: "", price: 0 }],
@@ -73,7 +89,9 @@ export function RestaurantFormModal({
       if (imageFile) {
         imageUrl = await uploadRestaurantImage(imageFile);
       }
-      const hours = times.map((t) => `${t.from} - ${t.to}`).join(", ");
+      const hours = alwaysOpen
+        ? ALWAYS_OPEN_HOURS
+        : times.map((t) => `${t.from} - ${t.to}`).join(", ");
       const validMenu = menu.filter((m) => m.name.trim());
       const data: RestaurantFormData = {
         name: name.trim(),
@@ -154,7 +172,15 @@ export function RestaurantFormModal({
 
         <div className="field">
           <span className="field-label">영업시간 *</span>
-          {times.map((t, i) => (
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={alwaysOpen}
+              onChange={(e) => setAlwaysOpen(e.target.checked)}
+            />
+            <span>24시간 운영</span>
+          </label>
+          {!alwaysOpen && times.map((t, i) => (
             <div key={i} className="time-row">
               <input
                 type="time"
@@ -192,15 +218,17 @@ export function RestaurantFormModal({
               )}
             </div>
           ))}
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() =>
-              setTimes((prev) => [...prev, { from: "11:00", to: "21:00" }])
-            }
-          >
-            + 시간 추가
-          </button>
+          {!alwaysOpen && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() =>
+                setTimes((prev) => [...prev, { from: "11:00", to: "21:00" }])
+              }
+            >
+              + 시간 추가
+            </button>
+          )}
         </div>
 
         <div className="field">

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
+import '../widgets/feedback_sheet.dart';
 import 'push_notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -95,10 +96,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => setState(() => _showOwnerVerify = true),
                 ),
               _SettingsButton(
-                label: '로그아웃',
-                textColor: const Color(0xFF6B7280),
-                showArrow: false,
-                onTap: () => provider.logout(),
+                label: '피드백 보내기',
+                onTap: () => showFeedbackSheet(context),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  provider.logout();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '로그아웃',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6B7280)),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Center(

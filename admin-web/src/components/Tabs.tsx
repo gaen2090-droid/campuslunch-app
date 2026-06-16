@@ -3,7 +3,8 @@ export type AdminTab =
   | "restaurants"
   | "popularity"
   | "map_register"
-  | "gifticons";
+  | "gifticons"
+  | "feedback";
 
 export const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "metrics", label: "핵심 지표" },
@@ -11,6 +12,7 @@ export const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "popularity", label: "인기 관리" },
   { id: "map_register", label: "지도 등록" },
   { id: "gifticons", label: "기프티콘" },
+  { id: "feedback", label: "피드백" },
 ];
 
 interface Props {

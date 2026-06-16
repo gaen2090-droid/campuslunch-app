@@ -502,29 +502,44 @@ class BusinessHoursData {
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
+  static const _alwaysOpenLabel = '24시간 운영';
+
+  static bool isAlwaysOpenHours(String hours) {
+    return RegExp(r'^0?0:00\s*-\s*24:00$').hasMatch(hours.trim());
+  }
+
+  static String _withAlwaysOpenLabel(String s) {
+    return s.replaceAllMapped(
+      RegExp(r'0?0:00\s*-\s*24:00'),
+      (_) => _alwaysOpenLabel,
+    );
+  }
+
   /// UI용 요일별 줄 목록 (`월 11:00-21:00` 형태)
   static List<String> displayLines(String hours) {
     final t = hours.trim();
     if (t.isEmpty) return [];
+    if (isAlwaysOpenHours(t)) return [_alwaysOpenLabel];
     if (t.contains('·')) {
       return t
           .split('·')
-          .map((s) => s.trim())
+          .map((s) => _withAlwaysOpenLabel(s.trim()))
           .where((s) => s.isNotEmpty)
           .toList();
     }
     if (t.contains('\n')) {
       return t
           .split('\n')
-          .map((s) => s.trim())
+          .map((s) => _withAlwaysOpenLabel(s.trim()))
           .where((s) => s.isNotEmpty)
           .toList();
     }
-    return [t];
+    return [_withAlwaysOpenLabel(t)];
   }
 
   /// 접힌 상태: 오늘 요일 1줄 (없으면 첫 줄)
   static String collapsedDisplayLine(String hours, DateTime now) {
+    if (isAlwaysOpenHours(hours)) return _alwaysOpenLabel;
     final lines = displayLines(hours);
     if (lines.isEmpty) return hours;
 

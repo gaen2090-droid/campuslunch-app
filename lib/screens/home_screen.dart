@@ -536,32 +536,44 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         ),
         if (results.isEmpty)
           Expanded(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: const Text('검색 결과가 없어요.',
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFD1D5DB),
-                        fontWeight: FontWeight.w700)),
+            child: RefreshIndicator(
+              color: const Color(0xFF16A34A),
+              onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
+              child: ListView(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 80),
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Text('검색 결과가 없어요.',
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFFD1D5DB),
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
               ),
             ),
           )
         else
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-              itemCount: results.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => RestaurantCard(
-                restaurant: results[i],
-                onTap: () => _openDetail(results[i]),
+            child: RefreshIndicator(
+              color: const Color(0xFF16A34A),
+              onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                itemCount: results.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => RestaurantCard(
+                  restaurant: results[i],
+                  onTap: () => _openDetail(results[i]),
+                ),
               ),
             ),
           ),
@@ -572,7 +584,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
   Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> needsReport, List<Restaurant> busy, List<Restaurant> closed) {
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
-      child: ListView(
+      child: RefreshIndicator(
+        color: const Color(0xFF16A34A),
+        onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
         children: [
           // 바로 입장 가능
@@ -647,10 +662,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   Container(
                     width: 8, height: 8,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF3B82F6), shape: BoxShape.circle),
+                        color: Color(0xFF111827), shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
-                  const Text('제보가 필요해요',
+                  const Text('혼잡도를 알려주세요',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
@@ -710,6 +725,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               ),
             ),
         ],
+        ),
       ),
     );
   }
@@ -785,7 +801,7 @@ class _NeedsReportCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE),
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -793,7 +809,7 @@ class _NeedsReportCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF3B82F6),
+                  color: Colors.white,
                 ),
               ),
             ),

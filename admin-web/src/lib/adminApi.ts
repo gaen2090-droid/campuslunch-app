@@ -6,6 +6,7 @@ import type {
   RestaurantFormData,
 } from "../types/restaurant";
 import type { Gifticon } from "../types/gifticon";
+import type { AppFeedback } from "../types/feedback";
 
 function parseDescription(raw: unknown): Record<string, unknown> | null {
   if (raw == null) return null;
@@ -454,6 +455,22 @@ async function resolveGifticonImageUrl(raw: string | null | undefined): Promise<
   } catch {
     return "";
   }
+}
+
+export async function fetchFeedback(): Promise<AppFeedback[]> {
+  const { data, error } = await supabase
+    .from("app_feedback")
+    .select("id, category, content, user_id, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map((raw) => ({
+    id: String(raw.id),
+    category: String(raw.category ?? ""),
+    content: String(raw.content ?? ""),
+    userId: raw.user_id ? String(raw.user_id) : null,
+    createdAt: new Date(String(raw.created_at)),
+  }));
 }
 
 export async function fetchGifticons(): Promise<Gifticon[]> {

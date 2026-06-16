@@ -134,6 +134,7 @@ const Map<String, StatusMeta> statusMetaMap = {
   '약간혼잡': StatusMeta(label: '약간혼잡', color: 0xFFF59E0B, bgColor: 0xFFFEF3C7),
   '자리없음': StatusMeta(label: '자리없음', color: 0xFFEF4444, bgColor: 0xFFFEE2E2),
   '영업안함': StatusMeta(label: '영업안함', color: 0xFF9CA3AF, bgColor: 0xFFF3F4F6),
+  '제보필요': StatusMeta(label: '제보필요', color: 0xFF111827, bgColor: 0xFFF3F4F6),
 };
 
 StatusMeta crowdStatusMeta(String status) =>

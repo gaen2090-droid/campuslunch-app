@@ -41,12 +41,16 @@ class _RestaurantGoogleMapState extends State<RestaurantGoogleMap> {
   GoogleMapController? _controller;
   static const _campus = LatLng(Campus.centerLat, Campus.centerLng);
   BitmapDescriptor? _closedMarker;
+  BitmapDescriptor? _noReportMarker;
 
   @override
   void initState() {
     super.initState();
     MapMarkerIcons.closed().then((icon) {
       if (mounted) setState(() => _closedMarker = icon);
+    });
+    MapMarkerIcons.noReport().then((icon) {
+      if (mounted) setState(() => _noReportMarker = icon);
     });
   }
 
@@ -90,11 +94,14 @@ class _RestaurantGoogleMapState extends State<RestaurantGoogleMap> {
     for (final r in widget.restaurants) {
       if (!r.hasMapLocation) continue;
       final isSelected = widget.selected?.id == r.id;
+      final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
       final icon = r.status == '영업안함' && _closedMarker != null
           ? _closedMarker!
-          : BitmapDescriptor.defaultMarkerWithHue(
-              markerHueForStatus(r.status),
-            );
+          : noReport && _noReportMarker != null
+              ? _noReportMarker!
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  markerHueForStatus(r.status),
+                );
       markers.add(
         Marker(
           markerId: MarkerId(r.id),
@@ -103,7 +110,7 @@ class _RestaurantGoogleMapState extends State<RestaurantGoogleMap> {
           zIndexInt: isSelected ? 2 : 1,
           infoWindow: InfoWindow(
             title: r.name,
-            snippet: r.status,
+            snippet: noReport ? '제보필요' : r.status,
           ),
           onTap: () => widget.onSelect(r),
         ),

@@ -3,10 +3,12 @@ import { ExportModal } from "./components/ExportModal";
 import { Layout } from "./components/Layout";
 import type { AdminTab } from "./components/Tabs";
 import { useAuth } from "./hooks/useAuth";
+import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
 import { useMetrics } from "./hooks/useMetrics";
 import { useRestaurants } from "./hooks/useRestaurants";
 import { DashboardPage } from "./pages/DashboardPage";
+import { FeedbackPage } from "./pages/FeedbackPage";
 import { GifticonsPage } from "./pages/GifticonsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapRegisterPage } from "./pages/MapRegisterPage";
@@ -22,14 +24,16 @@ export default function App() {
   const metricsState = useMetrics(enabled);
   const restaurantsState = useRestaurants(enabled);
   const gifticonsState = useGifticons(enabled && tab === "gifticons");
+  const feedbackState = useFeedback(enabled && tab === "feedback");
 
   const refreshAll = useCallback(async () => {
     await Promise.all([
       metricsState.reload(),
       restaurantsState.reload(),
       tab === "gifticons" ? gifticonsState.reload() : Promise.resolve(),
+      tab === "feedback" ? feedbackState.reload() : Promise.resolve(),
     ]);
-  }, [metricsState, restaurantsState, gifticonsState, tab]);
+  }, [metricsState, restaurantsState, gifticonsState, feedbackState, tab]);
 
   if (auth.loading) {
     return <div className="center-msg">불러오는 중…</div>;
@@ -89,6 +93,16 @@ export default function App() {
       return <MapRegisterPage onReload={restaurantsState.reload} />;
     }
 
+    if (tab === "feedback") {
+      return (
+        <FeedbackPage
+          feedback={feedbackState.feedback}
+          loading={feedbackState.loading}
+          error={feedbackState.error}
+        />
+      );
+    }
+
     return (
       <GifticonsPage
         gifticons={gifticonsState.gifticons}
@@ -106,6 +120,7 @@ export default function App() {
         onTabChange={(next) => {
           setTab(next);
           if (next === "gifticons") gifticonsState.reload();
+          if (next === "feedback") feedbackState.reload();
         }}
         onSignOut={auth.signOut}
         onExport={() => setShowExport(true)}

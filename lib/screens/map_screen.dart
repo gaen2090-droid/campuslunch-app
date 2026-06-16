@@ -1,6 +1,7 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/report_feedback.dart';
@@ -22,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   Restaurant? _selected;
   bool _isLocated = false;
   bool _showBookmarked = false;
+  bool _showNeedsReport = false;
   static const _allLabel = '전체';
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
@@ -84,7 +86,9 @@ class _MapScreenState extends State<MapScreen> {
           _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       final searchOk = q.isEmpty || '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(q);
       final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
-      return regionOk && cuisineOk && searchOk && bookmarkOk;
+      final needsReportOk = !_showNeedsReport ||
+          (r.status != '영업안함' && !r.hasCrowdUpdate);
+      return regionOk && cuisineOk && searchOk && bookmarkOk && needsReportOk;
     }).toList();
   }
 
@@ -204,6 +208,12 @@ class _MapScreenState extends State<MapScreen> {
                                 onTap: () => setState(() =>
                                     _openDropdown =
                                         _openDropdown == 'cuisine' ? null : 'cuisine'),
+                              ),
+                              const SizedBox(width: 8),
+                              _StampChip(
+                                active: _showNeedsReport,
+                                onTap: () => setState(
+                                    () => _showNeedsReport = !_showNeedsReport),
                               ),
                             ],
                           ),
@@ -335,6 +345,32 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                 ],
+              ),
+            ),
+          ),
+
+        // ── 새로고침 / 내 위치 버튼 ──
+        if (!_searchActive)
+          Positioned(
+            right: 16,
+            bottom: _selected != null ? safeBottom + 264 : safeBottom + 112,
+            child: GestureDetector(
+              onTap: () => context.read<AppProvider>().refreshRestaurants(),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: Color(0xFF9CA3AF),
+                ),
               ),
             ),
           ),
@@ -635,6 +671,43 @@ class _MapFilterChip extends StatelessWidget {
   }
 }
 
+// ── 스탬프 받기(제보필요만 보기) 칩 ──
+class _StampChip extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+
+  const _StampChip({required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF111827) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🍙', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 4),
+            Text('스탬프 2개 받기',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: active ? Colors.white : const Color(0xFF374151))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── 드롭다운 그리드 ──
 class _DropdownGrid extends StatelessWidget {
   final List<String> items;
@@ -769,6 +842,12 @@ class _MapPinPainter extends CustomPainter {
 }
 
 // ── 선택된 매장 카드 (바텀시트 스타일) ──
+void _launchDirections(Restaurant r) {
+  final url = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${r.latitude},${r.longitude}');
+  launchUrl(url, mode: LaunchMode.externalApplication);
+}
+
 class _SelectedCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onDetail;
@@ -787,10 +866,14 @@ class _SelectedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = restaurant;
-    final meta = crowdStatusMeta(r.status);
+    final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+    final displayStatus = noReport ? '제보필요' : r.status;
+    final meta = crowdStatusMeta(displayStatus);
     final statusColor = Color(meta.color);
 
-    return Container(
+    return GestureDetector(
+      onTap: onDetail,
+      child: Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -854,7 +937,7 @@ class _SelectedCard extends StatelessWidget {
                           Text('${r.area} · ',
                               style: const TextStyle(
                                   fontSize: 12, color: Color(0xFF9CA3AF))),
-                          Text(r.status,
+                          Text(displayStatus,
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
@@ -876,7 +959,7 @@ class _SelectedCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: onDetail,
+                    onTap: () => _launchDirections(r),
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
@@ -884,11 +967,19 @@ class _SelectedCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
-                        child: Text('자세히 보기',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF16A34A))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.navigation_outlined,
+                                size: 16, color: Color(0xFF16A34A)),
+                            SizedBox(width: 6),
+                            Text('길찾기',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF16A34A))),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -905,9 +996,9 @@ class _SelectedCard extends StatelessWidget {
                           color: const Color(0xFF16A34A),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Center(
-                          child: Text('혼잡도 제보하기',
-                              style: TextStyle(
+                        child: Center(
+                          child: Text(noReport ? '스탬프 2개 받기' : '혼잡도 제보하기',
+                              style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white)),
@@ -920,6 +1011,7 @@ class _SelectedCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

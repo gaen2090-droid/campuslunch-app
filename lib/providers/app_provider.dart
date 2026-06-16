@@ -1106,14 +1106,7 @@ class AppProvider extends ChangeNotifier {
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
           _lastStampResult = stampResult;
-          // 리워드 상태 즉시 반영 (네트워크 절약: 로컬 업데이트)
-          if (stampResult.granted) {
-            _reward = UserReward(
-              totalStamps: stampResult.totalStamps,
-              todayStamps: stampResult.todayStamps,
-              lastStampDate: DateTime.now(),
-            );
-          }
+          await fetchMyReward();
         } else {
           _lastStampResult = StampResult.none;
         }

@@ -93,15 +93,6 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                 padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 32),
                 children: [
                   if (active.isNotEmpty) ...[
-                    Text(
-                      '사용 가능 (${active.length})',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     ...active.map(
                       (g) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
