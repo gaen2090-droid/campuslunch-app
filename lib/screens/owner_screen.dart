@@ -119,7 +119,15 @@ class _OwnerScreenState extends State<OwnerScreen> {
         .toList();
 
     if (ownedList.isEmpty) {
-      return Scaffold(
+      if (ownerIds.isNotEmpty && allRestaurants.isEmpty) {
+        return const Scaffold(
+          backgroundColor: Color(0xFFFAFAF8),
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+      return Stack(
+        children: [
+          Scaffold(
         backgroundColor: const Color(0xFFFAFAF8),
         body: Center(
           child: Padding(
@@ -140,6 +148,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 GestureDetector(
                   onTap: () async {
                     await provider.refreshRestaurants();
+                    await provider.refreshOwnerState();
                     if (!mounted) return;
                     setState(() {});
                   },
@@ -162,10 +171,44 @@ class _OwnerScreenState extends State<OwnerScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => setState(() => _showAddSheet = true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: const Text(
+                      '사장님 인증하기',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
+      ),
+          if (_showAddSheet)
+            Positioned.fill(
+              child: OwnerVerifySheet(
+                onClose: () => setState(() => _showAddSheet = false),
+                onSuccess: (_) {
+                  setState(() => _showAddSheet = false);
+                },
+              ),
+            ),
+        ],
       );
     }
 

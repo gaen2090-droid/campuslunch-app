@@ -56,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final isOwner = provider.userRole == 'owner';
+    final hasOwner = provider.hasOwnerTab;
 
     return Stack(
       children: [
@@ -90,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(builder: (_) => const PushNotificationSettingsScreen()),
                 ),
               ),
-              if (!isOwner)
+              if (!hasOwner)
                 _SettingsButton(
                   label: '사장님 인증',
                   onTap: () => setState(() => _showOwnerVerify = true),

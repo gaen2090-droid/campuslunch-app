@@ -2,7 +2,7 @@ class Account {
   final String id;
   final String password;
   final String nickname;
-  final String role; // 'user' | 'owner' | 'admin'
+  final String role; // 'user' | 'admin' (사장님은 restaurants.owner_id 로 판별)
   final List<String> restaurantIds;
 
   const Account({

@@ -65,9 +65,14 @@ class AppProvider extends ChangeNotifier {
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
 
-  /// 사장님 인증 완료 시 하단 「사장님」 탭 표시
-  bool get hasOwnerTab =>
-      _userRole == 'owner' && _ownerRestaurantIds.isNotEmpty;
+  /// 소유 매장(restaurants.owner_id)이 있을 때만 하단 「사장님」 탭 표시
+  bool get hasOwnerTab {
+    if (_ownerRestaurantIds.isEmpty) return false;
+    if (_restaurants.isEmpty) return true;
+    return _ownerRestaurantIds.any(
+      (id) => _restaurants.any((r) => r.id.toString() == id),
+    );
+  }
 
   /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
   int get homeTabIndex => hasOwnerTab ? 1 : 0;
@@ -218,13 +223,13 @@ class AppProvider extends ChangeNotifier {
       _userRole = prefs.getString(_kUserRole) ?? 'user';
       _ownerRestaurantIds = List<String>.from(
           jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
-      if (_userRole == 'owner' &&
-          SupabaseService.isReady &&
+      if (_userRole == 'owner') {
+        _userRole = 'user';
+        await prefs.setString(_kUserRole, 'user');
+      }
+      if (SupabaseService.isReady &&
           SupabaseService.client.auth.currentUser != null) {
-        _ownerRestaurantIds = await _resolveOwnerRestaurantIds(
-          fallbackIds: _ownerRestaurantIds,
-        );
-        await prefs.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
+        await _syncOwnerRestaurantIdsFromDb(prefs);
       }
       _locationMode = prefs.getBool(_kLocation) ?? false;
       _notificationEnabled = prefs.getBool(_kPush) ?? false;
@@ -269,7 +274,7 @@ class AppProvider extends ChangeNotifier {
               id: 'owner',
               password: 'owner123',
               nickname: '사장님',
-              role: 'owner',
+              role: 'user',
               restaurantIds: [
                 _restaurants.isNotEmpty ? _restaurants.first.id.toString() : '1'
               ]));
@@ -604,21 +609,12 @@ class AppProvider extends ChangeNotifier {
     );
     final metaRole = meta?['role'] as String?;
     final profileRole = profile?.role;
-    final role = (metaRole == 'owner' || profileRole == 'owner')
-        ? 'owner'
-        : (profileRole ??
-            appMeta['role'] as String? ??
-            metaRole ??
-            'user');
-    var restaurantIds = (meta?['restaurant_ids'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        [];
-    if (role == 'owner') {
-      restaurantIds = await _resolveOwnerRestaurantIds(
-        fallbackIds: restaurantIds,
-      );
-    }
+    final rawRole = profileRole ??
+        appMeta['role'] as String? ??
+        metaRole ??
+        'user';
+    final role = rawRole == 'admin' ? 'admin' : 'user';
+    final restaurantIds = await _resolveOwnerRestaurantIds();
 
     final remoteBookmarks = meta?['bookmarks'];
     if (remoteBookmarks is List && remoteBookmarks.isNotEmpty) {
@@ -676,7 +672,7 @@ class AppProvider extends ChangeNotifier {
       _stage = 'admin';
     } else {
       _stage = locationStored ? 'app' : 'location_permission';
-      if (account.role == 'owner' && account.restaurantIds.isNotEmpty) {
+      if (account.restaurantIds.isNotEmpty) {
         _mainTabIndex = 0;
       }
     }
@@ -873,10 +869,26 @@ class AppProvider extends ChangeNotifier {
   }) async {
     final repo = _restaurantRepo;
     if (repo != null) {
-      final owned = await repo.fetchOwnedRestaurantIds();
-      if (owned.isNotEmpty) return owned;
+      return await repo.fetchOwnedRestaurantIds();
     }
     return fallbackIds;
+  }
+
+  Future<void> _syncOwnerRestaurantIdsFromDb([
+    SharedPreferences? prefs,
+  ]) async {
+    final hadOwnerTab = hasOwnerTab;
+    final p = prefs ?? await SharedPreferences.getInstance();
+    _ownerRestaurantIds = await _resolveOwnerRestaurantIds();
+    await p.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
+    if (hadOwnerTab && !hasOwnerTab && _mainTabIndex > 0) {
+      _mainTabIndex = (_mainTabIndex - 1).clamp(0, 2);
+    }
+  }
+
+  Future<void> refreshOwnerState() async {
+    await _syncOwnerRestaurantIdsFromDb();
+    notifyListeners();
   }
 
   Future<void> refreshRestaurants() async {
@@ -888,6 +900,7 @@ class AppProvider extends ChangeNotifier {
       if (gen != _restaurantRefreshGen) return;
       _supabaseRestaurantsLoaded = true;
       _restaurants = fetched;
+      await _syncOwnerRestaurantIdsFromDb();
       await _syncPushNotifications();
       notifyListeners();
     } catch (e, st) {
@@ -1056,8 +1069,7 @@ class AppProvider extends ChangeNotifier {
 
     if (repo != null && authUser != null) {
       try {
-        final isOwnerReport =
-            _userRole == 'owner' && _ownsRestaurant(restaurantId);
+        final isOwnerReport = _ownsRestaurant(restaurantId);
         final source = isOwnerReport ? 'owner' : 'user';
 
         // 사장님은 5분 제한 없음. 디버그 빌드(flutter run)는 테스트 위해 제한 우회.
@@ -1459,9 +1471,6 @@ class AppProvider extends ChangeNotifier {
     String restaurantId,
     int availableSeats,
   ) async {
-    if (_userRole != 'owner') {
-      return '사장님만 입력할 수 있어요.';
-    }
     if (!_ownsRestaurant(restaurantId)) {
       return '본인 매장만 입력할 수 있어요.';
     }
@@ -1581,44 +1590,30 @@ class AppProvider extends ChangeNotifier {
     }
 
     try {
-      _userRole = 'owner';
       final ownedIds = repo != null
           ? await _resolveOwnerRestaurantIds(
               fallbackIds: [
-                ..._ownerRestaurantIds,
                 if (restaurantId != null) restaurantId,
               ],
             )
           : [
-              ..._ownerRestaurantIds,
               if (restaurantId != null) restaurantId,
             ];
       _ownerRestaurantIds = ownedIds.toSet().toList();
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kUserRole, 'owner');
       await prefs.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
 
       await _syncMetadata({
-        'role': 'owner',
         'restaurant_ids': _ownerRestaurantIds,
       });
-
-      final user = SupabaseService.client.auth.currentUser;
-      if (user != null) {
-        try {
-          await _profileRepo.updateRole(user.id, 'owner');
-        } catch (e, st) {
-          debugPrint('[verifyOwnerCode] updateRole failed: $e\n$st');
-        }
-      }
 
       if (repo != null) {
         await refreshRestaurants();
       }
 
       _stage = 'app';
-      _mainTabIndex = 0;
+      if (hasOwnerTab) _mainTabIndex = 0;
       notifyListeners();
       return null;
     } catch (e) {
@@ -1725,6 +1720,7 @@ class AppProvider extends ChangeNotifier {
       if (gen != _restaurantRefreshGen) return;
       _supabaseRestaurantsLoaded = true;
       _restaurants = fetched;
+      await _syncOwnerRestaurantIdsFromDb();
       await _syncPushNotifications();
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');

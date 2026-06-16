@@ -111,9 +111,9 @@ class ProfileRepository {
   }
 
   static String _resolveRole(String? existing, String? metaRole) {
-    if (metaRole == 'owner' || metaRole == 'admin') return metaRole!;
-    if (existing == 'owner' || existing == 'admin') return existing!;
-    return existing ?? metaRole ?? 'user';
+    final raw = metaRole ?? existing ?? 'user';
+    if (raw == 'admin') return 'admin';
+    return 'user';
   }
 
   /// users row가 없을 때 닉네임 저장용 (기존 role 유지)

@@ -47,7 +47,7 @@ class _MyScreenState extends State<MyScreen> {
     final provider = context.watch<AppProvider>();
     final bookmarkCount =
         provider.restaurants.where((r) => provider.bookmarks.contains(r.id)).length;
-    final isOwner = provider.userRole == 'owner';
+    final hasOwner = provider.hasOwnerTab;
 
     return Stack(
       children: [
@@ -218,7 +218,7 @@ class _MyScreenState extends State<MyScreen> {
               ),
 
               // ── 사장님 ──
-              if (isOwner && provider.hasOwnerTab) ...[
+              if (hasOwner) ...[
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () => provider.setMainTabIndex(0),

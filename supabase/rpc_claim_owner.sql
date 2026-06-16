@@ -52,24 +52,19 @@ begin
     owner_id = uid
   where id = rid;
 
-  update public.users
-  set
-    role = 'owner'::public.user_role,
-    updated_at = now()
-  where id = uid;
-
   return rid;
 end;
 $$;
 
--- 이미 owner_id만 연결된 계정 role 백필
+-- role=owner 이지만 소유 매장 없는 계정 → user 로 복구 (선택 실행)
 update public.users u
 set
-  role = 'owner'::public.user_role,
+  role = 'user'::public.user_role,
   updated_at = now()
-from public.restaurants r
-where r.owner_id = u.id
-  and u.role <> 'owner'::public.user_role;
+where u.role = 'owner'::public.user_role
+  and not exists (
+    select 1 from public.restaurants r where r.owner_id = u.id
+  );
 
 revoke all on function public.claim_owner_by_code(text) from public;
 grant execute on function public.claim_owner_by_code(text) to anon, authenticated;

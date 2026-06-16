@@ -44,7 +44,7 @@ Future<String?> _sha1({
       '-c',
       'keytool -list -v -alias "$alias" -keystore "$keystore" '
           '-storepass "$storePass" -keypass "$keyPass" 2>/dev/null '
-      r'| awk -F": " "/SHA1:/ {print $2; exit}"',
+      r"| grep -i 'SHA1:' | head -1 | sed -E 's/.*SHA1:[[:space:]]*//'",
     ],
   );
   final sha = (result.stdout as String).trim();
