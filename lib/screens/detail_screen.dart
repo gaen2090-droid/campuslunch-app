@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/rice_ball_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
@@ -80,7 +81,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     fallback: () => Container(
                       color: const Color(0xFF16A34A),
                       child: const Center(
-                        child: Icon(Icons.restaurant, size: 56, color: Colors.white),
+                        child: RiceBallIcon(size: 56, color: Colors.white),
                       ),
                     ),
                   ),

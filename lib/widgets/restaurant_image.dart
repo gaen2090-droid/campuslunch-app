@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'rice_ball_icon.dart';
 
 class RestaurantImage extends StatelessWidget {
   final String url;
@@ -20,7 +21,7 @@ class RestaurantImage extends StatelessWidget {
         Container(
           color: const Color(0xFF16A34A),
           child: const Center(
-            child: Icon(Icons.restaurant, size: 22, color: Colors.white),
+            child: RiceBallIcon(size: 22, color: Colors.white),
           ),
         );
 

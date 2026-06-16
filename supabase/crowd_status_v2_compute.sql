@@ -154,7 +154,8 @@ begin
         confidence := 'medium';
         refresh_updated_at := true;
       else
-        v_candidate := v_current;
+        v_candidate := public.crowd_move_one_step(v_current, v_users[1]);
+        refresh_updated_at := v_candidate is distinct from v_current;
         confidence := 'medium';
       end if;
       base_source := 'user';

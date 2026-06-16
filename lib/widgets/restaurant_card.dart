@@ -2,6 +2,7 @@
 import '../models/restaurant.dart';
 import '../utils/crowd_status_label.dart';
 import 'restaurant_image.dart';
+import 'rice_ball_icon.dart';
 
 class RestaurantCard extends StatelessWidget {
   final Restaurant restaurant;
@@ -119,7 +120,7 @@ class _IconBox extends StatelessWidget {
       height: 48,
       decoration: const BoxDecoration(color: Color(0xFF16A34A)),
       child: const Center(
-        child: Icon(Icons.restaurant, size: 22, color: Colors.white),
+        child: RiceBallIcon(size: 22, color: Colors.white),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
 import 'coupon_box_screen.dart';
+import '../widgets/rice_ball_icon.dart';
 
 class RewardScreen extends StatefulWidget {
   const RewardScreen({super.key});
@@ -388,8 +389,11 @@ class _StampCell extends StatelessWidget {
       ),
       child: Center(
         child: filled
-            ? const Icon(Icons.restaurant, size: 18, color: Color(0xFF16A34A))
-            : const Icon(Icons.restaurant, size: 18, color: Color(0xFFD1D5DB)),
+            ? const RiceBallIcon(size: 18, color: Color(0xFF16A34A))
+            : Opacity(
+                opacity: 0.35,
+                child: const RiceBallIcon(size: 18),
+              ),
       ),
     );
   }

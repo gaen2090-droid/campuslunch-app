@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'restaurant_image.dart';
+import 'rice_ball_icon.dart';
 import '../models/restaurant.dart';
 
 class NearbyPrompt extends StatelessWidget {
@@ -139,7 +140,7 @@ class _IconBox extends StatelessWidget {
     return Container(
       color: const Color(0xFFF0FDF4),
       child: const Center(
-        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+        child: RiceBallIcon(size: 22, color: Color(0xFF16A34A)),
       ),
     );
   }

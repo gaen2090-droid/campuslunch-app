@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import 'bookmark_list_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/rice_ball_icon.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -653,11 +654,12 @@ class _RewardCard extends StatelessWidget {
                           ),
                         ),
                         child: Center(
-                          child: Icon(
-                            Icons.restaurant,
-                            size: 18,
-                            color: filled ? const Color(0xFF16A34A) : const Color(0xFFD1D5DB),
-                          ),
+                          child: filled
+                              ? const RiceBallIcon(size: 18, color: Color(0xFF16A34A))
+                              : Opacity(
+                                  opacity: 0.35,
+                                  child: const RiceBallIcon(size: 18),
+                                ),
                         ),
                       );
                     }),

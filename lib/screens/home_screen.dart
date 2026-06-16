@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../widgets/nearby_prompt.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/rice_ball_icon.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
 import '../utils/report_feedback.dart';
@@ -751,7 +752,7 @@ class _NeedsReportCard extends StatelessWidget {
                     width: 48, height: 48,
                     decoration: const BoxDecoration(color: Color(0xFF16A34A)),
                     child: const Center(
-                      child: Icon(Icons.restaurant, size: 22, color: Colors.white),
+                      child: RiceBallIcon(size: 22, color: Colors.white),
                     ),
                   ),
                 ),
