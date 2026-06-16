@@ -24,18 +24,22 @@ class UserReward {
 
 class StampResult {
   final bool granted;
+  final int grantedCount;
   final int todayStamps;
   final int totalStamps;
 
   const StampResult({
     required this.granted,
+    this.grantedCount = 0,
     required this.todayStamps,
     required this.totalStamps,
   });
 
   factory StampResult.fromJson(Map<String, dynamic> json) {
+    final granted = json['granted'] as bool? ?? false;
     return StampResult(
-      granted: json['granted'] as bool? ?? false,
+      granted: granted,
+      grantedCount: (json['granted_count'] as num?)?.toInt() ?? (granted ? 1 : 0),
       todayStamps: (json['today_stamps'] as num?)?.toInt() ?? 0,
       totalStamps: (json['total_stamps'] as num?)?.toInt() ?? 0,
     );
@@ -43,6 +47,7 @@ class StampResult {
 
   static const StampResult none = StampResult(
     granted: false,
+    grantedCount: 0,
     todayStamps: 0,
     totalStamps: 0,
   );

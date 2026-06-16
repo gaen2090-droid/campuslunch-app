@@ -117,9 +117,9 @@ class _IconBox extends StatelessWidget {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
+      decoration: const BoxDecoration(color: Color(0xFF16A34A)),
       child: const Center(
-        child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+        child: Icon(Icons.restaurant, size: 22, color: Colors.white),
       ),
     );
   }

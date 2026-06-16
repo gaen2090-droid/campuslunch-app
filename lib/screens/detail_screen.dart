@@ -78,9 +78,9 @@ class _DetailScreenState extends State<DetailScreen> {
                   child: RestaurantImage(
                     url: r.imageUrl,
                     fallback: () => Container(
-                      color: const Color(0xFF2D2D2D),
+                      color: const Color(0xFF16A34A),
                       child: const Center(
-                        child: Icon(Icons.restaurant, size: 56, color: Color(0xFF16A34A)),
+                        child: Icon(Icons.restaurant, size: 56, color: Colors.white),
                       ),
                     ),
                   ),

@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../widgets/owner_verify_sheet.dart';
 import 'bookmark_list_screen.dart';
 import 'reward_screen.dart';
+import 'settings_screen.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -16,21 +16,6 @@ class MyScreen extends StatefulWidget {
 class _MyScreenState extends State<MyScreen> {
   bool _showEditSheet = false;
   String _editNickname = '';
-  bool _lunchPush = false;
-  bool _dinnerPush = false;
-  bool _showOwnerVerify = false;
-  bool _initialized = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
-      _initialized = true;
-      final provider = context.read<AppProvider>();
-      _lunchPush = provider.lunchPushEnabled;
-      _dinnerPush = provider.dinnerPushEnabled;
-    }
-  }
 
   void _openEdit(String current) {
     setState(() {
@@ -72,16 +57,38 @@ class _MyScreenState extends State<MyScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── 페이지 타이틀 ──
-              const Padding(
-                padding: EdgeInsets.only(bottom: 20, top: 8),
-                child: Text(
-                  '마이페이지',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF16A34A),
-                    letterSpacing: -0.8,
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20, top: 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '마이페이지',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF16A34A),
+                          letterSpacing: -0.8,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      ),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.settings_outlined,
+                            size: 20, color: Color(0xFF374151)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -138,56 +145,13 @@ class _MyScreenState extends State<MyScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () => provider.logout(),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFF3F4F6)),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '로그아웃',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF9CA3AF)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => _confirmWithdraw(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFEE2E2)),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '회원 탈퇴',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // ── 내 리워드 ──
+              // ── 내 스탬프 ──
               _RewardCard(reward: provider.reward),
 
               const SizedBox(height: 16),
@@ -252,131 +216,8 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // ── 푸시 알림 설정 ──
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withAlpha(8),
-                        blurRadius: 8,
-                        offset: const Offset(0, 1))
-                  ],
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.notifications,
-                            size: 16, color: Color(0xFF16A34A)),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            '푸시 알림 설정',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827)),
-                          ),
-                        ),
-                        const Text(
-                          'ON/OFF',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF9CA3AF)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Divider(color: Color(0xFFE5E7EB), height: 1),
-                    _ToggleRow(
-                      title: '점심 피크 추천 알림',
-                      desc: '평일 12:00에 여유로운 매장을 알려드려요!',
-                      enabled: _lunchPush,
-                      onToggle: () async {
-                        final next = !_lunchPush;
-                        setState(() => _lunchPush = next);
-                        await context.read<AppProvider>().setLunchPush(next);
-                        if (!context.mounted) return;
-                        if (next) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: const Text(
-                              '평일 12:00에 알림을 보내드릴게요!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                            backgroundColor: const Color(0xFF111827),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                            duration: const Duration(milliseconds: 1600),
-                            elevation: 0,
-                          ));
-                        }
-                      },
-                    ),
-                    const Divider(color: Color(0xFFE5E7EB), height: 1),
-                    _ToggleRow(
-                      title: '저녁 피크 추천 알림',
-                      desc: '평일 18:00에 여유로운 매장을 알려드려요!',
-                      enabled: _dinnerPush,
-                      onToggle: () async {
-                        final next = !_dinnerPush;
-                        setState(() => _dinnerPush = next);
-                        await context.read<AppProvider>().setDinnerPush(next);
-                        if (!context.mounted) return;
-                        if (next) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: const Text(
-                              '평일 18:00에 알림을 보내드릴게요!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                            backgroundColor: const Color(0xFF111827),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                            duration: const Duration(milliseconds: 1600),
-                            elevation: 0,
-                          ));
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
               // ── 사장님 ──
-              if (!isOwner) ...[
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => setState(() => _showOwnerVerify = true),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '사장님 인증',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF9CA3AF)),
-                      ),
-                    ),
-                  ),
-                ),
-              ] else if (provider.hasOwnerTab) ...[
+              if (isOwner && provider.hasOwnerTab) ...[
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () => provider.setMainTabIndex(0),
@@ -526,18 +367,6 @@ class _MyScreenState extends State<MyScreen> {
             ],
           ),
         ),
-
-        // ── 사장님 인증 시트 ──
-        if (_showOwnerVerify)
-          Positioned.fill(
-            child: OwnerVerifySheet(
-              onClose: () => setState(() => _showOwnerVerify = false),
-              onSuccess: (_) {
-                setState(() => _showOwnerVerify = false);
-                context.read<AppProvider>().setMainTabIndex(0);
-              },
-            ),
-          ),
 
         // ── 닉네임 수정 시트 ──
         if (_showEditSheet)
@@ -707,44 +536,6 @@ class _MyScreenState extends State<MyScreen> {
     );
   }
 
-  void _confirmWithdraw(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('회원 탈퇴',
-            style: TextStyle(fontWeight: FontWeight.w900)),
-        content: const Text(
-          '계정과 프로필이 삭제되며 복구할 수 없어요.\n'
-          '카카오 로그인 계정은 카카오 연결도 해제됩니다.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소',
-                style: TextStyle(color: Color(0xFF9CA3AF))),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final err =
-                  await context.read<AppProvider>().withdrawAccount();
-              if (!context.mounted) return;
-              if (err != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(err)),
-                );
-              }
-            },
-            child: const Text('탈퇴하기',
-                style: TextStyle(
-                    color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _confirmReset(BuildContext context) {
     showDialog(
       context: context,
@@ -782,7 +573,6 @@ class _RewardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = reward.totalStamps as int;
     final today = reward.todayStamps as int;
-    final remaining = (20 - total).clamp(0, 20);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -815,7 +605,7 @@ class _RewardCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      '내 리워드',
+                      '내 스탬프',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -843,45 +633,44 @@ class _RewardCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    '스탬프 $total',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF16A34A),
-                    ),
-                  ),
-                  const Text(
-                    ' / 20',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 10.0;
+                  final cellSize = (constraints.maxWidth - gap * 2) / 3;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(3, (i) {
+                      final filled = i < today.clamp(0, 3);
+                      return Container(
+                        width: cellSize,
+                        height: cellSize,
+                        decoration: BoxDecoration(
+                          color: filled ? const Color(0xFFDCFCE7) : const Color(0xFFF9FAFB),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: filled ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.restaurant,
+                            size: 18,
+                            color: filled ? const Color(0xFF16A34A) : const Color(0xFFD1D5DB),
+                          ),
+                        ),
+                      );
+                    }),
+                  );
+                },
               ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: (total / 20).clamp(0.0, 1.0),
-                  minHeight: 6,
-                  backgroundColor: const Color(0xFFF3F4F6),
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFF16A34A)),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                remaining > 0
-                    ? '바나프레소 아메리카노까지 $remaining개 남았어요'
-                    : '쿠폰을 받을 수 있어요!',
+              const SizedBox(height: 10),
+              const Text(
+                '하루 최대 3개의 스탬프를 획득할 수 있어요.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: remaining == 0 ? const Color(0xFF16A34A) : const Color(0xFF6B7280),
+                  color: Color(0xFF6B7280),
                 ),
               ),
             ],
@@ -892,71 +681,3 @@ class _RewardCard extends StatelessWidget {
   }
 }
 
-class _ToggleRow extends StatelessWidget {
-  final String title;
-  final String desc;
-  final bool enabled;
-  final VoidCallback onToggle;
-
-  const _ToggleRow({
-    required this.title,
-    required this.desc,
-    required this.enabled,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827))),
-                const SizedBox(height: 4),
-                Text(desc,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        height: 1.4)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          GestureDetector(
-            onTap: onToggle,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 56,
-              height: 32,
-              decoration: BoxDecoration(
-                color:
-                    enabled ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                alignment:
-                    enabled ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  margin: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -24,7 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _sortBy = '최신순';
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
-  String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
+  String _reportFilter = '전체'; // '전체' | '제보있음' | '제보없음'
+  String? _openDropdown; // 'sort' | 'region' | 'cuisine' | 'report' | null
   bool _searchActive = false;
   bool _showBookmarked = false;
   bool _showNearby = false;
@@ -35,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
+  static const _reportOpts = ['전체', '제보있음', '제보없음'];
 
   @override
   void didChangeDependencies() {
@@ -226,7 +228,17 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       closedAll,
       isClosed: true,
     );
-    _trackBannerImpression(recommended);
+
+    // 제보여부 필터: 제보있음 → 제보필요/영업종료 매장 숨김, 제보없음 → 제보필요 매장만 표시
+    final showNeedsReport = _reportFilter != '제보있음';
+    final showClosed = _reportFilter == '전체';
+    final availableCardsFiltered = _reportFilter == '제보없음' ? <Restaurant>[] : availableCards;
+    final recommendedFiltered = _reportFilter == '제보없음' ? null : recommended;
+    final busyFiltered = _reportFilter == '제보없음' ? <Restaurant>[] : busy;
+    final needsReportFiltered = showNeedsReport ? needsReport : <Restaurant>[];
+    final closedFiltered = showClosed ? closed : <Restaurant>[];
+
+    _trackBannerImpression(recommendedFiltered);
 
     return Stack(
       fit: StackFit.expand,
@@ -358,6 +370,14 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               onTap: () => setState(() =>
                                   _openDropdown = _openDropdown == 'cuisine' ? null : 'cuisine'),
                             ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: _reportFilter == '전체' ? '제보여부' : _reportFilter,
+                              active: _reportFilter != '전체',
+                              open: _openDropdown == 'report',
+                              onTap: () => setState(() =>
+                                  _openDropdown = _openDropdown == 'report' ? null : 'report'),
+                            ),
                           ],
                         ),
                       ),
@@ -431,16 +451,25 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             _regions.add(_allLabel);
                           }),
                         )
-                      : _DropdownGrid(
-                          items: _cuisineOpts,
-                          selected: _cuisines,
-                          multiSelect: true,
-                          onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
-                          onReset: () => setState(() {
-                            _cuisines.clear();
-                            _cuisines.add(_allLabel);
-                          }),
-                        ),
+                      : _openDropdown == 'cuisine'
+                          ? _DropdownGrid(
+                              items: _cuisineOpts,
+                              selected: _cuisines,
+                              multiSelect: true,
+                              onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
+                              onReset: () => setState(() {
+                                _cuisines.clear();
+                                _cuisines.add(_allLabel);
+                              }),
+                            )
+                          : _DropdownGrid(
+                              items: _reportOpts,
+                              selected: {_reportFilter},
+                              onSelect: (v) => setState(() {
+                                _reportFilter = v;
+                                _openDropdown = null;
+                              }),
+                            ),
             ),
           ),
 
@@ -448,7 +477,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         Expanded(
           child: _searchActive
               ? _buildSearch(searchResults)
-              : _buildList(recommended, availableCards, needsReport, busy, closed),
+              : _buildList(recommendedFiltered, availableCardsFiltered, needsReportFiltered, busyFiltered, closedFiltered),
         ),
           ],
         ),
@@ -546,7 +575,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
         children: [
           // 바로 입장 가능
-          if (recommended != null || available.isNotEmpty || needsReport.isNotEmpty) ...[
+          if (recommended != null || available.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
               child: Row(
@@ -578,10 +607,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                   child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
                 )),
-            ...needsReport.map((r) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: _NeedsReportCard(restaurant: r, onTap: () => _openDetail(r)),
-                )),
           ],
 
           // 붐비는 매장
@@ -611,11 +636,38 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 )),
           ],
 
+          // 제보가 필요해요
+          if (needsReport.isNotEmpty) ...[
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty) ? 8 : 12, 20, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF3B82F6), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('제보가 필요해요',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF111827))),
+                ],
+              ),
+            ),
+            ...needsReport.map((r) => Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: _NeedsReportCard(restaurant: r, onTap: () => _openDetail(r)),
+                )),
+          ],
+
           // 영업종료
           if (closed.isNotEmpty) ...[
             Padding(
               padding: EdgeInsets.fromLTRB(
-                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty) ? 8 : 12, 20, 10),
+                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty || needsReport.isNotEmpty) ? 8 : 12, 20, 10),
               child: Row(
                 children: [
                   Container(
@@ -641,6 +693,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           if (recommended == null &&
               available.isEmpty &&
               busy.isEmpty &&
+              needsReport.isEmpty &&
               closed.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 48, 20, 0),
@@ -696,9 +749,9 @@ class _NeedsReportCard extends StatelessWidget {
                   url: r.imageUrl,
                   fallback: () => Container(
                     width: 48, height: 48,
-                    decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
+                    decoration: const BoxDecoration(color: Color(0xFF16A34A)),
                     child: const Center(
-                      child: Icon(Icons.restaurant, size: 22, color: Color(0xFF16A34A)),
+                      child: Icon(Icons.restaurant, size: 22, color: Colors.white),
                     ),
                   ),
                 ),
@@ -731,15 +784,15 @@ class _NeedsReportCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: const Color(0xFFDBEAFE),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
-                '제보가 필요해요',
+                '제보하면 스탬프 2개',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFF3B82F6),
                 ),
               ),
             ),

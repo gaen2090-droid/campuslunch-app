@@ -102,7 +102,7 @@ create policy "user_rewards_insert_own" on public.user_rewards
 -- 6. 스탬프 지급 함수 (submit_crowd_report trigger에서 호출)
 --    source='user' 제보 성공 시 호출됨
 --    KST 기준 하루 최대 3개
-create or replace function public.grant_stamp(p_user_id uuid)
+create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb
 language plpgsql
 security definer
@@ -112,8 +112,9 @@ declare
   v_today      date := (now() at time zone 'Asia/Seoul')::date;
   v_today_stamps int;
   v_total_stamps int;
-  v_granted    boolean := false;
+  v_granted    int := 0;
   v_row        public.user_rewards;
+  v_room       int;
 begin
   -- upsert 후 잠금
   insert into public.user_rewards (user_id)
@@ -135,10 +136,11 @@ begin
   v_total_stamps := v_row.total_stamps;
 
   -- 테스트 편의: 하루 스탬프 제한 사실상 해제 (원래 3). UI 문구는 여전히 "/3" 표시.
-  if v_today_stamps < 999 then
-    v_today_stamps := v_today_stamps + 1;
-    v_total_stamps := v_total_stamps + 1;
-    v_granted := true;
+  v_room := 999 - v_today_stamps;
+  if v_room > 0 then
+    v_granted := least(p_count, v_room);
+    v_today_stamps := v_today_stamps + v_granted;
+    v_total_stamps := v_total_stamps + v_granted;
 
     update public.user_rewards
     set today_stamps    = v_today_stamps,
@@ -148,7 +150,8 @@ begin
   end if;
 
   return jsonb_build_object(
-    'granted',       v_granted,
+    'granted',       v_granted > 0,
+    'granted_count', v_granted,
     'today_stamps',  v_today_stamps,
     'total_stamps',  v_total_stamps
   );
@@ -174,6 +177,10 @@ declare
   v_source     public.crowd_source;
   v_ui_level   int;
   v_stamp_result jsonb;
+  v_description jsonb;
+  v_session_start timestamptz;
+  v_had_report_this_session boolean;
+  v_stamp_count int;
 begin
   if v_uid is null then
     raise exception '로그인이 필요해요.';
@@ -205,6 +212,21 @@ begin
 
   -- 위치/쿨다운 제한은 클라이언트(앱)에서 검사한다. (디버그 빌드는 우회)
 
+  -- 영업 시작(이번 세션) 이후 기존 제보가 있었는지 확인 (최초 제보 보너스 판단)
+  if p_source = 'user' then
+    select r.description into v_description
+    from public.restaurants r
+    where r.id = p_restaurant_id;
+
+    v_session_start := public.restaurant_current_session_start(v_description, now());
+
+    select exists (
+      select 1 from public.crowd_reports cr
+      where cr.restaurant_id = p_restaurant_id
+        and cr.created_at >= coalesce(v_session_start, '-infinity'::timestamptz)
+    ) into v_had_report_this_session;
+  end if;
+
   insert into public.crowd_reports (
     restaurant_id, level, source, user_id, metadata
   ) values (
@@ -220,9 +242,10 @@ begin
     )
   );
 
-  -- 사용자 제보에만 스탬프 지급
+  -- 사용자 제보에만 스탬프 지급. 영업 시작 후 최초 제보면 2개, 그 외엔 1개.
   if p_source = 'user' then
-    v_stamp_result := public.grant_stamp(v_uid);
+    v_stamp_count := case when v_had_report_this_session then 1 else 2 end;
+    v_stamp_result := public.grant_stamp(v_uid, v_stamp_count);
   else
     v_stamp_result := jsonb_build_object(
       'granted', false,
@@ -237,7 +260,8 @@ $$;
 
 grant execute on function public.submit_crowd_report(uuid, text, text, double precision, double precision)
   to authenticated;
-grant execute on function public.grant_stamp(uuid) to authenticated;
+grant execute on function public.grant_stamp(uuid, int) to authenticated;
+drop function if exists public.grant_stamp(uuid);
 
 -- 8. 쿠폰 교환 RPC (atomic, FOR UPDATE SKIP LOCKED)
 create or replace function public.redeem_gifticon()

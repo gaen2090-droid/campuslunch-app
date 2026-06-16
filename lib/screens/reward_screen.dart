@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
-import '../services/supabase_service.dart';
+import 'coupon_box_screen.dart';
 
 class RewardScreen extends StatefulWidget {
   const RewardScreen({super.key});
@@ -110,15 +109,6 @@ class _RewardScreenState extends State<RewardScreen> {
     ));
   }
 
-  void _showGifticonDetail(Gifticon g) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _GifticonDetailSheet(gifticon: g),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -139,7 +129,7 @@ class _RewardScreenState extends State<RewardScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          '내 리워드',
+          '내 스탬프',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w900,
@@ -180,20 +170,55 @@ class _RewardScreenState extends State<RewardScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── 보유 쿠폰 ──
-              if (gifticons.isNotEmpty) ...[
-                _SectionTitle('보유 쿠폰'),
-                const SizedBox(height: 12),
-                ...gifticons.map(
-                  (g) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _GifticonCard(
-                      gifticon: g,
-                      onView: () => _showGifticonDetail(g),
-                    ),
+              // ── 쿠폰함 바로가기 ──
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 1)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Center(child: Text('🎁', style: TextStyle(fontSize: 22))),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '쿠폰함',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              gifticons.isEmpty ? '받은 쿠폰이 없어요' : '보유 쿠폰 ${gifticons.length}개',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -469,204 +494,3 @@ class _RewardCard extends StatelessWidget {
   }
 }
 
-class _GifticonCard extends StatelessWidget {
-  final Gifticon gifticon;
-  final VoidCallback onView;
-
-  const _GifticonCard({required this.gifticon, required this.onView});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 1)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Center(child: Text('🎁', style: TextStyle(fontSize: 24))),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  gifticon.productName,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
-                ),
-                const SizedBox(height: 4),
-                if (gifticon.expiresLabel.isNotEmpty)
-                  Text(
-                    '유효기간 ${gifticon.expiresLabel}',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onView,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF86EFAC)),
-              ),
-              child: const Text(
-                '쿠폰 보기',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GifticonDetailSheet extends StatefulWidget {
-  final Gifticon gifticon;
-  const _GifticonDetailSheet({required this.gifticon});
-
-  @override
-  State<_GifticonDetailSheet> createState() => _GifticonDetailSheetState();
-}
-
-class _GifticonDetailSheetState extends State<_GifticonDetailSheet> {
-  String? _freshImageUrl;
-  bool _loadingUrl = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshImageUrl();
-  }
-
-  Future<void> _refreshImageUrl() async {
-    final raw = widget.gifticon.imageUrl;
-    if (raw.isEmpty) {
-      setState(() { _freshImageUrl = ''; _loadingUrl = false; });
-      return;
-    }
-    // storage path면 fresh signed URL 생성 (1시간)
-    if (!raw.startsWith('http') && SupabaseService.isReady) {
-      try {
-        final url = await SupabaseService.client.storage
-            .from('gifticons')
-            .createSignedUrl(raw, 3600);
-        if (mounted) setState(() { _freshImageUrl = url; _loadingUrl = false; });
-        return;
-      } catch (_) {}
-    }
-    if (mounted) setState(() { _freshImageUrl = raw; _loadingUrl = false; });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(12, 0, 12, MediaQuery.of(context).padding.bottom + 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.all(Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              widget.gifticon.brand,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.gifticon.productName,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
-            ),
-            const SizedBox(height: 6),
-            if (widget.gifticon.expiresLabel.isNotEmpty)
-              Text(
-                '유효기간 ${widget.gifticon.expiresLabel}',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
-              ),
-            const SizedBox(height: 20),
-            // 기프티콘 이미지 (열릴 때 fresh signed URL 생성)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: _loadingUrl
-                  ? const SizedBox(
-                      width: double.infinity,
-                      height: 200,
-                      child: Center(child: CircularProgressIndicator(color: Color(0xFF16A34A))),
-                    )
-                  : (_freshImageUrl?.isNotEmpty == true
-                      ? Image.network(
-                          _freshImageUrl!,
-                          width: double.infinity,
-                          height: 260,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => _imageError(),
-                        )
-                      : _imageError()),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text(
-                    '닫기',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF374151)),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _imageError() => Container(
-    width: double.infinity,
-    height: 200,
-    decoration: BoxDecoration(
-      color: const Color(0xFFF3F4F6),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: const Center(
-      child: Text('이미지를 불러올 수 없어요', style: TextStyle(color: Color(0xFF9CA3AF))),
-    ),
-  );
-}
