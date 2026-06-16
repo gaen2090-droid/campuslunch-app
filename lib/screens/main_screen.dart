@@ -195,7 +195,7 @@ class _NavTab extends StatelessWidget {
             Icon(
               active ? item.activeIcon : item.icon,
               size: 22,
-              color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
             ),
             const SizedBox(height: 2),
             Text(
@@ -204,7 +204,7 @@ class _NavTab extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color:
-                    active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                    active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
               ),
             ),
           ],

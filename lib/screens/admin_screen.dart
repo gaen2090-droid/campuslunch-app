@@ -124,20 +124,20 @@ class _AdminScreenState extends State<AdminScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF16A34A)),
+                            border: Border.all(color: const Color(0xFF5E8C4A)),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.download_outlined,
-                                  size: 14, color: Color(0xFF16A34A)),
+                                  size: 14, color: Color(0xFF5E8C4A)),
                               SizedBox(width: 6),
                               Text(
                                 '지표 내보내기',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF16A34A),
+                                  color: Color(0xFF5E8C4A),
                                 ),
                               ),
                             ],
@@ -228,7 +228,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       await context.read<AppProvider>().fetchMetrics();
                       await context.read<AppProvider>().refreshAdminRestaurants();
                     },
-                    color: const Color(0xFF16A34A),
+                    color: const Color(0xFF5E8C4A),
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
@@ -702,7 +702,7 @@ class _MetricsTab extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF16A34A),
+                            color: Color(0xFF5E8C4A),
                           ),
                         ),
                       ],
@@ -766,7 +766,7 @@ class _MetricsTab extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF16A34A),
+                              color: Color(0xFF5E8C4A),
                             ),
                           ),
                         ],
@@ -880,7 +880,7 @@ class _AlgorithmToggleCard extends StatelessWidget {
                   width: 56,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: isOn ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+                    color: isOn ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: AnimatedAlign(
@@ -1053,7 +1053,7 @@ class _RankBadge extends StatelessWidget {
     return Container(
       width: 28, height: 28,
       decoration: const BoxDecoration(
-        color: Color(0xFF16A34A),
+        color: Color(0xFF9ECA8B),
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -1062,7 +1062,7 @@ class _RankBadge extends StatelessWidget {
           style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: Color(0xFF111827),
           ),
         ),
       ),
@@ -1170,7 +1170,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5)),
               ),
             ),
             const SizedBox(height: 12),
@@ -1320,7 +1320,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
                                         color: visible
-                                            ? const Color(0xFF16A34A)
+                                            ? const Color(0xFF5E8C4A)
                                             : const Color(0xFF9CA3AF),
                                       ),
                                     );
@@ -1337,7 +1337,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                             ? Icons.expand_less
                                             : Icons.expand_more,
                                         size: 16,
-                                        color: const Color(0xFF16A34A),
+                                        color: const Color(0xFF5E8C4A),
                                       ),
                                       const SizedBox(width: 2),
                                       Text(
@@ -1346,7 +1346,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                           color: _expandedReportsId == r.id
-                                              ? const Color(0xFF16A34A)
+                                              ? const Color(0xFF5E8C4A)
                                               : const Color(0xFF6B7280),
                                         ),
                                       ),
@@ -1365,7 +1365,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF0FDF4),
+                                          color: const Color(0xFFF3F8F0),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
                                               color: const Color(0xFFBBF7D0)),
@@ -1375,7 +1375,7 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w900,
-                                            color: Color(0xFF16A34A),
+                                            color: Color(0xFF5E8C4A),
                                             letterSpacing: 2,
                                           ),
                                         ),
@@ -1898,7 +1898,7 @@ class _DauDetailSheetState extends State<_DauDetailSheet> {
             _LineChart(
               values: vals,
               xLabels: lbls,
-              color: const Color(0xFF16A34A),
+              color: const Color(0xFF5E8C4A),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -1944,19 +1944,19 @@ class _DetailSheet extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
+            color: const Color(0xFFF3F8F0),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
               const Text('평균',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF16A34A))),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF5E8C4A))),
               const SizedBox(width: 8),
               Text('$avg건',
                   style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF16A34A))),
+                      color: Color(0xFF5E8C4A))),
             ],
           ),
         ),
@@ -1988,7 +1988,7 @@ class _DetailSheet extends StatelessWidget {
                             Container(height: 6, color: const Color(0xFFF3F4F6)),
                             FractionallySizedBox(
                               widthFactor: frac,
-                              child: Container(height: 6, color: const Color(0xFF16A34A)),
+                              child: Container(height: 6, color: const Color(0xFF5E8C4A)),
                             ),
                           ]),
                         ),
@@ -2031,13 +2031,13 @@ class _DetailSheet extends StatelessWidget {
           'MAU (최근 30일 ${metrics.mau}명)',
           metrics.monthlyMau.map((v) => v.toDouble()).toList(),
           _monthLabels6,
-          const Color(0xFF16A34A),
+          const Color(0xFF5E8C4A),
         ),
         'clickRate': (
           '추천 배너 클릭률 추이',
           metrics.dailyClickRates,
           _weekDates,
-          const Color(0xFF16A34A),
+          const Color(0xFF5E8C4A),
         ),
         'pushOpenRate': (
           '푸시 오픈율 추이',
@@ -2060,7 +2060,7 @@ class _DetailSheet extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF16A34A),
+                color: Color(0xFF5E8C4A),
               ),
             ),
             const SizedBox(height: 8),
@@ -2075,12 +2075,12 @@ class _DetailSheet extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
+                        color: const Color(0xFFF3F8F0),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, size: 16, color: Color(0xFF16A34A)),
+                          const Icon(Icons.check_circle, size: 16, color: Color(0xFF5E8C4A)),
                           const SizedBox(width: 8),
                           Text(r.name,
                               style: const TextStyle(
@@ -2207,7 +2207,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: Color(0xFF16A34A),
+            primary: Color(0xFF5E8C4A),
             onPrimary: Colors.white,
             surface: Colors.white,
           ),
@@ -2416,7 +2416,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF16A34A),
+                      color: Color(0xFF5E8C4A),
                     ),
                   ),
                 ),
@@ -2438,19 +2438,19 @@ class _ExportSheetState extends State<_ExportSheet> {
                         height: 16,
                         decoration: BoxDecoration(
                           color: checked
-                              ? const Color(0xFF16A34A)
+                              ? const Color(0xFF9ECA8B)
                               : Colors.white,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: checked
-                                ? const Color(0xFF16A34A)
+                                ? const Color(0xFF9ECA8B)
                                 : const Color(0xFFD1D5DB),
                             width: 2,
                           ),
                         ),
                         child: checked
                             ? const Icon(Icons.check,
-                                size: 10, color: Colors.white)
+                                size: 10, color: Color(0xFF111827))
                             : null,
                       ),
                       const SizedBox(width: 10),
@@ -2478,21 +2478,21 @@ class _ExportSheetState extends State<_ExportSheet> {
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
+                    color: const Color(0xFF9ECA8B),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.download_outlined,
-                          size: 16, color: Colors.white),
+                          size: 16, color: Color(0xFF111827)),
                       SizedBox(width: 8),
                       Text(
                         'CSV로 내보내기 (.csv)',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: Color(0xFF111827),
                         ),
                       ),
                     ],
@@ -2798,15 +2798,15 @@ class _AddRestaurantPageState extends State<_AddRestaurantPage> {
                 height: 56,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A),
+                  color: const Color(0xFF9ECA8B),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
                   child: _uploading
                       ? const SizedBox(width: 20, height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          child: CircularProgressIndicator(color: Color(0xFF111827), strokeWidth: 2))
                       : const Text('추가하기',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
                 ),
               ),
             ),
@@ -3135,15 +3135,15 @@ class _EditRestaurantPageState extends State<_EditRestaurantPage> {
                 height: 56,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A),
+                  color: const Color(0xFF9ECA8B),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
                   child: _uploading
                       ? const SizedBox(width: 20, height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          child: CircularProgressIndicator(color: Color(0xFF111827), strokeWidth: 2))
                       : const Text('저장하기',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
                 ),
               ),
             ),
@@ -3178,7 +3178,7 @@ class _ImagePickerField extends StatelessWidget {
           color: const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: hasImage ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+            color: hasImage ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
             width: hasImage ? 1.5 : 1,
           ),
         ),
@@ -3499,7 +3499,7 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
               height: 52,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF16A34A),
+                color: const Color(0xFF9ECA8B),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
@@ -3507,7 +3507,7 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white)),
+                        color: Color(0xFF111827))),
               ),
             ),
           ),
@@ -3533,7 +3533,7 @@ InputDecoration _inputDecoration(String hint) {
         borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
     focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5)),
+        borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5)),
   );
 }
 
@@ -3667,12 +3667,12 @@ class _GifticonTabState extends State<_GifticonTab> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A),
+                  color: const Color(0xFF9ECA8B),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   _showForm ? '취소' : '+ 등록',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                 ),
               ),
             ),
@@ -3732,7 +3732,7 @@ class _GifticonTabState extends State<_GifticonTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF16A34A),
+                      color: const Color(0xFF9ECA8B),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Center(
@@ -3740,11 +3740,11 @@ class _GifticonTabState extends State<_GifticonTab> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
                             )
                           : const Text(
                               '등록하기',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
                             ),
                     ),
                   ),
@@ -3798,7 +3798,7 @@ class _AdminGifticonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = gifticon.status == 'assigned'
-        ? const Color(0xFF16A34A)
+        ? const Color(0xFF5E8C4A)
         : gifticon.status == 'expired'
             ? const Color(0xFFEF4444)
             : const Color(0xFF9CA3AF);

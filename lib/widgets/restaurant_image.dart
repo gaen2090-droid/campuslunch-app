@@ -19,9 +19,9 @@ class RestaurantImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final fb = fallback?.call() ??
         Container(
-          color: const Color(0xFF16A34A),
+          color: const Color(0xFF9ECA8B),
           child: const Center(
-            child: RiceBallIcon(size: 22, color: Colors.white),
+            child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
           ),
         );
 

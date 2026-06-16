@@ -118,9 +118,9 @@ class _IconBox extends StatelessWidget {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(color: Color(0xFF16A34A)),
+      decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
       child: const Center(
-        child: RiceBallIcon(size: 22, color: Colors.white),
+        child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
       ),
     );
   }
@@ -177,7 +177,7 @@ class HeroRestaurantCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
+                        color: const Color(0xFF9ECA8B),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -186,7 +186,7 @@ class HeroRestaurantCard extends StatelessWidget {
                           Container(
                             width: 6, height: 6,
                             decoration: const BoxDecoration(
-                                color: Colors.white, shape: BoxShape.circle),
+                                color: Color(0xFF111827), shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 6),
                           const Text(
@@ -194,7 +194,7 @@ class HeroRestaurantCard extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white),
+                                color: Color(0xFF111827)),
                           ),
                         ],
                       ),
@@ -287,7 +287,7 @@ class HeroRestaurantCard extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF16A34A)),
+                                      color: Color(0xFF5E8C4A)),
                                 ),
                               ),
                             ),

@@ -9,6 +9,7 @@ import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_google_map.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/rice_ball_icon.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 
@@ -226,7 +227,7 @@ class _MapScreenState extends State<MapScreen> {
                           duration: const Duration(milliseconds: 200),
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                            color: _showBookmarked ? const Color(0xFF16A34A) : Colors.white,
+                            color: _showBookmarked ? const Color(0xFF9ECA8B) : Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: const [
                               BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -235,7 +236,7 @@ class _MapScreenState extends State<MapScreen> {
                           child: Icon(
                             _showBookmarked ? Icons.bookmark : Icons.bookmark_border,
                             size: 16,
-                            color: _showBookmarked ? Colors.white : const Color(0xFF6B7280),
+                            color: _showBookmarked ? const Color(0xFF111827) : const Color(0xFF6B7280),
                           ),
                         ),
                       ),
@@ -393,7 +394,7 @@ class _MapScreenState extends State<MapScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isLocated ? const Color(0xFFF0FDF4) : Colors.white,
+                  color: _isLocated ? const Color(0xFFF3F8F0) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -402,7 +403,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -644,7 +645,7 @@ class _MapFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF16A34A) : Colors.white,
+          color: on ? const Color(0xFF9ECA8B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -657,12 +658,12 @@ class _MapFilterChip extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: on ? Colors.white : const Color(0xFF374151))),
+                    color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? Colors.white : const Color(0xFF374151),
+              color: on ? const Color(0xFF111827) : const Color(0xFF374151),
             ),
           ],
         ),
@@ -694,7 +695,9 @@ class _StampChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🍙', style: TextStyle(fontSize: 12)),
+            RiceBallIcon(
+                size: 14,
+                color: active ? Colors.white : const Color(0xFF374151)),
             const SizedBox(width: 4),
             Text('스탬프 2개 받기',
                 style: TextStyle(
@@ -740,7 +743,7 @@ class _DropdownGrid extends StatelessWidget {
                 onTap: () => onSelect(opt),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
+                    color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding:
@@ -754,7 +757,7 @@ class _DropdownGrid extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
                             color: on
-                                ? const Color(0xFF16A34A)
+                                ? const Color(0xFF5E8C4A)
                                 : const Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -764,7 +767,7 @@ class _DropdownGrid extends StatelessWidget {
                         const Padding(
                           padding: EdgeInsets.only(left: 4),
                           child: Icon(Icons.check,
-                              size: 14, color: Color(0xFF16A34A)),
+                              size: 14, color: Color(0xFF5E8C4A)),
                         ),
                     ],
                   ),
@@ -906,7 +909,7 @@ class _SelectedCard extends StatelessWidget {
                     width: 48, height: 48,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: const Color(0xFFF3F8F0),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: RestaurantImage(
@@ -917,7 +920,7 @@ class _SelectedCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF16A34A)),
+                              color: Color(0xFF5E8C4A)),
                         ),
                       ),
                     ),
@@ -963,7 +966,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF5E8C4A), width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -971,13 +974,13 @@ class _SelectedCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.navigation_outlined,
-                                size: 16, color: Color(0xFF16A34A)),
+                                size: 16, color: Color(0xFF5E8C4A)),
                             SizedBox(width: 6),
                             Text('길찾기',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF16A34A))),
+                                    color: Color(0xFF5E8C4A))),
                           ],
                         ),
                       ),
@@ -993,7 +996,7 @@ class _SelectedCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A),
+                          color: const Color(0xFF9ECA8B),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
@@ -1001,7 +1004,7 @@ class _SelectedCard extends StatelessWidget {
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
-                                  color: Colors.white)),
+                                  color: Color(0xFF111827))),
                         ),
                       ),
                     ),

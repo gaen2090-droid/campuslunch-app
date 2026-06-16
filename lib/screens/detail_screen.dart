@@ -79,9 +79,9 @@ class _DetailScreenState extends State<DetailScreen> {
                   child: RestaurantImage(
                     url: r.imageUrl,
                     fallback: () => Container(
-                      color: const Color(0xFF16A34A),
+                      color: const Color(0xFF9ECA8B),
                       child: const Center(
-                        child: RiceBallIcon(size: 56, color: Colors.white),
+                        child: RiceBallIcon(size: 56, color: Color(0xFF111827)),
                       ),
                     ),
                   ),
@@ -110,7 +110,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   : Icons.bookmark_border,
                               size: 16,
                               color: isBookmarked
-                                  ? const Color(0xFF16A34A)
+                                  ? const Color(0xFF5E8C4A)
                                   : const Color(0xFF6B7280),
                             ),
                           ),
@@ -235,21 +235,21 @@ class _DetailScreenState extends State<DetailScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
+                        color: const Color(0xFF9ECA8B),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.edit_outlined,
-                              size: 16, color: Colors.white),
+                              size: 16, color: Color(0xFF111827)),
                           SizedBox(width: 8),
                           Text(
                             '혼잡도 제보하기',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: Colors.white,
+                              color: Color(0xFF111827),
                             ),
                           ),
                         ],
@@ -266,20 +266,20 @@ class _DetailScreenState extends State<DetailScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF16A34A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF5E8C4A), width: 1.5),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.navigation_outlined,
-                              size: 16, color: Color(0xFF16A34A)),
+                              size: 16, color: Color(0xFF5E8C4A)),
                           SizedBox(width: 6),
                           Text(
                             '길찾기',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF16A34A),
+                              color: Color(0xFF5E8C4A),
                             ),
                           ),
                         ],
@@ -347,7 +347,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF16A34A),
+                                    color: Color(0xFF5E8C4A),
                                   ),
                                 ),
                               ],

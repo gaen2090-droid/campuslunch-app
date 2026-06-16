@@ -43,9 +43,9 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
     final expired = gifticons.where(_isExpired).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0FDF4),
+      backgroundColor: const Color(0xFFF3F8F0),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF0FDF4),
+        backgroundColor: const Color(0xFFF3F8F0),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
@@ -56,7 +56,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF16A34A),
+            color: Color(0xFF5E8C4A),
             letterSpacing: -0.5,
           ),
         ),
@@ -64,7 +64,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
-        color: const Color(0xFF16A34A),
+        color: const Color(0xFF5E8C4A),
         child: gifticons.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -192,13 +192,13 @@ class _GifticonCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
+                  color: const Color(0xFFF3F8F0),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF86EFAC)),
+                  border: Border.all(color: const Color(0xFFBFE0B0)),
                 ),
                 child: const Text(
                   '쿠폰 보기',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF5E8C4A)),
                 ),
               ),
             ),
@@ -291,7 +291,7 @@ class _GifticonDetailSheetState extends State<_GifticonDetailSheet> {
                   ? const SizedBox(
                       width: double.infinity,
                       height: 200,
-                      child: Center(child: CircularProgressIndicator(color: Color(0xFF16A34A))),
+                      child: Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A))),
                     )
                   : (_freshImageUrl?.isNotEmpty == true
                       ? Image.network(

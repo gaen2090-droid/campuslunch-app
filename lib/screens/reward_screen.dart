@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
 import 'coupon_box_screen.dart';
-import '../widgets/rice_ball_icon.dart';
+import '../widgets/stamp_icon.dart';
 
 class RewardScreen extends StatefulWidget {
   const RewardScreen({super.key});
@@ -65,7 +65,7 @@ class _RewardScreenState extends State<RewardScreen> {
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text(
                   '받기',
-                  style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w900),
+                  style: TextStyle(color: Color(0xFF5E8C4A), fontWeight: FontWeight.w900),
                 ),
               ),
             ],
@@ -87,7 +87,7 @@ class _RewardScreenState extends State<RewardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('확인', style: TextStyle(color: Color(0xFF16A34A))),
+            child: const Text('확인', style: TextStyle(color: Color(0xFF5E8C4A))),
           ),
         ],
       ),
@@ -99,9 +99,13 @@ class _RewardScreenState extends State<RewardScreen> {
       content: Text(
         msg,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: success ? const Color(0xFF111827) : Colors.white,
+        ),
       ),
-      backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFF111827),
+      backgroundColor: success ? const Color(0xFF9ECA8B) : const Color(0xFF111827),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
@@ -121,9 +125,9 @@ class _RewardScreenState extends State<RewardScreen> {
     final remaining = target - total;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0FDF4),
+      backgroundColor: const Color(0xFFF3F8F0),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF0FDF4),
+        backgroundColor: const Color(0xFFF3F8F0),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
@@ -134,7 +138,7 @@ class _RewardScreenState extends State<RewardScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF16A34A),
+            color: Color(0xFF5E8C4A),
             letterSpacing: -0.5,
           ),
         ),
@@ -142,7 +146,7 @@ class _RewardScreenState extends State<RewardScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
-        color: const Color(0xFF16A34A),
+        color: const Color(0xFF5E8C4A),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
@@ -281,12 +285,12 @@ class _StampSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
+                  color: const Color(0xFFE8F5E1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '오늘 $today / 3',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
                 ),
               ),
             ],
@@ -297,7 +301,7 @@ class _StampSummaryCard extends StatelessWidget {
             children: [
               Text(
                 '$total',
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF16A34A), height: 1),
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF5E8C4A), height: 1),
               ),
               const Text(
                 ' / 20',
@@ -312,7 +316,7 @@ class _StampSummaryCard extends StatelessWidget {
               value: (total / 20).clamp(0.0, 1.0),
               minHeight: 8,
               backgroundColor: const Color(0xFFF3F4F6),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF16A34A)),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF5E8C4A)),
             ),
           ),
           const SizedBox(height: 12),
@@ -323,7 +327,7 @@ class _StampSummaryCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: remaining > 0 ? const Color(0xFF6B7280) : const Color(0xFF16A34A),
+              color: remaining > 0 ? const Color(0xFF6B7280) : const Color(0xFF5E8C4A),
             ),
           ),
           const SizedBox(height: 6),
@@ -380,20 +384,15 @@ class _StampCell extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: filled ? const Color(0xFFDCFCE7) : const Color(0xFFF9FAFB),
+        color: filled ? const Color(0xFFE8F5E1) : const Color(0xFFF9FAFB),
         shape: BoxShape.circle,
         border: Border.all(
-          color: filled ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+          color: filled ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
           width: 1.5,
         ),
       ),
       child: Center(
-        child: filled
-            ? const RiceBallIcon(size: 18, color: Color(0xFF16A34A))
-            : Opacity(
-                opacity: 0.35,
-                child: const RiceBallIcon(size: 18),
-              ),
+        child: StampIcon(size: 22, filled: filled),
       ),
     );
   }
@@ -423,7 +422,7 @@ class _RewardCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: canRedeem ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+          color: canRedeem ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
         ),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
@@ -457,7 +456,7 @@ class _RewardCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: canRedeem ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+                    color: canRedeem ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
                   ),
                 ),
               ],
@@ -470,7 +469,7 @@ class _RewardCard extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: canRedeem ? const Color(0xFF16A34A) : const Color(0xFFF3F4F6),
+                color: canRedeem ? const Color(0xFF9ECA8B) : const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: redeeming
@@ -479,7 +478,7 @@ class _RewardCard extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                        valueColor: AlwaysStoppedAnimation(Color(0xFF111827)),
                       ),
                     )
                   : Text(
@@ -487,7 +486,7 @@ class _RewardCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
-                        color: canRedeem ? Colors.white : const Color(0xFF9CA3AF),
+                        color: canRedeem ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
                       ),
                     ),
             ),

@@ -5,7 +5,7 @@ import '../providers/app_provider.dart';
 import 'bookmark_list_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/rice_ball_icon.dart';
+import '../widgets/stamp_icon.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -68,7 +68,7 @@ class _MyScreenState extends State<MyScreen> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF16A34A),
+                          color: Color(0xFF5E8C4A),
                           letterSpacing: -0.8,
                         ),
                       ),
@@ -182,7 +182,7 @@ class _MyScreenState extends State<MyScreen> {
                       children: [
                         const Icon(Icons.bookmark,
                             size: 16,
-                            color: Color(0xFF16A34A)),
+                            color: Color(0xFF5E8C4A)),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -197,7 +197,7 @@ class _MyScreenState extends State<MyScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
+                            color: const Color(0xFFE8F5E1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -205,7 +205,7 @@ class _MyScreenState extends State<MyScreen> {
                             style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF16A34A)),
+                                color: Color(0xFF5E8C4A)),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -226,9 +226,9 @@ class _MyScreenState extends State<MyScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: const Color(0xFFF3F8F0),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF86EFAC)),
+                      border: Border.all(color: const Color(0xFFBFE0B0)),
                     ),
                     child: const Center(
                       child: Text(
@@ -236,7 +236,7 @@ class _MyScreenState extends State<MyScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF16A34A),
+                          color: Color(0xFF5E8C4A),
                         ),
                       ),
                     ),
@@ -292,7 +292,7 @@ class _MyScreenState extends State<MyScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF16A34A),
+                                color: Color(0xFF5E8C4A),
                               ),
                             ),
                           ),
@@ -505,7 +505,7 @@ class _MyScreenState extends State<MyScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 14),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF16A34A),
+                                          color: const Color(0xFF9ECA8B),
                                           borderRadius:
                                               BorderRadius.circular(16),
                                         ),
@@ -515,7 +515,7 @@ class _MyScreenState extends State<MyScreen> {
                                             style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w900,
-                                                color: Colors.white),
+                                                color: Color(0xFF111827)),
                                           ),
                                         ),
                                       ),
@@ -586,7 +586,7 @@ class _RewardCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
-            color: total >= 20 ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+            color: total >= 20 ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
           ),
           boxShadow: [
             BoxShadow(
@@ -603,7 +603,7 @@ class _RewardCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.stars_rounded, size: 16, color: Color(0xFF16A34A)),
+                  const Icon(Icons.stars_rounded, size: 16, color: Color(0xFF5E8C4A)),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -618,7 +618,7 @@ class _RewardCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
+                      color: const Color(0xFFE8F5E1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -626,7 +626,7 @@ class _RewardCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF16A34A),
+                        color: Color(0xFF5E8C4A),
                       ),
                     ),
                   ),
@@ -647,20 +647,15 @@ class _RewardCard extends StatelessWidget {
                         width: cellSize,
                         height: cellSize,
                         decoration: BoxDecoration(
-                          color: filled ? const Color(0xFFDCFCE7) : const Color(0xFFF9FAFB),
+                          color: filled ? const Color(0xFFE8F5E1) : const Color(0xFFF9FAFB),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: filled ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+                            color: filled ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
                             width: 1.5,
                           ),
                         ),
                         child: Center(
-                          child: filled
-                              ? const RiceBallIcon(size: 18, color: Color(0xFF16A34A))
-                              : Opacity(
-                                  opacity: 0.35,
-                                  child: const RiceBallIcon(size: 18),
-                                ),
+                          child: StampIcon(size: cellSize * 0.55, filled: filled),
                         ),
                       );
                     }),

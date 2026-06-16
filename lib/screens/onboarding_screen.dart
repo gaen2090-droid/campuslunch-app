@@ -65,7 +65,7 @@ class OnboardingScreen extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A),
+                          color: const Color(0xFF9ECA8B),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [
                             BoxShadow(
@@ -76,7 +76,7 @@ class OnboardingScreen extends StatelessWidget {
                           ],
                         ),
                         child: const Center(
-                          child: Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
+                          child: Icon(Icons.restaurant_menu, color: Color(0xFF111827), size: 24),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -88,7 +88,7 @@ class OnboardingScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF16A34A),
+                              color: Color(0xFF5E8C4A),
                               letterSpacing: -0.8,
                             ),
                           ),
@@ -184,7 +184,7 @@ class OnboardingScreen extends StatelessWidget {
                       height: 60,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
+                        color: const Color(0xFF9ECA8B),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
@@ -200,7 +200,7 @@ class OnboardingScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                            color: Color(0xFF111827),
                           ),
                         ),
                       ),
@@ -290,7 +290,7 @@ class _InitialCircle extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: const BoxDecoration(
-        color: Color(0xFFF0FDF4),
+        color: Color(0xFFF3F8F0),
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -299,7 +299,7 @@ class _InitialCircle extends StatelessWidget {
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF16A34A),
+            color: Color(0xFF5E8C4A),
           ),
         ),
       ),

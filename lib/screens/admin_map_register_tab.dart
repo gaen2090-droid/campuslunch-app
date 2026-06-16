@@ -125,7 +125,7 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 6,
-                color: Color(0xFF16A34A),
+                color: Color(0xFF5E8C4A),
               ),
             ),
             const SizedBox(height: 8),
@@ -139,7 +139,7 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('확인',
-                style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16A34A))),
+                style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF5E8C4A))),
           ),
         ],
       ),
@@ -278,21 +278,21 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
             height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFF16A34A),
+              color: const Color(0xFF9ECA8B),
               borderRadius: BorderRadius.circular(14),
             ),
             child: _registering
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(color: Color(0xFF111827), strokeWidth: 2),
                   )
                 : const Text(
                     '가게 신규 등록',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: Color(0xFF111827),
                     ),
                   ),
           ),

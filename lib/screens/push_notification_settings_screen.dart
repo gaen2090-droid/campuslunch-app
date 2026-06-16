@@ -170,7 +170,7 @@ class _ToggleRow extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 color:
-                    enabled ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+                    enabled ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: AnimatedAlign(

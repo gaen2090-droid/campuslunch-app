@@ -8,9 +8,16 @@ class RiceBallIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      '\u{1F359}',
-      style: TextStyle(fontSize: size, color: color, height: 1),
+    final image = Image.asset(
+      'assets/images/logo.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+    );
+    if (color == null) return image;
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
+      child: image,
     );
   }
 }

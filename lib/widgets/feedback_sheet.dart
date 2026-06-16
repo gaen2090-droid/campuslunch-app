@@ -130,7 +130,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFF16A34A)
+                          ? const Color(0xFF9ECA8B)
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -139,7 +139,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: selected ? Colors.white : const Color(0xFF6B7280),
+                        color: selected ? const Color(0xFF111827) : const Color(0xFF6B7280),
                       ),
                     ),
                   ),
@@ -177,8 +177,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF16A34A),
-                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFF9ECA8B),
+                  foregroundColor: const Color(0xFF111827),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

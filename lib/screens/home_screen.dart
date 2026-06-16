@@ -262,11 +262,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       height: 40,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A),
+                        color: const Color(0xFF9ECA8B),
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: const Center(
-                          child: Icon(Icons.restaurant_menu, color: Colors.white, size: 20)),
+                          child: Icon(Icons.restaurant_menu, color: Color(0xFF111827), size: 20)),
                     ),
                   Expanded(
                     child: Container(
@@ -391,7 +391,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         height: 32,
                         decoration: BoxDecoration(
                           color: _showBookmarked
-                              ? const Color(0xFF16A34A)
+                              ? const Color(0xFF9ECA8B)
                               : Colors.white,
                           shape: BoxShape.circle,
                           border: _showBookmarked
@@ -402,7 +402,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           _showBookmarked ? Icons.bookmark : Icons.bookmark_border,
                           size: 16,
                           color: _showBookmarked
-                              ? Colors.white
+                              ? const Color(0xFF111827)
                               : const Color(0xFF6B7280),
                         ),
                       ),
@@ -537,7 +537,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         if (results.isEmpty)
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF16A34A),
+              color: const Color(0xFF5E8C4A),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView(
                 children: [
@@ -564,7 +564,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         else
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF16A34A),
+              color: const Color(0xFF5E8C4A),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
@@ -585,7 +585,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
       child: RefreshIndicator(
-        color: const Color(0xFF16A34A),
+        color: const Color(0xFF5E8C4A),
         onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
         child: ListView(
         padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
@@ -766,9 +766,9 @@ class _NeedsReportCard extends StatelessWidget {
                   url: r.imageUrl,
                   fallback: () => Container(
                     width: 48, height: 48,
-                    decoration: const BoxDecoration(color: Color(0xFF16A34A)),
+                    decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
                     child: const Center(
-                      child: RiceBallIcon(size: 22, color: Colors.white),
+                      child: RiceBallIcon(size: 22, color: Color(0xFF111827)),
                     ),
                   ),
                 ),
@@ -837,10 +837,10 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF16A34A) : Colors.white,
+          color: on ? const Color(0xFF9ECA8B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -850,13 +850,13 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: on ? Colors.white : const Color(0xFF374151)),
+                  color: on ? const Color(0xFF111827) : const Color(0xFF374151)),
             ),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? Colors.white : const Color(0xFF374151),
+              color: on ? const Color(0xFF111827) : const Color(0xFF374151),
             ),
           ],
         ),
@@ -897,7 +897,7 @@ class _DropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF16A34A))),
+                      color: Color(0xFF5E8C4A))),
             ),
           ),
         GridView.count(
@@ -913,7 +913,7 @@ class _DropdownGrid extends StatelessWidget {
               onTap: () => onSelect(opt),
               child: Container(
                 decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF0FDF4) : Colors.transparent,
+                  color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -926,13 +926,13 @@ class _DropdownGrid extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF16A34A) : const Color(0xFF374151),
+                          color: on ? const Color(0xFF5E8C4A) : const Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
+                      const Icon(Icons.check, size: 14, color: Color(0xFF5E8C4A)),
                   ],
                 ),
               ),

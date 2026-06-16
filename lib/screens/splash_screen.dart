@@ -51,7 +51,7 @@ class SplashScreen extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
+                    color: const Color(0xFF9ECA8B),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
                       BoxShadow(
@@ -62,7 +62,7 @@ class SplashScreen extends StatelessWidget {
                     ],
                   ),
                   child: const Center(
-                    child: Icon(Icons.restaurant_menu, color: Colors.white, size: 32),
+                    child: Icon(Icons.restaurant_menu, color: Color(0xFF111827), size: 32),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -71,7 +71,7 @@ class SplashScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF16A34A),
+                    color: Color(0xFF5E8C4A),
                     letterSpacing: -1.0,
                   ),
                 ),
