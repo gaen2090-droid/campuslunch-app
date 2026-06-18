@@ -322,9 +322,12 @@ begin
   from public.crowd_status cs
   where cs.restaurant_id = p_restaurant_id;
 
+  -- 이번 영업 세션의 첫 제보 전에는 v_current_display를 null로 둬서
+  -- compute_crowd_status_core가 "이전 상태 없음" 분기(제보값 그대로 반영)를 타게 한다.
+  -- (1로 두면 1단계 댐핑에 걸려 첫 제보가 한 단계만 반영되는 버그가 있었음)
   if v_session_start is not null
      and (v_started is null or v_started < v_session_start) then
-    v_current_display := 1;
+    v_current_display := null;
     v_started := v_session_start;
   end if;
 

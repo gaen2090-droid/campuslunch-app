@@ -425,10 +425,13 @@ CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
   var statusStartedAt = params.statusStartedAt;
   final sessionStart = params.businessSessionStart;
 
+  // 이번 영업 세션의 첫 제보 전에는 current를 null로 둬서, 이후 로직이
+  // "이전 상태 없음" 분기(제보값을 그대로 반영)를 타게 한다.
+  // (current=1로 두면 1단계 댐핑에 걸려 첫 제보가 한 단계만 반영되는 버그가 있었음)
   if (sessionStart != null) {
     final anchor = statusStartedAt ?? params.lastUpdatedAt;
     if (anchor == null || anchor.isBefore(sessionStart)) {
-      current = crowdLevelRelaxed;
+      current = null;
       statusStartedAt = sessionStart;
     }
   }
@@ -457,11 +460,13 @@ CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
         refreshUpdatedAt: true,
       );
     }
-    return const CrowdStatusResult(
+    return CrowdStatusResult(
       displayLevel: crowdLevelRelaxed,
       baseSource: 'user',
       confidence: 'low',
       reportCount: 0,
+      // 세션이 막 리셋된 경우(statusStartedAt이 sessionStart로 막 설정됨) 즉시 반영
+      refreshUpdatedAt: sessionStart != null && statusStartedAt == sessionStart,
     );
   }
 
@@ -478,7 +483,7 @@ CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
       !params.ownerJustReported &&
       !isStrongUserSignal(users)) {
     final elapsed = params.now.difference(statusStartedAt);
-    if (elapsed.inMinutes < 5) {
+    if (elapsed.inMinutes < 10) {
       display = current;
       refresh = false;
     }

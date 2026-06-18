@@ -30,9 +30,9 @@ class _OwnerScreenState extends State<OwnerScreen> {
     _StatusOpt(
       key: '여유로움',
       dotColor: Color(0xFF4C9C2A),
-      activeBg: Color(0xFFF0FDF4),
-      activeRing: Color(0xFF86EFAC),
-      activeText: Color(0xFF16A34A),
+      activeBg: Color(0xFFF3F8F0),
+      activeRing: Color(0xFFBFE0B0),
+      activeText: Color(0xFF4C9C2A),
       activeLabelBg: Color(0xFF4C9C2A),
     ),
     _StatusOpt(

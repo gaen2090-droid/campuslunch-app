@@ -264,7 +264,7 @@ class _StampSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFBBF7D0)),
+        border: Border.all(color: const Color(0xFFBFE0B0)),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
         ],

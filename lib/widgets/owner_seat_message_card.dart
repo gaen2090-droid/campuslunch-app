@@ -20,7 +20,7 @@ class OwnerSeatMessageCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF3F8F0),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFBBF7D0)),
+          border: Border.all(color: const Color(0xFFBFE0B0)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,7 +37,7 @@ class OwnerSeatMessageCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF166534),
+                  color: Color(0xFF4C9C2A),
                   height: 1.4,
                 ),
               ),

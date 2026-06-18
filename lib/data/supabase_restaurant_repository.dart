@@ -608,25 +608,18 @@ class SupabaseRestaurantRepository {
       ownerRegistered: extra?['owner_registered'] == true,
       crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
       crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
+      // 좌석 업데이트(사장님의 한마디)는 상세 페이지 전용 — 혼잡도 뱃지 시간(updated)과는 무관
       hasCrowdUpdate: hasCrowdUpdate ||
           (ownerUpdatedAt != null &&
               sessionStart != null &&
               ownerUpdatedAt.isAfter(sessionStart)),
-      updated: _effectiveUpdated(updated, ownerUpdatedAt, at),
+      updated: updated,
       createdAt: row['created_at'] != null
           ? DateTime.tryParse(row['created_at'] as String)?.toLocal()
           : null,
       ownerUpdatedAt: ownerUpdatedAt,
       isActive: row['is_active'] as bool? ?? true,
     );
-  }
-
-  /// 사장님 업데이트가 더 최신이면 그 분 수를 반환
-  int _effectiveUpdated(int crowdMinutes, DateTime? ownerAt, DateTime now) {
-    if (ownerAt == null) return crowdMinutes;
-    final ownerMinutes = now.difference(ownerAt).inMinutes.clamp(0, 99999);
-    if (crowdMinutes <= 0) return ownerMinutes;
-    return ownerMinutes < crowdMinutes ? ownerMinutes : crowdMinutes;
   }
 
   Future<List<RecentCrowdReport>> fetchRecentReports(

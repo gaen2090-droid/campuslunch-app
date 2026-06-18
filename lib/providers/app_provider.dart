@@ -50,6 +50,15 @@ class AppProvider extends ChangeNotifier {
   bool _showSignupCompleteMessage = false;
   bool get showSignupCompleteMessage => _showSignupCompleteMessage;
 
+  /// 일반('app') 진입 직전 거치는 단계. 로그인할 때마다 사용법 가이드를 보여준다.
+  String get _postAppStage => 'usage_guide';
+
+  void completeUsageGuide() {
+    _stage = 'app';
+    if (hasOwnerTab) _mainTabIndex = 0;
+    notifyListeners();
+  }
+
   void clearSignupCompleteMessage() {
     if (!_showSignupCompleteMessage) return;
     _showSignupCompleteMessage = false;
@@ -240,7 +249,7 @@ class AppProvider extends ChangeNotifier {
       if (_userRole == 'admin') {
         _stage = 'admin';
       } else {
-        _stage = 'app';
+        _stage = _postAppStage;
         if (hasOwnerTab) _mainTabIndex = 0;
       }
     } else {
@@ -671,7 +680,7 @@ class AppProvider extends ChangeNotifier {
     if (account.role == 'admin') {
       _stage = 'admin';
     } else {
-      _stage = locationStored ? 'app' : 'location_permission';
+      _stage = locationStored ? _postAppStage : 'location_permission';
       if (account.restaurantIds.isNotEmpty) {
         _mainTabIndex = 0;
       }
@@ -921,7 +930,7 @@ class AppProvider extends ChangeNotifier {
     _locationMode = enabled;
     await prefs.setBool(_kLocation, enabled);
     if (_stage == 'location_permission') {
-      _stage = prefs.containsKey(_kPush) ? 'app' : 'notification_permission';
+      _stage = prefs.containsKey(_kPush) ? _postAppStage : 'notification_permission';
     }
     notifyListeners();
   }
@@ -938,7 +947,7 @@ class AppProvider extends ChangeNotifier {
       await PushNotificationService.instance.requestPermission();
     }
     await _syncPushNotifications();
-    _stage = 'app';
+    _stage = _postAppStage;
     notifyListeners();
   }
 

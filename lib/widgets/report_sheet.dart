@@ -32,9 +32,9 @@ class ReportSheet extends StatelessWidget {
         label: '여유로워요',
         status: '여유로움',
         icon: Icons.sentiment_satisfied_alt,
-        borderColor: Color(0xFFA7F3D0),
-        bgColor: Color(0xFFECFDF5),
-        textColor: Color(0xFF059669),
+        borderColor: Color(0xFFBFE0B0),
+        bgColor: Color(0xFFF3F8F0),
+        textColor: Color(0xFF4C9C2A),
       ),
       _ReportOption(
         label: '약간 붐벼요',

@@ -375,12 +375,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             const SizedBox(width: 8),
                             _FilterChip(
                               label: _reportFilter == _allLabel
-                                  ? '스탬프 받기'
+                                  ? '스탬프'
                                   : _reportOptLabels[_reportFilter]!,
                               active: _reportFilter != _allLabel,
                               open: _openDropdown == 'report',
                               onTap: () => setState(() =>
                                   _openDropdown = _openDropdown == 'report' ? null : 'report'),
+                              restingBg: const Color(0xFFF3F8F0),
+                              restingBorder: const Color(0xFFBFE0B0),
+                              restingText: const Color(0xFF4C9C2A),
+                              leadingIcon: _reportFilter == _allLabel
+                                  ? Icons.stars_rounded
+                                  : null,
                             ),
                           ],
                         ),
@@ -829,38 +835,63 @@ class _FilterChip extends StatelessWidget {
   final bool active;
   final bool open;
   final VoidCallback onTap;
+  /// 미선택 상태 배경/테두리/글자색을 기본값과 다르게 쓰고 싶을 때만 지정
+  final Color? restingBg;
+  final Color? restingBorder;
+  final Color? restingText;
+  /// 라벨 앞에 표시할 아이콘 (선택)
+  final IconData? leadingIcon;
 
-  const _FilterChip(
-      {required this.label, required this.active, required this.open, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.open,
+    required this.onTap,
+    this.restingBg,
+    this.restingBorder,
+    this.restingText,
+    this.leadingIcon,
+  });
 
   @override
   Widget build(BuildContext context) {
     final on = active || open;
+    final restBg = restingBg ?? Colors.white;
+    final restBorder = restingBorder ?? const Color(0xFFE5E7EB);
+    final restText = restingText ?? const Color(0xFF374151);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF9ECA8B) : Colors.white,
+          color: on ? const Color(0xFF9ECA8B) : restBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF9ECA8B) : restBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (leadingIcon != null) ...[
+              Icon(
+                leadingIcon,
+                size: 14,
+                color: on ? const Color(0xFF111827) : restText,
+              ),
+              const SizedBox(width: 4),
+            ],
             Text(
               label,
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: on ? const Color(0xFF111827) : const Color(0xFF374151)),
+                  color: on ? const Color(0xFF111827) : restText),
             ),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? const Color(0xFF111827) : const Color(0xFF374151),
+              color: on ? const Color(0xFF111827) : restText,
             ),
           ],
         ),

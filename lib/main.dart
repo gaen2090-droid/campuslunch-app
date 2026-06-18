@@ -15,6 +15,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/location_permission_screen.dart';
 import 'screens/notification_permission_screen.dart';
+import 'screens/usage_guide_screen.dart';
 import 'screens/admin_screen.dart';
 
 Future<void> main() async {
@@ -117,6 +118,7 @@ class _Root extends StatelessWidget {
           const LocationPermissionScreen(key: ValueKey('location')),
         'notification_permission' =>
           const NotificationPermissionScreen(key: ValueKey('notification')),
+        'usage_guide' => const UsageGuideScreen(key: ValueKey('usage_guide')),
         'app' => const MainScreen(key: ValueKey('app')),
         'admin' => const AdminScreen(key: ValueKey('admin')),
         _ => const MainScreen(key: ValueKey('app')),
