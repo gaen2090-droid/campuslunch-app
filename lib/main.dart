@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/push_notification_service.dart';
@@ -23,6 +24,9 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
   await KakaoAuthService.initialize();
+  if (Env.isKakaoMapConfigured) {
+    await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
+  }
   await GoogleAuthService.initialize();
 
   if (Env.isSupabaseConfigured) {

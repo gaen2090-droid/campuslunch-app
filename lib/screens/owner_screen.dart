@@ -18,6 +18,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
   final _seatCtrl = TextEditingController();
   bool _seatSubmitting = false;
   bool _statusSubmitting = false;
+  bool _releasing = false;
+  bool _confirmRelease = false;
   String? _seatSuccessMessage;
 
   @override
@@ -98,6 +100,30 @@ class _OwnerScreenState extends State<OwnerScreen> {
     if (seats == null) return '지금 [   ]명 입장 가능해요';
     if (seats == 0) return '지금은 바로 입장이 어려워요.';
     return '지금 $seats명 입장 가능해요';
+  }
+
+  Future<void> _releaseRestaurant(
+    AppProvider provider,
+    String restaurantId,
+  ) async {
+    setState(() => _releasing = true);
+    final err = await provider.releaseOwnerRestaurant(restaurantId);
+    if (!mounted) return;
+    setState(() {
+      _releasing = false;
+      _confirmRelease = false;
+    });
+    if (err != null) {
+      _showToast(err);
+      return;
+    }
+    if (!provider.hasOwnerTab) return;
+    setState(() {
+      _selectedId = null;
+      _seatCtrl.clear();
+      _seatSuccessMessage = null;
+    });
+    _showToast('매장 등록을 해제했어요');
   }
 
   @override
@@ -243,6 +269,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                               _selectedId = r.id.toString();
                               _seatCtrl.clear();
                               _seatSuccessMessage = null;
+                              _confirmRelease = false;
                             }),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
@@ -596,6 +623,123 @@ class _OwnerScreenState extends State<OwnerScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      if (_confirmRelease) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF5F5),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                ownedList.length == 1
+                                    ? '마지막 매장 등록을 삭제할까요?\n삭제 후에는 일반 유저 화면으로 돌아가요.'
+                                    : '\'${restaurant.name}\' 등록을 삭제할까요?\n앱에는 매장이 그대로 남아요.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF374151),
+                                  height: 1.45,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: _releasing
+                                          ? null
+                                          : () => setState(
+                                                () => _confirmRelease = false,
+                                              ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: const Color(0xFFE5E7EB),
+                                          ),
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '취소',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: _releasing
+                                          ? null
+                                          : () => _releaseRestaurant(
+                                                provider,
+                                                restaurant.id.toString(),
+                                              ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEF4444),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Center(
+                                          child: _releasing
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : const Text(
+                                                  '삭제',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else
+                        GestureDetector(
+                          onTap: () => setState(() => _confirmRelease = true),
+                          child: const Text(
+                            '매장 삭제',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       GestureDetector(
                         onTap: () => provider.logout(),

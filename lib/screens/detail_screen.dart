@@ -2,7 +2,7 @@
 import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../utils/navigation_helper.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
@@ -387,9 +387,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _navigate(Restaurant r) {
-    final url = Uri.parse(
-        'https://map.kakao.com/link/search/${Uri.encodeComponent(r.name)}');
-    launchUrl(url, mode: LaunchMode.externalApplication);
+    openInAppDirections(context, r);
   }
 }
 

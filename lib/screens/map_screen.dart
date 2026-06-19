@@ -1,13 +1,13 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../utils/navigation_helper.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_card.dart';
-import '../widgets/restaurant_google_map.dart';
+import '../widgets/restaurant_kakao_map.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
@@ -111,7 +111,7 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         // ── 지도 (풀스크린) ──
         Positioned.fill(
-          child: RestaurantGoogleMap(
+          child: RestaurantKakaoMap(
             restaurants: filtered,
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
@@ -904,10 +904,8 @@ class _MapPinPainter extends CustomPainter {
 }
 
 // ── 선택된 매장 카드 (바텀시트 스타일) ──
-void _launchDirections(Restaurant r) {
-  final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${r.latitude},${r.longitude}');
-  launchUrl(url, mode: LaunchMode.externalApplication);
+void _launchDirections(BuildContext context, Restaurant r) {
+  openInAppDirections(context, r);
 }
 
 class _SelectedCard extends StatelessWidget {
@@ -1021,7 +1019,7 @@ class _SelectedCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _launchDirections(r),
+                    onTap: () => _launchDirections(context, r),
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(

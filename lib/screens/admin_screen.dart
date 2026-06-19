@@ -1246,14 +1246,31 @@ class _RestaurantsTabState extends State<_RestaurantsTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  r.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF111827),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        r.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF111827),
+                                        ),
+                                      ),
+                                    ),
+                                    if (r.ownerRegistered) ...[
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        '등록 완료',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF4C9C2A),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 if (!r.isActive) ...[
                                   const SizedBox(height: 4),
@@ -3575,6 +3592,30 @@ class _GifticonTabState extends State<_GifticonTab> {
     });
   }
 
+  Future<void> _uploadCsv() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty || result.files.first.bytes == null) {
+      return;
+    }
+    setState(() => _saving = true);
+    final csvText = String.fromCharCodes(result.files.first.bytes!);
+    final (count, err) =
+        await context.read<AppProvider>().adminBulkRegisterGifticonsFromCsv(csvText);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('CSV로 기프티콘 $count건 등록했어요.')),
+    );
+  }
+
   Future<void> _submit() async {
     final brand = _brandCtrl.text.trim();
     final product = _productCtrl.text.trim();
@@ -3663,6 +3704,22 @@ class _GifticonTabState extends State<_GifticonTab> {
               ),
             ),
             GestureDetector(
+              onTap: _saving ? null : _uploadCsv,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: const Text(
+                  'CSV 업로드',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
+                ),
+              ),
+            ),
+            GestureDetector(
               onTap: () => setState(() => _showForm = !_showForm),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -3677,6 +3734,11 @@ class _GifticonTabState extends State<_GifticonTab> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'CSV: brand, product_name, image_url, expires_at, coupon_code',
+          style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
         ),
         const SizedBox(height: 16),
 
@@ -3799,9 +3861,11 @@ class _AdminGifticonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = gifticon.status == 'assigned'
         ? const Color(0xFF5E8C4A)
-        : gifticon.status == 'expired'
-            ? const Color(0xFFEF4444)
-            : const Color(0xFF9CA3AF);
+        : gifticon.status == 'used'
+            ? const Color(0xFF6B7280)
+            : gifticon.status == 'expired'
+                ? const Color(0xFFEF4444)
+                : const Color(0xFF9CA3AF);
 
     return Container(
       padding: const EdgeInsets.all(14),

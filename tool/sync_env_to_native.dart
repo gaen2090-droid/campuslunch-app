@@ -5,12 +5,11 @@ import 'dart:io';
 
 Future<void> main() async {
   final env = await _readEnv('.env');
-  final mapsKey = env['GOOGLE_MAPS_API_KEY'] ?? '';
   final kakaoKey = env['KAKAO_NATIVE_APP_KEY'] ?? '';
   final googleWebClientId = env['GOOGLE_OAUTH_WEB_CLIENT_ID'] ?? '';
   final googleIosClientId = env['GOOGLE_OAUTH_IOS_CLIENT_ID'] ?? '';
-  if (mapsKey.isEmpty) {
-    stderr.writeln('`.env`에 GOOGLE_MAPS_API_KEY가 없습니다.');
+  if (kakaoKey.isEmpty) {
+    stderr.writeln('`.env`에 KAKAO_NATIVE_APP_KEY가 없습니다.');
     exit(1);
   }
 
@@ -19,7 +18,6 @@ Future<void> main() async {
   final iosSecrets = File('ios/Flutter/Secrets.xcconfig');
   await iosSecrets.writeAsString('''
 // .env 와 동기화 (private repo — tool/sync_env_to_native.dart)
-GOOGLE_MAPS_API_KEY=$mapsKey
 KAKAO_NATIVE_APP_KEY=$kakaoKey
 GOOGLE_OAUTH_IOS_CLIENT_ID=$googleIosClientId
 GOOGLE_REVERSED_CLIENT_ID=$googleReversedClientId
@@ -29,7 +27,6 @@ GOOGLE_REVERSED_CLIENT_ID=$googleReversedClientId
   final keysProps = File('android/keys.properties');
   await keysProps.writeAsString('''
 # API 키 (팀 공용, private repo). Flutter SDK 경로는 local.properties(자동 생성) 사용.
-GOOGLE_MAPS_API_KEY=$mapsKey
 KAKAO_NATIVE_APP_KEY=$kakaoKey
 GOOGLE_OAUTH_WEB_CLIENT_ID=$googleWebClientId
 ''');

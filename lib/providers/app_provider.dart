@@ -890,8 +890,9 @@ class AppProvider extends ChangeNotifier {
     final p = prefs ?? await SharedPreferences.getInstance();
     _ownerRestaurantIds = await _resolveOwnerRestaurantIds();
     await p.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
-    if (hadOwnerTab && !hasOwnerTab && _mainTabIndex > 0) {
-      _mainTabIndex = (_mainTabIndex - 1).clamp(0, 2);
+    if (hadOwnerTab && !hasOwnerTab) {
+      _mainTabIndex =
+          _mainTabIndex > 0 ? (_mainTabIndex - 1).clamp(0, 2) : 0;
     }
   }
 
@@ -1325,7 +1326,57 @@ class AppProvider extends ChangeNotifier {
   }
 
 
-  /// Google Places로 매장 등록. 성공 시 6자리 ownerCode 반환.
+  /// 카카오 로컬 API로 매장 등록. 성공 시 6자리 ownerCode 반환.
+  Future<String?> addRestaurantFromKakaoPlace({
+    required String placeId,
+    required String name,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required String category,
+    required String area,
+    String imageUrl = '',
+    String hours = BusinessHoursData.defaultHours,
+    String hoursDisplay = '',
+    List<Map<String, dynamic>> hoursPeriods = const [],
+    String? googlePlaceId,
+  }) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    if (!_canAdminOps) {
+      debugPrint('[addRestaurantFromKakaoPlace] 관리자 로그인 필요');
+      return null;
+    }
+
+    try {
+      final existing = await repo.findRestaurantIdByKakaoPlaceId(placeId);
+      if (existing != null) return null;
+
+      final restaurant = await repo.insert({
+        'name': name,
+        'category': category,
+        'area': area,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+        'image_url': imageUrl,
+        'hours': hours,
+        if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,
+        if (hoursPeriods.isNotEmpty) 'hours_periods': hoursPeriods,
+        'kakao_place_id': placeId,
+        if (googlePlaceId != null && googlePlaceId.isNotEmpty)
+          'google_place_id': googlePlaceId,
+      });
+
+      await _syncRestaurantListsAfterAdminChange();
+      return restaurant.ownerCode;
+    } catch (e, st) {
+      debugPrint('[Supabase] addRestaurantFromKakaoPlace failed: $e\n$st');
+      return null;
+    }
+  }
+
+  @Deprecated('Use addRestaurantFromKakaoPlace')
   Future<String?> addRestaurantFromGooglePlace({
     required String placeId,
     required String name,
@@ -1347,7 +1398,7 @@ class AppProvider extends ChangeNotifier {
     }
 
     try {
-      final existing = await repo.findRestaurantIdByGooglePlaceId(placeId);
+      final existing = await repo.findRestaurantIdByKakaoPlaceId(placeId);
       if (existing != null) return null;
 
       final restaurant = await repo.insert({
@@ -1361,7 +1412,7 @@ class AppProvider extends ChangeNotifier {
         'hours': hours,
         if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,
         if (hoursPeriods.isNotEmpty) 'hours_periods': hoursPeriods,
-        'google_place_id': placeId,
+        'kakao_place_id': placeId,
       });
 
       await _syncRestaurantListsAfterAdminChange();
@@ -1631,6 +1682,45 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// 사장님 본인 매장 등록 해제. 마지막 매장이면 일반 유저 탭 구성으로 전환.
+  Future<String?> releaseOwnerRestaurant(String restaurantId) async {
+    if (!_ownsRestaurant(restaurantId)) {
+      return '본인 매장만 삭제할 수 있어요.';
+    }
+    if (!_hasSupabaseSession) {
+      return '로그인이 필요해요.';
+    }
+
+    final repo = _restaurantRepo;
+    if (repo == null) {
+      return '서버에 연결할 수 없어요.';
+    }
+
+    try {
+      await repo.releaseOwnerRestaurant(restaurantId);
+    } on PostgrestException catch (e) {
+      final msg = e.message;
+      if (msg.contains('NOT_OWNER')) return '본인 매장만 삭제할 수 있어요.';
+      if (msg.contains('LOGIN_REQUIRED')) return '로그인이 필요해요.';
+      debugPrint('[releaseOwnerRestaurant] RPC: $msg');
+      return '매장 삭제에 실패했어요.';
+    } catch (e, st) {
+      debugPrint('[releaseOwnerRestaurant] failed: $e\n$st');
+      return '매장 삭제에 실패했어요.';
+    }
+
+    try {
+      await _syncOwnerRestaurantIdsFromDb();
+      await _syncMetadata({'restaurant_ids': _ownerRestaurantIds});
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[releaseOwnerRestaurant] sync failed: $e\n$st');
+      return '매장 삭제에 실패했어요.';
+    }
+  }
+
   Future<void> recordAppSession() async {
     if (!SupabaseService.isReady) return;
     if (SupabaseService.client.auth.currentUser == null) return;
@@ -1825,10 +1915,17 @@ class AppProvider extends ChangeNotifier {
     if (repo == null) return (RedeemResult.error, null);
     final result = await repo.redeemGifticon();
     if (result.$1 == RedeemResult.ok) {
-      // 상태 갱신
       await fetchMyReward();
     }
     return result;
+  }
+
+  Future<String?> markGifticonUsed(String gifticonId) async {
+    final repo = _rewardRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    final err = await repo.markGifticonUsed(gifticonId);
+    if (err == null) await fetchMyReward();
+    return err;
   }
 
   // ── 어드민: 기프티콘 ──
@@ -1869,5 +1966,75 @@ class AppProvider extends ChangeNotifier {
     final repo = _rewardRepo;
     if (repo == null) return null;
     return repo.uploadGifticonImage(fileName, bytes);
+  }
+
+  Future<(int, String?)> adminBulkRegisterGifticonsFromCsv(String csvText) async {
+    final repo = _rewardRepo;
+    if (repo == null) return (0, '서버에 연결할 수 없어요.');
+
+    final lines = csvText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+    if (lines.length < 2) return (0, 'CSV에 데이터 행이 없어요.');
+
+    final header = _parseCsvLine(lines.first).map((h) => h.toLowerCase()).toList();
+    int idx(String name) => header.indexOf(name);
+
+    final brandIdx = idx('brand');
+    final productIdx = idx('product_name');
+    final imageIdx = idx('image_url');
+    if (brandIdx < 0 || productIdx < 0 || imageIdx < 0) {
+      return (0, 'CSV 헤더: brand, product_name, image_url 필수');
+    }
+    final expiresIdx = idx('expires_at');
+    final codeIdx = idx('coupon_code');
+
+    final rows = <Map<String, dynamic>>[];
+    for (var i = 1; i < lines.length; i++) {
+      final cols = _parseCsvLine(lines[i]);
+      if (cols.isEmpty) continue;
+      String cell(int index) =>
+          index >= 0 && index < cols.length ? cols[index].trim() : '';
+
+      final brand = cell(brandIdx);
+      final product = cell(productIdx);
+      final imageUrl = cell(imageIdx);
+      if (brand.isEmpty || product.isEmpty || imageUrl.isEmpty) continue;
+
+      rows.add({
+        'brand': brand,
+        'product_name': product,
+        'image_url': imageUrl,
+        if (expiresIdx >= 0 && cell(expiresIdx).isNotEmpty)
+          'expires_at': cell(expiresIdx),
+        if (codeIdx >= 0 && cell(codeIdx).isNotEmpty)
+          'coupon_code': cell(codeIdx),
+      });
+    }
+
+    if (rows.isEmpty) return (0, '유효한 CSV 행이 없어요.');
+
+    final result = await repo.adminBulkRegisterGifticons(rows);
+    if (result.$2 == null) await adminFetchGifticons();
+    return result;
+  }
+
+  List<String> _parseCsvLine(String line) {
+    final out = <String>[];
+    final buf = StringBuffer();
+    var inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      final ch = line[i];
+      if (ch == '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (ch == ',' && !inQuotes) {
+        out.add(buf.toString());
+        buf.clear();
+        continue;
+      }
+      buf.write(ch);
+    }
+    out.add(buf.toString());
+    return out;
   }
 }

@@ -33,6 +33,7 @@
 		<string>kakaokompassauth</string>
 		<string>kakaolink</string>
 		<string>kakaotalk</string>
+		<string>kakaomap</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -55,8 +56,6 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>GMSApiKey</key>
-	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>주변 식당과 내 위치를 지도에 표시하기 위해 위치 권한이 필요합니다.</string>
 	<key>UIApplicationSceneManifest</key>

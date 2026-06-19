@@ -61,7 +61,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = prop("GOOGLE_MAPS_API_KEY")
         val kakaoKey = prop("KAKAO_NATIVE_APP_KEY").trim()
         if (kakaoKey.isEmpty()) {
             throw GradleException(

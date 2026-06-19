@@ -27,21 +27,29 @@ class StampResult {
   final int grantedCount;
   final int todayStamps;
   final int totalStamps;
+  final AutoRedeemResult autoRedeem;
 
   const StampResult({
     required this.granted,
     this.grantedCount = 0,
     required this.todayStamps,
     required this.totalStamps,
+    this.autoRedeem = AutoRedeemResult.none,
   });
 
   factory StampResult.fromJson(Map<String, dynamic> json) {
     final granted = json['granted'] as bool? ?? false;
+    final autoRaw = json['auto_redeem'];
+    AutoRedeemResult auto = AutoRedeemResult.none;
+    if (autoRaw is Map) {
+      auto = AutoRedeemResult.fromJson(Map<String, dynamic>.from(autoRaw));
+    }
     return StampResult(
       granted: granted,
       grantedCount: (json['granted_count'] as num?)?.toInt() ?? (granted ? 1 : 0),
       todayStamps: (json['today_stamps'] as num?)?.toInt() ?? 0,
       totalStamps: (json['total_stamps'] as num?)?.toInt() ?? 0,
+      autoRedeem: auto,
     );
   }
 
@@ -53,15 +61,41 @@ class StampResult {
   );
 }
 
+class AutoRedeemResult {
+  final String status;
+  final String? brand;
+  final String? productName;
+
+  const AutoRedeemResult({
+    required this.status,
+    this.brand,
+    this.productName,
+  });
+
+  bool get succeeded => status == 'ok';
+
+  factory AutoRedeemResult.fromJson(Map<String, dynamic> json) {
+    return AutoRedeemResult(
+      status: json['status'] as String? ?? 'none',
+      brand: json['brand'] as String?,
+      productName: json['product_name'] as String?,
+    );
+  }
+
+  static const AutoRedeemResult none =
+      AutoRedeemResult(status: 'none');
+}
+
 class Gifticon {
   final String id;
   final String brand;
   final String productName;
   final String imageUrl;
   final DateTime? expiresAt;
-  final String status; // unassigned | assigned | expired
+  final String status; // unassigned | assigned | expired | used
   final String? assignedUserId;
   final DateTime? assignedAt;
+  final String? couponCode;
   final DateTime createdAt;
 
   const Gifticon({
@@ -73,6 +107,7 @@ class Gifticon {
     required this.status,
     this.assignedUserId,
     this.assignedAt,
+    this.couponCode,
     required this.createdAt,
   });
 
@@ -88,8 +123,9 @@ class Gifticon {
       status: json['status'] as String? ?? 'unassigned',
       assignedUserId: json['assigned_user_id'] as String?,
       assignedAt: json['assigned_at'] != null
-          ? DateTime.parse(json['assigned_at'] as String)
+          ? DateTime.tryParse(json['assigned_at'] as String)
           : null,
+      couponCode: json['coupon_code'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
@@ -100,6 +136,8 @@ class Gifticon {
     switch (status) {
       case 'assigned':
         return '배정됨';
+      case 'used':
+        return '사용됨';
       case 'expired':
         return '만료';
       default:

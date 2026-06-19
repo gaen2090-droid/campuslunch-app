@@ -233,6 +233,7 @@ export async function insertRestaurant(
     owner_code: String(100000 + Math.floor(Math.random() * 900000)),
   };
   if (data.menu?.length) desc.menu = data.menu;
+  if (data.kakao_place_id) desc.kakao_place_id = data.kakao_place_id;
   if (data.google_place_id) desc.google_place_id = data.google_place_id;
   if (data.hours_display) desc.hours_display = data.hours_display;
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
@@ -350,7 +351,7 @@ export async function generateOwnerCode(restaurantId: string): Promise<string> {
   return code;
 }
 
-export async function findRestaurantIdByGooglePlaceId(
+export async function findRestaurantIdByKakaoPlaceId(
   placeId: string,
 ): Promise<string | null> {
   const { data, error } = await supabase
@@ -360,9 +361,17 @@ export async function findRestaurantIdByGooglePlaceId(
   for (const raw of data ?? []) {
     const row = raw as Record<string, unknown>;
     const desc = parseDescription(row.description);
-    if (desc?.google_place_id === placeId) return String(row.id);
+    const stored = desc?.kakao_place_id ?? desc?.google_place_id;
+    if (stored === placeId) return String(row.id);
   }
   return null;
+}
+
+/** @deprecated use findRestaurantIdByKakaoPlaceId */
+export async function findRestaurantIdByGooglePlaceId(
+  placeId: string,
+): Promise<string | null> {
+  return findRestaurantIdByKakaoPlaceId(placeId);
 }
 
 export async function updateManualRanks(
@@ -532,6 +541,20 @@ export async function uploadGifticonImage(file: File): Promise<string> {
   });
   if (error) throw error;
   return path;
+}
+
+export async function bulkRegisterGifticons(
+  rows: Array<Record<string, string>>,
+): Promise<number> {
+  const { data, error } = await supabase.rpc("admin_bulk_register_gifticons", {
+    p_rows: rows,
+  });
+  if (error) throw error;
+  const inserted =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? Number((data as Record<string, unknown>).inserted ?? 0)
+      : 0;
+  return inserted;
 }
 
 export const AREAS = ["정문", "중문", "후문"] as const;

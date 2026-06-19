@@ -14,6 +14,8 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  bool _mapMounted = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,23 +53,32 @@ class _MainScreenState extends State<MainScreen> {
     final provider = context.watch<AppProvider>();
     final hasOwner = provider.hasOwnerTab;
     final index = provider.mainTabIndex.clamp(0, hasOwner ? 3 : 2);
+    final mapIndex = hasOwner ? 2 : 1;
 
-    final tabs = hasOwner
-        ? const [
-            OwnerScreen(),
-            HomeScreen(),
-            MapScreen(),
-            MyScreen(),
-          ]
-        : const [
-            HomeScreen(),
-            MapScreen(),
-            MyScreen(),
-          ];
+    if (index == mapIndex) {
+      _mapMounted = true;
+    }
 
+    final nonMapTabs = <Widget>[
+      if (hasOwner) const OwnerScreen(),
+      const HomeScreen(),
+      const MyScreen(),
+    ];
+    final nonMapIndex =
+        index == mapIndex ? 0 : (index > mapIndex ? index - 1 : index);
+
+    // PlatformView(카카오맵)는 IndexedStack 비활성 자식에 두면 iOS 터치가 막힘
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F7),
-      body: IndexedStack(index: index, children: tabs),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (index != mapIndex)
+            IndexedStack(index: nonMapIndex, children: nonMapTabs),
+          if (_mapMounted && index == mapIndex)
+            const MapScreen(key: ValueKey('main_map_tab')),
+        ],
+      ),
       bottomNavigationBar: _BottomNav(
         hasOwnerTab: hasOwner,
         current: index,

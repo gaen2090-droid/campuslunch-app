@@ -135,8 +135,7 @@ begin
 
   v_total_stamps := v_row.total_stamps;
 
-  -- 테스트 편의: 하루 스탬프 제한 사실상 해제 (원래 3). UI 문구는 여전히 "/3" 표시.
-  v_room := 999 - v_today_stamps;
+  v_room := 3 - v_today_stamps;
   if v_room > 0 then
     v_granted := least(p_count, v_room);
     v_today_stamps := v_today_stamps + v_granted;

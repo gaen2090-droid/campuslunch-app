@@ -45,6 +45,7 @@ export interface RestaurantFormData {
   image_url?: string;
   latitude?: number;
   longitude?: number;
+  kakao_place_id?: string;
   google_place_id?: string;
   hours_display?: string;
   hours_periods?: Record<string, unknown>[];

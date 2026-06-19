@@ -340,18 +340,23 @@ class SupabaseRestaurantRepository {
     );
   }
 
-  Future<String?> findRestaurantIdByGooglePlaceId(String placeId) async {
+  Future<String?> findRestaurantIdByKakaoPlaceId(String placeId) async {
     final rows = await _client
         .from('restaurants')
         .select('id, description');
     for (final row in rows) {
       final desc = _parseDescription(row['description']);
-      if (desc?['google_place_id'] == placeId) {
+      final stored = desc?['kakao_place_id'] ?? desc?['google_place_id'];
+      if (stored == placeId) {
         return row['id'] as String;
       }
     }
     return null;
   }
+
+  @Deprecated('Use findRestaurantIdByKakaoPlaceId')
+  Future<String?> findRestaurantIdByGooglePlaceId(String placeId) =>
+      findRestaurantIdByKakaoPlaceId(placeId);
 
   Future<Restaurant> insert(Map<String, dynamic> data) async {
     final desc = <String, dynamic>{};
@@ -363,6 +368,9 @@ class SupabaseRestaurantRepository {
       desc['hours_periods'] = data['hours_periods'];
     }
     if (data.containsKey('menu')) desc['menu'] = data['menu'];
+    if (data.containsKey('kakao_place_id')) {
+      desc['kakao_place_id'] = data['kakao_place_id'];
+    }
     if (data.containsKey('google_place_id')) {
       desc['google_place_id'] = data['google_place_id'];
     }
@@ -704,6 +712,14 @@ class SupabaseRestaurantRepository {
       params: {'p_code': code.trim()},
     );
     return result as String;
+  }
+
+  /// 본인 소유 매장 등록 해제 (owner_id·owner_registered 초기화)
+  Future<void> releaseOwnerRestaurant(String restaurantId) async {
+    await _client.rpc(
+      'release_owner_restaurant',
+      params: {'p_restaurant_id': restaurantId},
+    );
   }
 
   /// DB 기준 본인 소유 매장 ID (restaurants.owner_id)

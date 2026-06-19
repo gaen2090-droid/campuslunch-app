@@ -27,7 +27,7 @@ class RewardRepository {
       final rows = await _client
           .from('gifticons')
           .select()
-          .eq('status', 'assigned')
+          .inFilter('status', ['assigned', 'used'])
           .eq('assigned_user_id', uid ?? '')
           .order('assigned_at', ascending: false);
       final list = <Gifticon>[];
@@ -82,6 +82,20 @@ class RewardRepository {
     }
   }
 
+  Future<String?> markGifticonUsed(String gifticonId) async {
+    try {
+      final raw = await _client.rpc(
+        'mark_gifticon_used',
+        params: {'p_gifticon_id': gifticonId},
+      );
+      if (raw is Map && raw['status'] == 'ok') return null;
+      return '쿠폰을 사용 처리할 수 없어요.';
+    } catch (e) {
+      debugPrint('[Reward] markGifticonUsed failed: $e');
+      return '쿠폰을 사용 처리할 수 없어요.';
+    }
+  }
+
   // ── 어드민 ──
 
   Future<List<Gifticon>> adminListGifticons() async {
@@ -118,6 +132,24 @@ class RewardRepository {
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  Future<(int, String?)> adminBulkRegisterGifticons(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    try {
+      final raw = await _client.rpc(
+        'admin_bulk_register_gifticons',
+        params: {'p_rows': rows},
+      );
+      if (raw is Map) {
+        final inserted = (raw['inserted'] as num?)?.toInt() ?? 0;
+        return (inserted, null);
+      }
+      return (0, '등록에 실패했어요.');
+    } catch (e) {
+      return (0, e.toString());
     }
   }
 

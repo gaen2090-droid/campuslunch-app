@@ -16,6 +16,7 @@
 --   2. supabase/policies.sql
 --   3. supabase/rpc_email_signup_status.sql
 --   4. supabase/rpc_claim_owner.sql
+--   4b. supabase/rpc_release_owner.sql
 --   5. supabase/rpc_delete_own_account.sql
 --   6. supabase/rpc_nickname_available.sql
 --   7. supabase/rpc_oauth_login_email_check.sql
@@ -25,6 +26,8 @@
 --  11. supabase/push_analytics.sql
 --  12. supabase/owner_seat_updates.sql
 --  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환)
+--  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
+--  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
 --  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
 --
 -- 타입 오류 hotfix (level/source enum):

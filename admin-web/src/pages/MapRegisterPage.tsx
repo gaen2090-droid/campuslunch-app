@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   AREAS,
   CATEGORIES,
-  findRestaurantIdByGooglePlaceId,
+  findRestaurantIdByKakaoPlaceId,
   insertRestaurant,
 } from "../lib/adminApi";
 import {
-  getPlaceDetails,
-  hasMapsKey,
-  mapsEmbedUrl,
+  enrichPlaceDetails,
+  hasKakaoKey,
+  kakaoMapEmbedUrl,
   searchPlaces,
   type PlaceDetails,
   type PlaceSearchResult,
@@ -58,10 +58,10 @@ export function MapRegisterPage({ onReload }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const details = await getPlaceDetails(item.placeId);
+      const details = await enrichPlaceDetails(item);
       setSelected(details);
       setResults([]);
-      setQuery(details?.name ?? item.name);
+      setQuery(details.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -77,7 +77,7 @@ export function MapRegisterPage({ onReload }: Props) {
     setRegistering(true);
     setError(null);
     try {
-      const existing = await findRestaurantIdByGooglePlaceId(selected.placeId);
+      const existing = await findRestaurantIdByKakaoPlaceId(selected.placeId);
       if (existing) {
         setError("등록에 실패했어요. 이미 등록된 가게이거나 권한 문제일 수 있어요.");
         return;
@@ -93,7 +93,8 @@ export function MapRegisterPage({ onReload }: Props) {
         hours: selected.hours,
         hours_display: selected.hoursDisplay,
         hours_periods: selected.hoursPeriods,
-        google_place_id: selected.placeId,
+        kakao_place_id: selected.placeId,
+        google_place_id: selected.googlePlaceId,
       });
       setOwnerCode(code);
       onReload();
@@ -106,15 +107,15 @@ export function MapRegisterPage({ onReload }: Props) {
     }
   }
 
-  const embed = selected
-    ? mapsEmbedUrl(selected.latitude, selected.longitude)
+  const mapLink = selected
+    ? kakaoMapEmbedUrl(selected.latitude, selected.longitude)
     : null;
 
-  if (!hasMapsKey()) {
+  if (!hasKakaoKey()) {
     return (
       <div className="alert">
-        Google Maps API 키가 필요합니다.{" "}
-        <code>VITE_GOOGLE_MAPS_API_KEY</code>를 설정해주세요.
+        카카오 REST API 키가 필요합니다.{" "}
+        <code>VITE_KAKAO_REST_API_KEY</code>를 설정해주세요.
       </div>
     );
   }
@@ -124,8 +125,8 @@ export function MapRegisterPage({ onReload }: Props) {
       <div className="section-head">
         <h2>지도에서 가게 등록</h2>
         <p className="muted sm">
-          중앙대 주변 장소를 검색한 뒤 «가게 신규 등록»을 누르면 6자리 인증번호가
-          발급됩니다.
+          장소 검색은 카카오맵, 영업시간·사진은 Google Places에서 자동으로
+          가져옵니다.
         </p>
       </div>
 
@@ -173,14 +174,12 @@ export function MapRegisterPage({ onReload }: Props) {
         </label>
       </div>
 
-      {embed && (
-        <iframe
-          title="선택한 위치"
-          className="map-embed"
-          src={embed}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+      {mapLink && (
+        <p className="muted sm">
+          <a href={mapLink} target="_blank" rel="noreferrer">
+            카카오맵에서 위치 확인 →
+          </a>
+        </p>
       )}
 
       {selected && (
@@ -201,6 +200,10 @@ export function MapRegisterPage({ onReload }: Props) {
       {ownerCode && (
         <Modal title="가게 등록 완료" onClose={() => setOwnerCode(null)}>
           <p className="owner-code-lg">{ownerCode}</p>
+          <p className="muted sm">
+            영업시간·사진은 Google Places에서 자동 수집됩니다. 매칭이 안 되면
+            매장 관리에서 수정해주세요.
+          </p>
           <p className="muted sm">
             사장님 앱 → 인증 화면에서 위 번호를 입력하면 혼잡도를 관리할 수
             있어요.

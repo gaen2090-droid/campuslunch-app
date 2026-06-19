@@ -1,15 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
-import '../config/campus.dart';
+import '../config/env.dart';
 import '../providers/app_provider.dart';
-import '../services/places_service.dart';
-import '../widgets/restaurant_google_map.dart';
+import '../services/google_places_service.dart';
+import '../services/kakao_local_service.dart';
+import '../widgets/restaurant_kakao_map.dart';
 
-/// 어드민: Google 지도에서 장소 선택 → DB 등록 + 사장님 인증번호 발급
+/// 어드민: 카카오맵에서 장소 선택 → DB 등록 + 사장님 인증번호 발급
 class AdminMapRegisterTab extends StatefulWidget {
   const AdminMapRegisterTab({super.key});
 
@@ -19,7 +19,8 @@ class AdminMapRegisterTab extends StatefulWidget {
 
 class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
   final _searchCtrl = TextEditingController();
-  final _places = PlacesService();
+  final _places = KakaoLocalService();
+  final _googlePlaces = GooglePlacesService();
   Timer? _debounce;
   List<PlaceSearchResult> _results = [];
   PlaceDetails? _selected;
@@ -45,13 +46,25 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () async {
       if (!mounted) return;
-      setState(() => _loading = true);
-      final list = await _places.search(v);
-      if (!mounted) return;
       setState(() {
-        _results = list;
-        _loading = false;
+        _loading = true;
+        _error = null;
       });
+      try {
+        final list = await _places.search(v);
+        if (!mounted) return;
+        setState(() {
+          _results = list;
+          _loading = false;
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _results = [];
+          _loading = false;
+          _error = e.toString().replaceFirst('StateError: ', '');
+        });
+      }
     });
   }
 
@@ -60,12 +73,36 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
       _loading = true;
       _error = null;
     });
-    final details = await _places.getDetails(item.placeId);
+
+    var details = PlaceDetails.fromSearch(item);
+    final google = await _googlePlaces.enrich(
+      name: item.name,
+      address: item.address,
+      latitude: item.latitude,
+      longitude: item.longitude,
+    );
+    if (google != null) {
+      details = PlaceDetails(
+        placeId: details.placeId,
+        name: details.name,
+        address: details.address,
+        latitude: details.latitude,
+        longitude: details.longitude,
+        phone: details.phone,
+        placeUrl: details.placeUrl,
+        photoUrl: google.photoUrl,
+        hours: google.hours,
+        hoursDisplay: google.hoursDisplay,
+        hoursPeriods: google.hoursPeriods,
+        googlePlaceId: google.googlePlaceId,
+      );
+    }
+
     if (!mounted) return;
     setState(() {
       _selected = details;
       _results = [];
-      _searchCtrl.text = details?.name ?? item.name;
+      _searchCtrl.text = details.name;
       _loading = false;
     });
   }
@@ -82,7 +119,7 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
       _error = null;
     });
 
-    final ownerCode = await context.read<AppProvider>().addRestaurantFromGooglePlace(
+    final ownerCode = await context.read<AppProvider>().addRestaurantFromKakaoPlace(
           placeId: place.placeId,
           name: place.name,
           address: place.address,
@@ -94,6 +131,7 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
           hours: place.hours,
           hoursDisplay: place.hoursDisplay,
           hoursPeriods: place.hoursPeriods,
+          googlePlaceId: place.googlePlaceId,
         );
 
     if (!mounted) return;
@@ -130,6 +168,11 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
             ),
             const SizedBox(height: 8),
             const Text(
+              '영업시간·사진은 Google Places에서 자동으로 가져옵니다.\n매칭이 안 되면 매장 관리에서 직접 수정해주세요.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF), height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            const Text(
               '사장님 앱 → 인증 화면에서 위 번호를 입력하면 혼잡도를 관리할 수 있어요.',
               style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF), height: 1.4),
             ),
@@ -153,8 +196,8 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
 
   @override
   Widget build(BuildContext context) {
-    final pickLatLng = _selected != null
-        ? LatLng(_selected!.latitude, _selected!.longitude)
+    final pickMarker = _selected != null
+        ? (lat: _selected!.latitude, lng: _selected!.longitude)
         : null;
 
     return Column(
@@ -166,10 +209,17 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
         ),
         const SizedBox(height: 6),
         const Text(
-          '중앙대 주변 장소를 검색한 뒤 «가게 신규 등록»을 누르면 6자리 인증번호가 발급됩니다.',
+          '중앙대 주변 장소를 카카오맵으로 검색한 뒤 «가게 신규 등록»을 누르면 6자리 인증번호가 발급됩니다.',
           style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
         ),
         const SizedBox(height: 12),
+        if (!Env.isKakaoLocalConfigured) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'KAKAO_REST_API_KEY가 .env에 없어요. 카카오 개발자 콘솔 REST API 키를 추가한 뒤 앱을 재시작해주세요.',
+            style: TextStyle(fontSize: 13, color: Color(0xFFEF4444)),
+          ),
+        ],
         TextField(
           controller: _searchCtrl,
           onChanged: _onSearchChanged,
@@ -251,12 +301,12 @@ class _AdminMapRegisterTabState extends State<AdminMapRegisterTab> {
           height: 220,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: RestaurantGoogleMap(
+            child: RestaurantKakaoMap(
               restaurants: const [],
               selected: null,
               onSelect: (_) {},
               showMyLocation: false,
-              pickMarker: pickLatLng,
+              pickMarker: pickMarker,
             ),
           ),
         ),

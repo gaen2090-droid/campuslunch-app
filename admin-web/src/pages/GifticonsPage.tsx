@@ -1,9 +1,14 @@
 import { useState } from "react";
 import {
+  bulkRegisterGifticons,
   registerGifticon,
   uploadGifticonImage,
 } from "../lib/adminApi";
-import { gifticonStatusLabel, type Gifticon } from "../types/gifticon";
+import {
+  gifticonStatusLabel,
+  parseGifticonCsv,
+  type Gifticon,
+} from "../types/gifticon";
 
 interface Props {
   gifticons: Gifticon[];
@@ -25,6 +30,7 @@ export function GifticonsPage({
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [csvBusy, setCsvBusy] = useState(false);
 
   function onPickImage(file: File | null) {
     setImageFile(file);
@@ -59,22 +65,63 @@ export function GifticonsPage({
     }
   }
 
+  async function onCsvUpload(file: File | null) {
+    if (!file) return;
+    setCsvBusy(true);
+    setFormError(null);
+    try {
+      const text = await file.text();
+      const rows = parseGifticonCsv(text);
+      if (rows.length === 0) {
+        throw new Error("유효한 CSV 행이 없어요.");
+      }
+      const inserted = await bulkRegisterGifticons(rows);
+      onReload();
+      setFormError(null);
+      alert(`CSV로 기프티콘 ${inserted}건 등록했어요.`);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCsvBusy(false);
+    }
+  }
+
   return (
     <div className="page">
       <div className="panel-head">
         <h2>기프티콘 관리</h2>
-        <button
-          type="button"
-          className="btn primary sm"
-          onClick={() => setShowForm((v) => !v)}
-        >
-          {showForm ? "취소" : "+ 등록"}
-        </button>
+        <div className="topbar-actions">
+          <button
+            type="button"
+            className="btn ghost sm"
+            disabled={csvBusy}
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".csv,text/csv";
+              input.onchange = () => onCsvUpload(input.files?.[0] ?? null);
+              input.click();
+            }}
+          >
+            {csvBusy ? "업로드 중…" : "CSV 업로드"}
+          </button>
+          <button
+            type="button"
+            className="btn primary sm"
+            onClick={() => setShowForm((v) => !v)}
+          >
+            {showForm ? "취소" : "+ 등록"}
+          </button>
+        </div>
       </div>
 
       {(error || formError) && (
         <div className="alert">{error ?? formError}</div>
       )}
+
+      <p className="muted xs">
+        CSV 헤더: brand, product_name, image_url, expires_at, coupon_code
+      </p>
 
       {showForm && (
         <form className="panel form-grid" onSubmit={submit}>

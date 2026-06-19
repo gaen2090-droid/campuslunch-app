@@ -39,8 +39,13 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final gifticons = provider.myGifticons;
-    final active = gifticons.where((g) => !_isExpired(g)).toList();
-    final expired = gifticons.where(_isExpired).toList();
+    final usable = gifticons
+        .where((g) => g.status == 'assigned' && !_isExpired(g))
+        .toList();
+    final used = gifticons.where((g) => g.status == 'used').toList();
+    final expired = gifticons
+        .where((g) => g.status == 'assigned' && _isExpired(g))
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F0),
@@ -92,13 +97,35 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 32),
                 children: [
-                  if (active.isNotEmpty) ...[
-                    ...active.map(
+                  if (usable.isNotEmpty) ...[
+                    ...usable.map(
                       (g) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _GifticonCard(
                           gifticon: g,
                           expired: false,
+                          onView: () => _showGifticonDetail(g),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (used.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      '사용 완료 (${used.length})',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...used.map(
+                      (g) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _GifticonCard(
+                          gifticon: g,
+                          expired: true,
                           onView: () => _showGifticonDetail(g),
                         ),
                       ),
@@ -220,6 +247,27 @@ class _GifticonDetailSheet extends StatefulWidget {
 class _GifticonDetailSheetState extends State<_GifticonDetailSheet> {
   String? _freshImageUrl;
   bool _loadingUrl = true;
+  bool _markingUsed = false;
+
+  bool get _canMarkUsed =>
+      widget.gifticon.status == 'assigned' &&
+      (widget.gifticon.expiresAt == null ||
+          !widget.gifticon.expiresAt!.isBefore(DateTime.now()));
+
+  Future<void> _markUsed() async {
+    setState(() => _markingUsed = true);
+    final err =
+        await context.read<AppProvider>().markGifticonUsed(widget.gifticon.id);
+    if (!mounted) return;
+    setState(() => _markingUsed = false);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
+      return;
+    }
+    Navigator.pop(context);
+  }
 
   @override
   void initState() {
@@ -304,6 +352,39 @@ class _GifticonDetailSheetState extends State<_GifticonDetailSheet> {
                       : _imageError()),
             ),
             const SizedBox(height: 20),
+            if (_canMarkUsed) ...[
+              GestureDetector(
+                onTap: _markingUsed ? null : _markUsed,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9ECA8B),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: _markingUsed
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF111827),
+                            ),
+                          )
+                        : const Text(
+                            '사용 완료',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
