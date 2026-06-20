@@ -185,7 +185,7 @@ begin
     raise exception '로그인이 필요해요.';
   end if;
 
-  if p_status not in ('여유로움', '약간혼잡', '자리없음') then
+  if p_status not in ('여유로움', '약간혼잡', '자리없음', '웨이팅많음') then
     raise exception '유효하지 않은 혼잡도예요.';
   end if;
 
@@ -209,7 +209,21 @@ begin
     end if;
   end if;
 
-  -- 위치/쿨다운 제한은 클라이언트(앱)에서 검사한다. (디버그 빌드는 우회)
+  -- 위치 제한은 클라이언트(앱)에서 검사한다. (디버그 빌드는 우회)
+  -- 쿨다운(같은 매장 5분 재제보 금지)은 서버에서도 검사한다 — 클라이언트 체크는 메모리상 값이라
+  -- 앱 재시작 등으로 쉽게 우회되므로, 디버그 빌드 우회와 무관하게 서버가 최종 방어선 역할을 함.
+  if p_source = 'user' then
+    if exists (
+      select 1
+      from public.crowd_reports cr
+      where cr.restaurant_id = p_restaurant_id
+        and cr.user_id = v_uid
+        and cr.source = 'user'::public.crowd_source
+        and cr.created_at >= now() - interval '5 minutes'
+    ) then
+      raise exception E'방금 제보한 식당이에요.\n잠시 후 다시 제보해주세요.';
+    end if;
+  end if;
 
   -- 영업 시작(이번 세션) 이후 기존 제보가 있었는지 확인 (최초 제보 보너스 판단)
   if p_source = 'user' then
@@ -234,7 +248,7 @@ begin
     v_source,
     v_uid,
     jsonb_build_object(
-      'status', public.level_to_ui_status(v_ui_level),
+      'status', p_status,
       'user_id', v_uid::text,
       'lat', p_lat,
       'lng', p_lng

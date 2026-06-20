@@ -53,7 +53,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
       if (_sortBy == '인기순') return popScore(b).compareTo(popScore(a));
       if (_sortBy == '가까운순') return a.distance.compareTo(b.distance);
       if (_sortBy == '여유로운순') {
-        const pri = {'여유로움': 0, '약간혼잡': 1, '자리없음': 2, '영업안함': 3};
+        const pri = {'여유로움': 0, '약간혼잡': 1, '자리없음': 2, '웨이팅많음': 2, '영업안함': 3};
         final d = (pri[a.status] ?? 9) - (pri[b.status] ?? 9);
         return d != 0 ? d : popScore(b).compareTo(popScore(a));
       }
@@ -199,7 +199,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                           color: Colors.black.withAlpha(10), blurRadius: 8)
                     ],
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   child: _openDropdown == 'sort'
                       ? _DropdownGrid(
                           items: _sortOpts,
@@ -433,6 +433,8 @@ class _DropdownGrid extends StatelessWidget {
   final bool multiSelect;
   final ValueChanged<String> onSelect;
   final VoidCallback? onReset;
+  final String Function(String)? labelFor;
+  final bool forceFourColumns;
 
   const _DropdownGrid({
     required this.items,
@@ -440,6 +442,8 @@ class _DropdownGrid extends StatelessWidget {
     this.multiSelect = false,
     required this.onSelect,
     this.onReset,
+    this.labelFor,
+    this.forceFourColumns = false,
   });
 
   static bool _isAllSelected(Set<String> s) =>
@@ -447,6 +451,7 @@ class _DropdownGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const spacing = 6.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -454,7 +459,7 @@ class _DropdownGrid extends StatelessWidget {
           GestureDetector(
             onTap: onReset,
             child: const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(top: 4, right: 4, bottom: 8),
               child: Text('초기화',
                   style: TextStyle(
                       fontSize: 11,
@@ -462,48 +467,60 @@ class _DropdownGrid extends StatelessWidget {
                       color: Color(0xFF5E8C4A))),
             ),
           ),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: items.length <= 3 ? items.length : 4,
-          childAspectRatio: items.length <= 3 ? 2.8 : 2.2,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-          children: items.map((opt) {
-            final on = selected.contains(opt);
-            return GestureDetector(
-              onTap: () => onSelect(opt),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        opt,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: on
-                              ? const Color(0xFF5E8C4A)
-                              : const Color(0xFF374151),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cols = forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4);
+            final itemWidth =
+                (constraints.maxWidth - spacing * (cols - 1)) / cols;
+
+            return SizedBox(
+              width: constraints.maxWidth,
+              child: Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: items.map((opt) {
+                  final on = selected.contains(opt);
+                  return SizedBox(
+                    width: itemWidth,
+                    child: GestureDetector(
+                      onTap: () => onSelect(opt),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                labelFor != null ? labelFor!(opt) : opt,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: on
+                                      ? const Color(0xFF5E8C4A)
+                                      : const Color(0xFF374151),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (on)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(Icons.check,
+                                    size: 14, color: Color(0xFF5E8C4A)),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                    if (on)
-                      const Icon(Icons.check,
-                          size: 14, color: Color(0xFF5E8C4A)),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
             );
-          }).toList(),
+          },
         ),
       ],
     );

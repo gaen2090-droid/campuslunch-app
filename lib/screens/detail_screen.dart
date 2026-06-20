@@ -11,6 +11,8 @@ import '../widgets/owner_seat_message_card.dart';
 import '../models/owner_seat_update.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
+import '../widgets/share_sheet.dart';
+import '../models/crowd_report.dart';
 
 class DetailScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -22,6 +24,7 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   OwnerSeatUpdate? _ownerSeatUpdate;
+  List<RecentCrowdReport> _recentReports = [];
 
   @override
   void initState() {
@@ -35,12 +38,14 @@ class _DetailScreenState extends State<DetailScreen> {
       );
       if (r.status == '영업안함') {
         _loadOwnerSeatUpdate();
+        _loadRecentReports();
         return;
       }
       ReportSheet.show(context, r, (status) {
         submitCrowdReportFeedback(context, r.id, status);
       });
       _loadOwnerSeatUpdate();
+      _loadRecentReports();
     });
   }
 
@@ -50,6 +55,14 @@ class _DetailScreenState extends State<DetailScreen> {
         .fetchOwnerSeatUpdate(widget.restaurant.id);
     if (!mounted) return;
     setState(() => _ownerSeatUpdate = update);
+  }
+
+  Future<void> _loadRecentReports() async {
+    final reports = await context
+        .read<AppProvider>()
+        .fetchRecentCrowdReports(widget.restaurant.id);
+    if (!mounted) return;
+    setState(() => _recentReports = reports.take(3).toList());
   }
 
   @override
@@ -116,7 +129,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           ),
                           const SizedBox(width: 8),
                           _HeaderBtn(
-                            onTap: () {},
+                            onTap: () => showShareSheet(context, r),
                             child: const Icon(Icons.share_outlined,
                                 size: 16, color: Color(0xFF6B7280)),
                           ),
@@ -176,7 +189,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               r.status == '영업안함'
                                   ? r.status
                                   : r.hasCrowdUpdate
-                                      ? r.status
+                                      ? (r.status == '웨이팅많음' ? '🔥웨이팅' : r.status)
                                       : '제보필요',
                               maxLines: 1,
                               textAlign: TextAlign.right,
@@ -193,7 +206,9 @@ class _DetailScreenState extends State<DetailScreen> {
                             if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
                               const SizedBox(height: 4),
                               Text(
-                                formatUpdateAge(r.updated),
+                                r.crowdBaseSource == 'owner'
+                                    ? '사장님 · ${formatUpdateAge(r.updated)}'
+                                    : formatUpdateAge(r.updated),
                                 maxLines: 1,
                                 textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis,
@@ -217,6 +232,8 @@ class _DetailScreenState extends State<DetailScreen> {
             if (_ownerSeatUpdate != null &&
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
+
+            if (_recentReports.isNotEmpty) _RecentReportsSection(reports: _recentReports),
 
             // ── 액션 버튼 ──
             Padding(
@@ -374,7 +391,8 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (status) {
       case '여유로움': return const Color(0xFF4C9C2A);
       case '약간혼잡': return const Color(0xFFF59E0B);
-      case '자리없음': return const Color(0xFFEF4444);
+      case '자리없음': return const Color(0xFFF97316);
+      case '웨이팅많음': return const Color(0xFFEF4444);
       default: return const Color(0xFF9CA3AF);
     }
   }
@@ -388,6 +406,48 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _navigate(Restaurant r) {
     openInAppDirections(context, r);
+  }
+}
+
+class _RecentReportsSection extends StatelessWidget {
+  final List<RecentCrowdReport> reports;
+  const _RecentReportsSection({required this.reports});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '최근 제보',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...reports.map((r) {
+            final minutesAgo = DateTime.now().difference(r.createdAt).inMinutes;
+            final prefix = r.isOwner ? '사장님 · ' : '';
+            final statusLabel = r.status == '웨이팅많음' ? '웨이팅' : r.status;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '$prefix${formatUpdateAge(minutesAgo)} · $statusLabel',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 }
 

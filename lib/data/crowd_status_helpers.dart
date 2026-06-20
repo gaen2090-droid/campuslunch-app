@@ -10,6 +10,9 @@ int _reportLevel(Map<String, dynamic> report) {
   );
 }
 
+DateTime _reportAt(Map<String, dynamic> report) =>
+    DateTime.parse(report['created_at'] as String).toLocal();
+
 String? _reportUserKey(Map<String, dynamic> report) {
   final uid = report['user_id'] as String?;
   if (uid != null && uid.isNotEmpty) return uid;
@@ -21,7 +24,8 @@ String? _reportUserKey(Map<String, dynamic> report) {
   return report['id'] as String?;
 }
 
-List<int> dedupeUserReportLevels(
+/// 계산 대상 유저 제보 — 유저당 최신 1건만, 레벨+시각 함께 보존
+List<LevelReport> dedupeUserReports(
   List<Map<String, dynamic>> reports,
   Duration window,
   DateTime now, {
@@ -33,7 +37,7 @@ List<int> dedupeUserReportLevels(
 
   for (final report in reports) {
     if ((report['source'] as String?) != 'user') continue;
-    final createdAt = DateTime.parse(report['created_at'] as String).toLocal();
+    final createdAt = _reportAt(report);
     if (createdAt.isBefore(effectiveSince)) continue;
 
     final key = _reportUserKey(report);
@@ -44,41 +48,51 @@ List<int> dedupeUserReportLevels(
       latestByUser[key] = report;
       continue;
     }
-    final existingAt =
-        DateTime.parse(existing['created_at'] as String).toLocal();
-    if (createdAt.isAfter(existingAt)) {
+    if (createdAt.isAfter(_reportAt(existing))) {
       latestByUser[key] = report;
     }
   }
 
-  return latestByUser.values.map(_reportLevel).toList();
+  return latestByUser.values
+      .map((r) => LevelReport(level: _reportLevel(r), at: _reportAt(r)))
+      .toList();
 }
 
-int? latestOwnerLevel(List<Map<String, dynamic>> reports) {
+/// 호환용 — 레벨만 필요한 기존 호출부(통계 등)에서 사용
+List<int> dedupeUserReportLevels(
+  List<Map<String, dynamic>> reports,
+  Duration window,
+  DateTime now, {
+  DateTime? since,
+}) =>
+    dedupeUserReports(reports, window, now, since: since)
+        .map((r) => r.level)
+        .toList();
+
+LevelReport? latestOwnerReport(List<Map<String, dynamic>> reports) {
   Map<String, dynamic>? latest;
   for (final report in reports) {
     if ((report['source'] as String?) != 'owner') continue;
-    if (latest == null) {
+    if (latest == null || _reportAt(report).isAfter(_reportAt(latest))) {
       latest = report;
-      continue;
     }
-    final createdAt = DateTime.parse(report['created_at'] as String).toLocal();
-    final latestAt =
-        DateTime.parse(latest['created_at'] as String).toLocal();
-    if (createdAt.isAfter(latestAt)) latest = report;
   }
-  return latest == null ? null : _reportLevel(latest);
+  return latest == null
+      ? null
+      : LevelReport(level: _reportLevel(latest), at: _reportAt(latest));
 }
+
+int? latestOwnerLevel(List<Map<String, dynamic>> reports) =>
+    latestOwnerReport(reports)?.level;
 
 CrowdStatusResult computeStatusFromReports({
   required List<Map<String, dynamic>> reports,
   Map<String, dynamic>? existingStatus,
   DateTime? now,
-  bool ownerJustReported = false,
   DateTime? businessSessionStart,
 }) {
   final at = now ?? DateTime.now();
-  final user20 = dedupeUserReportLevels(
+  final userReports = dedupeUserReports(
     reports,
     const Duration(minutes: 20),
     at,
@@ -86,30 +100,16 @@ CrowdStatusResult computeStatusFromReports({
   );
 
   int? currentDisplay;
-  DateTime? statusStartedAt;
-  DateTime? lastUpdatedAt;
   if (existingStatus != null) {
     currentDisplay = parseDisplayLevel(existingStatus['display_level']);
-    final started = existingStatus['status_started_at'] as String?;
-    if (started != null) {
-      statusStartedAt = DateTime.parse(started).toLocal();
-    }
-    final updated = existingStatus['updated_at'] as String?;
-    if (updated != null) {
-      lastUpdatedAt = DateTime.parse(updated).toLocal();
-    }
   }
 
   return computeCrowdStatus(
     CrowdStatusComputeParams(
-      ownerLevel: latestOwnerLevel(reports),
-      userLevels20: user20,
+      ownerLatest: latestOwnerReport(reports),
+      userReports: userReports,
       currentDisplayLevel: currentDisplay,
-      statusStartedAt: statusStartedAt,
-      lastUpdatedAt: lastUpdatedAt,
-      businessSessionStart: businessSessionStart,
       now: at,
-      ownerJustReported: ownerJustReported,
     ),
   );
 }
@@ -146,7 +146,7 @@ Map<int, int> recentUserLevelCounts(
 }) {
   final levels =
       dedupeUserReportLevels(reports, const Duration(minutes: 20), now ?? DateTime.now());
-  final counts = <int, int>{1: 0, 2: 0, 3: 0};
+  final counts = <int, int>{1: 0, 2: 0, 3: 0, 4: 0};
   for (final level in levels) {
     counts[level] = (counts[level] ?? 0) + 1;
   }

@@ -7,6 +7,15 @@ import 'package:image/image.dart' as img;
 import '../models/restaurant.dart';
 import 'map_pin_painter.dart';
 
+/// 지도(마커·범례)에서만 statusMetaMap과 다른 색을 쓰는 경우의 오버라이드.
+/// 약간혼잡: 지도 위에서는 더 밝은 노랑으로 — 카드 뱃지 색(statusMetaMap)은 그대로 유지.
+const Map<String, int> mapStatusColorOverrides = {
+  '약간혼잡': 0xFFFBBF24,
+};
+
+int mapStatusColor(String status) =>
+    mapStatusColorOverrides[status] ?? statusMetaMap[status]?.color ?? 0xFF9CA3AF;
+
 /// 카카오맵 커스텀 마커용 PNG 바이트 생성
 ///
 /// Flutter PNG 인코딩은 iOS Kakao SDK에서 SIGABRT → raw RGBA 후 `image`로 표준 PNG 생성.
@@ -26,7 +35,7 @@ class MapMarkerIcons {
   }
 
   static Future<Uint8List> forStatus(String status) async {
-    final color = Color(statusMetaMap[status]?.color ?? 0xFF9CA3AF);
+    final color = Color(mapStatusColor(status));
     final key = color.toARGB32();
     if (_colorCache.containsKey(key)) return _colorCache[key]!;
     final bytes = await _pinMarkerBytes(color);
@@ -73,6 +82,8 @@ class MapMarkerIcons {
         return 'pin_moderate';
       case '자리없음':
         return 'pin_full';
+      case '웨이팅많음':
+        return 'pin_hot_waiting';
       case '영업안함':
         return 'pin_closed';
       default:
@@ -111,7 +122,4 @@ class MarkerStyleBundle {
   const MarkerStyleBundle({required this.styleId, required this.bytes});
 }
 
-int markerColorForStatus(String status) {
-  final meta = statusMetaMap[status];
-  return meta?.color ?? 0xFF9CA3AF;
-}
+int markerColorForStatus(String status) => mapStatusColor(status);

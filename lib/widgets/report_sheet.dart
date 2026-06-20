@@ -27,32 +27,7 @@ class ReportSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = [
-      _ReportOption(
-        label: '여유로워요',
-        status: '여유로움',
-        icon: Icons.sentiment_satisfied_alt,
-        borderColor: Color(0xFFBFE0B0),
-        bgColor: Color(0xFFF3F8F0),
-        textColor: Color(0xFF4C9C2A),
-      ),
-      _ReportOption(
-        label: '약간 붐벼요',
-        status: '약간혼잡',
-        icon: Icons.sentiment_neutral,
-        borderColor: Color(0xFFFDE68A),
-        bgColor: Color(0xFFFFFBEB),
-        textColor: Color(0xFFD97706),
-      ),
-      _ReportOption(
-        label: '자리 없어요',
-        status: '자리없음',
-        icon: Icons.groups,
-        borderColor: Color(0xFFFECACA),
-        bgColor: Color(0xFFFEF2F2),
-        textColor: Color(0xFFEF4444),
-      ),
-    ];
+    const options = reportOptions;
 
     return Container(
       decoration: const BoxDecoration(
@@ -77,7 +52,7 @@ class ReportSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text(
-            '지금 이 매장 상태가 어떤가요?',
+            '지금 매장 상황이 어떤가요?',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
@@ -99,23 +74,39 @@ class ReportSheet extends StatelessWidget {
                     onSubmit(o.status);
                   },
                   child: Container(
-                    height: 60,
                     decoration: BoxDecoration(
                       color: o.bgColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: o.borderColor),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         Icon(o.icon, size: 24, color: o.textColor),
                         const SizedBox(width: 12),
-                        Text(
-                          o.label,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: o.textColor,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                o.label,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: o.textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                o.subtitle,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -150,16 +141,20 @@ class ReportSheet extends StatelessWidget {
   }
 }
 
-class _ReportOption {
+/// 혼잡도 제보 옵션 — 유저 제보 시트와 사장님 탭이 공유하는 단일 진실 소스.
+/// 둘 중 한쪽만 고치면 어긋나므로, 라벨/색상을 바꿀 땐 여기만 수정한다.
+class ReportOption {
   final String label;
+  final String subtitle;
   final String status;
   final IconData icon;
   final Color borderColor;
   final Color bgColor;
   final Color textColor;
 
-  const _ReportOption({
+  const ReportOption({
     required this.label,
+    required this.subtitle,
     required this.status,
     required this.icon,
     required this.borderColor,
@@ -167,3 +162,42 @@ class _ReportOption {
     required this.textColor,
   });
 }
+
+const reportOptions = [
+  ReportOption(
+    label: '여유로워요',
+    subtitle: '바로 앉을 수 있어요',
+    status: '여유로움',
+    icon: Icons.sentiment_satisfied_alt,
+    borderColor: Color(0xFFBFE0B0),
+    bgColor: Color(0xFFF3F8F0),
+    textColor: Color(0xFF4C9C2A),
+  ),
+  ReportOption(
+    label: '약간 혼잡해요',
+    subtitle: '앉을 수는 있지만 거의 찼어요',
+    status: '약간혼잡',
+    icon: Icons.sentiment_neutral,
+    borderColor: Color(0xFFFDE68A),
+    bgColor: Color(0xFFFFFBEB),
+    textColor: Color(0xFFF59E0B),
+  ),
+  ReportOption(
+    label: '자리가 없어요',
+    subtitle: '조금 기다려야 해요',
+    status: '자리없음',
+    icon: Icons.groups,
+    borderColor: Color(0xFFFED7AA),
+    bgColor: Color(0xFFFFEDD5),
+    textColor: Color(0xFFF97316),
+  ),
+  ReportOption(
+    label: '웨이팅이 많아요',
+    subtitle: '기다리는 사람이 많아요',
+    status: '웨이팅많음',
+    icon: Icons.local_fire_department,
+    borderColor: Color(0xFFFECACA),
+    bgColor: Color(0xFFFEF2F2),
+    textColor: Color(0xFFDC2626),
+  ),
+];

@@ -1640,7 +1640,7 @@ class _AdminRecentReportsPanel extends StatelessWidget {
       }
     }
 
-    final levelSummary = ['여유로움', '약간혼잡', '자리없음']
+    final levelSummary = ['여유로움', '약간혼잡', '자리없음', '웨이팅많음']
         .where((s) => (levelCounts[s] ?? 0) > 0)
         .map((s) => '$s ${levelCounts[s]}')
         .join(' · ');
@@ -2300,7 +2300,7 @@ class _ExportSheetState extends State<_ExportSheet> {
           r.name,
           '${r.reports['여유로움'] ?? 0}',
           '${r.reports['약간혼잡'] ?? 0}',
-          '${r.reports['자리없음'] ?? 0}',
+          '${(r.reports['자리없음'] ?? 0) + (r.reports['웨이팅많음'] ?? 0)}',
           '${r.totalReports}',
         ]),
       ]);

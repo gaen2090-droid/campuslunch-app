@@ -1,10 +1,14 @@
-/// PDF 「혼잡도 계산 로직 개편 2」 — 유저 제보 중심 + 사장님 보정
-/// 1=여유로움, 2=약간혼잡, 3=자리없음
+/// 혼잡도 계산 — 대표 status는 항상 "가장 최신 제보"를 그대로 반영한다.
+/// 1=여유로움, 2=약간혼잡, 3=자리없음, 4=웨이팅많음 (넷 다 독립된 동급 단계)
+/// 다수결/일치도는 confidence 산정에만 쓰이고, status 결정에는 쓰이지 않는다.
 library;
 
 const crowdLevelRelaxed = 1;
 const crowdLevelModerate = 2;
 const crowdLevelFull = 3;
+const crowdLevelHotWaiting = 4;
+const crowdLevelMin = crowdLevelRelaxed;
+const crowdLevelMax = crowdLevelHotWaiting;
 
 String crowdLevelToStatus(int level) {
   switch (level) {
@@ -14,6 +18,8 @@ String crowdLevelToStatus(int level) {
       return '약간혼잡';
     case crowdLevelFull:
       return '자리없음';
+    case crowdLevelHotWaiting:
+      return '웨이팅많음';
     default:
       return '여유로움';
   }
@@ -27,6 +33,8 @@ int crowdStatusToLevel(String status) {
       return crowdLevelModerate;
     case '자리없음':
       return crowdLevelFull;
+    case '웨이팅많음':
+      return crowdLevelHotWaiting;
     default:
       return crowdLevelRelaxed;
   }
@@ -39,7 +47,7 @@ int? parseDisplayLevel(dynamic value) {
   if (value is String) {
     final trimmed = value.trim();
     final asInt = int.tryParse(trimmed);
-    if (asInt != null) return asInt.clamp(1, 3);
+    if (asInt != null) return asInt.clamp(crowdLevelMin, crowdLevelMax);
     return crowdStatusToLevel(trimmed);
   }
   return null;
@@ -63,25 +71,28 @@ class CrowdStatusResult {
   String get displayStatus => crowdLevelToStatus(displayLevel);
 }
 
+/// 제보 1건의 레벨과 시각 (소스 무관 — owner/user 공통)
+class LevelReport {
+  final int level;
+  final DateTime at;
+
+  const LevelReport({required this.level, required this.at});
+}
+
 class CrowdStatusComputeParams {
-  final int? ownerLevel;
-  final List<int> userLevels20;
+  /// 이번 영업 세션 내 사장님 최신 제보 (없으면 null)
+  final LevelReport? ownerLatest;
+  /// 이번 영업 세션 내(또는 최근 20분 내) 유저 제보 — 유저당 1건, 시각 내림차순일 필요는 없음
+  final List<LevelReport> userReports;
+  /// 직전 표시 레벨 (confidence 계산 보조용 — status 결정에는 쓰이지 않음)
   final int? currentDisplayLevel;
-  final DateTime? statusStartedAt;
-  final DateTime? lastUpdatedAt;
-  final DateTime? businessSessionStart;
   final DateTime now;
-  final bool ownerJustReported;
 
   const CrowdStatusComputeParams({
-    required this.ownerLevel,
-    required this.userLevels20,
+    required this.ownerLatest,
+    required this.userReports,
     required this.currentDisplayLevel,
-    required this.statusStartedAt,
-    this.lastUpdatedAt,
-    this.businessSessionStart,
     required this.now,
-    this.ownerJustReported = false,
   });
 }
 
@@ -133,368 +144,106 @@ bool _isSplitOpinion(List<int> levels) {
   return leaders > 1;
 }
 
-int _moveOneStepToward(int base, int target) {
-  if (target > base) {
-    return (base + 1).clamp(crowdLevelRelaxed, crowdLevelFull);
-  }
-  if (target < base) {
-    return (base - 1).clamp(crowdLevelRelaxed, crowdLevelFull);
-  }
-  return base;
+/// 최근 두 제보(시각 내림차순)가 같은 레벨인지 — confidence 판단 보조
+bool _latestTwoAgree(List<LevelReport> sortedDesc) {
+  if (sortedDesc.length < 2) return false;
+  return sortedDesc[0].level == sortedDesc[1].level;
 }
 
-int _clampStepChange({
-  required int? current,
-  required int target,
-  required bool allowFullJump,
+/// 최근 두 제보가 크게 다른지(레벨 차 2 이상) — confidence 판단 보조
+bool _latestTwoConflict(List<LevelReport> sortedDesc) {
+  if (sortedDesc.length < 2) return false;
+  return (sortedDesc[0].level - sortedDesc[1].level).abs() >= 2;
+}
+
+/// confidence 산정 — status 결정과 무관, 다수결/최근 일치도로만 판단
+String _computeConfidence({
+  required LevelReport? ownerLatest,
+  required LevelReport? userLatest,
+  required List<LevelReport> allSortedDesc,
 }) {
-  if (current == null) return target;
-  if (current == target) return current;
-  final diff = (target - current).abs();
-  if (diff >= 2 && !allowFullJump) {
-    return _moveOneStepToward(current, target);
+  // 사장님 최신 제보와 유저 최신 제보가 일치 → high
+  if (ownerLatest != null &&
+      userLatest != null &&
+      ownerLatest.level == userLatest.level) {
+    return 'high';
   }
-  return target;
+
+  final levels = allSortedDesc.map((r) => r.level).toList();
+  final dom = _dominantConsensus(levels);
+
+  // 의견이 완전히 갈림(동률) → low
+  if (_isSplitOpinion(levels)) return 'low';
+
+  // 최신 제보와 직전 제보가 크게 다름 → low
+  if (_latestTwoConflict(allSortedDesc)) return 'low';
+
+  // 제보가 1건뿐
+  if (allSortedDesc.length == 1) {
+    return 'low';
+  }
+
+  // 최신 제보와 직전 제보가 일치 → high
+  if (_latestTwoAgree(allSortedDesc)) return 'high';
+
+  // 압도적 다수(5건↑, 80%↑) → high
+  if (dom != null && dom.total >= 5 && dom.ratio >= 0.8) return 'high';
+
+  // 다수가 어느 정도 일치(60%↑) → medium
+  if (dom != null && dom.ratio >= 0.6) return 'medium';
+
+  return 'medium';
 }
 
-bool isStrongUserSignal(List<int> userLevels) {
-  final dom = _dominantConsensus(userLevels);
-  return dom != null && dom.total >= 5 && dom.ratio >= 0.8;
-}
-
-CrowdStatusResult _keepCurrent({
-  required int current,
-  required String baseSource,
-  required String confidence,
-  required int reportCount,
-  bool refreshUpdatedAt = false,
-}) {
-  return CrowdStatusResult(
-    displayLevel: current,
-    baseSource: baseSource,
-    confidence: confidence,
-    reportCount: reportCount,
-    refreshUpdatedAt: refreshUpdatedAt,
-  );
-}
-
-CrowdStatusResult _computeUserOnly({
-  required int? current,
-  required List<int> users,
-}) {
-  final n = users.length;
-  if (n == 0) {
-    return _keepCurrent(
-      current: current ?? crowdLevelRelaxed,
-      baseSource: 'user',
-      confidence: 'low',
-      reportCount: 0,
-    );
-  }
-
-  if (n == 1) {
-    final userLevel = users.first;
-    if (current == null) {
-      return CrowdStatusResult(
-        displayLevel: userLevel,
-        baseSource: 'user',
-        confidence: 'low',
-        reportCount: 1,
-        refreshUpdatedAt: true,
-      );
-    }
-    if (userLevel == current) {
-      return _keepCurrent(
-        current: current,
-        baseSource: 'user',
-        confidence: 'medium',
-        reportCount: 1,
-        refreshUpdatedAt: true,
-      );
-    }
-    return _keepCurrent(
-      current: current,
-      baseSource: 'user',
-      confidence: 'medium',
-      reportCount: 1,
-    );
-  }
-
-  if (n == 2) {
-    final same = users[0] == users[1];
-    if (same) {
-      final agreed = users.first;
-      if (current == null) {
-        return CrowdStatusResult(
-          displayLevel: agreed,
-          baseSource: 'user',
-          confidence: 'medium',
-          reportCount: 2,
-          refreshUpdatedAt: true,
-        );
-      }
-      final next = _clampStepChange(
-        current: current,
-        target: agreed,
-        allowFullJump: false,
-      );
-      return CrowdStatusResult(
-        displayLevel: next,
-        baseSource: 'user',
-        confidence: 'medium',
-        reportCount: 2,
-        refreshUpdatedAt: next != current || agreed == current,
-      );
-    }
-    if (current == null) {
-      return CrowdStatusResult(
-        displayLevel: crowdLevelModerate,
-        baseSource: 'user',
-        confidence: 'low',
-        reportCount: 2,
-        refreshUpdatedAt: true,
-      );
-    }
-    return _keepCurrent(
-      current: current,
-      baseSource: 'user',
-      confidence: 'medium',
-      reportCount: 2,
-    );
-  }
-
-  final dom = _dominantConsensus(users)!;
-  if (_isSplitOpinion(users)) {
-    if (current == null) {
-      return CrowdStatusResult(
-        displayLevel: crowdLevelModerate,
-        baseSource: 'user',
-        confidence: 'low',
-        reportCount: n,
-        refreshUpdatedAt: true,
-      );
-    }
-    return _keepCurrent(
-      current: current,
-      baseSource: 'user',
-      confidence: 'medium',
-      reportCount: n,
-    );
-  }
-
-  if (dom.total >= 5 && dom.ratio >= 0.8) {
-    if (current == null) {
-      return CrowdStatusResult(
-        displayLevel: dom.level,
-        baseSource: 'user',
-        confidence: 'high',
-        reportCount: n,
-        refreshUpdatedAt: true,
-      );
-    }
-    return CrowdStatusResult(
-      displayLevel: dom.level,
-      baseSource: 'user',
-      confidence: 'high',
-      reportCount: n,
-      refreshUpdatedAt: dom.level != current || dom.level == current,
-    );
-  }
-
-  if (dom.ratio >= 0.6) {
-    if (current == null) {
-      return CrowdStatusResult(
-        displayLevel: dom.level,
-        baseSource: 'user',
-        confidence: 'medium',
-        reportCount: n,
-        refreshUpdatedAt: true,
-      );
-    }
-    final allowFull = dom.total >= 5 && dom.ratio >= 0.8;
-    final next = _clampStepChange(
-      current: current,
-      target: dom.level,
-      allowFullJump: allowFull,
-    );
-    return CrowdStatusResult(
-      displayLevel: next,
-      baseSource: 'user',
-      confidence: 'medium',
-      reportCount: n,
-      refreshUpdatedAt: next != current,
-    );
-  }
-
-  if (current == null) {
-    return CrowdStatusResult(
-      displayLevel: crowdLevelModerate,
-      baseSource: 'user',
-      confidence: 'low',
-      reportCount: n,
-      refreshUpdatedAt: true,
-    );
-  }
-  return _keepCurrent(
-    current: current,
-    baseSource: 'user',
-    confidence: 'medium',
-    reportCount: n,
-  );
-}
-
-CrowdStatusResult _computeOwnerAndUser({
-  required int owner,
-  required int? current,
-  required List<int> users,
-}) {
-  final n = users.length;
-  final displayBase = current ?? owner;
-
-  if (n >= 1 && users.every((u) => u == owner)) {
-    return CrowdStatusResult(
-      displayLevel: owner,
-      baseSource: 'owner',
-      confidence: 'high',
-      reportCount: n,
-      refreshUpdatedAt: true,
-    );
-  }
-
-  if (n >= 1 && n <= 2) {
-    return _keepCurrent(
-      current: displayBase,
-      baseSource: 'owner',
-      confidence: 'high',
-      reportCount: n,
-    );
-  }
-
-  final dom = _dominantConsensus(users);
-  if (dom == null || _isSplitOpinion(users)) {
-    return _keepCurrent(
-      current: displayBase,
-      baseSource: 'owner',
-      confidence: 'medium',
-      reportCount: n,
-    );
-  }
-
-  if (dom.total >= 5 && dom.ratio >= 0.8) {
-    return CrowdStatusResult(
-      displayLevel: dom.level,
-      baseSource: 'user',
-      confidence: 'high',
-      reportCount: n,
-      refreshUpdatedAt: dom.level != displayBase || dom.level == owner,
-    );
-  }
-
-  if (dom.total >= 3 && dom.ratio >= 0.7) {
-    final next = _moveOneStepToward(owner, dom.level);
-    return CrowdStatusResult(
-      displayLevel: next,
-      baseSource: 'mixed',
-      confidence: 'medium',
-      reportCount: n,
-      refreshUpdatedAt: next != displayBase,
-    );
-  }
-
-  return _keepCurrent(
-    current: displayBase,
-    baseSource: 'owner',
-    confidence: 'medium',
-    reportCount: n,
-  );
-}
+/// 사장님 제보 후 이 시간 동안은 더 최신인 유저 제보가 있어도 사장님 값을 우선한다.
+const Duration ownerPriorityWindow = Duration(minutes: 5);
 
 CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
-  if (params.ownerJustReported && params.ownerLevel != null) {
+  final owner = params.ownerLatest;
+  final users = params.userReports;
+  final all = <LevelReport>[
+    if (owner != null) owner,
+    ...users,
+  ]..sort((a, b) => b.at.compareTo(a.at));
+
+  if (all.isEmpty) {
+    // 계산 대상 제보가 전혀 없으면 직전 표시값 유지, 없으면 기본값
+    final fallback = params.currentDisplayLevel ?? crowdLevelRelaxed;
     return CrowdStatusResult(
-      displayLevel: params.ownerLevel!,
-      baseSource: 'owner',
-      confidence: 'high',
-      reportCount: params.userLevels20.length,
-      refreshUpdatedAt: true,
-    );
-  }
-
-  var users = params.userLevels20;
-  var current = params.currentDisplayLevel;
-  var statusStartedAt = params.statusStartedAt;
-  final sessionStart = params.businessSessionStart;
-
-  // 이번 영업 세션의 첫 제보 전에는 current를 null로 둬서, 이후 로직이
-  // "이전 상태 없음" 분기(제보값을 그대로 반영)를 타게 한다.
-  // (current=1로 두면 1단계 댐핑에 걸려 첫 제보가 한 단계만 반영되는 버그가 있었음)
-  if (sessionStart != null) {
-    final anchor = statusStartedAt ?? params.lastUpdatedAt;
-    if (anchor == null || anchor.isBefore(sessionStart)) {
-      current = null;
-      statusStartedAt = sessionStart;
-    }
-  }
-
-  final owner = params.ownerLevel;
-
-  if (users.isEmpty) {
-    if (current != null) {
-      return _keepCurrent(
-        current: current,
-        baseSource: owner == null ? 'user' : 'owner',
-        confidence: owner == null ? 'medium' : 'high',
-        reportCount: 0,
-        refreshUpdatedAt:
-            sessionStart != null &&
-            (params.statusStartedAt == null ||
-                params.statusStartedAt!.isBefore(sessionStart)),
-      );
-    }
-    if (owner != null) {
-      return CrowdStatusResult(
-        displayLevel: owner,
-        baseSource: 'owner',
-        confidence: 'high',
-        reportCount: 0,
-        refreshUpdatedAt: true,
-      );
-    }
-    return CrowdStatusResult(
-      displayLevel: crowdLevelRelaxed,
+      displayLevel: fallback,
       baseSource: 'user',
       confidence: 'low',
       reportCount: 0,
-      // 세션이 막 리셋된 경우(statusStartedAt이 sessionStart로 막 설정됨) 즉시 반영
-      refreshUpdatedAt: sessionStart != null && statusStartedAt == sessionStart,
+      refreshUpdatedAt: false,
     );
   }
 
-  final inner = owner == null
-      ? _computeUserOnly(current: current, users: users)
-      : _computeOwnerAndUser(owner: owner, current: current, users: users);
+  final userLatest = users.isEmpty
+      ? null
+      : users.reduce((a, b) => a.at.isAfter(b.at) ? a : b);
 
-  var display = inner.displayLevel;
-  var refresh = inner.refreshUpdatedAt;
+  // 사장님 제보가 5분 이내면, 그보다 늦은 유저 제보가 있어도 사장님 값을 우선한다.
+  final ownerWithinPriorityWindow = owner != null &&
+      params.now.difference(owner.at) <= ownerPriorityWindow;
 
-  if (current != null &&
-      statusStartedAt != null &&
-      display != current &&
-      !params.ownerJustReported &&
-      !isStrongUserSignal(users)) {
-    final elapsed = params.now.difference(statusStartedAt);
-    if (elapsed.inMinutes < 10) {
-      display = current;
-      refresh = false;
-    }
-  }
+  final latest = ownerWithinPriorityWindow ? owner : all.first;
+
+  final baseSource = owner != null && identical(latest, owner) ? 'owner' : 'user';
+
+  final confidence = _computeConfidence(
+    ownerLatest: owner,
+    userLatest: userLatest,
+    allSortedDesc: all,
+  );
+
+  final changed = params.currentDisplayLevel != latest.level;
 
   return CrowdStatusResult(
-    displayLevel: display,
-    baseSource: inner.baseSource,
-    confidence: inner.confidence,
-    reportCount: inner.reportCount,
-    refreshUpdatedAt: refresh,
+    displayLevel: latest.level,
+    baseSource: baseSource,
+    confidence: confidence,
+    reportCount: users.length,
+    refreshUpdatedAt: changed,
   );
 }
 

@@ -80,13 +80,26 @@ class RestaurantCard extends StatelessWidget {
               ),
               child: Text.rich(
                 TextSpan(
-                  text: r.status,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: Color(meta.color),
-                  ),
                   children: [
+                    if (r.status == '웨이팅많음') ...[
+                      const TextSpan(text: '🔥', style: TextStyle(fontSize: 9)),
+                      TextSpan(
+                        text: '웨이팅',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Color(meta.color),
+                        ),
+                      ),
+                    ] else
+                      TextSpan(
+                        text: r.status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Color(meta.color),
+                        ),
+                      ),
                     if (r.status != '영업안함' && r.hasCrowdUpdate)
                       TextSpan(
                         text: ' · ${formatUpdateAge(r.updated)}',
@@ -159,8 +172,13 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final hasImage = !_isFallback;
     return GestureDetector(
       onTap: widget.onDetail,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFF9ECA8B), width: 2),
+        ),
+        child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
         child: SizedBox(
           height: 210,
           width: double.infinity,
@@ -245,7 +263,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                             color: Colors.white.withAlpha(150)),
                         children: [
                           TextSpan(
-                            text: r.status,
+                            text: r.status == '웨이팅많음' ? '🔥웨이팅' : r.status,
                             style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white),
@@ -315,6 +333,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

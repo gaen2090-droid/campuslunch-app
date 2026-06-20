@@ -162,7 +162,6 @@ class AppProvider extends ChangeNotifier {
       _hasSupabaseSession && (_userRole == 'admin' || SupabaseService.isAdmin);
 
   StreamSubscription<AuthState>? _authSub;
-  RealtimeChannel? _realtimeChannel;
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
   final Map<String, DateTime> _lastReportTime = {};
   final ProfileRepository _profileRepo = ProfileRepository();
@@ -172,7 +171,6 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSub?.cancel();
-    _unsubscribeRealtime();
     super.dispose();
   }
 
@@ -185,7 +183,8 @@ class AppProvider extends ChangeNotifier {
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
-    _subscribeRealtime();
+    // 실시간 구독 제거: 다른 사용자의 제보로 목록이 계속 재정렬되면 혼란스럽다는
+    // 피드백에 따라, 새로고침(pull-to-refresh) 또는 본인 제보 시에만 갱신한다.
 
     // Supabase 미연결·로드 실패 시에만 로컬 혼잡도 오버라이드 적용
     if (!_supabaseRestaurantsLoaded) {
@@ -257,6 +256,7 @@ class AppProvider extends ChangeNotifier {
       _notificationEnabled = prefs.getBool(_kPush) ?? false;
       _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
       _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
+      await fetchMyReward();
 
       await Future.delayed(const Duration(seconds: 2));
       if (_userRole == 'admin') {
@@ -1123,7 +1123,7 @@ class AppProvider extends ChangeNotifier {
               pos.latitude, pos.longitude,
               restaurant.latitude, restaurant.longitude,
             );
-            if (dist > 150) {
+            if (dist > 50) {
               return '식당 근처에서만 혼잡도를 제보할 수 있어요.';
             }
           }
@@ -1141,19 +1141,25 @@ class AppProvider extends ChangeNotifier {
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
           _lastStampResult = stampResult;
-          await fetchMyReward();
         } else {
           _lastStampResult = StampResult.none;
         }
-        final gen = ++_restaurantRefreshGen;
-        final fetched = await repo.fetchAll();
-        if (gen == _restaurantRefreshGen) {
-          _supabaseRestaurantsLoaded = true;
-          _restaurants = fetched;
+
+        // 제보(RPC)는 이미 커밋됨 — 이후 부수 작업이 실패해도 "제보 실패"로 보이면 안 됨
+        try {
+          if (source == 'user') await fetchMyReward();
+          final gen = ++_restaurantRefreshGen;
+          final fetched = await repo.fetchAll();
+          if (gen == _restaurantRefreshGen) {
+            _supabaseRestaurantsLoaded = true;
+            _restaurants = fetched;
+          }
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove(_kOverrides);
+          await _syncPushNotifications();
+        } catch (e, st) {
+          debugPrint('[Supabase] reportStatus post-processing failed: $e\n$st');
         }
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_kOverrides);
-        await _syncPushNotifications();
         notifyListeners();
         return null;
       } on PostgrestException catch (e) {
@@ -1845,37 +1851,6 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  void _subscribeRealtime() {
-    if (!SupabaseService.isReady) return;
-    _realtimeChannel?.unsubscribe();
-    _realtimeChannel = SupabaseService.client
-        .channel('crowd_realtime')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'crowd_status',
-          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'crowd_reports',
-          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'owner_seat_updates',
-          callback: (_) => _loadRestaurantsFromSupabase().then((_) => notifyListeners()),
-        )
-        .subscribe();
-  }
-
-  void _unsubscribeRealtime() {
-    _realtimeChannel?.unsubscribe();
-    _realtimeChannel = null;
-  }
-
   /// 영업시간 외에는 혼잡도 오버라이드보다 영업안함 우선 (오프라인/시드 전용)
   List<Restaurant> _withOperatingHours(List<Restaurant> list) =>
       list.map(_applyOperatingHours).toList();
@@ -1919,6 +1894,7 @@ class AppProvider extends ChangeNotifier {
     if (repo == null) return;
     try {
       _reward = await repo.fetchMyReward();
+      debugPrint('[Reward] fetched todayStamps=${_reward.todayStamps} totalStamps=${_reward.totalStamps}');
       notifyListeners();
     } catch (e) {
       debugPrint('[Reward] fetchMyReward failed: $e');

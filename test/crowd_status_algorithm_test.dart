@@ -1,210 +1,210 @@
 import 'package:campus_lunch/data/crowd_status_algorithm.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+final _now = DateTime(2026, 6, 1, 12, 0);
+
+/// minutesAgo: _now 기준 몇 분 전 제보인지
+LevelReport _r(int level, int minutesAgo) =>
+    LevelReport(level: level, at: _now.subtract(Duration(minutes: minutesAgo)));
+
 CrowdStatusComputeParams _p({
-  int? ownerLevel,
-  List<int> users = const [],
+  LevelReport? owner,
+  List<LevelReport> users = const [],
   int? current,
-  DateTime? startedAt,
-  DateTime? lastUpdatedAt,
-  DateTime? businessSessionStart,
-  bool ownerJustReported = false,
-  DateTime? now,
 }) {
   return CrowdStatusComputeParams(
-    ownerLevel: ownerLevel,
-    userLevels20: users,
+    ownerLatest: owner,
+    userReports: users,
     currentDisplayLevel: current,
-    statusStartedAt: startedAt,
-    lastUpdatedAt: lastUpdatedAt,
-    businessSessionStart: businessSessionStart,
-    now: now ?? DateTime(2026, 6, 1, 12),
-    ownerJustReported: ownerJustReported,
+    now: _now,
   );
 }
 
 void main() {
-  group('유저 제보만', () {
-    test('기존 상태 없음 + 유저 1명 자리없음 → 자리없음, low', () {
-      final r = computeCrowdStatus(_p(users: [3]));
+  group('레벨 매핑', () {
+    test('4단계가 서로 독립된 값으로 매핑됨', () {
+      expect(crowdStatusToLevel('여유로움'), 1);
+      expect(crowdStatusToLevel('약간혼잡'), 2);
+      expect(crowdStatusToLevel('자리없음'), 3);
+      expect(crowdStatusToLevel('웨이팅많음'), 4);
+      expect(crowdLevelToStatus(1), '여유로움');
+      expect(crowdLevelToStatus(2), '약간혼잡');
+      expect(crowdLevelToStatus(3), '자리없음');
+      expect(crowdLevelToStatus(4), '웨이팅많음');
+    });
+  });
+
+  group('대표 status는 항상 가장 최신 제보를 반영', () {
+    test('유저 제보 1건 → 그 값 그대로', () {
+      final r = computeCrowdStatus(_p(users: [_r(3, 1)]));
       expect(r.displayStatus, '자리없음');
-      expect(r.confidence, 'low');
+    });
+
+    test('기존 상태와 다른 유저 제보 1건 → 댐핑 없이 즉시 반영', () {
+      final r = computeCrowdStatus(_p(users: [_r(3, 1)], current: 1));
+      expect(r.displayStatus, '자리없음');
       expect(r.refreshUpdatedAt, isTrue);
     });
 
-    test('기존 여유 + 유저 1명 자리없음 → 유지', () {
-      final r = computeCrowdStatus(_p(users: [3], current: 1));
-      expect(r.displayStatus, '여유로움');
-      expect(r.refreshUpdatedAt, isFalse);
-    });
-
-    test('기존 없음 + 유저 2명 갈림 → 약간혼잡', () {
-      final r = computeCrowdStatus(_p(users: [1, 3]));
-      expect(r.displayStatus, '약간혼잡');
-    });
-
-    test('기존 여유 + 유저 2명 자리없음 → 약간혼잡', () {
-      final r = computeCrowdStatus(_p(users: [3, 3], current: 1));
-      expect(r.displayStatus, '약간혼잡');
-    });
-
-    test('기존 여유 + 유저 3명(2+1) → 약간혼잡', () {
-      final r = computeCrowdStatus(_p(users: [3, 3, 2], current: 1));
-      expect(r.displayStatus, '약간혼잡');
-    });
-
-    test('기존 여유 + 유저 6명(5+1) → 자리없음', () {
+    test('유저 2건: 5분 전 웨이팅많음, 방금 여유로움 → 대표=여유로움(최신)', () {
       final r = computeCrowdStatus(
-        _p(users: [3, 3, 3, 3, 3, 2], current: 1),
+        _p(users: [_r(4, 5), _r(1, 0)]),
       );
-      expect(r.displayStatus, '자리없음');
-      expect(r.confidence, 'high');
+      expect(r.displayStatus, '여유로움');
+    });
+
+    test('유저 3건: 8분 전 여유로움, 4분 전 자리없음, 방금 약간혼잡 → 대표=약간혼잡', () {
+      final r = computeCrowdStatus(
+        _p(users: [_r(1, 8), _r(3, 4), _r(2, 0)]),
+      );
+      expect(r.displayStatus, '약간혼잡');
+    });
+
+    test('다수결과 무관하게 최신 1건이 다수와 달라도 그대로 반영', () {
+      // 자리없음 5건(오래됨) + 방금 여유로움 1건 → 대표=여유로움
+      final r = computeCrowdStatus(
+        _p(users: [
+          _r(3, 10), _r(3, 9), _r(3, 8), _r(3, 7), _r(3, 6),
+          _r(1, 0),
+        ]),
+      );
+      expect(r.displayStatus, '여유로움');
     });
   });
 
-  group('사장님 제보만', () {
-    test('사장님 여유 → 여유로움', () {
-      final r = computeCrowdStatus(_p(ownerLevel: 1));
-      expect(r.displayStatus, '여유로움');
+  group('쿨다운 없음 — 직전 상태 시작 시각과 무관하게 즉시 반영', () {
+    test('방금 여유로움으로 바뀐 상태에서 웨이팅많음 제보 → 즉시 웨이팅많음', () {
+      final r = computeCrowdStatus(_p(users: [_r(4, 0)], current: 1));
+      expect(r.displayStatus, '웨이팅많음');
     });
 
-    test('사장님 자리없음 → 자리없음', () {
-      final r = computeCrowdStatus(_p(ownerLevel: 3));
-      expect(r.displayStatus, '자리없음');
+    test('방금 웨이팅많음으로 바뀐 상태에서 여유로움 제보 → 즉시 여유로움', () {
+      final r = computeCrowdStatus(_p(users: [_r(1, 0)], current: 4));
+      expect(r.displayStatus, '여유로움');
     });
   });
 
-  group('사장님 + 유저', () {
-    test('같은 상태 → high', () {
-      final r = computeCrowdStatus(_p(ownerLevel: 2, users: [2]));
-      expect(r.displayStatus, '약간혼잡');
-      expect(r.confidence, 'high');
-    });
-
-    test('사장님 여유 + 유저 1명 자리없음 → 유지', () {
-      final r = computeCrowdStatus(_p(ownerLevel: 1, users: [3], current: 1));
-      expect(r.displayStatus, '여유로움');
-      expect(r.refreshUpdatedAt, isFalse);
-    });
-
-    test('사장님 여유 + 유저 2명 자리없음 → 유지', () {
-      final r = computeCrowdStatus(_p(ownerLevel: 1, users: [3, 3], current: 1));
-      expect(r.displayStatus, '여유로움');
-    });
-
-    test('사장님 여유 + 유저 4명 2:2 → 유지', () {
+  group('사장님 vs 유저 — 더 최신인 쪽이 반영', () {
+    test('사장님 3분 전 여유로움(5분 이내) + 유저 1분 전 자리없음 → 사장님 우선 유지', () {
       final r = computeCrowdStatus(
-        _p(ownerLevel: 1, users: [3, 3, 1, 1], current: 1),
+        _p(owner: _r(1, 3), users: [_r(3, 1)]),
       );
       expect(r.displayStatus, '여유로움');
+      expect(r.baseSource, 'owner');
     });
 
-    test('사장님 여유 + 자리없음3 약간1 → 약간혼잡', () {
+    test('사장님 1분 전 여유로움, 유저 5분 전 자리없음 → 여유로움', () {
       final r = computeCrowdStatus(
-        _p(ownerLevel: 1, users: [3, 3, 3, 2], current: 1),
+        _p(owner: _r(1, 1), users: [_r(3, 5)]),
       );
-      expect(r.displayStatus, '약간혼잡');
-      expect(r.baseSource, 'mixed');
+      expect(r.displayStatus, '여유로움');
+      expect(r.baseSource, 'owner');
     });
 
-    test('사장님 여유 + 자리없음5 약간1 → 자리없음', () {
+    test('사장님만 있고 유저 제보 없음 → 사장님 값 반영', () {
+      final r = computeCrowdStatus(_p(owner: _r(3, 2)));
+      expect(r.displayStatus, '자리없음');
+      expect(r.baseSource, 'owner');
+    });
+
+    test('사장님 6분 전(우선권 만료) + 유저 1분 전 자리없음 → 유저 반영', () {
       final r = computeCrowdStatus(
-        _p(ownerLevel: 1, users: [3, 3, 3, 3, 3, 2], current: 1),
+        _p(owner: _r(1, 6), users: [_r(3, 1)]),
       );
       expect(r.displayStatus, '자리없음');
       expect(r.baseSource, 'user');
     });
 
-    test('사장님 자리없음 + 여유3 약간1 → 약간혼잡', () {
+    test('사장님 우선권 경계(정확히 5분) → 아직 우선 적용', () {
       final r = computeCrowdStatus(
-        _p(ownerLevel: 3, users: [1, 1, 1, 2], current: 3),
+        _p(owner: _r(1, 5), users: [_r(3, 1)]),
       );
+      expect(r.displayStatus, '여유로움');
+      expect(r.baseSource, 'owner');
+    });
+  });
+
+  group('confidence — status 결정과 무관, 다수결/최근 일치도로만 산정', () {
+    test('제보가 1건뿐 → low', () {
+      final r = computeCrowdStatus(_p(users: [_r(3, 1)]));
+      expect(r.confidence, 'low');
+      // confidence가 low여도 status는 최신 제보를 그대로 반영
+      expect(r.displayStatus, '자리없음');
+    });
+
+    test('최신 제보와 직전 제보가 같은 레벨 → high', () {
+      final r = computeCrowdStatus(
+        _p(users: [_r(2, 1), _r(2, 0)]),
+      );
+      expect(r.confidence, 'high');
       expect(r.displayStatus, '약간혼잡');
     });
 
-    test('사장님 자리없음 + 여유5 약간1 → 여유로움', () {
+    test('최신 제보와 직전 제보가 크게 다름(차이 2 이상) → low', () {
       final r = computeCrowdStatus(
-        _p(ownerLevel: 3, users: [1, 1, 1, 1, 1, 2], current: 3),
+        _p(users: [_r(1, 1), _r(3, 0)]),
       );
-      expect(r.displayStatus, '여유로움');
+      expect(r.confidence, 'low');
+      expect(r.displayStatus, '자리없음');
+    });
+
+    test('의견이 완전히 갈림(동률) → low (status는 최신 그대로)', () {
+      final r = computeCrowdStatus(
+        _p(users: [_r(1, 1), _r(2, 0)]),
+      );
+      expect(r.confidence, 'low');
+      expect(r.displayStatus, '약간혼잡');
+    });
+
+    test('사장님 최신과 유저 최신이 같은 레벨 → high', () {
+      final r = computeCrowdStatus(
+        _p(owner: _r(2, 3), users: [_r(2, 1)]),
+      );
+      expect(r.confidence, 'high');
+    });
+
+    test('압도적 다수(5건 이상, 80% 이상) → high', () {
+      final r = computeCrowdStatus(
+        _p(users: [
+          _r(3, 5), _r(3, 4), _r(3, 3), _r(3, 2), _r(3, 1), _r(2, 0),
+        ]),
+      );
+      // 최신 제보(약간혼잡)와 직전 제보(자리없음)가 다르므로 차이는 1 → high 분기까지 안 가고
+      // "최신 두 개 불일치 + 차이<2" 케이스: 다수결로 판단 → high
+      expect(r.confidence, 'high');
+      expect(r.displayStatus, '약간혼잡');
     });
   });
 
-  group('최소 유지 10분', () {
-    test('약한 신호 + 10분 미만 → 유지', () {
-      final r = computeCrowdStatus(
-        _p(
-          ownerLevel: 1,
-          users: [3, 3, 3, 2],
-          current: 1,
-          startedAt: DateTime(2026, 6, 1, 11, 55),
-        ),
-      );
-      expect(r.displayStatus, '여유로움');
+  group('웨이팅많음은 자리없음과 별개 단계', () {
+    test('유저 1명 웨이팅많음 → 그대로 웨이팅많음 (자리없음과 합쳐지지 않음)', () {
+      final r = computeCrowdStatus(_p(users: [_r(4, 0)], current: 3));
+      expect(r.displayStatus, '웨이팅많음');
     });
 
-    test('강한 유저 신호 → 즉시 반영', () {
+    test('자리없음 다수 + 웨이팅많음 최신 1건 → 대표는 웨이팅많음(최신)', () {
       final r = computeCrowdStatus(
-        _p(
-          ownerLevel: 1,
-          users: [3, 3, 3, 3, 3, 2],
-          current: 1,
-          startedAt: DateTime(2026, 6, 1, 11, 59),
-        ),
+        _p(users: [_r(3, 5), _r(3, 4), _r(3, 3), _r(4, 0)]),
       );
-      expect(r.displayStatus, '자리없음');
+      expect(r.displayStatus, '웨이팅많음');
     });
 
-    test('사장님 새 제보 → 즉시 반영', () {
-      final r = computeCrowdStatus(
-        _p(
-          ownerLevel: 3,
-          current: 1,
-          startedAt: DateTime(2026, 6, 1, 11, 59),
-          ownerJustReported: true,
-        ),
-      );
-      expect(r.displayStatus, '자리없음');
+    test('사장님 웨이팅많음 제보 → 웨이팅많음 반영', () {
+      final r = computeCrowdStatus(_p(owner: _r(4, 0)));
+      expect(r.displayStatus, '웨이팅많음');
+      expect(r.baseSource, 'owner');
     });
   });
 
-  group('영업 구간 시작', () {
-    test('어제 자리없음 + 새 영업 구간 → 여유로움', () {
-      final r = computeCrowdStatus(
-        _p(
-          current: 3,
-          startedAt: DateTime(2026, 5, 31, 13, 0),
-          lastUpdatedAt: DateTime(2026, 5, 31, 13, 0),
-          businessSessionStart: DateTime(2026, 6, 1, 11, 0),
-          now: DateTime(2026, 6, 1, 12, 0),
-        ),
-      );
-      expect(r.displayStatus, '여유로움');
-      expect(r.refreshUpdatedAt, isTrue);
+  group('계산 대상 제보가 전혀 없음', () {
+    test('직전 표시값 유지', () {
+      final r = computeCrowdStatus(_p(current: 2));
+      expect(r.displayStatus, '약간혼잡');
+      expect(r.refreshUpdatedAt, isFalse);
     });
 
-    test('같은 영업 구간이면 기존 상태 유지', () {
-      final r = computeCrowdStatus(
-        _p(
-          current: 3,
-          startedAt: DateTime(2026, 6, 1, 11, 30),
-          businessSessionStart: DateTime(2026, 6, 1, 11, 0),
-          now: DateTime(2026, 6, 1, 12, 0),
-        ),
-      );
-      expect(r.displayStatus, '자리없음');
-    });
-
-    test('점심→저녁 구간 전환 시 여유로움', () {
-      final r = computeCrowdStatus(
-        _p(
-          current: 3,
-          startedAt: DateTime(2026, 6, 1, 13, 0),
-          lastUpdatedAt: DateTime(2026, 6, 1, 13, 0),
-          businessSessionStart: DateTime(2026, 6, 1, 17, 0),
-          now: DateTime(2026, 6, 1, 18, 0),
-        ),
-      );
+    test('직전 표시값도 없으면 기본값(여유로움)', () {
+      final r = computeCrowdStatus(_p());
       expect(r.displayStatus, '여유로움');
     });
   });

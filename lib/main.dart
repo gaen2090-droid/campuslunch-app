@@ -27,7 +27,10 @@ Future<void> main() async {
   await Env.loadNativeKeyFallback();
 
   await KakaoAuthService.initialize();
-  if (Env.isKakaoMapConfigured) {
+  // kakao_maps_flutter는 Android/iOS 전용 — 웹(flutter run -d chrome)에서는
+  // 네이티브 채널이 없어 MissingPluginException이 던져져 main()이 중단되고
+  // 앱이 흰 화면으로 남는다. 웹에서는 건너뛴다.
+  if (Env.isKakaoMapConfigured && !kIsWeb) {
     await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
     try {
       await MapMarkerIcons.buildStatusStyles();

@@ -8,6 +8,7 @@ import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 import 'detail_screen.dart';
@@ -28,11 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | 'report' | null
   bool _searchActive = false;
-  bool _showBookmarked = false;
   bool _showNearby = false;
   bool? _prevLocationMode;
   String? _lastBannerImpressionId;
   final _searchCtrl = TextEditingController();
+  final _crowdInfoOverlay = OverlayPortalController();
+  final _crowdInfoLink = LayerLink();
 
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
@@ -56,21 +58,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
+  List<Restaurant> _filter(List<Restaurant> all) {
     return all.where((r) {
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
-      final bookmarkOk = !_showBookmarked || bookmarks.contains(r.id);
-      return regionOk && cuisineOk && bookmarkOk;
+      return regionOk && cuisineOk;
     }).toList();
   }
 
   // 섹션별 독립 정렬
   List<Restaurant> _sortSection(List<Restaurant> list, {bool isClosed = false, bool isBusy = false}) {
     final useAlgo = context.read<AppProvider>().useAlgorithmRanking;
-    int pop(Restaurant r) => useAlgo
-        ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
-        : (r.manualRank > 0 ? -r.manualRank : -9999);
+    int pop(Restaurant r) => popularityScore(r, useAlgo);
 
     final sorted = List<Restaurant>.from(list);
     sorted.sort((a, b) {
@@ -78,15 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (_sortBy == '인기순') {
         if (isClosed) return pop(b).compareTo(pop(a));
-        if (isBusy) {
-          final pd = pop(b).compareTo(pop(a));
-          if (pd != 0) return pd;
-          return a.updated.compareTo(b.updated);
-        }
-        // 바로입장가능: 30분 이내 우선 → 인기순 → 최신순
-        final aG = a.updated <= 30 ? 0 : 1;
-        final bG = b.updated <= 30 ? 0 : 1;
-        if (aG != bG) return aG.compareTo(bG);
+        // 바로입장가능/붐비는매장 공통: 인기순 → 최신순
         final pd = pop(b).compareTo(pop(a));
         if (pd != 0) return pd;
         return a.updated.compareTo(b.updated);
@@ -106,14 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
           if (am != bm) return am.compareTo(bm);
           return pop(b).compareTo(pop(a));
         }
-        if (isBusy) {
-          final ud = a.updated.compareTo(b.updated);
-          if (ud != 0) return ud;
-          return pop(b).compareTo(pop(a));
-        }
-        // 바로입장가능: 여유로움→약간혼잡 → 최신순 → 인기순
-        const pri = {'여유로움': 0, '약간혼잡': 1};
-        final sd = (pri[a.status] ?? 9) - (pri[b.status] ?? 9);
+        // 바로입장가능: 여유로움→약간혼잡 / 붐비는매장: 자리없음→웨이팅많음 → 최신순 → 인기순
+        final sd = isBusy
+            ? busySortStatusPriority(a.status) - busySortStatusPriority(b.status)
+            : availableSortStatusPriority(a.status) - availableSortStatusPriority(b.status);
         if (sd != 0) return sd;
         final ud = a.updated.compareTo(b.updated);
         if (ud != 0) return ud;
@@ -128,27 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return pop(b).compareTo(pop(a));
       }
 
-      if (isBusy) {
-        final aG = a.updated <= 60 ? 0 : 1;
-        final bG = b.updated <= 60 ? 0 : 1;
-        if (aG != bG) return aG.compareTo(bG);
-        final pd = pop(b).compareTo(pop(a));
-        if (pd != 0) return pd;
-        return a.updated.compareTo(b.updated);
-      }
-
-      // 바로입장가능 최신순
-      int availGroup(Restaurant r) {
-        final isRelaxed = r.status == '여유로움';
-        final u = r.updated;
-        if (isRelaxed && u <= 15) return 0;
-        if (isRelaxed && u <= 30) return 1;
-        if (!isRelaxed && u <= 15) return 2;
-        if (!isRelaxed && u <= 30) return 3;
-        if (isRelaxed) return 4;
-        return 5;
-      }
-      final ag = availGroup(a), bg = availGroup(b);
+      final ag = isBusy ? busyLatestGroup(a) : availableLatestGroup(a);
+      final bg = isBusy ? busyLatestGroup(b) : availableLatestGroup(b);
       if (ag != bg) return ag.compareTo(bg);
       final updatedD = a.updated.compareTo(b.updated);
       if (updatedD != 0) return updatedD;
@@ -205,14 +173,17 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final provider = context.watch<AppProvider>();
     final locationMode = provider.locationMode;
     final all = provider.restaurants;
-    final filtered = _filter(all, provider.bookmarks);
+    final filtered = _filter(all);
     final searchResults = _search(all, _searchCtrl.text);
+
+    // 붐비는 매장(자리없음/웨이팅많음 — 여유로움/약간혼잡이 "바로 입장 가능"에 합쳐지는 것과 동일한 방식)
+    bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
 
     // 제보 있는 영업 중 매장과 제보 없는 매장 분리
     final openWithReport = filtered.where((r) =>
-        r.status != '영업안함' && r.status != '자리없음' && r.hasCrowdUpdate).toList();
+        r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate).toList();
     final needsReport = filtered.where((r) =>
-        r.status != '영업안함' && r.status != '자리없음' && !r.hasCrowdUpdate).toList();
+        r.status != '영업안함' && !isBusyStatus(r) && !r.hasCrowdUpdate).toList();
 
     final availableSorted = _sortSection(openWithReport);
     // 추천 배너는 항상 최신순 기준 알고리즘으로 고정
@@ -221,7 +192,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         ? availableSorted
         : availableSorted.where((r) => r.id != recommended.id).toList();
     final busy = _sortSection(
-      filtered.where((r) => r.status == '자리없음').toList(),
+      filtered.where(isBusyStatus).toList(),
       isBusy: true,
     );
     // 영업안함은 필터 무관하게 항상 전체 표시
@@ -253,6 +224,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20,
               _openDropdown != null ? 0 : 12),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 검색 바
               Row(
@@ -333,90 +305,60 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               if (!_searchActive) ...[
                 const SizedBox(height: 10),
                 // 필터 칩
-                Row(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                        child: Row(
-                          children: [
-                            _FilterChip(
-                              label: _sortBy,
-                              active: _sortBy != '최신순',
-                              open: _openDropdown == 'sort',
-                              onTap: () => setState(() =>
-                                  _openDropdown = _openDropdown == 'sort' ? null : 'sort'),
-                            ),
-                            const SizedBox(width: 8),
-                            _FilterChip(
-                              label: _isAll(_regions) || _regions.isEmpty
-                                  ? '구역'
-                                  : _regions.length == 1
-                                      ? _regions.first
-                                      : '${_regions.first} 외 ${_regions.length - 1}',
-                              active: !_isAll(_regions) && _regions.isNotEmpty,
-                              open: _openDropdown == 'region',
-                              onTap: () => setState(() =>
-                                  _openDropdown = _openDropdown == 'region' ? null : 'region'),
-                            ),
-                            const SizedBox(width: 8),
-                            _FilterChip(
-                              label: _isAll(_cuisines) || _cuisines.isEmpty
-                                  ? '음식종류'
-                                  : _cuisines.length == 1
-                                      ? _cuisines.first
-                                      : '${_cuisines.first} 외 ${_cuisines.length - 1}',
-                              active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
-                              open: _openDropdown == 'cuisine',
-                              onTap: () => setState(() =>
-                                  _openDropdown = _openDropdown == 'cuisine' ? null : 'cuisine'),
-                            ),
-                            const SizedBox(width: 8),
-                            _FilterChip(
-                              label: _reportFilter == _allLabel
-                                  ? '스탬프'
-                                  : _reportOptLabels[_reportFilter]!,
-                              active: _reportFilter != _allLabel,
-                              open: _openDropdown == 'report',
-                              onTap: () => setState(() =>
-                                  _openDropdown = _openDropdown == 'report' ? null : 'report'),
-                              restingBg: const Color(0xFFF3F8F0),
-                              restingBorder: const Color(0xFFBFE0B0),
-                              restingText: const Color(0xFF4C9C2A),
-                              leadingIcon: _reportFilter == _allLabel
-                                  ? Icons.stars_rounded
-                                  : null,
-                            ),
-                          ],
-                        ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: _sortBy,
+                        active: _sortBy != '최신순',
+                        open: _openDropdown == 'sort',
+                        onTap: () => setState(() =>
+                            _openDropdown = _openDropdown == 'sort' ? null : 'sort'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => setState(() => _showBookmarked = !_showBookmarked),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: _showBookmarked
-                              ? const Color(0xFF9ECA8B)
-                              : Colors.white,
-                          shape: BoxShape.circle,
-                          border: _showBookmarked
-                              ? null
-                              : Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Icon(
-                          _showBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                          size: 16,
-                          color: _showBookmarked
-                              ? const Color(0xFF111827)
-                              : const Color(0xFF6B7280),
-                        ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: _isAll(_regions) || _regions.isEmpty
+                            ? '구역'
+                            : _regions.length == 1
+                                ? _regions.first
+                                : '${_regions.first} 외 ${_regions.length - 1}',
+                        active: !_isAll(_regions) && _regions.isNotEmpty,
+                        open: _openDropdown == 'region',
+                        onTap: () => setState(() =>
+                            _openDropdown = _openDropdown == 'region' ? null : 'region'),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: _isAll(_cuisines) || _cuisines.isEmpty
+                            ? '음식종류'
+                            : _cuisines.length == 1
+                                ? _cuisines.first
+                                : '${_cuisines.first} 외 ${_cuisines.length - 1}',
+                        active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
+                        open: _openDropdown == 'cuisine',
+                        onTap: () => setState(() =>
+                            _openDropdown = _openDropdown == 'cuisine' ? null : 'cuisine'),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: _reportFilter == _allLabel
+                            ? '스탬프'
+                            : _reportOptLabels[_reportFilter]!,
+                        active: _reportFilter != _allLabel,
+                        open: _openDropdown == 'report',
+                        onTap: () => setState(() =>
+                            _openDropdown = _openDropdown == 'report' ? null : 'report'),
+                        restingBg: const Color(0xFFF3F8F0),
+                        restingBorder: const Color(0xFFBFE0B0),
+                        restingText: const Color(0xFF4C9C2A),
+                        leadingIcon: _reportFilter == _allLabel
+                            ? Icons.stars_rounded
+                            : null,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -435,7 +377,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 border: Border.all(color: const Color(0xFFE5E7EB)),
                 boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8)],
               ),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
               child: _openDropdown == 'sort'
                   ? _DropdownGrid(
                       items: _sortOpts,
@@ -591,7 +533,61 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     );
   }
 
+  Widget _sectionHeader(String label, Color dotColor, Color textColor, double topPad, bool isFirst) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, topPad, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8, height: 8,
+                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: textColor)),
+            ],
+          ),
+          if (isFirst)
+            CompositedTransformTarget(
+              link: _crowdInfoLink,
+              child: OverlayPortal(
+                controller: _crowdInfoOverlay,
+                overlayChildBuilder: (context) => _CrowdLevelInfoPopup(
+                  link: _crowdInfoLink,
+                  onDismiss: _crowdInfoOverlay.hide,
+                ),
+                child: GestureDetector(
+                  onTap: _crowdInfoOverlay.toggle,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                      SizedBox(width: 4),
+                      Text('혼잡도 기준',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF9CA3AF))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> needsReport, List<Restaurant> busy, List<Restaurant> closed) {
+    final hasAvailable = recommended != null || available.isNotEmpty;
+    final hasBusy = busy.isNotEmpty;
+    final hasNeedsReport = needsReport.isNotEmpty;
+    final hasClosed = closed.isNotEmpty;
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
       child: RefreshIndicator(
@@ -601,25 +597,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
         children: [
           // 바로 입장 가능
-          if (recommended != null || available.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF4C9C2A), shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('바로 입장 가능',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827))),
-                ],
-              ),
-            ),
+          if (hasAvailable) ...[
+            _sectionHeader('바로 입장 가능', const Color(0xFF4C9C2A), const Color(0xFF111827), 12, true),
             if (recommended != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -636,26 +615,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           ],
 
           // 붐비는 매장
-          if (busy.isNotEmpty) ...[
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  20, (recommended != null || available.isNotEmpty) ? 8 : 12, 20, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444), shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('붐비는 매장',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827))),
-                ],
-              ),
-            ),
+          if (hasBusy) ...[
+            _sectionHeader('붐비는 매장', const Color(0xFFEF4444), const Color(0xFF111827),
+                hasAvailable ? 8 : 12, !hasAvailable),
             ...busy.map((r) => Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                   child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
@@ -663,26 +625,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           ],
 
           // 제보가 필요해요
-          if (needsReport.isNotEmpty) ...[
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty) ? 8 : 12, 20, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF111827), shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('혼잡도를 알려주세요',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827))),
-                ],
-              ),
-            ),
+          if (hasNeedsReport) ...[
+            _sectionHeader('혼잡도를 알려주세요', const Color(0xFF111827), const Color(0xFF111827),
+                (hasAvailable || hasBusy) ? 8 : 12, !hasAvailable && !hasBusy),
             ...needsReport.map((r) => Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                   child: _NeedsReportCard(restaurant: r, onTap: () => _openDetail(r)),
@@ -690,26 +635,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           ],
 
           // 영업종료
-          if (closed.isNotEmpty) ...[
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  20, (recommended != null || available.isNotEmpty || busy.isNotEmpty || needsReport.isNotEmpty) ? 8 : 12, 20, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF9CA3AF), shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('영업종료',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF9CA3AF))),
-                ],
-              ),
-            ),
+          if (hasClosed) ...[
+            _sectionHeader('영업종료', const Color(0xFF9CA3AF), const Color(0xFF9CA3AF),
+                (hasAvailable || hasBusy || hasNeedsReport) ? 8 : 12,
+                !hasAvailable && !hasBusy && !hasNeedsReport),
             ...closed.map((r) => Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                   child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
@@ -736,6 +665,157 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             ),
         ],
         ),
+      ),
+    );
+  }
+}
+
+class _CrowdLevelInfoPopup extends StatelessWidget {
+  final LayerLink link;
+  final VoidCallback onDismiss;
+  const _CrowdLevelInfoPopup({required this.link, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      _CrowdLevelInfo(status: '여유로움', description: '바로 앉을 수 있어요'),
+      _CrowdLevelInfo(status: '약간혼잡', description: '빈자리 조금 있어요'),
+      _CrowdLevelInfo(status: '자리없음', description: '조금 기다려야 해요'),
+      _CrowdLevelInfo(status: '웨이팅많음', description: '웨이팅이 많아요'),
+    ];
+
+    return Stack(
+      children: [
+        // 바깥 영역 탭하면 닫힘
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: onDismiss,
+          ),
+        ),
+        CompositedTransformFollower(
+          link: link,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.bottomRight,
+          followerAnchor: Alignment.topRight,
+          offset: const Offset(0, 8),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Container(
+              width: 230,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      '피크타임엔 매장 상황이 빠르게 바뀔 수 있어요.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ),
+                  for (var idx = 0; idx < items.length; idx++)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: idx == items.length - 1 ? 0 : 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _StatusBadgePreview(status: items[idx].status),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                items[idx].description,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CrowdLevelInfo {
+  final String status;
+  final String description;
+
+  const _CrowdLevelInfo({
+    required this.status,
+    required this.description,
+  });
+}
+
+/// 홈화면 매장 카드 뱃지와 동일한 모양 (업데이트 시간 표시는 제외)
+class _StatusBadgePreview extends StatelessWidget {
+  final String status;
+  const _StatusBadgePreview({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = crowdStatusMeta(status);
+    final isHotWaiting = status == '웨이팅많음';
+    return Container(
+      width: 76,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Color(meta.bgColor),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: isHotWaiting
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 9)),
+                  const SizedBox(width: 2),
+                  Text(
+                    '웨이팅',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(meta.color),
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                status,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(meta.color),
+                ),
+              ),
       ),
     );
   }
@@ -924,6 +1004,7 @@ class _DropdownGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const spacing = 6.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -931,7 +1012,7 @@ class _DropdownGrid extends StatelessWidget {
           GestureDetector(
             onTap: onReset,
             child: const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(top: 4, right: 4, bottom: 8),
               child: Text('초기화',
                   style: TextStyle(
                       fontSize: 11,
@@ -939,44 +1020,60 @@ class _DropdownGrid extends StatelessWidget {
                       color: Color(0xFF5E8C4A))),
             ),
           ),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4),
-          childAspectRatio: forceFourColumns ? 2.2 : (items.length <= 3 ? 2.8 : 2.2),
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-          children: items.map((opt) {
-            final on = selected.contains(opt);
-            return GestureDetector(
-              onTap: () => onSelect(opt),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        labelFor != null ? labelFor!(opt) : opt,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF5E8C4A) : const Color(0xFF374151),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cols = forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4);
+            final itemWidth =
+                (constraints.maxWidth - spacing * (cols - 1)) / cols;
+
+            return SizedBox(
+              width: constraints.maxWidth,
+              child: Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: items.map((opt) {
+                  final on = selected.contains(opt);
+                  return SizedBox(
+                    width: itemWidth,
+                    child: GestureDetector(
+                      onTap: () => onSelect(opt),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                labelFor != null ? labelFor!(opt) : opt,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: on
+                                      ? const Color(0xFF5E8C4A)
+                                      : const Color(0xFF374151),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (on)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(Icons.check,
+                                    size: 14, color: Color(0xFF5E8C4A)),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                    if (on)
-                      const Icon(Icons.check, size: 14, color: Color(0xFF5E8C4A)),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
             );
-          }).toList(),
+          },
         ),
       ],
     );

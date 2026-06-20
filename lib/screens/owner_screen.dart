@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_verify_sheet.dart';
+import '../widgets/report_sheet.dart';
 
 class OwnerScreen extends StatefulWidget {
   const OwnerScreen({super.key});
@@ -28,32 +29,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
     super.dispose();
   }
 
-  static const _opts = [
-    _StatusOpt(
-      key: '여유로움',
-      dotColor: Color(0xFF4C9C2A),
-      activeBg: Color(0xFFF3F8F0),
-      activeRing: Color(0xFFBFE0B0),
-      activeText: Color(0xFF4C9C2A),
-      activeLabelBg: Color(0xFF4C9C2A),
-    ),
-    _StatusOpt(
-      key: '약간혼잡',
-      dotColor: Color(0xFFF59E0B),
-      activeBg: Color(0xFFFFFBEB),
-      activeRing: Color(0xFFFCD34D),
-      activeText: Color(0xFFD97706),
-      activeLabelBg: Color(0xFFF59E0B),
-    ),
-    _StatusOpt(
-      key: '자리없음',
-      dotColor: Color(0xFFEF4444),
-      activeBg: Color(0xFFFFF5F5),
-      activeRing: Color(0xFFFCA5A5),
-      activeText: Color(0xFFEF4444),
-      activeLabelBg: Color(0xFFEF4444),
-    ),
-  ];
+  // 유저 제보 시트(report_sheet.dart)의 reportOptions를 그대로 사용 — 두 화면이 항상 동일하게 유지됨.
+  static const _opts = reportOptions;
 
   void _showToast(String msg) {
     setState(() => _toast = msg);
@@ -350,7 +327,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                     child: Column(
                       children: [
                         ..._opts.map((opt) {
-                          final selected = current == opt.key;
+                          final selected = current == opt.status;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: GestureDetector(
@@ -359,7 +336,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 setState(() => _statusSubmitting = true);
                                 final err = await provider.reportStatus(
                                   restaurant.id,
-                                  opt.key,
+                                  opt.status,
                                 );
                                 if (!context.mounted) return;
                                 setState(() => _statusSubmitting = false);
@@ -368,17 +345,17 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                   return;
                                 }
                                 _showToast(
-                                    '\'${restaurant.name}\' 혼잡도를 \'${opt.key}\'으로 업데이트했어요');
+                                    '\'${restaurant.name}\' 혼잡도를 \'${opt.status}\'으로 업데이트했어요');
                               },
                               child: AnimatedContainer(
                                 height: 72,
                                 duration: const Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
-                                  color: selected ? opt.activeBg : Colors.white,
+                                  color: selected ? opt.bgColor : Colors.white,
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
                                     color: selected
-                                        ? opt.activeRing
+                                        ? opt.borderColor
                                         : const Color(0xFFE5E7EB),
                                     width: selected ? 2 : 1,
                                   ),
@@ -396,19 +373,19 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                             width: 20,
                                             height: 20,
                                             decoration: BoxDecoration(
-                                              color: opt.dotColor,
+                                              color: opt.textColor,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
                                           const SizedBox(width: 16),
                                           Text(
-                                            opt.key,
+                                            opt.label,
                                             style: TextStyle(
                                               fontSize: 22,
                                               fontWeight: FontWeight.w900,
                                               letterSpacing: -0.78,
                                               color: selected
-                                                  ? opt.activeText
+                                                  ? opt.textColor
                                                   : const Color(0xFF374151),
                                             ),
                                           ),
@@ -419,7 +396,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 12, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: opt.activeLabelBg,
+                                            color: opt.textColor,
                                             borderRadius:
                                                 BorderRadius.circular(20),
                                           ),
@@ -802,20 +779,3 @@ class _OwnerScreenState extends State<OwnerScreen> {
   }
 }
 
-class _StatusOpt {
-  final String key;
-  final Color dotColor;
-  final Color activeBg;
-  final Color activeRing;
-  final Color activeText;
-  final Color activeLabelBg;
-
-  const _StatusOpt({
-    required this.key,
-    required this.dotColor,
-    required this.activeBg,
-    required this.activeRing,
-    required this.activeText,
-    required this.activeLabelBg,
-  });
-}
