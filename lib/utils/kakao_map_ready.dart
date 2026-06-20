@@ -10,7 +10,7 @@ import 'map_marker_icons.dart';
 Future<void> runWhenKakaoMapReady(
   KakaoMapController controller,
   Future<void> Function() action, {
-  Duration maxWait = const Duration(seconds: 12),
+  Duration maxWait = const Duration(seconds: 15),
 }) async {
   final deadline = DateTime.now().add(maxWait);
   Object? lastError;
@@ -21,12 +21,12 @@ Future<void> runWhenKakaoMapReady(
       return;
     } on AssertionError catch (e) {
       lastError = e;
-      await Future.delayed(const Duration(milliseconds: 80));
+      await Future.delayed(const Duration(milliseconds: 100));
     } on PlatformException catch (e) {
       lastError = e;
       final msg = e.message ?? '';
       if (e.code == 'E000' || msg.contains('MapView not found')) {
-        await Future.delayed(const Duration(milliseconds: 80));
+        await Future.delayed(const Duration(milliseconds: 100));
         continue;
       }
       rethrow;
@@ -43,31 +43,19 @@ const _markerTextStyle = MarkerTextStyle(
   strokeColorArgb: 0xFFFFFFFF,
 );
 
-/// 마커 레이어 + 커스텀 핀 스타일
+/// 마커 레이어 + 커스텀 핀 스타일 (viewId별 상태)
 class KakaoMarkerLayer {
-  static bool customStylesAvailable = false;
+  static final Map<int, bool> _stylesReadyByViewId = {};
   static final Set<int> _layerReadyViewIds = {};
 
+  static bool isReady(KakaoMapController controller) =>
+      _stylesReadyByViewId[controller.viewId] == true;
+
   static Future<void> ensure(KakaoMapController controller) async {
-    customStylesAvailable = false;
-
-    await _registerStyles(controller);
-
     final viewId = controller.viewId;
-    if (_layerReadyViewIds.contains(viewId)) return;
 
-    await controller.addMarkerLayer(
-      layerId: KakaoMapController.defaultLabelLayerId,
-      zOrder: 1000,
-      clickable: true,
-    );
-    _layerReadyViewIds.add(viewId);
-  }
-
-  static Future<void> _registerStyles(KakaoMapController controller) async {
-    try {
+    if (_stylesReadyByViewId[viewId] != true) {
       final bundles = MapMarkerIcons.buildStatusStyles();
-
       await controller.registerMarkerStyles(
         styles: bundles
             .map(
@@ -84,18 +72,34 @@ class KakaoMarkerLayer {
             )
             .toList(),
       );
-      customStylesAvailable = true;
+      _stylesReadyByViewId[viewId] = true;
       debugPrint(
-        '[KakaoMarkerLayer] custom pin styles registered (${bundles.length})',
+        '[KakaoMarkerLayer] styles registered viewId=$viewId (${bundles.length})',
       );
-    } catch (e, st) {
-      debugPrint('[KakaoMarkerLayer] style registration failed: $e\n$st');
     }
+
+    if (_layerReadyViewIds.contains(viewId)) return;
+
+    await controller.addMarkerLayer(
+      layerId: KakaoMapController.defaultLabelLayerId,
+      zOrder: 1000,
+      clickable: true,
+    );
+    _layerReadyViewIds.add(viewId);
   }
 
-  static String? styleIdOrNull(String styleId) =>
-      customStylesAvailable ? styleId : null;
+  static String? styleIdOrNull(KakaoMapController controller, String styleId) =>
+      isReady(controller) ? styleId : null;
 }
 
 Future<void> ensureKakaoMarkerLayer(KakaoMapController controller) =>
     KakaoMarkerLayer.ensure(controller);
+
+Future<void> removeMarkerQuietly(
+  KakaoMapController controller, {
+  required String id,
+}) async {
+  try {
+    await controller.removeMarker(id: id);
+  } catch (_) {}
+}

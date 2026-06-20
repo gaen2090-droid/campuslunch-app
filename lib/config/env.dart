@@ -27,9 +27,13 @@ class Env {
 
   static bool get isKakaoLocalConfigured => kakaoRestApiKey.isNotEmpty;
 
-  /// 카카오 모빌리티 제휴 도보 길찾기 service 이름 (설정 시 도보 API 우선)
+  /// 카카오 모빌리티 제휴 도보 길찾기 service 이름 (레거시 Kakao API용)
   static String get kakaoMobilityService =>
       dotenv.env['KAKAO_MOBILITY_SERVICE']?.trim() ?? '';
+
+  /// OSRM 서버 URL (미설정 시 공용 demo 서버). 예: https://router.project-osrm.org
+  static String get osrmBaseUrl =>
+      dotenv.env['OSRM_BASE_URL']?.trim() ?? '';
 
   static bool get isKakaoMapConfigured => kakaoNativeAppKey.isNotEmpty;
 

@@ -27,6 +27,7 @@ import '../services/supabase_service.dart';
 import '../services/push_notification_service.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/gifticon_csv_parser.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
@@ -1972,69 +1973,11 @@ class AppProvider extends ChangeNotifier {
     final repo = _rewardRepo;
     if (repo == null) return (0, '서버에 연결할 수 없어요.');
 
-    final lines = csvText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-    if (lines.length < 2) return (0, 'CSV에 데이터 행이 없어요.');
+    final parsed = GifticonCsvParser.parse(csvText);
+    if (parsed.error != null) return (0, parsed.error);
 
-    final header = _parseCsvLine(lines.first).map((h) => h.toLowerCase()).toList();
-    int idx(String name) => header.indexOf(name);
-
-    final brandIdx = idx('brand');
-    final productIdx = idx('product_name');
-    final imageIdx = idx('image_url');
-    if (brandIdx < 0 || productIdx < 0 || imageIdx < 0) {
-      return (0, 'CSV 헤더: brand, product_name, image_url 필수');
-    }
-    final expiresIdx = idx('expires_at');
-    final codeIdx = idx('coupon_code');
-
-    final rows = <Map<String, dynamic>>[];
-    for (var i = 1; i < lines.length; i++) {
-      final cols = _parseCsvLine(lines[i]);
-      if (cols.isEmpty) continue;
-      String cell(int index) =>
-          index >= 0 && index < cols.length ? cols[index].trim() : '';
-
-      final brand = cell(brandIdx);
-      final product = cell(productIdx);
-      final imageUrl = cell(imageIdx);
-      if (brand.isEmpty || product.isEmpty || imageUrl.isEmpty) continue;
-
-      rows.add({
-        'brand': brand,
-        'product_name': product,
-        'image_url': imageUrl,
-        if (expiresIdx >= 0 && cell(expiresIdx).isNotEmpty)
-          'expires_at': cell(expiresIdx),
-        if (codeIdx >= 0 && cell(codeIdx).isNotEmpty)
-          'coupon_code': cell(codeIdx),
-      });
-    }
-
-    if (rows.isEmpty) return (0, '유효한 CSV 행이 없어요.');
-
-    final result = await repo.adminBulkRegisterGifticons(rows);
+    final result = await repo.adminBulkRegisterGifticons(parsed.rows);
     if (result.$2 == null) await adminFetchGifticons();
     return result;
-  }
-
-  List<String> _parseCsvLine(String line) {
-    final out = <String>[];
-    final buf = StringBuffer();
-    var inQuotes = false;
-    for (var i = 0; i < line.length; i++) {
-      final ch = line[i];
-      if (ch == '"') {
-        inQuotes = !inQuotes;
-        continue;
-      }
-      if (ch == ',' && !inQuotes) {
-        out.add(buf.toString());
-        buf.clear();
-        continue;
-      }
-      buf.write(ch);
-    }
-    out.add(buf.toString());
-    return out;
   }
 }

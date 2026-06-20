@@ -6,7 +6,6 @@ import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import '../models/map_lat_lng.dart';
 
 /// 카카오맵 위에 도보 경로 polyline을 그리는 오버레이.
-/// kakao_maps_flutter에 RouteLine API가 없어 CustomPaint + toScreenPoint로 구현.
 class RoutePolylineOverlay extends StatefulWidget {
   final KakaoMapController? controller;
   final List<MapLatLng> points;
@@ -31,6 +30,7 @@ class _RoutePolylineOverlayState extends State<RoutePolylineOverlay> {
   StreamSubscription? _cameraSub;
   List<Offset>? _screenPoints;
   int _generation = 0;
+  Timer? _retryTimer;
 
   @override
   void initState() {
@@ -50,15 +50,22 @@ class _RoutePolylineOverlayState extends State<RoutePolylineOverlay> {
   @override
   void dispose() {
     _cameraSub?.cancel();
+    _retryTimer?.cancel();
     super.dispose();
   }
 
   void _attach(KakaoMapController? controller, List<MapLatLng> points) {
     _cameraSub?.cancel();
+    _retryTimer?.cancel();
     _cameraSub = controller?.onCameraMoveEndStream.listen((_) {
       _refreshPoints();
     });
     _refreshPoints();
+    _retryTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      if (_screenPoints == null || (_screenPoints?.length ?? 0) < 2) {
+        _refreshPoints();
+      }
+    });
   }
 
   List<MapLatLng> _samplePoints(List<MapLatLng> points) {
@@ -103,6 +110,10 @@ class _RoutePolylineOverlayState extends State<RoutePolylineOverlay> {
 
     if (!mounted || gen != _generation) return;
     setState(() => _screenPoints = offsets);
+    if (offsets.length >= 2) {
+      _retryTimer?.cancel();
+      _retryTimer = null;
+    }
   }
 
   @override

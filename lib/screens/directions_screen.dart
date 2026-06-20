@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -7,14 +8,13 @@ import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import '../config/env.dart';
 import '../models/map_lat_lng.dart';
 import '../models/restaurant.dart';
-import '../services/kakao_directions_service.dart';
+import '../models/route_summary.dart';
+import '../services/osrm_directions_service.dart';
 import '../utils/kakao_map_launcher.dart';
 import '../utils/kakao_map_ready.dart';
-import '../utils/map_camera_helper.dart';
-import '../utils/map_marker_icons.dart';
-import '../widgets/route_polyline_overlay.dart';
+import '../utils/kakao_route_line.dart';
 
-/// 앱 내 카카오맵 길찾기 (모빌리티 API 도보 경로 + polyline)
+/// OSRM 도보 경로 + 카카오맵 SDK (polyline은 네이티브 Shape API)
 class DirectionsScreen extends StatefulWidget {
   final Restaurant restaurant;
 
@@ -26,11 +26,11 @@ class DirectionsScreen extends StatefulWidget {
 
 class _DirectionsScreenState extends State<DirectionsScreen> {
   KakaoMapController? _controller;
+  bool _mapReady = false;
   RouteSummary? _route;
   MapLatLng? _origin;
   String? _error;
-  bool _loading = true;
-  bool _mapReady = false;
+  bool _loadingRoute = true;
   bool _isEstimatedRoute = false;
 
   MapLatLng get _destination => MapLatLng(
@@ -41,27 +41,29 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRoute();
+    unawaited(_loadRoute());
+  }
+
+  @override
+  void dispose() {
+    final controller = _controller;
+    if (controller != null) {
+      unawaited(KakaoRouteLine.clear(controller));
+      unawaited(removeMarkerQuietly(controller, id: 'route_origin'));
+      unawaited(removeMarkerQuietly(controller, id: 'route_destination'));
+    }
+    super.dispose();
   }
 
   Future<void> _loadRoute() async {
     setState(() {
-      _loading = true;
+      _loadingRoute = true;
       _error = null;
-      _mapReady = false;
     });
-
-    if (!Env.isKakaoLocalConfigured) {
-      setState(() {
-        _loading = false;
-        _error = 'KAKAO_REST_API_KEY가 설정되지 않았어요.';
-      });
-      return;
-    }
 
     if (!widget.restaurant.hasMapLocation) {
       setState(() {
-        _loading = false;
+        _loadingRoute = false;
         _error = '매장 위치 정보가 없어요.';
       });
       return;
@@ -81,14 +83,14 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
     if (origin == null) {
       setState(() {
-        _loading = false;
+        _loadingRoute = false;
         _error = '현재 위치를 확인할 수 없어요.\n위치 권한을 켜고 다시 시도해주세요.';
       });
       return;
     }
 
     final start = origin;
-    final response = await KakaoDirectionsService.fetchWalkingRoute(
+    final response = await OsrmDirectionsService.fetchWalkingRoute(
       origin: start,
       destination: _destination,
     );
@@ -97,30 +99,39 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
     if (response.isOk) {
       setState(() {
-        _loading = false;
+        _loadingRoute = false;
         _origin = start;
         _route = response.route;
         _isEstimatedRoute = false;
       });
-      _trySetupMap();
-      return;
+    } else {
+      debugPrint(
+        '[Directions] OSRM failed: ${response.apiStatus} ${response.errorMessage}',
+      );
+      setState(() {
+        _loadingRoute = false;
+        _origin = start;
+        _route = estimateStraightWalkingRoute(
+          origin: start,
+          destination: _destination,
+        );
+        _isEstimatedRoute = true;
+      });
     }
 
-    setState(() {
-      _loading = false;
-      _origin = start;
-      _route = KakaoDirectionsService.estimateStraightWalkingRoute(
-        origin: start,
-        destination: _destination,
-      );
-      _isEstimatedRoute = true;
-    });
-    _trySetupMap();
+    if (_mapReady) {
+      unawaited(_setupMap());
+    }
   }
 
-  void _trySetupMap() {
-    if (_controller == null || _origin == null || _route == null) return;
-    unawaited(_setupMap());
+  Future<void> _onMapCreated(KakaoMapController controller) async {
+    _controller = controller;
+    await runWhenKakaoMapReady(controller, () async {
+      await ensureKakaoMarkerLayer(controller);
+      if (!mounted) return;
+      setState(() => _mapReady = true);
+      await _setupMap();
+    });
   }
 
   Future<void> _setupMap() async {
@@ -129,50 +140,98 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
     final route = _route;
     if (controller == null || origin == null || route == null) return;
 
-    await runWhenKakaoMapReady(controller, () async {
-      await ensureKakaoMarkerLayer(controller);
+    await KakaoRouteLine.clear(controller);
+    await removeMarkerQuietly(controller, id: 'route_origin');
+    await removeMarkerQuietly(controller, id: 'route_destination');
 
-      await controller.removeMarker(id: 'destination');
-      await controller.removeMarker(id: 'origin');
+    final lineColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF4C9C2A;
+    final borderColor = _isEstimatedRoute ? 0xFF6B7280 : 0xFF2D6A1E;
 
-      await controller.addMarker(
-        markerOption: MarkerOption(
-          id: 'destination',
-          latLng: LatLng(
-            latitude: _destination.latitude,
-            longitude: _destination.longitude,
-          ),
-          styleId: KakaoMarkerLayer.styleIdOrNull(
-            MapMarkerIcons.styleIdForStatus('자리없음'),
-          ),
-          rank: 2,
-          text: widget.restaurant.name,
+    final drawn = await KakaoRouteLine.set(
+      controller,
+      points: route.points,
+      color: lineColor,
+      borderColor: borderColor,
+    );
+    if (!drawn) {
+      debugPrint('[Directions] native route polyline failed');
+    }
+
+    await controller.addMarker(
+      markerOption: MarkerOption(
+        id: 'route_origin',
+        latLng: LatLng(latitude: origin.latitude, longitude: origin.longitude),
+        styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_my_location'),
+        rank: 2,
+        text: '내 위치',
+      ),
+    );
+    await controller.addMarker(
+      markerOption: MarkerOption(
+        id: 'route_destination',
+        latLng: LatLng(
+          latitude: _destination.latitude,
+          longitude: _destination.longitude,
         ),
-      );
-      await controller.addMarker(
-        markerOption: MarkerOption(
-          id: 'origin',
-          latLng: LatLng(
-            latitude: origin.latitude,
-            longitude: origin.longitude,
-          ),
-          styleId: KakaoMarkerLayer.styleIdOrNull('pin_my_location'),
-          rank: 2,
-          text: '내 위치',
-        ),
-      );
+        styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_destination'),
+        rank: 2,
+        text: widget.restaurant.name,
+      ),
+    );
 
-      await MapCameraHelper.fitRoute(controller, route.points);
+    await _fitCameraToRoute(controller, route.points);
+  }
 
-      if (!mounted) return;
-      setState(() => _mapReady = true);
-    });
+  Future<void> _fitCameraToRoute(
+    KakaoMapController controller,
+    List<MapLatLng> points,
+  ) async {
+    if (points.isEmpty) return;
+
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (final p in points) {
+      minLat = math.min(minLat, p.latitude);
+      maxLat = math.max(maxLat, p.latitude);
+      minLng = math.min(minLng, p.longitude);
+      maxLng = math.max(maxLng, p.longitude);
+    }
+
+    final centerLat = (minLat + maxLat) / 2;
+    final centerLng = (minLng + maxLng) / 2;
+    final zoom = _zoomForSpan(math.max(maxLat - minLat, maxLng - minLng));
+
+    await controller.moveCamera(
+      cameraUpdate: CameraUpdate.fromLatLng(
+        LatLng(latitude: centerLat, longitude: centerLng),
+      ),
+      animation: const CameraAnimation(
+        duration: 300,
+        autoElevation: true,
+        isConsecutive: false,
+      ),
+    );
+    await controller.setZoomLevel(zoomLevel: zoom);
+  }
+
+  int _zoomForSpan(double span) {
+    if (span > 0.3) return 10;
+    if (span > 0.1) return 11;
+    if (span > 0.05) return 12;
+    if (span > 0.01) return 14;
+    if (span > 0.003) return 16;
+    if (span > 0.001) return 17;
+    return 18;
   }
 
   @override
   Widget build(BuildContext context) {
     final r = widget.restaurant;
     final route = _route;
+    final origin = _origin;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAF8),
@@ -221,11 +280,20 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                   if (_isEstimatedRoute) ...[
                     const SizedBox(height: 8),
                     const Text(
-                      '정확한 도보 경로를 불러오지 못해 직선 거리로 표시해요.',
+                      'OSRM 경로를 불러오지 못해 직선 거리로 표시해요.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Color(0xFF6B7280),
                         height: 1.45,
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      '도보 경로 · OpenStreetMap 기반',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF9CA3AF),
                       ),
                     ),
                   ],
@@ -233,10 +301,10 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _origin == null
+                      onPressed: origin == null
                           ? null
                           : () => openKakaoMapWalkingRoute(
-                                origin: _origin!,
+                                origin: origin,
                                 destination: _destination,
                               ),
                       icon: const Icon(Icons.open_in_new, size: 16),
@@ -255,53 +323,61 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               ),
             ),
           Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF5E8C4A)),
+            child: _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B7280),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
                   )
-                : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
-                              height: 1.5,
-                            ),
-                          ),
+                : origin == null || route == null
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF5E8C4A),
                         ),
                       )
                     : Stack(
                         children: [
-                          KakaoMap(
-                            onMapCreated: (c) {
-                              _controller = c;
-                              _trySetupMap();
-                            },
-                            initialPosition: LatLng(
-                              latitude: _destination.latitude,
-                              longitude: _destination.longitude,
+                          if (Env.isKakaoMapConfigured)
+                            KakaoMap(
+                              onMapCreated: _onMapCreated,
+                              initialPosition: LatLng(
+                                latitude: _destination.latitude,
+                                longitude: _destination.longitude,
+                              ),
+                              initialLevel: 16,
+                              logo: const Logo(
+                                alignment: LogoAlignment.bottomLeft,
+                              ),
+                            )
+                          else
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ),
                             ),
-                            initialLevel: 16,
-                          ),
-                          if (_mapReady &&
-                              _controller != null &&
-                              route != null &&
-                              route.points.length >= 2)
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: RoutePolylineOverlay(
-                                  controller: _controller,
-                                  points: route.points,
-                                  color: _isEstimatedRoute
-                                      ? const Color(0xFF9CA3AF)
-                                      : const Color(0xFF4C9C2A),
-                                  borderColor: _isEstimatedRoute
-                                      ? const Color(0xFF6B7280)
-                                      : const Color(0xFF2D6A1E),
+                          if (_loadingRoute || !_mapReady)
+                            const ColoredBox(
+                              color: Color(0x66FFFFFF),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF5E8C4A),
                                 ),
                               ),
                             ),

@@ -1,38 +1,14 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
 import '../models/map_lat_lng.dart';
+import '../models/route_summary.dart';
 
-class RouteSummary {
-  final List<MapLatLng> points;
-  final String distanceText;
-  final String durationText;
+export '../models/route_summary.dart';
 
-  const RouteSummary({
-    required this.points,
-    required this.distanceText,
-    required this.durationText,
-  });
-}
-
-class DirectionsResponse {
-  final RouteSummary? route;
-  final String apiStatus;
-  final String? errorMessage;
-
-  const DirectionsResponse({
-    required this.apiStatus,
-    this.route,
-    this.errorMessage,
-  });
-
-  bool get isOk => apiStatus == 'OK' && route != null;
-}
-
-/// 카카오 모빌리티 길찾기 API
+/// 카카오 모빌리티 길찾기 API (레거시 — 앱 길찾기는 OSRM 사용)
 class KakaoDirectionsService {
   static const _host = 'apis-navi.kakaomobility.com';
 
@@ -52,7 +28,6 @@ class KakaoDirectionsService {
       'summary': 'false',
     };
 
-    // 제휴 도보 API (KAKAO_MOBILITY_SERVICE 설정 시)
     if (Env.kakaoMobilityService.isNotEmpty) {
       final walking = await _requestRoute(
         key: key,
@@ -63,7 +38,6 @@ class KakaoDirectionsService {
       if (walking.isOk) return walking;
     }
 
-    // fallback: 자동차 길찾기 (단거리 캠퍼스 내 보행 경로 근사)
     return _requestRoute(
       key: key,
       path: '/v1/directions',
@@ -151,53 +125,9 @@ class KakaoDirectionsService {
       apiStatus: 'OK',
       route: RouteSummary(
         points: points,
-        distanceText: _formatDistance(distance),
-        durationText: _formatDuration(duration),
+        distanceText: formatRouteDistance(distance),
+        durationText: formatRouteDuration(duration),
       ),
     );
-  }
-
-  static RouteSummary estimateStraightWalkingRoute({
-    required MapLatLng origin,
-    required MapLatLng destination,
-  }) {
-    final meters = _haversineMeters(origin, destination);
-    final minutes = (meters / 80).ceil().clamp(1, 999);
-
-    return RouteSummary(
-      points: [origin, destination],
-      distanceText: _formatDistance(meters.round()),
-      durationText: '약 $minutes분',
-    );
-  }
-
-  static double _haversineMeters(MapLatLng a, MapLatLng b) {
-    const r = 6371000.0;
-    final dLat = _degToRad(b.latitude - a.latitude);
-    final dLng = _degToRad(b.longitude - a.longitude);
-    final lat1 = _degToRad(a.latitude);
-    final lat2 = _degToRad(b.latitude);
-    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLng / 2) *
-            math.sin(dLng / 2);
-    return r * 2 * math.asin(math.sqrt(h));
-  }
-
-  static double _degToRad(double deg) => deg * math.pi / 180;
-
-  static String _formatDistance(int meters) {
-    if (meters < 1000) return '$meters m';
-    return '${(meters / 1000).toStringAsFixed(1)} km';
-  }
-
-  static String _formatDuration(int seconds) {
-    if (seconds < 60) return '$seconds초';
-    final mins = (seconds / 60).ceil();
-    if (mins < 60) return '$mins분';
-    final h = mins ~/ 60;
-    final m = mins % 60;
-    return m > 0 ? '$h시간 $m분' : '$h시간';
   }
 }

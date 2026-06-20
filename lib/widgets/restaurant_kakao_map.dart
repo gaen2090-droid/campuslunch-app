@@ -7,9 +7,8 @@ import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import '../config/campus.dart';
 import '../config/env.dart';
 import '../models/restaurant.dart';
-import '../utils/map_marker_icons.dart';
-
 import '../utils/kakao_map_ready.dart';
+import '../utils/map_marker_icons.dart';
 
 /// DB 식당 마커 + 혼잡도 색상 (카카오맵 SDK)
 class RestaurantKakaoMap extends StatefulWidget {
@@ -45,6 +44,8 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
   StreamSubscription? _labelSub;
   bool _stylesReady = false;
   final Set<String> _markerIds = {};
+  Future<void>? _syncInFlight;
+  int _syncGeneration = 0;
 
   static final _campus = LatLng(
     latitude: Campus.centerLat,
@@ -60,22 +61,22 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
   @override
   void didUpdateWidget(RestaurantKakaoMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_controller != null && _stylesReady) {
-      if (widget.myLocationEnabled != oldWidget.myLocationEnabled) {
-        unawaited(_syncMarkers());
-        if (widget.myLocationEnabled) {
-          _moveToUserLocation();
-        }
+    if (_controller == null || !_stylesReady) return;
+
+    if (widget.myLocationEnabled != oldWidget.myLocationEnabled) {
+      unawaited(_syncMarkers());
+      if (widget.myLocationEnabled) {
+        _moveToUserLocation();
       }
-      if (widget.selected?.id != oldWidget.selected?.id &&
-          widget.selected != null) {
-        _focusRestaurant(widget.selected!);
-      }
-      if (widget.restaurants != oldWidget.restaurants ||
-          widget.selected?.id != oldWidget.selected?.id ||
-          widget.pickMarker != oldWidget.pickMarker) {
-        unawaited(_syncMarkers());
-      }
+    }
+    if (widget.selected?.id != oldWidget.selected?.id &&
+        widget.selected != null) {
+      _focusRestaurant(widget.selected!);
+    }
+    if (widget.restaurants != oldWidget.restaurants ||
+        widget.selected?.id != oldWidget.selected?.id ||
+        widget.pickMarker != oldWidget.pickMarker) {
+      unawaited(_syncMarkers());
     }
   }
 
@@ -84,12 +85,13 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
 
     await runWhenKakaoMapReady(controller, () async {
       await ensureKakaoMarkerLayer(controller);
+      if (!mounted) return;
       _stylesReady = true;
 
       _labelSub?.cancel();
       _labelSub = controller.onLabelClickedStream.listen((event) {
         final id = event.labelId;
-        if (id == 'pick') return;
+        if (id == 'pick' || id == 'my_location') return;
         for (final r in widget.restaurants) {
           if (r.id == id) {
             widget.onSelect(r);
@@ -102,18 +104,36 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
     });
   }
 
-  Future<void> _syncMarkers() async {
+  Future<void> _syncMarkers() {
+    final prev = _syncInFlight;
+    if (prev != null) {
+      return prev.then((_) => _syncMarkers());
+    }
+    final task = _syncMarkersImpl();
+    _syncInFlight = task;
+    return task.whenComplete(() {
+      if (identical(_syncInFlight, task)) _syncInFlight = null;
+    });
+  }
+
+  Future<void> _syncMarkersImpl() async {
     final controller = _controller;
     if (controller == null || !_stylesReady) return;
 
+    final gen = ++_syncGeneration;
+
     try {
-      for (final id in _markerIds) {
-        await controller.removeMarker(id: id);
+      final toRemove = _markerIds.toList(growable: false);
+      for (final id in toRemove) {
+        await removeMarkerQuietly(controller, id: id);
       }
+      if (gen != _syncGeneration) return;
       _markerIds.clear();
 
       for (final r in widget.restaurants) {
         if (!r.hasMapLocation) continue;
+        if (gen != _syncGeneration) return;
+
         final isSelected = widget.selected?.id == r.id;
         final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
         final desiredStyleId = r.status == '영업안함'
@@ -126,7 +146,7 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
           markerOption: MarkerOption(
             id: r.id,
             latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
-            styleId: KakaoMarkerLayer.styleIdOrNull(desiredStyleId),
+            styleId: KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId),
             rank: isSelected ? 2 : 1,
             text: r.name,
           ),
@@ -141,6 +161,7 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
               accuracy: LocationAccuracy.medium,
             ),
           );
+          if (gen != _syncGeneration) return;
           await controller.addMarker(
             markerOption: MarkerOption(
               id: 'my_location',
@@ -148,7 +169,10 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
                 latitude: pos.latitude,
                 longitude: pos.longitude,
               ),
-              styleId: KakaoMarkerLayer.styleIdOrNull('pin_my_location'),
+              styleId: KakaoMarkerLayer.styleIdOrNull(
+                controller,
+                'pin_my_location',
+              ),
               rank: 3,
               text: '내 위치',
             ),
@@ -160,12 +184,12 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
       }
 
       final pick = widget.pickMarker;
-      if (pick != null) {
+      if (pick != null && gen == _syncGeneration) {
         await controller.addMarker(
           markerOption: MarkerOption(
             id: 'pick',
             latLng: LatLng(latitude: pick.lat, longitude: pick.lng),
-            styleId: KakaoMarkerLayer.styleIdOrNull('pin_no_report'),
+            styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report'),
             rank: 3,
           ),
         );
