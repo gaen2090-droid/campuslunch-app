@@ -602,6 +602,27 @@ code {
   padding: 12px;
 }
 
+.gifticon-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gifticon-no-delete {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.danger-text {
+  color: #ef4444;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .gifticon-thumb {
   width: 72px;
   height: 72px;

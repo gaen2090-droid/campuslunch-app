@@ -557,6 +557,25 @@ export async function bulkRegisterGifticons(
   return inserted;
 }
 
+export async function deleteGifticon(id: string): Promise<void> {
+  const { data, error } = await supabase.rpc("admin_delete_gifticon", {
+    p_gifticon_id: id,
+  });
+  if (error) throw error;
+  if (!data || (data as Record<string, unknown>).status !== "ok") {
+    throw new Error("삭제에 실패했어요.");
+  }
+  const imageUrl = String((data as Record<string, unknown>).image_url ?? "");
+  if (imageUrl && !imageUrl.startsWith("http")) {
+    const { error: storageErr } = await supabase.storage
+      .from("gifticons")
+      .remove([imageUrl]);
+    if (storageErr) {
+      console.warn("[Admin] gifticon storage remove failed:", storageErr.message);
+    }
+  }
+}
+
 export const AREAS = ["정문", "중문", "후문"] as const;
 export const CATEGORIES = [
   "한식",

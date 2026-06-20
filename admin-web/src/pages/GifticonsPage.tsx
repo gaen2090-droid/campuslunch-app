@@ -1,14 +1,17 @@
 import { useState } from "react";
 import {
   bulkRegisterGifticons,
+  deleteGifticon,
   registerGifticon,
   uploadGifticonImage,
 } from "../lib/adminApi";
+import { Modal } from "../components/Modal";
 import {
   gifticonStatusLabel,
   parseGifticonCsv,
   type Gifticon,
 } from "../types/gifticon";
+import { readTextFileAutoEncoding } from "../lib/readTextFile";
 
 interface Props {
   gifticons: Gifticon[];
@@ -31,6 +34,12 @@ export function GifticonsPage({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [csvBusy, setCsvBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Gifticon | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  function canDeleteGifticon(g: Gifticon): boolean {
+    return g.status === "unassigned" || g.status === "expired";
+  }
 
   function onPickImage(file: File | null) {
     setImageFile(file);
@@ -70,7 +79,7 @@ export function GifticonsPage({
     setCsvBusy(true);
     setFormError(null);
     try {
-      const text = await file.text();
+      const text = await readTextFileAutoEncoding(file);
       const rows = parseGifticonCsv(text);
       if (rows.length === 0) {
         throw new Error("유효한 CSV 행이 없어요.");
@@ -83,6 +92,21 @@ export function GifticonsPage({
       setFormError(err instanceof Error ? err.message : String(err));
     } finally {
       setCsvBusy(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setFormError(null);
+    try {
+      await deleteGifticon(deleteTarget.id);
+      setDeleteTarget(null);
+      onReload();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -176,16 +200,55 @@ export function GifticonsPage({
               ) : (
                 <div className="gifticon-thumb placeholder" />
               )}
-              <div>
+              <div className="gifticon-row-body">
                 <strong>{g.brand}</strong>
                 <p className="muted sm">{g.productName}</p>
                 <span className={`badge ${g.status}`}>
                   {gifticonStatusLabel(g.status)}
                 </span>
               </div>
+              {canDeleteGifticon(g) ? (
+                <button
+                  type="button"
+                  className="btn ghost sm danger-text"
+                  disabled={deleteBusy}
+                  onClick={() => setDeleteTarget(g)}
+                >
+                  삭제
+                </button>
+              ) : (
+                <span className="muted xs gifticon-no-delete">삭제 불가</span>
+              )}
             </li>
           ))}
         </ul>
+      )}
+
+      {deleteTarget && (
+        <Modal title="기프티콘 삭제" onClose={() => setDeleteTarget(null)}>
+          <p>
+            <strong>{deleteTarget.brand}</strong> · {deleteTarget.productName}
+          </p>
+          <p className="muted sm">이 기프티콘을 삭제할까요?</p>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={deleteBusy}
+              onClick={() => setDeleteTarget(null)}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              className="btn danger"
+              disabled={deleteBusy}
+              onClick={confirmDelete}
+            >
+              {deleteBusy ? "삭제 중…" : "삭제"}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

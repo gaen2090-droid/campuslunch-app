@@ -1,6 +1,7 @@
 import path from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { googlePlacesApiPlugin } from "./vite-plugin-google-places-api";
 
 /**
  * 환경 변수 우선순위:
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => {
     localEnv.VITE_GOOGLE_MAPS_API_KEY || rootEnv.GOOGLE_MAPS_API_KEY || "";
 
   return {
-    plugins: [react()],
+    plugins: [react(), googlePlacesApiPlugin(googleMapsApiKey)],
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(supabaseAnonKey),

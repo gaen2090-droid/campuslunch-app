@@ -18,6 +18,7 @@
     "@types/google.maps": "^3.58.1",
     "@types/node": "^22.13.10",
     "@types/react-dom": "^19.0.4",
+    "@vercel/node": "^5.8.17",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"

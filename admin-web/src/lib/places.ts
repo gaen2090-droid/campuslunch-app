@@ -27,6 +27,43 @@ function googleKey(): string {
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
 }
 
+export function hasGoogleKey(): boolean {
+  return googleKey().length > 0;
+}
+
+async function googlePlacesJson(
+  endpoint: "textsearch" | "details",
+  params: Record<string, string>,
+): Promise<unknown> {
+  const qs = new URLSearchParams(params);
+  let res: Response;
+  try {
+    res = await fetch(`/api/google/${endpoint}?${qs}`);
+  } catch (e) {
+    if (e instanceof TypeError && e.message === "Failed to fetch") {
+      throw new Error(
+        "Google Places 연결 실패. Vercel에 GOOGLE_MAPS_API_KEY(또는 VITE_GOOGLE_MAPS_API_KEY)를 설정했는지 확인해주세요.",
+      );
+    }
+    throw e;
+  }
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const err = (await res.json()) as { error?: string };
+      detail = err.error ?? "";
+    } catch {
+      /* ignore */
+    }
+    throw new Error(
+      detail
+        ? `Google Places 오류 (${res.status}): ${detail}`
+        : `Google Places 오류 (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
 function jsKey(): string {
   return import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY ?? "";
 }
@@ -165,23 +202,16 @@ function parseGoogleHours(openingHours?: {
 }
 
 async function findGooglePlaceId(item: PlaceSearchResult): Promise<string | null> {
-  const key = googleKey();
-  if (!key) return null;
+  if (!hasGoogleKey()) return null;
 
   const q = `${item.name} ${item.address} ${CAMPUS_BIAS}`.trim();
-  const params = new URLSearchParams({
+  const data = (await googlePlacesJson("textsearch", {
     query: q,
-    key,
     language: "ko",
     region: "kr",
     location: `${item.latitude},${item.longitude}`,
     radius: "500",
-  });
-
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`,
-  );
-  const data = (await res.json()) as {
+  })) as {
     status?: string;
     results?: Array<{
       place_id?: string;
@@ -211,19 +241,13 @@ async function fetchGoogleEnrichment(placeId: string): Promise<{
   hoursDisplay: string;
   hoursPeriods: Record<string, unknown>[];
 } | null> {
-  const key = googleKey();
-  if (!key) return null;
+  if (!hasGoogleKey()) return null;
 
-  const params = new URLSearchParams({
+  const data = (await googlePlacesJson("details", {
     place_id: placeId,
-    key,
     language: "ko",
     fields: "opening_hours,photos",
-  });
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/details/json?${params}`,
-  );
-  const data = (await res.json()) as {
+  })) as {
     status?: string;
     result?: {
       opening_hours?: Parameters<typeof parseGoogleHours>[0];
@@ -232,10 +256,11 @@ async function fetchGoogleEnrichment(placeId: string): Promise<{
   };
   if (data.status !== "OK" || !data.result) return null;
 
+  const key = googleKey();
   const bh = parseGoogleHours(data.result.opening_hours);
   let photoUrl: string | null = null;
   const ref = data.result.photos?.[0]?.photo_reference;
-  if (ref) {
+  if (ref && key) {
     photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${encodeURIComponent(ref)}&key=${encodeURIComponent(key)}`;
   }
   return { photoUrl, ...bh };
@@ -269,22 +294,29 @@ export async function enrichPlaceDetails(
     hoursPeriods: [],
   };
 
-  const googlePlaceId = await findGooglePlaceId(item);
-  if (!googlePlaceId) return base;
+  if (!hasGoogleKey()) return base;
 
-  const enrichment = await fetchGoogleEnrichment(googlePlaceId);
-  if (!enrichment) {
-    return { ...base, googlePlaceId };
+  try {
+    const googlePlaceId = await findGooglePlaceId(item);
+    if (!googlePlaceId) return base;
+
+    const enrichment = await fetchGoogleEnrichment(googlePlaceId);
+    if (!enrichment) {
+      return { ...base, googlePlaceId };
+    }
+
+    return {
+      ...base,
+      googlePlaceId,
+      photoUrl: enrichment.photoUrl,
+      hours: enrichment.hours,
+      hoursDisplay: enrichment.hoursDisplay,
+      hoursPeriods: enrichment.hoursPeriods,
+    };
+  } catch (e) {
+    console.warn("[places] Google enrichment skipped:", e);
+    return base;
   }
-
-  return {
-    ...base,
-    googlePlaceId,
-    photoUrl: enrichment.photoUrl,
-    hours: enrichment.hours,
-    hoursDisplay: enrichment.hoursDisplay,
-    hoursPeriods: enrichment.hoursPeriods,
-  };
 }
 
 export function kakaoMapEmbedUrl(lat: number, lng: number): string | null {
