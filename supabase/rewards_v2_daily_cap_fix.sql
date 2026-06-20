@@ -1,5 +1,6 @@
--- 일일 스탬프 상한 3개 복구 (Supabase SQL Editor에서 실행)
+-- 일일 스탬프 상한 999개 (테스트용 — Supabase SQL Editor에서 실행)
 -- rewards_v2가 이미 배포된 경우: 아래 grant_stamp만 실행하면 됩니다.
+-- 출시 전 3으로 복구: rewards_v2_daily_cap_fix.sql 참고
 
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb
@@ -42,7 +43,7 @@ begin
       v_total_stamps := coalesce((v_auto_redeem ->> 'total_stamps')::int, 0);
     end if;
   else
-    v_daily_room := 3 - v_today_stamps;
+    v_daily_room := 999 - v_today_stamps;
     v_intended := least(p_count, v_daily_room);
 
     if v_intended > 0 then

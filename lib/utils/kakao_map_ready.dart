@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -51,31 +52,43 @@ class KakaoMarkerLayer {
   static bool isReady(KakaoMapController controller) =>
       _stylesReadyByViewId[controller.viewId] == true;
 
+  static void release(int viewId) {
+    _stylesReadyByViewId.remove(viewId);
+    _layerReadyViewIds.remove(viewId);
+  }
+
   static Future<void> ensure(KakaoMapController controller) async {
     final viewId = controller.viewId;
 
     if (_stylesReadyByViewId[viewId] != true) {
-      final bundles = MapMarkerIcons.buildStatusStyles();
-      await controller.registerMarkerStyles(
-        styles: bundles
-            .map(
-              (s) => MarkerStyle(
-                styleId: s.styleId,
-                perLevels: [
-                  MarkerPerLevelStyle.fromBytes(
-                    bytes: s.bytes,
-                    level: 15,
-                    textStyle: _markerTextStyle,
-                  ),
-                ],
-              ),
-            )
-            .toList(),
-      );
-      _stylesReadyByViewId[viewId] = true;
-      debugPrint(
-        '[KakaoMarkerLayer] styles registered viewId=$viewId (${bundles.length})',
-      );
+      try {
+        final bundles = await MapMarkerIcons.buildStatusStyles();
+        final markerLevels = Platform.isIOS ? const [3, 10, 15, 21] : const [15];
+        await controller.registerMarkerStyles(
+          styles: bundles
+              .map(
+                (s) => MarkerStyle(
+                  styleId: s.styleId,
+                  perLevels: markerLevels
+                      .map(
+                        (level) => MarkerPerLevelStyle.fromBytes(
+                          bytes: s.bytes,
+                          level: level,
+                          textStyle: _markerTextStyle,
+                        ),
+                      )
+                      .toList(),
+                ),
+              )
+              .toList(),
+        );
+        _stylesReadyByViewId[viewId] = true;
+        debugPrint(
+          '[KakaoMarkerLayer] styles registered viewId=$viewId (${bundles.length})',
+        );
+      } catch (e, st) {
+        debugPrint('[KakaoMarkerLayer] style registration failed: $e\n$st');
+      }
     }
 
     if (_layerReadyViewIds.contains(viewId)) return;

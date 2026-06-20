@@ -153,6 +153,35 @@ class RewardRepository {
     }
   }
 
+  Future<String?> adminDeleteGifticon(String gifticonId) async {
+    try {
+      final raw = await _client.rpc(
+        'admin_delete_gifticon',
+        params: {'p_gifticon_id': gifticonId},
+      );
+      if (raw is! Map || raw['status'] != 'ok') {
+        return '삭제에 실패했어요.';
+      }
+      final imageUrl = raw['image_url'] as String?;
+      if (imageUrl != null &&
+          imageUrl.isNotEmpty &&
+          !imageUrl.startsWith('http')) {
+        try {
+          await _client.storage.from('gifticons').remove([imageUrl]);
+        } catch (e) {
+          debugPrint('[Reward] gifticon storage remove failed: $e');
+        }
+      }
+      return null;
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('배정되었거나')) return '배정·사용 완료된 기프티콘은 삭제할 수 없어요.';
+      if (msg.contains('찾을 수 없')) return '기프티콘을 찾을 수 없어요.';
+      debugPrint('[Reward] adminDeleteGifticon failed: $e');
+      return '삭제에 실패했어요.';
+    }
+  }
+
   /// 어드민: 기프티콘 이미지를 Supabase Storage private 버킷에 업로드
   /// 반환값: storage path (DB에 저장). 표시 시 _resolveImageUrl로 signed URL 변환.
   Future<String?> uploadGifticonImage(

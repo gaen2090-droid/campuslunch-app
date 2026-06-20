@@ -27,6 +27,9 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
   image: ^4.5.4
+  charset: ^2.0.1
+  gal: ^2.3.2
+  path_provider: ^2.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -38,6 +41,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/config/
     - .env
   fonts:
     - family: Pretendard

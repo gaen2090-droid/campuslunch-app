@@ -45,7 +45,7 @@ Future<void> submitCrowdReportFeedback(
         '스탬프 20개를 모아서 기프티콘이 지급되었어요.\n리워드 쿠폰함에서 확인하실 수 있어요.';
   } else if (stamp.granted) {
     message =
-        '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/3)';
+        '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/999)';
   } else if (stamp.totalStamps >= 20) {
     message =
         '혼잡도 제보가 등록되었어요.\n스탬프 20개를 모았어요. 기프티콘 재고 확인 중이에요.';

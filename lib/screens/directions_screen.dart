@@ -10,7 +10,6 @@ import '../models/map_lat_lng.dart';
 import '../models/restaurant.dart';
 import '../models/route_summary.dart';
 import '../services/osrm_directions_service.dart';
-import '../utils/kakao_map_launcher.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/kakao_route_line.dart';
 
@@ -48,6 +47,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   void dispose() {
     final controller = _controller;
     if (controller != null) {
+      KakaoMarkerLayer.release(controller.viewId);
       unawaited(KakaoRouteLine.clear(controller));
       unawaited(removeMarkerQuietly(controller, id: 'route_origin'));
       unawaited(removeMarkerQuietly(controller, id: 'route_destination'));
@@ -144,8 +144,8 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
     await removeMarkerQuietly(controller, id: 'route_origin');
     await removeMarkerQuietly(controller, id: 'route_destination');
 
-    final lineColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF4C9C2A;
-    final borderColor = _isEstimatedRoute ? 0xFF6B7280 : 0xFF2D6A1E;
+    final lineColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF5E8C4A;
+    final borderColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF5E8C4A;
 
     final drawn = await KakaoRouteLine.set(
       controller,
@@ -297,28 +297,6 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: origin == null
-                          ? null
-                          : () => openKakaoMapWalkingRoute(
-                                origin: origin,
-                                destination: _destination,
-                              ),
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: const Text(
-                        '카카오맵에서 길찾기',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF374151),
-                        side: const BorderSide(color: Color(0xFFD1D5DB)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

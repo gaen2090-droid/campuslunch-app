@@ -13,8 +13,8 @@ class KakaoRouteLine {
   static Future<bool> set(
     KakaoMapController controller, {
     required List<MapLatLng> points,
-    int color = 0xFF4C9C2A,
-    int borderColor = 0xFF2D6A1E,
+    int color = 0xFF5E8C4A,
+    int borderColor = 0xFF5E8C4A,
     double width = 5.0,
   }) async {
     if (points.length < 2) return false;

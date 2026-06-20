@@ -1,7 +1,9 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../utils/map_pin_painter.dart';
 import '../utils/navigation_helper.dart';
+import '../navigation/app_route_observer.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/report_feedback.dart';
@@ -19,7 +21,9 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with RouteAware {
+  int _mapEpoch = 0;
+  ModalRoute<void>? _route;
   Restaurant? _selected;
   bool _isLocated = false;
   bool _showBookmarked = false;
@@ -47,13 +51,41 @@ class _MapScreenState extends State<MapScreen> {
   static const _reportOptLabels = {_allLabel: '전체', '제보있음': '스탬프 1개', '제보없음': '스탬프 2개'};
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && route != _route) {
+      if (_route != null) {
+        appRouteObserver.unsubscribe(this);
+      }
+      _route = route;
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     _searchCtrl.dispose();
     super.dispose();
   }
 
+  void _remountMap() {
+    if (!mounted) return;
+    setState(() => _mapEpoch++);
+  }
+
+  @override
+  void didPopNext() {
+    _remountMap();
+  }
+
   void _openDetail(Restaurant r) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
+  }
+
+  Future<void> _launchDirections(Restaurant r) async {
+    await openInAppDirections(context, r);
   }
 
   bool _isAllFilter(Set<String> values) =>
@@ -112,6 +144,7 @@ class _MapScreenState extends State<MapScreen> {
         // ── 지도 (풀스크린) ──
         Positioned.fill(
           child: RestaurantKakaoMap(
+            key: ValueKey('kakao_map_$_mapEpoch'),
             restaurants: filtered,
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
@@ -458,30 +491,21 @@ class _MapScreenState extends State<MapScreen> {
         if (_selected != null)
           Positioned(
             bottom: 0, left: 0, right: 0,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onVerticalDragStart: (_) {},
-              onVerticalDragUpdate: (_) {},
-              onVerticalDragEnd: (details) {
-                final v = details.primaryVelocity ?? 0;
-                if (v > 150) setState(() => _selected = null);
-                else if (v < -150) _openDetail(_selected!);
-              },
-              child: _SelectedCard(
-                restaurant: _selected!,
-                onDetail: () => _openDetail(_selected!),
-                onReport: _selected!.status == '영업안함' ? null : () => ReportSheet.show(
+            child: _SelectedCard(
+              restaurant: _selected!,
+              onDetail: () => _openDetail(_selected!),
+              onReport: _selected!.status == '영업안함' ? null : () => ReportSheet.show(
+                context,
+                _selected!,
+                (status) => submitCrowdReportFeedback(
                   context,
-                  _selected!,
-                  (status) => submitCrowdReportFeedback(
-                    context,
-                    _selected!.id,
-                    status,
-                  ),
+                  _selected!.id,
+                  status,
                 ),
-                onDismiss: () => setState(() => _selected = null),
-                safeBottom: safeBottom,
               ),
+              onDismiss: () => setState(() => _selected = null),
+              onDirections: () => _launchDirections(_selected!),
+              safeBottom: safeBottom,
             ),
           ),
       ],
@@ -587,9 +611,9 @@ class _FakeMap extends StatelessWidget {
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: pinSize,
-                    height: pinSize * 1.4,
+                    height: pinSize * MapPinPainter.aspectRatio,
                     child: CustomPaint(
-                      painter: _MapPinPainter(
+                      painter: MapPinPainter(
                         fillColor: Color(meta.color),
                         borderWidth: isSelected ? 3.0 : 2.0,
                         shadowAlpha: isSelected ? 40 : 20,
@@ -840,79 +864,13 @@ class _DropdownGrid extends StatelessWidget {
   }
 }
 
-// ── 물방울 핀 페인터 ──
-class _MapPinPainter extends CustomPainter {
-  final Color fillColor;
-  final double borderWidth;
-  final int shadowAlpha;
-  final double shadowBlur;
-
-  const _MapPinPainter({
-    required this.fillColor,
-    this.borderWidth = 2.0,
-    this.shadowAlpha = 20,
-    this.shadowBlur = 6.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final r = w / 2;
-    final cx = w / 2;
-
-    const oa = 45.0 * math.pi / 180;
-    final lx = cx + r * math.cos(math.pi / 2 + oa);
-    final ly = r + r * math.sin(math.pi / 2 + oa);
-    final rx = cx + r * math.cos(math.pi / 2 - oa);
-    final ry = r + r * math.sin(math.pi / 2 - oa);
-    final tailLen = h - ry;
-
-    final path = Path()
-      ..moveTo(lx, ly)
-      ..arcTo(Rect.fromLTWH(0, 0, w, w), math.pi / 2 + oa, 2 * math.pi - 2 * oa, false)
-      ..cubicTo(
-        rx - tailLen * 0.5 * math.cos(oa), ry + tailLen * 0.5 * math.sin(oa),
-        cx, h,
-        cx, h,
-      )
-      ..cubicTo(
-        cx, h,
-        lx + tailLen * 0.5 * math.cos(oa), ly + tailLen * 0.5 * math.sin(oa),
-        lx, ly,
-      )
-      ..close();
-
-    canvas.drawShadow(path, Colors.black.withAlpha(shadowAlpha), shadowBlur, false);
-    canvas.drawPath(path, Paint()..color = fillColor);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = borderWidth
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_MapPinPainter old) =>
-      fillColor != old.fillColor ||
-      borderWidth != old.borderWidth ||
-      shadowAlpha != old.shadowAlpha ||
-      shadowBlur != old.shadowBlur;
-}
-
 // ── 선택된 매장 카드 (바텀시트 스타일) ──
-void _launchDirections(BuildContext context, Restaurant r) {
-  openInAppDirections(context, r);
-}
-
 class _SelectedCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onDetail;
   final VoidCallback? onReport;
   final VoidCallback onDismiss;
+  final VoidCallback onDirections;
   final double safeBottom;
 
   const _SelectedCard({
@@ -920,6 +878,7 @@ class _SelectedCard extends StatelessWidget {
     required this.onDetail,
     required this.onReport,
     required this.onDismiss,
+    required this.onDirections,
     required this.safeBottom,
   });
 
@@ -1019,7 +978,7 @@ class _SelectedCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _launchDirections(context, r),
+                    onTap: onDirections,
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
 import '../screens/directions_screen.dart';
 
-void openInAppDirections(BuildContext context, Restaurant restaurant) {
+Future<void> openInAppDirections(
+  BuildContext context,
+  Restaurant restaurant,
+) async {
   if (!restaurant.hasMapLocation) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -25,7 +28,7 @@ void openInAppDirections(BuildContext context, Restaurant restaurant) {
     return;
   }
 
-  Navigator.push(
+  await Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => DirectionsScreen(restaurant: restaurant),

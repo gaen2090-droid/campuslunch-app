@@ -118,7 +118,7 @@ class _RewardScreenState extends State<RewardScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final reward = provider.reward;
-    final gifticons = provider.myGifticons;
+    final gifticons = provider.visibleMyGifticons;
     final total = reward.totalStamps;
     final today = reward.todayStamps;
     const target = 20;
@@ -289,7 +289,7 @@ class _StampSummaryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '오늘 $today / 3',
+                  '오늘 $today / 999',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
                 ),
               ),
@@ -332,7 +332,7 @@ class _StampSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            '하루 최대 3개의 스탬프를 획득할 수 있어요.',
+            '하루 최대 999개의 스탬프를 획득할 수 있어요. (테스트)',
             style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
           ),
         ],

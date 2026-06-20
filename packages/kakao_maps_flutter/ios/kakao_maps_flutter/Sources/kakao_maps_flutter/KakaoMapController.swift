@@ -1354,19 +1354,17 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                 return
             }
 
-            let bodyColor = UIColor.fromArgb((args["color"] as? Int) ?? 0xFF4C9C2A)
-            let strokeColor = UIColor.fromArgb((args["borderColor"] as? Int) ?? 0xFF2D6A1E)
+            let bodyColor = UIColor.fromArgb((args["color"] as? Int) ?? 0xFF5E8C4A)
             let bodyWidth = UInt(max(1, min(20, Int(round((args["width"] as? Double) ?? 5.0)))))
-            let strokeWidth = bodyWidth + 2
-            let styleSetId = "\(self.kRouteStyleSetId)_\((args["color"] as? Int) ?? 0)"
+            let styleSetId = "\(self.kRouteStyleSetId)_\((args["color"] as? Int) ?? 0)_\(bodyWidth)"
 
             if !self.registeredRouteStyleSetIds.contains(styleSetId) {
                 let polylineStyle = PolylineStyle(styles: [
                     PerLevelPolylineStyle(
                         bodyColor: bodyColor,
                         bodyWidth: bodyWidth,
-                        strokeColor: strokeColor,
-                        strokeWidth: strokeWidth,
+                        strokeColor: bodyColor,
+                        strokeWidth: 0,
                         level: 0
                     ),
                 ])

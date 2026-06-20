@@ -129,7 +129,7 @@ begin
       v_total_stamps := coalesce((v_auto_redeem ->> 'total_stamps')::int, 0);
     end if;
   else
-    v_daily_room := 3 - v_today_stamps;
+    v_daily_room := 999 - v_today_stamps;
     v_intended := least(p_count, v_daily_room);
 
     if v_intended > 0 then

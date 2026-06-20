@@ -31,6 +31,15 @@ KAKAO_NATIVE_APP_KEY=$kakaoKey
 GOOGLE_OAUTH_WEB_CLIENT_ID=$googleWebClientId
 ''');
   print('Wrote ${keysProps.path}');
+
+  final nativeKeys = File('assets/config/native_keys.json');
+  await nativeKeys.parent.create(recursive: true);
+  await nativeKeys.writeAsString('''
+{
+  "KAKAO_NATIVE_APP_KEY": "$kakaoKey"
+}
+''');
+  print('Wrote ${nativeKeys.path}');
 }
 
 String _reverseGoogleClientId(String clientId) {

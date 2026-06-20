@@ -101,7 +101,7 @@ create policy "user_rewards_insert_own" on public.user_rewards
 
 -- 6. 스탬프 지급 함수 (submit_crowd_report trigger에서 호출)
 --    source='user' 제보 성공 시 호출됨
---    KST 기준 하루 최대 3개
+--    KST 기준 하루 최대 999개 (테스트용, 출시 전 3으로 복구)
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb
 language plpgsql
@@ -135,7 +135,7 @@ begin
 
   v_total_stamps := v_row.total_stamps;
 
-  v_room := 3 - v_today_stamps;
+  v_room := 999 - v_today_stamps;
   if v_room > 0 then
     v_granted := least(p_count, v_room);
     v_today_stamps := v_today_stamps + v_granted;

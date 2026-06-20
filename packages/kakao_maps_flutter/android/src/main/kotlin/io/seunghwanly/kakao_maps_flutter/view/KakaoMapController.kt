@@ -1353,10 +1353,8 @@ class KakaoMapController(
             return
         }
 
-        val bodyColor = args.optInt("color", 0xFF4C9C2A.toInt())
-        val strokeColor = args.optInt("borderColor", 0xFF2D6A1E.toInt())
+        val bodyColor = args.optInt("color", 0xFF5E8C4A.toInt())
         val bodyWidth = args.optDouble("width", 5.0).toFloat()
-        val strokeWidth = bodyWidth + 2f
 
         val latLngList = ArrayList<LatLng>(pointsArray.length())
         for (i in 0 until pointsArray.length()) {
@@ -1392,7 +1390,7 @@ class KakaoMapController(
             layer.remove(existing)
         }
 
-        val style = PolylineStyle.from(bodyWidth, bodyColor, strokeWidth, strokeColor)
+        val style = PolylineStyle.from(bodyWidth, bodyColor, 0f, bodyColor)
         val options = PolylineOptions.from(routePolylineId)
             .setMapPoints(MapPoints.fromLatLng(latLngList))
             .setStylesSet(PolylineStylesSet.from(PolylineStyles.from(style)))

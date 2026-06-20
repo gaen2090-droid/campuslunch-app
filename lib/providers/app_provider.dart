@@ -118,6 +118,9 @@ class AppProvider extends ChangeNotifier {
   UserReward get reward => _reward;
   List<Gifticon> _myGifticons = [];
   List<Gifticon> get myGifticons => _myGifticons;
+  Set<String> _hiddenGifticonIds = {};
+  List<Gifticon> get visibleMyGifticons =>
+      _myGifticons.where((g) => !_hiddenGifticonIds.contains(g.id)).toList();
 
   RewardRepository? get _rewardRepo =>
       SupabaseService.isReady ? RewardRepository(SupabaseService.client) : null;
@@ -141,6 +144,7 @@ class AppProvider extends ChangeNotifier {
   static const _kPendingSignupPassword = 'cl_pending_signup_password';
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
   static const _kAuthProvider = 'cl_auth_provider';
+  static const _kHiddenGifticons = 'cl_hidden_gifticon_ids';
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -170,6 +174,8 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
+    _hiddenGifticonIds =
+        Set<String>.from(prefs.getStringList(_kHiddenGifticons) ?? const []);
 
     _restaurants = List<Restaurant>.from(initialRestaurants);
     await _loadRestaurantsFromSupabase();
@@ -1929,6 +1935,25 @@ class AppProvider extends ChangeNotifier {
     return err;
   }
 
+  Future<String?> removeGifticonFromBox(Gifticon gifticon) async {
+    final isActive = gifticon.status == 'assigned' &&
+        (gifticon.expiresAt == null ||
+            !gifticon.expiresAt!.isBefore(DateTime.now()));
+    if (isActive) {
+      final err = await markGifticonUsed(gifticon.id);
+      if (err != null) return err;
+    }
+
+    _hiddenGifticonIds.add(gifticon.id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _kHiddenGifticons,
+      _hiddenGifticonIds.toList(),
+    );
+    notifyListeners();
+    return null;
+  }
+
   // ── 어드민: 기프티콘 ──
 
   List<Gifticon> _adminGifticons = [];
@@ -1979,5 +2004,13 @@ class AppProvider extends ChangeNotifier {
     final result = await repo.adminBulkRegisterGifticons(parsed.rows);
     if (result.$2 == null) await adminFetchGifticons();
     return result;
+  }
+
+  Future<String?> adminDeleteGifticon(String gifticonId) async {
+    final repo = _rewardRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    final err = await repo.adminDeleteGifticon(gifticonId);
+    if (err == null) await adminFetchGifticons();
+    return err;
   }
 }

@@ -1,7 +1,21 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
 
 /// 앱 클라이언트용 설정 (.env — Publishable / Maps 키만)
 class Env {
+  static String _nativeKakaoKeyFallback = '';
+
+  /// .env 가 APK에 없을 때 assets/config/native_keys.json 사용
+  static Future<void> loadNativeKeyFallback() async {
+    if ((dotenv.env['KAKAO_NATIVE_APP_KEY']?.trim() ?? '').isNotEmpty) return;
+    try {
+      final raw = await rootBundle.loadString('assets/config/native_keys.json');
+      final match = RegExp(r'"KAKAO_NATIVE_APP_KEY"\s*:\s*"([^"]+)"')
+          .firstMatch(raw);
+      _nativeKakaoKeyFallback = match?.group(1)?.trim() ?? '';
+    } catch (_) {}
+  }
+
   static String get supabaseUrl =>
       dotenv.env['SUPABASE_URL']?.trim() ?? '';
 
@@ -16,8 +30,11 @@ class Env {
 
   static bool get isGooglePlacesConfigured => googleMapsApiKey.isNotEmpty;
 
-  static String get kakaoNativeAppKey =>
-      dotenv.env['KAKAO_NATIVE_APP_KEY']?.trim() ?? '';
+  static String get kakaoNativeAppKey {
+    final fromEnv = dotenv.env['KAKAO_NATIVE_APP_KEY']?.trim() ?? '';
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return _nativeKakaoKeyFallback;
+  }
 
   /// 카카오 로컬·모빌리티 REST API (장소 검색, 길찾기). Native App Key로는 동작하지 않음.
   static String get kakaoRestApiKey =>

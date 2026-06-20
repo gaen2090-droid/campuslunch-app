@@ -34,12 +34,13 @@ class RestaurantKakaoMap extends StatefulWidget {
   });
 
   @override
-  State<RestaurantKakaoMap> createState() => _RestaurantKakaoMapState();
+  State<RestaurantKakaoMap> createState() => RestaurantKakaoMapState();
 }
 
 typedef MapLatLngCallback = ({double latitude, double longitude});
 
-class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
+class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
+    with WidgetsBindingObserver {
   KakaoMapController? _controller;
   StreamSubscription? _labelSub;
   bool _stylesReady = false;
@@ -52,10 +53,35 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
     longitude: Campus.centerLng,
   );
 
+  /// 길찾기 등 다른 화면에서 돌아온 뒤 iOS PlatformView 터치/라벨 클릭 복구
+  void refreshAfterReturn() {
+    if (_controller == null || !_stylesReady) return;
+    _attachLabelListener();
+    unawaited(_syncMarkers());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _labelSub?.cancel();
+    final viewId = _controller?.viewId;
+    if (viewId != null) {
+      KakaoMarkerLayer.release(viewId);
+    }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      refreshAfterReturn();
+    }
   }
 
   @override
@@ -80,6 +106,23 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
     }
   }
 
+  void _attachLabelListener() {
+    final controller = _controller;
+    if (controller == null) return;
+
+    _labelSub?.cancel();
+    _labelSub = controller.onLabelClickedStream.listen((event) {
+      final id = event.labelId;
+      if (id == 'pick' || id == 'my_location') return;
+      for (final r in widget.restaurants) {
+        if (r.id == id) {
+          widget.onSelect(r);
+          return;
+        }
+      }
+    });
+  }
+
   Future<void> _onMapCreated(KakaoMapController controller) async {
     _controller = controller;
 
@@ -88,18 +131,7 @@ class _RestaurantKakaoMapState extends State<RestaurantKakaoMap> {
       if (!mounted) return;
       _stylesReady = true;
 
-      _labelSub?.cancel();
-      _labelSub = controller.onLabelClickedStream.listen((event) {
-        final id = event.labelId;
-        if (id == 'pick' || id == 'my_location') return;
-        for (final r in widget.restaurants) {
-          if (r.id == id) {
-            widget.onSelect(r);
-            return;
-          }
-        }
-      });
-
+      _attachLabelListener();
       await _syncMarkers();
     });
   }

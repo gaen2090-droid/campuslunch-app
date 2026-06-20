@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
 import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
+import 'utils/map_marker_icons.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/push_notification_service.dart';
@@ -17,15 +18,22 @@ import 'screens/main_screen.dart';
 import 'screens/location_permission_screen.dart';
 import 'screens/notification_permission_screen.dart';
 import 'screens/usage_guide_screen.dart';
+import 'navigation/app_route_observer.dart';
 import 'screens/admin_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  await Env.loadNativeKeyFallback();
 
   await KakaoAuthService.initialize();
   if (Env.isKakaoMapConfigured) {
     await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
+    try {
+      await MapMarkerIcons.buildStatusStyles();
+    } catch (e, st) {
+      debugPrint('[MapMarkerIcons] prewarm failed: $e\n$st');
+    }
   }
   await GoogleAuthService.initialize();
 
@@ -100,6 +108,7 @@ class CampusLunchApp extends StatelessWidget {
         ),
       ),
       home: const _Root(),
+      navigatorObservers: [appRouteObserver],
     );
   }
 }

@@ -15,6 +15,7 @@ import '../utils/business_hours.dart';
 import '../utils/crowd_status_label.dart';
 import '../utils/owner_seat_label.dart';
 import '../utils/csv_export.dart';
+import '../utils/csv_text_decode.dart';
 import 'admin_map_register_tab.dart';
 
 final _weekDates = List.generate(7, (i) {
@@ -3602,7 +3603,7 @@ class _GifticonTabState extends State<_GifticonTab> {
       return;
     }
     setState(() => _saving = true);
-    final csvText = String.fromCharCodes(result.files.first.bytes!);
+    final csvText = decodeCsvTextBytesList(result.files.first.bytes!);
     final (count, err) =
         await context.read<AppProvider>().adminBulkRegisterGifticonsFromCsv(csvText);
     if (!mounted) return;
@@ -3613,6 +3614,46 @@ class _GifticonTabState extends State<_GifticonTab> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('CSV로 기프티콘 $count건 등록했어요.')),
+    );
+  }
+
+  bool _canDeleteGifticon(Gifticon g) =>
+      g.status == 'unassigned' || g.status == 'expired';
+
+  Future<void> _deleteGifticon(Gifticon g) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('기프티콘 삭제'),
+        content: Text('${g.brand} · ${g.productName}\n\n삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              '삭제',
+              style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _saving = true);
+    final err = await context.read<AppProvider>().adminDeleteGifticon(g.id);
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('기프티콘을 삭제했어요.')),
     );
   }
 
@@ -3827,7 +3868,10 @@ class _GifticonTabState extends State<_GifticonTab> {
         else
           ...list.map((g) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _AdminGifticonRow(gifticon: g),
+                child: _AdminGifticonRow(
+                  gifticon: g,
+                  onDelete: _canDeleteGifticon(g) ? () => _deleteGifticon(g) : null,
+                ),
               )),
       ],
     );
@@ -3855,7 +3899,8 @@ class _AdminCard extends StatelessWidget {
 
 class _AdminGifticonRow extends StatelessWidget {
   final Gifticon gifticon;
-  const _AdminGifticonRow({required this.gifticon});
+  final VoidCallback? onDelete;
+  const _AdminGifticonRow({required this.gifticon, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -3927,6 +3972,30 @@ class _AdminGifticonRow extends StatelessWidget {
               ],
             ),
           ),
+          if (onDelete != null)
+            GestureDetector(
+              onTap: onDelete,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '삭제',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            )
+          else
+            const Text(
+              '삭제 불가',
+              style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            ),
         ],
       ),
     );

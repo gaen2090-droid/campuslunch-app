@@ -58,6 +58,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>주변 식당과 내 위치를 지도에 표시하기 위해 위치 권한이 필요합니다.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>기프티콘 쿠폰 이미지를 사진 앨범에 저장하기 위해 권한이 필요합니다.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
