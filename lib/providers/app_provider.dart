@@ -51,10 +51,15 @@ class AppProvider extends ChangeNotifier {
   bool _showSignupCompleteMessage = false;
   bool get showSignupCompleteMessage => _showSignupCompleteMessage;
 
-  /// 일반('app') 진입 직전 거치는 단계. 로그인할 때마다 사용법 가이드를 보여준다.
-  String get _postAppStage => 'usage_guide';
+  /// 일반('app') 진입 직전 거치는 단계. 최초 로그인 때만 사용법 가이드를 보여준다.
+  Future<String> _postAppStage(SharedPreferences prefs) async {
+    final seen = prefs.getBool(_kUsageGuideSeen) ?? false;
+    return seen ? 'app' : 'usage_guide';
+  }
 
   void completeUsageGuide() {
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_kUsageGuideSeen, true));
     _stage = 'app';
     if (hasOwnerTab) _mainTabIndex = 0;
     notifyListeners();
@@ -127,6 +132,7 @@ class AppProvider extends ChangeNotifier {
 
   // ── 키 ──
   static const _kLocation = 'cl_location_mode';
+  static const _kUsageGuideSeen = 'cl_usage_guide_seen';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';
@@ -256,7 +262,7 @@ class AppProvider extends ChangeNotifier {
       if (_userRole == 'admin') {
         _stage = 'admin';
       } else {
-        _stage = _postAppStage;
+        _stage = await _postAppStage(prefs);
         if (hasOwnerTab) _mainTabIndex = 0;
       }
     } else {
@@ -687,7 +693,7 @@ class AppProvider extends ChangeNotifier {
     if (account.role == 'admin') {
       _stage = 'admin';
     } else {
-      _stage = locationStored ? _postAppStage : 'location_permission';
+      _stage = locationStored ? await _postAppStage(prefs) : 'location_permission';
       if (account.restaurantIds.isNotEmpty) {
         _mainTabIndex = 0;
       }
@@ -938,7 +944,7 @@ class AppProvider extends ChangeNotifier {
     _locationMode = enabled;
     await prefs.setBool(_kLocation, enabled);
     if (_stage == 'location_permission') {
-      _stage = prefs.containsKey(_kPush) ? _postAppStage : 'notification_permission';
+      _stage = prefs.containsKey(_kPush) ? await _postAppStage(prefs) : 'notification_permission';
     }
     notifyListeners();
   }
@@ -955,7 +961,7 @@ class AppProvider extends ChangeNotifier {
       await PushNotificationService.instance.requestPermission();
     }
     await _syncPushNotifications();
-    _stage = _postAppStage;
+    _stage = await _postAppStage(prefs);
     notifyListeners();
   }
 
@@ -1193,9 +1199,15 @@ class AppProvider extends ChangeNotifier {
           permission == LocationPermission.deniedForever) {
         return null;
       }
-      return Geolocator.getCurrentPosition(
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null &&
+          DateTime.now().difference(lastKnown.timestamp).inMinutes < 5) {
+        return lastKnown;
+      }
+      return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 5),
         ),
       );
     } catch (_) {
@@ -1906,13 +1918,16 @@ class AppProvider extends ChangeNotifier {
     final repo = _rewardRepo;
     if (repo == null) return;
     try {
-      final r = await repo.fetchMyReward();
-      final g = await repo.fetchMyGifticons();
-      _reward = r;
-      _myGifticons = g;
+      _reward = await repo.fetchMyReward();
       notifyListeners();
     } catch (e) {
       debugPrint('[Reward] fetchMyReward failed: $e');
+    }
+    try {
+      _myGifticons = await repo.fetchMyGifticons();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Reward] fetchMyGifticons failed: $e');
     }
   }
 

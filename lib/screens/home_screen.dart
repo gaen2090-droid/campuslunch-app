@@ -250,8 +250,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         // ── 헤더 ──
         Container(
           color: Colors.white,
-          padding: EdgeInsets.fromLTRB(
-              20, MediaQuery.of(context).padding.top + 12, 20, 12),
+          padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20,
+              _openDropdown != null ? 0 : 12),
           child: Column(
             children: [
               // 검색 바
@@ -427,7 +427,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         if (_openDropdown != null)
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
