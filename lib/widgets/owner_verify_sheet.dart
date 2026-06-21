@@ -45,24 +45,33 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+
     return GestureDetector(
-      onTap: widget.onClose,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        widget.onClose();
+      },
       child: Container(
         color: Colors.black.withAlpha(77),
         alignment: Alignment.bottomCenter,
         child: GestureDetector(
           onTap: () {},
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
+          child: AnimatedPadding(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: Material(
+                color: Colors.white,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, safeBottom + 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
                   width: 40,
                   height: 6,
                   margin: const EdgeInsets.only(bottom: 20),
@@ -223,7 +232,10 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
                     ),
                   ),
                 ],
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
