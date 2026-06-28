@@ -2,7 +2,6 @@
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
-import '../widgets/nearby_prompt.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
@@ -29,8 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | 'report' | null
   bool _searchActive = false;
-  bool _showNearby = false;
-  bool? _prevLocationMode;
   String? _lastBannerImpressionId;
   final _searchCtrl = TextEditingController();
   final _crowdInfoOverlay = OverlayPortalController();
@@ -41,16 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
   static const _reportOpts = [_allLabel, '제보있음', '제보없음'];
   static const _reportOptLabels = {_allLabel: '전체', '제보있음': '스탬프 1개', '제보없음': '스탬프 2개'};
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final locationMode = context.read<AppProvider>().locationMode;
-    if (locationMode && _prevLocationMode != true) {
-      _showNearby = true;
-    }
-    _prevLocationMode = locationMode;
-  }
 
   @override
   void dispose() {
@@ -183,7 +170,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final openWithReport = filtered.where((r) =>
         r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate).toList();
     final needsReport = filtered.where((r) =>
-        r.status != '영업안함' && !isBusyStatus(r) && !r.hasCrowdUpdate).toList();
+        r.status != '영업안함' && !r.hasCrowdUpdate).toList();
 
     final availableSorted = _sortSection(openWithReport);
     // 추천 배너는 항상 최신순 기준 알고리즘으로 고정
@@ -192,11 +179,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         ? availableSorted
         : availableSorted.where((r) => r.id != recommended.id).toList();
     final busy = _sortSection(
-      filtered.where(isBusyStatus).toList(),
+      filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate).toList(),
       isBusy: true,
     );
-    // 영업안함은 필터 무관하게 항상 전체 표시
-    final closedAll = all.where((r) => r.status == '영업안함').toList();
+    final closedAll = filtered.where((r) => r.status == '영업안함').toList();
     final closed = _sortSection(
       closedAll,
       isClosed: true,
@@ -430,24 +416,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         Expanded(
           child: _searchActive
               ? _buildSearch(searchResults)
-              : _buildList(recommendedFiltered, availableCardsFiltered, needsReportFiltered, busyFiltered, closedFiltered),
+              : _buildList(recommendedFiltered, availableCardsFiltered, needsReportFiltered, busyFiltered, closedFiltered, provider.restaurantsLoading, provider.restaurantsLoadFailed),
         ),
           ],
         ),
-
-        // ── 근처 매장 제보 요청 팝업 ──
-        if (_showNearby && !_searchActive)
-          Positioned(
-            left: 0, right: 0, bottom: 80,
-            child: NearbyPrompt(
-              restaurants: all,
-              onClose: () => setState(() => _showNearby = false),
-              onReport: (r) {
-                setState(() => _showNearby = false);
-                _openReport(r);
-              },
-            ),
-          ),
       ],
     );
   }
@@ -458,6 +430,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       return const Center(
         child: Text('검색어를 입력해주세요.',
             style: TextStyle(
+                fontFamily: 'OkDanDan',
                 fontSize: 14, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w700)),
       );
     }
@@ -504,6 +477,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       ),
                       child: const Text('검색 결과가 없어요.',
                           style: TextStyle(
+                              fontFamily: 'OkDanDan',
                               fontSize: 14,
                               color: Color(0xFFD1D5DB),
                               fontWeight: FontWeight.w700)),
@@ -583,7 +557,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     );
   }
 
-  Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> needsReport, List<Restaurant> busy, List<Restaurant> closed) {
+  Widget _buildList(Restaurant? recommended, List<Restaurant> available, List<Restaurant> needsReport, List<Restaurant> busy, List<Restaurant> closed, bool loading, bool loadFailed) {
     final hasAvailable = recommended != null || available.isNotEmpty;
     final hasBusy = busy.isNotEmpty;
     final hasNeedsReport = needsReport.isNotEmpty;
@@ -650,17 +624,59 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               busy.isEmpty &&
               needsReport.isEmpty &&
               closed.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 48, 20, 0),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
               child: Center(
-                child: Text(
-                  '표시할 매장이 없어요.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
+                child: loading
+                    ? const CircularProgressIndicator(
+                        color: Color(0xFF9ECA8B),
+                      )
+                    : loadFailed
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.wifi_off_rounded,
+                                  size: 28, color: Color(0xFF9CA3AF)),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '네트워크 연결을 확인해주세요.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF9CA3AF),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () =>
+                                    context.read<AppProvider>().refreshRestaurants(),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    '다시 시도',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Text(
+                            '표시할 매장이 없어요.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
               ),
             ),
         ],

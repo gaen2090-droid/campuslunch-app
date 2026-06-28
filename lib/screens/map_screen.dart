@@ -369,6 +369,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                           ),
                           child: const Text('검색 결과가 없어요.',
                               style: TextStyle(
+                                  fontFamily: 'OkDanDan',
                                   fontSize: 14,
                                   color: Color(0xFFD1D5DB),
                                   fontWeight: FontWeight.w700)),
@@ -570,7 +571,9 @@ class _FakeMap extends StatelessWidget {
         ...restaurants.map((r) {
           final left = r.x / 100 * size.width;
           final top = r.y / 100 * size.height;
-          final meta = crowdStatusMeta(r.status);
+          final meta = crowdStatusMeta(
+            r.status != '영업안함' && !r.hasCrowdUpdate ? '제보필요' : r.status,
+          );
           final isSelected = selected?.id == r.id;
           final pinSize = isSelected ? 40.0 : 28.0;
           return Positioned(

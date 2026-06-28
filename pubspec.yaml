@@ -59,3 +59,6 @@ flutter:
           weight: 800
         - asset: assets/fonts/Pretendard-Black.otf
           weight: 900
+    - family: OkDanDan
+      fonts:
+        - asset: assets/fonts/OkDanDan-Bold.otf

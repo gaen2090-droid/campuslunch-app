@@ -116,6 +116,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                         Text(
                           '아직 받은 쿠폰이 없어요.',
                           style: TextStyle(
+                            fontFamily: 'OkDanDan',
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF9CA3AF),

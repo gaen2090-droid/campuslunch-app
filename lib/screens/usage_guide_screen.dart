@@ -6,6 +6,7 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/report_sheet.dart';
 import '../widgets/rice_ball_icon.dart';
 
 /// 사용법 가이드 1페이지 전용 — 항상 같은 매장 3곳을 고정으로 보여준다 (실데이터 사용 안 함)
@@ -447,33 +448,9 @@ class _InitialCircle extends StatelessWidget {
   }
 }
 
-/// 2페이지: ReportSheet과 동일한 옵션/색/아이콘 토큰
+/// 2페이지: ReportSheet과 동일한 옵션/색/아이콘 토큰 (report_sheet.dart의 reportOptions 그대로 사용)
 class _ReportMockup extends StatelessWidget {
   const _ReportMockup();
-
-  static const _options = [
-    (
-      label: '여유로워요',
-      icon: Icons.sentiment_satisfied_alt,
-      borderColor: Color(0xFFBFE0B0),
-      bgColor: Color(0xFFF3F8F0),
-      textColor: Color(0xFF4C9C2A),
-    ),
-    (
-      label: '약간 붐벼요',
-      icon: Icons.sentiment_neutral,
-      borderColor: Color(0xFFFDE68A),
-      bgColor: Color(0xFFFFFBEB),
-      textColor: Color(0xFFD97706),
-    ),
-    (
-      label: '자리 없어요',
-      icon: Icons.groups,
-      borderColor: Color(0xFFFECACA),
-      bgColor: Color(0xFFFEF2F2),
-      textColor: Color(0xFFEF4444),
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -508,16 +485,15 @@ class _ReportMockup extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 14),
-          ..._options.map((o) => Padding(
+          ...reportOptions.map((o) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Container(
-                  height: 42,
                   decoration: BoxDecoration(
                     color: o.bgColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: o.borderColor),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     children: [
                       Icon(o.icon, size: 16, color: o.textColor),

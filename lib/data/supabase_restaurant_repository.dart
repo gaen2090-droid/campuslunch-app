@@ -14,7 +14,6 @@ import '../services/supabase_service.dart';
 import '../utils/business_hours.dart';
 import 'crowd_level_mapper.dart';
 import 'crowd_status_helpers.dart';
-import 'restaurants.dart';
 
 /// Supabase 실제 스키마:
 /// - restaurants: uuid id, name, category, area, address, image_url, description, latitude, longitude, ...
@@ -491,7 +490,6 @@ class SupabaseRestaurantRepository {
     final at = now ?? DateTime.now();
     final id = row['id'] as String;
     final extra = _parseDescription(row['description']);
-    final seed = extra == null ? _seedByName(row['name'] as String?) : null;
     final bh = BusinessHoursData.fromDescription(extra);
     final sessionStart = bh.sessionStartAt(at);
 
@@ -555,7 +553,7 @@ class SupabaseRestaurantRepository {
         ? menuList
             .map((m) => MenuItem.fromMap(Map<String, dynamic>.from(m as Map)))
             .toList()
-        : (seed?.menu ?? []);
+        : <MenuItem>[];
 
     return Restaurant(
       id: id,
@@ -564,19 +562,19 @@ class SupabaseRestaurantRepository {
       area: row['area'] as String,
       address: row['address'] as String? ?? row['area'] as String,
       status: finalStatus,
-      imageUrl: row['image_url'] as String? ?? seed?.imageUrl ?? '',
-      distance: (extra?['distance'] as num?)?.toDouble() ?? seed?.distance ?? 200,
+      imageUrl: row['image_url'] as String? ?? '',
+      distance: (extra?['distance'] as num?)?.toDouble() ?? 200,
       latitude: (row['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (row['longitude'] as num?)?.toDouble() ?? 0,
-      x: (extra?['map_x'] as num?)?.toDouble() ?? seed?.x ?? 50,
-      y: (extra?['map_y'] as num?)?.toDouble() ?? seed?.y ?? 50,
-      hours: _hoursLabel(extra, seed?.hours),
+      x: (extra?['map_x'] as num?)?.toDouble() ?? 50,
+      y: (extra?['map_y'] as num?)?.toDouble() ?? 50,
+      hours: _hoursLabel(extra, null),
       hoursPeriods: BusinessHoursData.fromDescription(extra).periods,
-      reports: reportCounts.isEmpty ? (seed?.reports ?? {}) : reportCounts,
+      reports: reportCounts,
       menu: menu,
       popularityScore: _calcPopularityScore(
         reports,
-        extra?['hours'] as String? ?? seed?.hours ?? '',
+        extra?['hours'] as String? ?? '',
       ),
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
       ownerCode: extra?['owner_code'] as String? ?? '',
@@ -881,11 +879,4 @@ class SupabaseRestaurantRepository {
     return null;
   }
 
-  Restaurant? _seedByName(String? name) {
-    if (name == null) return null;
-    for (final r in initialRestaurants) {
-      if (r.name == name) return r;
-    }
-    return null;
-  }
 }

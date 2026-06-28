@@ -13,7 +13,9 @@ class RestaurantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = restaurant;
-    final meta = crowdStatusMeta(r.status);
+    final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+    final displayStatus = noReport ? '제보필요' : r.status;
+    final meta = crowdStatusMeta(displayStatus);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -81,7 +83,7 @@ class RestaurantCard extends StatelessWidget {
               child: Text.rich(
                 TextSpan(
                   children: [
-                    if (r.status == '웨이팅많음') ...[
+                    if (displayStatus == '웨이팅많음') ...[
                       const TextSpan(text: '🔥', style: TextStyle(fontSize: 9)),
                       TextSpan(
                         text: '웨이팅',
@@ -93,7 +95,7 @@ class RestaurantCard extends StatelessWidget {
                       ),
                     ] else
                       TextSpan(
-                        text: r.status,
+                        text: displayStatus,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,

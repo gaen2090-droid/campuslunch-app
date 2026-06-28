@@ -40,9 +40,6 @@ Future<void> submitCrowdReportFeedback(
   if (!stamp.granted && stamp.todayStamps == 0 && stamp.totalStamps == 0) {
     // 사장님 제보 또는 Supabase 미연결
     message = '소중한 제보 감사드려요!';
-  } else if (stamp.autoRedeem.succeeded) {
-    message =
-        '스탬프 20개를 모아서 기프티콘이 지급되었어요.\n리워드 쿠폰함에서 확인하실 수 있어요.';
   } else if (stamp.granted) {
     message =
         '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/999)';
@@ -52,6 +49,8 @@ Future<void> submitCrowdReportFeedback(
   } else {
     message = '혼잡도 제보가 등록되었어요.\n오늘 스탬프를 모두 받았어요. 내일 다시 받을 수 있어요.';
   }
+
+  final autoRedeemSucceeded = stamp.autoRedeem.succeeded;
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -65,6 +64,32 @@ Future<void> submitCrowdReportFeedback(
         ),
       ),
       backgroundColor: const Color(0xFF111827),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      duration: Duration(milliseconds: autoRedeemSucceeded ? 1600 : 2800),
+      elevation: 0,
+    ),
+  );
+
+  if (!autoRedeemSucceeded) return;
+
+  final productName = stamp.autoRedeem.productName ?? '쿠폰';
+  await Future.delayed(const Duration(milliseconds: 1600));
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        '$productName이 발급됐어요. 확인해보세요!\n(마이페이지 > 내 스탬프 > 쿠폰함)',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
+        ),
+      ),
+      backgroundColor: const Color(0xFF9ECA8B),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

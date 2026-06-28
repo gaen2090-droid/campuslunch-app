@@ -66,6 +66,7 @@ class _MyScreenState extends State<MyScreen> {
                       child: Text(
                         '마이페이지',
                         style: TextStyle(
+                          fontFamily: 'OkDanDan',
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF5E8C4A),
@@ -245,27 +246,27 @@ class _MyScreenState extends State<MyScreen> {
               ],
 
               // ── 개발자 옵션 ──
-              const SizedBox(height: 40),
-              Container(
-                decoration: const BoxDecoration(
-                  border: Border(
-                      top: BorderSide(
-                          color: Color(0xFFE5E7EB),
-                          style: BorderStyle.solid)),
-                ),
-                padding: const EdgeInsets.only(top: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '개발자 옵션',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFD1D5DB)),
-                    ),
-                    const SizedBox(height: 12),
-                    if (kDebugMode) ...[
+              if (kDebugMode) ...[
+                const SizedBox(height: 40),
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                        top: BorderSide(
+                            color: Color(0xFFE5E7EB),
+                            style: BorderStyle.solid)),
+                  ),
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '개발자 옵션',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFD1D5DB)),
+                      ),
+                      const SizedBox(height: 12),
                       GestureDetector(
                         onTap: () async {
                           final msg = await context
@@ -338,33 +339,10 @@ class _MyScreenState extends State<MyScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
                     ],
-                    GestureDetector(
-                      onTap: () => _confirmReset(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFFE5E7EB),
-                              style: BorderStyle.solid),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '앱 초기화 (첫 화면으로)',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -537,32 +515,6 @@ class _MyScreenState extends State<MyScreen> {
     );
   }
 
-  void _confirmReset(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('앱 초기화',
-            style: TextStyle(fontWeight: FontWeight.w900)),
-        content: const Text('모든 데이터를 초기화하고 첫 화면으로 돌아갑니다.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소',
-                  style: TextStyle(color: Color(0xFF9CA3AF)))),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.read<AppProvider>().devReset();
-            },
-            child: const Text('초기화',
-                style: TextStyle(
-                    color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _RewardCard extends StatelessWidget {

@@ -1,7 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../services/push_notification_service.dart';
 
 class NotificationPermissionScreen extends StatelessWidget {
   const NotificationPermissionScreen({super.key});
@@ -80,21 +79,21 @@ class NotificationPermissionScreen extends StatelessWidget {
                     children: [
                       GestureDetector(
                         onTap: () async {
-                          await PushNotificationService.instance.requestPermission();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: const Text(
-                              '평일 12:00·18:00에 알림을 보내드릴게요!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                            backgroundColor: const Color(0xFF111827),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                            duration: const Duration(milliseconds: 1600),
-                            elevation: 0,
-                          ));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: const Text(
+                                '평일 12:00·18:00에 알림을 보내드릴게요!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                              ),
+                              backgroundColor: const Color(0xFF111827),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                              duration: const Duration(milliseconds: 1600),
+                              elevation: 0,
+                            ));
+                          }
                           await provider.completeNotificationPermission(true);
                         },
                         child: Container(

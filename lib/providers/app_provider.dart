@@ -12,7 +12,6 @@ import '../utils/nickname_generator.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
-import '../data/restaurants.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
 import '../models/crowd_report.dart';
@@ -107,8 +106,13 @@ class AppProvider extends ChangeNotifier {
   /// 어드민 화면용 — is_active=false 포함 DB 전체
   List<Restaurant> get adminRestaurants =>
       _adminRestaurants.isNotEmpty ? _adminRestaurants : _restaurants;
-  bool _supabaseRestaurantsLoaded = false;
   int _restaurantRefreshGen = 0;
+  bool _restaurantsLoading = true;
+  /// true: 최초 로딩 중(네트워크 응답 전). 실패해도 한 번 끝나면 false.
+  bool get restaurantsLoading => _restaurantsLoading;
+  bool _restaurantsLoadFailed = false;
+  /// true: 마지막 로드 시도가 네트워크/서버 오류로 실패함(매장이 진짜 0개인 것과 구분).
+  bool get restaurantsLoadFailed => _restaurantsLoadFailed;
 
   // ── 북마크 ──
   Set<String> _bookmarks = {};
@@ -181,28 +185,10 @@ class AppProvider extends ChangeNotifier {
     _hiddenGifticonIds =
         Set<String>.from(prefs.getStringList(_kHiddenGifticons) ?? const []);
 
-    _restaurants = List<Restaurant>.from(initialRestaurants);
+    _restaurants = [];
     await _loadRestaurantsFromSupabase();
     // 실시간 구독 제거: 다른 사용자의 제보로 목록이 계속 재정렬되면 혼란스럽다는
     // 피드백에 따라, 새로고침(pull-to-refresh) 또는 본인 제보 시에만 갱신한다.
-
-    // Supabase 미연결·로드 실패 시에만 로컬 혼잡도 오버라이드 적용
-    if (!_supabaseRestaurantsLoaded) {
-      final overridesJson = prefs.getString(_kOverrides);
-      if (overridesJson != null) {
-        final overrides = jsonDecode(overridesJson) as Map<String, dynamic>;
-        _restaurants = _restaurants.map((r) {
-          final ov = overrides[r.id.toString()] as Map<String, dynamic>?;
-          if (ov == null) return r;
-          final updatedAt = ov['updatedAt'] as int? ?? 0;
-          final diffMin =
-              ((DateTime.now().millisecondsSinceEpoch - updatedAt) / 60000)
-                  .floor();
-          return r.copyWith(status: ov['status'] as String, updated: diffMin);
-        }).toList();
-      }
-      _restaurants = _restaurants.map(_applyOperatingHours).toList();
-    }
 
     // 북마크 복원
     final bookmarksJson = prefs.getString(_kBookmarks);
@@ -921,13 +907,21 @@ class AppProvider extends ChangeNotifier {
     try {
       final fetched = await repo.fetchAll();
       if (gen != _restaurantRefreshGen) return;
-      _supabaseRestaurantsLoaded = true;
       _restaurants = fetched;
+      _restaurantsLoadFailed = false;
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[Supabase] refreshRestaurants failed: $e\n$st');
+      _restaurantsLoadFailed = true;
+      notifyListeners();
+      return;
+    }
+    try {
       await _syncOwnerRestaurantIdsFromDb();
       await _syncPushNotifications();
       notifyListeners();
     } catch (e, st) {
-      debugPrint('[Supabase] refreshRestaurants failed: $e\n$st');
+      debugPrint('[Supabase] refreshRestaurants post-sync failed: $e\n$st');
     }
   }
 
@@ -957,10 +951,14 @@ class AppProvider extends ChangeNotifier {
     await prefs.setBool(_kPush, enabled);
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kDinnerPush, enabled);
-    if (enabled) {
-      await PushNotificationService.instance.requestPermission();
+    try {
+      if (enabled) {
+        await PushNotificationService.instance.requestPermission();
+      }
+      await _syncPushNotifications();
+    } catch (e, st) {
+      debugPrint('[Push] completeNotificationPermission side-effect failed: $e\n$st');
     }
-    await _syncPushNotifications();
     _stage = await _postAppStage(prefs);
     notifyListeners();
   }
@@ -1020,26 +1018,32 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 푸시 알림 예약은 부가 기능이라 실패/지연이 화면 갱신·전환을 막으면 안 됨.
+  /// 그래서 내부에서 예외를 모두 흡수한다 (호출부는 await만 하면 됨).
   Future<void> _syncPushNotifications() async {
     if (kIsWeb) return;
-    final lunchOn = _notificationEnabled && _lunchPushEnabled;
-    final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
-    final recommended =
-        pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
+    try {
+      final lunchOn = _notificationEnabled && _lunchPushEnabled;
+      final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
+      final recommended =
+          pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
 
-    await PushNotificationService.instance.syncDeliveredAnalytics(
-      lunchEnabled: lunchOn,
-      dinnerEnabled: dinnerOn,
-      restaurantId: recommended?.id,
-    );
-    await PushNotificationService.instance.refreshSchedules(
-      lunchEnabled: lunchOn,
-      dinnerEnabled: dinnerOn,
-      restaurants: _restaurants,
-      useAlgorithmRanking: _useAlgorithmRanking,
-    );
-    if (kDebugMode) {
-      await PushNotificationService.instance.logPendingNotifications();
+      await PushNotificationService.instance.syncDeliveredAnalytics(
+        lunchEnabled: lunchOn,
+        dinnerEnabled: dinnerOn,
+        restaurantId: recommended?.id,
+      );
+      await PushNotificationService.instance.refreshSchedules(
+        lunchEnabled: lunchOn,
+        dinnerEnabled: dinnerOn,
+        restaurants: _restaurants,
+        useAlgorithmRanking: _useAlgorithmRanking,
+      );
+      if (kDebugMode) {
+        await PushNotificationService.instance.logPendingNotifications();
+      }
+    } catch (e, st) {
+      debugPrint('[Push] _syncPushNotifications failed: $e\n$st');
     }
   }
 
@@ -1151,7 +1155,6 @@ class AppProvider extends ChangeNotifier {
           final gen = ++_restaurantRefreshGen;
           final fetched = await repo.fetchAll();
           if (gen == _restaurantRefreshGen) {
-            _supabaseRestaurantsLoaded = true;
             _restaurants = fetched;
           }
           final prefs = await SharedPreferences.getInstance();
@@ -1836,18 +1839,24 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _loadRestaurantsFromSupabase() async {
     final repo = _restaurantRepo;
-    if (repo == null) return;
+    if (repo == null) {
+      _restaurantsLoading = false;
+      return;
+    }
 
     try {
       final gen = ++_restaurantRefreshGen;
       final fetched = await repo.fetchAll();
       if (gen != _restaurantRefreshGen) return;
-      _supabaseRestaurantsLoaded = true;
       _restaurants = fetched;
+      _restaurantsLoadFailed = false;
       await _syncOwnerRestaurantIdsFromDb();
       await _syncPushNotifications();
     } catch (e, st) {
       debugPrint('[Supabase] load restaurants failed: $e\n$st');
+      _restaurantsLoadFailed = true;
+    } finally {
+      _restaurantsLoading = false;
     }
   }
 
@@ -1865,26 +1874,6 @@ class AppProvider extends ChangeNotifier {
       return r.copyWith(status: '영업안함', updated: 0);
     }
     return r;
-  }
-
-  Future<void> devReset() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedAccounts = prefs.getString(_kAccounts);
-    await prefs.clear();
-    if (savedAccounts != null) await prefs.setString(_kAccounts, savedAccounts);
-    _restaurants = List<Restaurant>.from(initialRestaurants);
-    _bookmarks = {};
-    _isLoggedIn = false;
-    _nickname = '';
-    _accountId = '';
-    _userRole = 'user';
-    _ownerRestaurantIds = [];
-    _locationMode = false;
-    _notificationEnabled = false;
-    _stage = 'onboarding';
-    _reward = UserReward.empty;
-    _myGifticons = [];
-    notifyListeners();
   }
 
   // ── 리워드 ──
@@ -1907,16 +1896,6 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// 쿠폰 교환. 반환: (RedeemResult, Gifticon?)
-  Future<(RedeemResult, Gifticon?)> redeemGifticon() async {
-    final repo = _rewardRepo;
-    if (repo == null) return (RedeemResult.error, null);
-    final result = await repo.redeemGifticon();
-    if (result.$1 == RedeemResult.ok) {
-      await fetchMyReward();
-    }
-    return result;
-  }
 
   Future<String?> markGifticonUsed(String gifticonId) async {
     final repo = _rewardRepo;
