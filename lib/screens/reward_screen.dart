@@ -40,11 +40,12 @@ class _RewardScreenState extends State<RewardScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '내 스탬프',
           style: TextStyle(
             fontFamily: 'OkDanDan',
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF5E8C4A),
             letterSpacing: -0.5,

@@ -342,6 +342,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         leadingIcon: _reportFilter == _allLabel
                             ? Icons.stars_rounded
                             : null,
+                        labelFontFamily: 'OkDanDan',
+                        labelFontSize: 14,
                       ),
                     ],
                   ),
@@ -466,20 +468,14 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView(
                 children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 80),
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: const Text('검색 결과가 없어요.',
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 80),
+                      child: Text('검색 결과가 없어요.',
                           style: TextStyle(
                               fontFamily: 'OkDanDan',
                               fontSize: 14,
-                              color: Color(0xFFD1D5DB),
+                              color: Color(0xFF9CA3AF),
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -522,7 +518,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               const SizedBox(width: 8),
               Text(label,
                   style: TextStyle(
-                      fontSize: 14,
+                      fontFamily: 'OkDanDan',
+                      fontSize: 17,
                       fontWeight: FontWeight.w900,
                       color: textColor)),
             ],
@@ -937,6 +934,8 @@ class _FilterChip extends StatelessWidget {
   final Color? restingText;
   /// 라벨 앞에 표시할 아이콘 (선택)
   final IconData? leadingIcon;
+  final String? labelFontFamily;
+  final double labelFontSize;
 
   const _FilterChip({
     required this.label,
@@ -947,6 +946,8 @@ class _FilterChip extends StatelessWidget {
     this.restingBorder,
     this.restingText,
     this.leadingIcon,
+    this.labelFontFamily,
+    this.labelFontSize = 12,
   });
 
   @override
@@ -979,7 +980,8 @@ class _FilterChip extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                  fontSize: 12,
+                  fontFamily: labelFontFamily,
+                  fontSize: labelFontSize,
                   fontWeight: FontWeight.w900,
                   color: on ? const Color(0xFF111827) : restText),
             ),

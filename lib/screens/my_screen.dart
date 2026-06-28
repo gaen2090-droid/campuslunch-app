@@ -67,7 +67,7 @@ class _MyScreenState extends State<MyScreen> {
                         '마이페이지',
                         style: TextStyle(
                           fontFamily: 'OkDanDan',
-                          fontSize: 24,
+                          fontSize: 31,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF5E8C4A),
                           letterSpacing: -0.8,
@@ -189,7 +189,8 @@ class _MyScreenState extends State<MyScreen> {
                           child: Text(
                             '저장한 매장',
                             style: TextStyle(
-                                fontSize: 16,
+                                fontFamily: 'OkDanDan',
+                                fontSize: 19,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF111827)),
                           ),
@@ -559,9 +560,10 @@ class _RewardCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      '오늘 모은 스탬프',
+                      '오늘의 스탬프',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontFamily: 'OkDanDan',
+                        fontSize: 19,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF111827),
                       ),

@@ -257,6 +257,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                           leadingIcon: _reportFilter == _allLabel
                               ? Icons.stars_rounded
                               : null,
+                          labelFontFamily: 'OkDanDan',
+                          labelFontSize: 14,
                         ),
                       ],
                     ),
@@ -358,20 +360,14 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                   ),
                   if (filtered.isEmpty)
                     Expanded(
-                      child: Center(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: const Text('검색 결과가 없어요.',
+                      child: const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Text('검색 결과가 없어요.',
                               style: TextStyle(
                                   fontFamily: 'OkDanDan',
                                   fontSize: 14,
-                                  color: Color(0xFFD1D5DB),
+                                  color: Color(0xFF9CA3AF),
                                   fontWeight: FontWeight.w700)),
                         ),
                       ),
@@ -683,6 +679,8 @@ class _MapFilterChip extends StatelessWidget {
   final Color? restingText;
   /// 라벨 앞에 표시할 아이콘 (선택)
   final IconData? leadingIcon;
+  final String? labelFontFamily;
+  final double labelFontSize;
 
   const _MapFilterChip({
     required this.label,
@@ -692,6 +690,8 @@ class _MapFilterChip extends StatelessWidget {
     this.restingBg,
     this.restingText,
     this.leadingIcon,
+    this.labelFontFamily,
+    this.labelFontSize = 12,
   });
 
   @override
@@ -723,7 +723,8 @@ class _MapFilterChip extends StatelessWidget {
             ],
             Text(label,
                 style: TextStyle(
-                    fontSize: 12,
+                    fontFamily: labelFontFamily,
+                    fontSize: labelFontSize,
                     fontWeight: FontWeight.w900,
                     color: on ? const Color(0xFF111827) : restText)),
             const SizedBox(width: 4),

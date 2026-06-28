@@ -118,7 +118,8 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                   child: Text(
                     '저장한 매장',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontFamily: 'OkDanDan',
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.8,
                       color: Color(0xFF5E8C4A),
