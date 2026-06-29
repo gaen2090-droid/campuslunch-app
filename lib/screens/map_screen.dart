@@ -31,7 +31,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   RestaurantKakaoMapState? _mapState;
   static const _allLabel = '전체';
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
-  Set<String> _regions = {'정문'};
+  Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
   bool _searchActive = false;
@@ -158,6 +158,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     final provider = context.watch<AppProvider>();
     final all = provider.restaurants;
     final filtered = _filter(all);
+    final jeongmunRestaurants = all.where((r) => r.area == '정문').toList();
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final q = _searchCtrl.text.trim();
@@ -178,6 +179,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             cameraFitProfile: _isJeongmunOnly()
                 ? CameraFitProfile.tight
                 : CameraFitProfile.balanced,
+            initialFocusRestaurants: jeongmunRestaurants,
             onMapReady: (map) => _mapState = map,
           ),
         ),

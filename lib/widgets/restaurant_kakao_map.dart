@@ -27,6 +27,10 @@ class RestaurantKakaoMap extends StatefulWidget {
   final ({double lat, double lng})? pickMarker;
   final void Function(RestaurantKakaoMapState map)? onMapReady;
 
+  /// 최초 진입 시에만 적용되는 카메라 포커스 (필터와 무관하게 정문 일대 우선 노출용)
+  final List<Restaurant>? initialFocusRestaurants;
+  final CameraFitProfile initialFocusProfile;
+
   const RestaurantKakaoMap({
     super.key,
     required this.restaurants,
@@ -40,6 +44,8 @@ class RestaurantKakaoMap extends StatefulWidget {
     this.onMapTap,
     this.pickMarker,
     this.onMapReady,
+    this.initialFocusRestaurants,
+    this.initialFocusProfile = CameraFitProfile.tight,
   });
 
   @override
@@ -100,11 +106,18 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   EdgeInsets _mapViewportPadding() =>
       CameraFitOptions.forProfile(widget.cameraFitProfile).viewportPadding;
 
+  bool _didInitialFocusFit = false;
+
   Future<void> fitToRestaurants({bool animate = true}) async {
     final controller = _controller;
     if (controller == null || !_mapLayerReady) return;
 
-    final points = widget.restaurants
+    final useInitialFocus =
+        !_didInitialFocusFit && (widget.initialFocusRestaurants?.isNotEmpty ?? false);
+    final source = useInitialFocus ? widget.initialFocusRestaurants! : widget.restaurants;
+    final profile = useInitialFocus ? widget.initialFocusProfile : widget.cameraFitProfile;
+
+    final points = source
         .where(
           (r) => r.hasMapLocation && Campus.containsLatLng(r.latitude, r.longitude),
         )
@@ -113,13 +126,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
     if (points.isEmpty) return;
 
+    _didInitialFocusFit = true;
     _lastFitKey = _fitKeyFor(widget.restaurants);
     _lastFitToken = widget.cameraFitToken;
 
     await MapCameraFit.moveToFitLatLngs(
       controller,
       points,
-      profile: widget.cameraFitProfile,
+      profile: profile,
       animate: animate,
       viewportSize: _mapViewportSize(),
       viewportPadding: _mapViewportPadding(),
@@ -214,8 +228,6 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         _mapLayerReady = true;
 
         _attachLabelListener();
-        await _syncMarkers();
-        if (!mounted) return;
         final fitKey = _fitKeyFor(widget.restaurants);
         if (fitKey.isNotEmpty &&
             (fitKey != _lastFitKey || widget.cameraFitToken != _lastFitToken)) {
@@ -224,6 +236,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             unawaited(fitToRestaurants(animate: false));
           });
         }
+        await _syncMarkers();
+        if (!mounted) return;
         widget.onMapReady?.call(this);
       });
     } catch (e, st) {

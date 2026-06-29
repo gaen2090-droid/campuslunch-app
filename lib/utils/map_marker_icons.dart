@@ -56,8 +56,64 @@ class MapMarkerIcons {
   }
 
   static Future<Uint8List> noReport() async {
-    _noReportBytes ??= await _pinMarkerBytes(const Color(0xFF111827));
+    _noReportBytes ??= await _starMarkerBytes();
     return _noReportBytes!;
+  }
+
+  /// '제보필요' 전용 마커 — 검정 원 + 흰색 별 (스탬프 아이콘 스타일)
+  static Future<Uint8List> _starMarkerBytes() async {
+    await _awaitFlutterUiReady();
+    try {
+      return await _starMarkerBytesFromCanvas();
+    } catch (e, st) {
+      debugPrint('[MapMarkerIcons] canvas star failed, using fallback: $e\n$st');
+      return _fallbackPinPng(const Color(0xFF111827));
+    }
+  }
+
+  static Future<Uint8List> _starMarkerBytesFromCanvas() async {
+    const w = 64;
+    const h = 64;
+    const pixelRatio = 2;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio.toDouble());
+    const StarPinPainter().paint(canvas, Size(w.toDouble(), h.toDouble()));
+
+    final picture = recorder.endRecording();
+    final rw = w * pixelRatio;
+    final rh = h * pixelRatio;
+    final uiImage = await picture.toImage(rw, rh);
+    final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+    uiImage.dispose();
+
+    if (byteData == null) {
+      throw StateError('Failed to render star marker bytes');
+    }
+
+    final hiRes = img.Image.fromBytes(
+      width: rw,
+      height: rh,
+      bytes: byteData.buffer,
+      bytesOffset: byteData.offsetInBytes,
+      numChannels: 4,
+      order: img.ChannelOrder.rgba,
+    );
+    final image = img.copyResize(
+      hiRes,
+      width: w,
+      height: h,
+      interpolation: img.Interpolation.linear,
+    );
+    final png = Uint8List.fromList(img.encodePng(image));
+    if (!_isValidPng(png)) {
+      throw StateError('Generated PNG failed signature check');
+    }
+    if (img.decodeImage(png) == null) {
+      throw StateError('Generated PNG failed round-trip decode');
+    }
+    return png;
   }
 
   static Future<Uint8List> forStatus(String status) async {

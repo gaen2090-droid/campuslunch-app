@@ -1046,6 +1046,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void openHomeFromPush([String? restaurantId]) {
+    debugPrint('[AppProvider] openHomeFromPush restaurantId=$restaurantId');
     _mainTabIndex = homeTabIndex;
     notifyListeners();
     unawaited(_refreshForMainTab(homeTabIndex));

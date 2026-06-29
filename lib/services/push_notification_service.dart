@@ -321,6 +321,10 @@ void _onBackgroundResponse(NotificationResponse response) {
 }
 
 void _handlePushResponse(NotificationResponse response, {required bool navigate}) {
+  debugPrint(
+    '[Push] _handlePushResponse navigate=$navigate id=${response.id} '
+    'actionId=${response.actionId} payload=${response.payload}',
+  );
   final payload = response.payload;
   String? restaurantId;
   if (payload != null && payload.isNotEmpty) {

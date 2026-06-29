@@ -8,17 +8,19 @@ class MethodChannelKakaoMapController extends KakaoMapControllerPlatform {
   factory MethodChannelKakaoMapController.create(int viewId) {
     final channel = MethodChannel(
       'view.method_channel.kakao_maps_flutter#$viewId',
-    )..setMethodCallHandler(
+    );
+    final instance = MethodChannelKakaoMapController._(channel);
+    channel.setMethodCallHandler(
         (call) async {
           if (call.method == 'onMapReady') {
-            _isReady = true;
+            instance._isReady = true;
             return;
           }
 
           if (call.method == 'onLabelClicked') {
             final event =
                 LabelClickEvent.fromJson(_asStringKeyedMap(call.arguments));
-            _instance.onLabelClicked(event);
+            instance.onLabelClicked(event);
             return;
           }
 
@@ -26,7 +28,7 @@ class MethodChannelKakaoMapController extends KakaoMapControllerPlatform {
             final event = InfoWindowClickEvent.fromJson(
               _asStringKeyedMap(call.arguments),
             );
-            _instance.onInfoWindowClicked(event);
+            instance.onInfoWindowClicked(event);
             return;
           }
 
@@ -34,7 +36,7 @@ class MethodChannelKakaoMapController extends KakaoMapControllerPlatform {
             final event = CameraMoveEndEvent.fromJson(
               _asStringKeyedMap(call.arguments),
             );
-            _instance.onCameraMoveEnd(event);
+            instance.onCameraMoveEnd(event);
             return;
           }
 
@@ -44,17 +46,17 @@ class MethodChannelKakaoMapController extends KakaoMapControllerPlatform {
         },
       );
 
-    return _instance = MethodChannelKakaoMapController._(channel);
+    return instance;
   }
 
-  static MethodChannelKakaoMapController get instance => _instance;
-
-  static MethodChannelKakaoMapController _instance =
+  /// Default platform-interface placeholder instance.
+  /// Real per-view controllers are created via [create].
+  static final MethodChannelKakaoMapController instance =
       MethodChannelKakaoMapController._(null);
 
   MethodChannel? _channel;
 
-  static bool _isReady = false;
+  bool _isReady = false;
 
   @override
   Future<T> _callMethod<T>(KakaoMapMethodCall<T> methodCall) async {
