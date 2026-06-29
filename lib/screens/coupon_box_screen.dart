@@ -61,10 +61,6 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
     final usable = gifticons
         .where((g) => g.status == 'assigned' && !_isExpired(g))
         .toList();
-    final used = gifticons.where((g) => g.status == 'used').toList();
-    final expired = gifticons
-        .where((g) => g.status == 'assigned' && _isExpired(g))
-        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F0),
@@ -75,10 +71,12 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '쿠폰함',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 20,
             fontWeight: FontWeight.w900,
             color: Color(0xFF5E8C4A),
             letterSpacing: -0.5,
@@ -155,56 +153,6 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                         child: _GifticonCard(
                           gifticon: g,
                           expired: false,
-                          editMode: _editMode,
-                          removing: _removingIds.contains(g.id),
-                          onView: () => _openDetail(g),
-                          onRemove: () => _removeGifticon(g),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (used.isNotEmpty) ...[
-                    if (usable.isNotEmpty) const SizedBox(height: 12),
-                    Text(
-                      '사용 완료 (${used.length})',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...used.map(
-                      (g) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _GifticonCard(
-                          gifticon: g,
-                          expired: true,
-                          editMode: _editMode,
-                          removing: _removingIds.contains(g.id),
-                          onView: () => _openDetail(g),
-                          onRemove: () => _removeGifticon(g),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (expired.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      '만료됨 (${expired.length})',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...expired.map(
-                      (g) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _GifticonCard(
-                          gifticon: g,
-                          expired: true,
                           editMode: _editMode,
                           removing: _removingIds.contains(g.id),
                           onView: () => _openDetail(g),

@@ -4,6 +4,13 @@
 -- ⚠️ 실행 순서 (Supabase는 한 번에 실행하면 enum 오류 55P04 발생)
 --   1) rewards_v2_step1_enum.sql  ← 먼저 이것만 실행
 --   2) rewards_v2_gifticon_flow.sql  ← 성공 후 실행
+--
+-- ⚠️⚠️ 주의: _perform_gifticon_redeem / grant_stamp 함수는 이제 rewards.sql에
+-- 정식으로 통합되었습니다 (둘이 같은 함수를 다르게 정의해 충돌하던 버그 수정).
+-- 이 파일을 다시 실행하면 rewards.sql의 grant_stamp(자동 기프티콘 배정 포함)가
+-- 다시 덮어써져 버그가 재발하니, 아래 _perform_gifticon_redeem / grant_stamp
+-- 블록은 재실행하지 말 것. redeem_gifticon / mark_gifticon_used /
+-- admin_bulk_register_gifticons 등 나머지 함수만 필요시 재실행하면 됩니다.
 
 -- 1) 쿠폰 코드(선택) — CSV 업로드용
 alter table public.gifticons

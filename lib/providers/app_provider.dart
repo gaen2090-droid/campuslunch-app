@@ -99,7 +99,7 @@ class AppProvider extends ChangeNotifier {
   int get ownerInfluence => _ownerInfluence;
   int get mainTabIndex => _mainTabIndex;
 
-  // ── 식당 ──
+  // ── 매장 ──
   List<Restaurant> _restaurants = [];
   List<Restaurant> get restaurants => _restaurants;
   List<Restaurant> _adminRestaurants = [];
@@ -245,12 +245,8 @@ class AppProvider extends ChangeNotifier {
       await fetchMyReward();
 
       await Future.delayed(const Duration(seconds: 2));
-      if (_userRole == 'admin') {
-        _stage = 'admin';
-      } else {
-        _stage = await _postAppStage(prefs);
-        if (hasOwnerTab) _mainTabIndex = 0;
-      }
+      _stage = await _postAppStage(prefs);
+      if (hasOwnerTab) _mainTabIndex = 0;
     } else {
       final locationStored = prefs.containsKey(_kLocation);
       await Future.delayed(const Duration(seconds: 2));
@@ -262,18 +258,6 @@ class AppProvider extends ChangeNotifier {
 
   // ── 로그인 ──
   Future<bool> login(String email, String password) async {
-    // 편의용 관리자 (개발·운영 준비 단계 — 출시 전 Supabase 관리자 계정으로 교체 권장)
-    if (email == 'admin' && password == 'admin123') {
-      await _saveSession(
-          await SharedPreferences.getInstance(),
-          Account(
-              id: 'admin',
-              password: 'admin123',
-              nickname: '관리자',
-              role: 'admin'));
-      return true;
-    }
-
     if (kDebugMode) {
     if (email == 'owner' && password == 'owner123') {
       await _saveSession(
@@ -676,13 +660,9 @@ class AppProvider extends ChangeNotifier {
     _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
     _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
-    if (account.role == 'admin') {
-      _stage = 'admin';
-    } else {
-      _stage = locationStored ? await _postAppStage(prefs) : 'location_permission';
-      if (account.restaurantIds.isNotEmpty) {
-        _mainTabIndex = 0;
-      }
+    _stage = locationStored ? await _postAppStage(prefs) : 'location_permission';
+    if (account.restaurantIds.isNotEmpty) {
+      _mainTabIndex = 0;
     }
     notifyListeners();
   }
@@ -1104,7 +1084,7 @@ class AppProvider extends ChangeNotifier {
           final last = _lastReportTime[restaurantId];
           if (last != null &&
               DateTime.now().difference(last).inMinutes < 5) {
-            return '방금 제보한 식당이에요.\n잠시 후 다시 제보해주세요.';
+            return '방금 제보한 매장이에요.\n잠시 후 다시 제보해주세요.';
           }
         }
         double? lat;
@@ -1128,7 +1108,7 @@ class AppProvider extends ChangeNotifier {
               restaurant.latitude, restaurant.longitude,
             );
             if (dist > 50) {
-              return '식당 근처에서만 혼잡도를 제보할 수 있어요.';
+              return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
             }
           }
         }

@@ -74,14 +74,13 @@ Future<void> submitCrowdReportFeedback(
 
   if (!autoRedeemSucceeded) return;
 
-  final productName = stamp.autoRedeem.productName ?? '쿠폰';
   await Future.delayed(const Duration(milliseconds: 1600));
   if (!context.mounted) return;
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(
-        '$productName이 발급됐어요. 확인해보세요!\n(마이페이지 > 내 스탬프 > 쿠폰함)',
+        '커피 쿠폰이 발급됐어요. 확인해보세요!\n(마이페이지 > 내 스탬프 > 쿠폰함)',
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontSize: 14,
