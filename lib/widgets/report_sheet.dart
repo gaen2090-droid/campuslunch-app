@@ -176,7 +176,7 @@ const reportOptions = [
   ),
   ReportOption(
     label: '약간 혼잡해요',
-    subtitle: '앉을 수는 있지만 거의 찼어요',
+    subtitle: '빈자리 조금 있어요',
     status: '약간혼잡',
     icon: Icons.sentiment_neutral,
     borderColor: Color(0xFFFDE68A),

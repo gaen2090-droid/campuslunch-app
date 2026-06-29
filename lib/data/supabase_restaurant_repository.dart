@@ -745,7 +745,7 @@ class SupabaseRestaurantRepository {
         .eq('id', restaurantId)
         .select('id');
     if ((updated as List).isEmpty) {
-      throw Exception('owner_code DB 저장 실패: 권한 부족이거나 존재하지 않는 식당 ID');
+      throw Exception('owner_code DB 저장 실패: 권한 부족이거나 존재하지 않는 매장 ID');
     }
     return code;
   }

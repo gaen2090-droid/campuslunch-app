@@ -99,9 +99,83 @@ drop policy if exists "user_rewards_insert_own" on public.user_rewards;
 create policy "user_rewards_insert_own" on public.user_rewards
   for insert with check (user_id = auth.uid());
 
+-- 5.5. 기프티콘 자동 배정 (총 스탬프 20개 도달 시 grant_stamp에서 호출)
+--      재고 없으면 'sold_out', 부족하면 'not_enough' 반환 (이 경우 차감 안 함)
+create or replace function public._perform_gifticon_redeem(p_user_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reward   public.user_rewards;
+  v_today    date := (now() at time zone 'Asia/Seoul')::date;
+  v_today_stamps int;
+  v_gift     public.gifticons;
+  v_new_total int;
+begin
+  select * into v_reward
+  from public.user_rewards
+  where user_id = p_user_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('status', 'not_enough');
+  end if;
+
+  if v_reward.total_stamps < 20 then
+    return jsonb_build_object('status', 'not_enough');
+  end if;
+
+  select * into v_gift
+  from public.gifticons
+  where status = 'unassigned'
+    and (expires_at is null or expires_at >= v_today)
+  order by created_at
+  limit 1
+  for update skip locked;
+
+  if not found then
+    return jsonb_build_object('status', 'sold_out');
+  end if;
+
+  if v_reward.last_stamp_date is distinct from v_today then
+    v_today_stamps := 0;
+  else
+    v_today_stamps := v_reward.today_stamps;
+  end if;
+
+  v_new_total := v_reward.total_stamps - 20;
+
+  update public.user_rewards
+  set total_stamps    = v_new_total,
+      today_stamps    = v_today_stamps,
+      last_stamp_date = v_today
+  where user_id = p_user_id;
+
+  update public.gifticons
+  set status           = 'assigned',
+      assigned_user_id = p_user_id,
+      assigned_at      = now()
+  where id = v_gift.id;
+
+  return jsonb_build_object(
+    'status',       'ok',
+    'gifticon_id',  v_gift.id,
+    'brand',        v_gift.brand,
+    'product_name', v_gift.product_name,
+    'image_url',    v_gift.image_url,
+    'expires_at',   v_gift.expires_at,
+    'coupon_code',  v_gift.coupon_code,
+    'total_stamps', v_new_total
+  );
+end;
+$$;
+
 -- 6. 스탬프 지급 함수 (submit_crowd_report trigger에서 호출)
 --    source='user' 제보 성공 시 호출됨
 --    KST 기준 하루 최대 999개 (테스트용, 출시 전 3으로 복구)
+--    누적 20개 도달 시 _perform_gifticon_redeem으로 기프티콘 자동 배정
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb
 language plpgsql
@@ -115,6 +189,7 @@ declare
   v_granted    int := 0;
   v_row        public.user_rewards;
   v_room       int;
+  v_redeem     jsonb;
 begin
   -- upsert 후 잠금
   insert into public.user_rewards (user_id)
@@ -148,11 +223,21 @@ begin
     where user_id = p_user_id;
   end if;
 
+  -- 20개 도달 시 기프티콘 자동 배정 (재고 있는 동안 반복, 초과분은 자동 이월)
+  while v_total_stamps >= 20 loop
+    v_redeem := public._perform_gifticon_redeem(p_user_id);
+    if v_redeem->>'status' != 'ok' then
+      exit;
+    end if;
+    v_total_stamps := (v_redeem->>'total_stamps')::int;
+  end loop;
+
   return jsonb_build_object(
     'granted',       v_granted > 0,
     'granted_count', v_granted,
     'today_stamps',  v_today_stamps,
-    'total_stamps',  v_total_stamps
+    'total_stamps',  v_total_stamps,
+    'auto_redeem',   coalesce(v_redeem, jsonb_build_object('status', 'none'))
   );
 end;
 $$;

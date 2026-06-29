@@ -12,7 +12,7 @@ import '../utils/kakao_map_ready.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
 
-/// DB 식당 마커 + 혼잡도 색상 (카카오맵 SDK)
+/// DB 매장 마커 + 혼잡도 색상 (카카오맵 SDK)
 class RestaurantKakaoMap extends StatefulWidget {
   final List<Restaurant> restaurants;
   final Restaurant? selected;

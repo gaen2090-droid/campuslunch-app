@@ -345,6 +345,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             : null,
                         labelFontFamily: 'OkDanDan',
                         labelFontSize: 14,
+                        verticalPadding: 5,
                       ),
                     ],
                   ),
@@ -905,6 +906,7 @@ class _FilterChip extends StatelessWidget {
   final IconData? leadingIcon;
   final String? labelFontFamily;
   final double labelFontSize;
+  final double verticalPadding;
 
   const _FilterChip({
     required this.label,
@@ -917,6 +919,7 @@ class _FilterChip extends StatelessWidget {
     this.leadingIcon,
     this.labelFontFamily,
     this.labelFontSize = 12,
+    this.verticalPadding = 7,
   });
 
   @override
@@ -928,7 +931,7 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
         decoration: BoxDecoration(
           color: on ? const Color(0xFF9ECA8B) : restBg,
           borderRadius: BorderRadius.circular(20),
