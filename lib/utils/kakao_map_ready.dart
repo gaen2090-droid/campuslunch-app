@@ -38,7 +38,7 @@ Future<void> runWhenKakaoMapReady(
 }
 
 const _markerTextStyle = MarkerTextStyle(
-  fontSize: 14,
+  fontSize: 16,
   fontColorArgb: 0xFF111827,
   strokeThickness: 3,
   strokeColorArgb: 0xFFFFFFFF,

@@ -98,7 +98,6 @@ class KakaoDirectionsService {
 
     final summary = route['summary'] as Map<String, dynamic>?;
     final distance = (summary?['distance'] as num?)?.toInt() ?? 0;
-    final duration = (summary?['duration'] as num?)?.toInt() ?? 0;
 
     final points = <MapLatLng>[];
     final sections = route['sections'] as List? ?? [];
@@ -126,7 +125,7 @@ class KakaoDirectionsService {
       route: RouteSummary(
         points: points,
         distanceText: formatRouteDistance(distance),
-        durationText: formatRouteDuration(duration),
+        durationText: formatWalkingDuration(distance),
       ),
     );
   }

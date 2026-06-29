@@ -24,6 +24,13 @@ class MapMarkerIcons {
   static Uint8List? _noReportBytes;
   static final Map<int, Uint8List> _colorCache = {};
 
+  /// 핀 디자인 변경 시 캐시 무효화 (hot reload 대응)
+  static void clearCache() {
+    _closedBytes = null;
+    _noReportBytes = null;
+    _colorCache.clear();
+  }
+
   static Future<Uint8List> closed() async {
     _closedBytes ??= await _pinMarkerBytes(const Color(0xFF9CA3AF));
     return _closedBytes!;
@@ -43,20 +50,24 @@ class MapMarkerIcons {
     return bytes;
   }
 
-  /// Google Maps 스타일 통짜 핀 (MapPinPainter와 동일)
+  /// 카카오맵 POI 핀 — 2x 크기 + 2x 슈퍼샘플링
   static Future<Uint8List> _pinMarkerBytes(Color color) async {
-    const w = 40;
-    const h = 54;
+    const w = 72;
+    const h = 88;
+    const pixelRatio = 2;
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio.toDouble());
     MapPinPainter(fillColor: color).paint(
       canvas,
       Size(w.toDouble(), h.toDouble()),
     );
 
     final picture = recorder.endRecording();
-    final uiImage = await picture.toImage(w, h);
+    final rw = w * pixelRatio;
+    final rh = h * pixelRatio;
+    final uiImage = await picture.toImage(rw, rh);
     final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
     uiImage.dispose();
 
@@ -64,13 +75,19 @@ class MapMarkerIcons {
       throw StateError('Failed to render map pin bytes');
     }
 
-    final image = img.Image.fromBytes(
-      width: w,
-      height: h,
+    final hiRes = img.Image.fromBytes(
+      width: rw,
+      height: rh,
       bytes: byteData.buffer,
       bytesOffset: byteData.offsetInBytes,
       numChannels: 4,
       order: img.ChannelOrder.rgba,
+    );
+    final image = img.copyResize(
+      hiRes,
+      width: w,
+      height: h,
+      interpolation: img.Interpolation.linear,
     );
     final png = Uint8List.fromList(img.encodePng(image));
     if (!_isValidPng(png)) {
@@ -108,6 +125,7 @@ class MapMarkerIcons {
   }
 
   static Future<List<MarkerStyleBundle>> buildStatusStyles() async {
+    clearCache();
     final styles = <MarkerStyleBundle>[];
     for (final entry in statusMetaMap.entries) {
       styles.add(MarkerStyleBundle(
@@ -121,11 +139,11 @@ class MapMarkerIcons {
     ));
     styles.add(MarkerStyleBundle(
       styleId: 'pin_my_location',
-      bytes: await _pinMarkerBytes(const Color(0xFF2563EB)),
+      bytes: await _pinMarkerBytes(const Color(0xFF3182F6)),
     ));
     styles.add(MarkerStyleBundle(
       styleId: 'pin_destination',
-      bytes: await _pinMarkerBytes(const Color(0xFFEF4444)),
+      bytes: await _pinMarkerBytes(const Color(0xFFF04452)),
     ));
     return styles;
   }

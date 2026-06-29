@@ -71,7 +71,6 @@ class OsrmDirectionsService {
 
     final route = routes.first as Map<String, dynamic>;
     final distance = (route['distance'] as num?)?.toDouble() ?? 0;
-    final duration = (route['duration'] as num?)?.toDouble() ?? 0;
 
     final geometry = route['geometry'] as Map<String, dynamic>?;
     final coords = geometry?['coordinates'] as List?;
@@ -96,7 +95,7 @@ class OsrmDirectionsService {
       route: RouteSummary(
         points: points,
         distanceText: formatRouteDistance(distance.round()),
-        durationText: formatRouteDuration(duration.round()),
+        durationText: formatWalkingDuration(distance.round()),
       ),
     );
   }

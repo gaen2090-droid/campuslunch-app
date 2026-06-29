@@ -1,5 +1,4 @@
-﻿import 'dart:math' as math;
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/map_pin_painter.dart';
 import '../utils/navigation_helper.dart';
@@ -27,9 +26,11 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   Restaurant? _selected;
   bool _isLocated = false;
   bool _isRefreshing = false;
+  int _cameraFitToken = 0;
+  RestaurantKakaoMapState? _mapState;
   static const _allLabel = '전체';
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
-  Set<String> _regions = {_allLabel};
+  Set<String> _regions = {'정문'};
   Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
   bool _searchActive = false;
@@ -96,6 +97,26 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     return '${values.first} 외 ${values.length - 1}';
   }
 
+  void _bumpCameraFit() {
+    _cameraFitToken++;
+  }
+
+  void _onRegionFilterChanged(String value) {
+    setState(() {
+      _toggleFilter(_regions, value);
+      _bumpCameraFit();
+    });
+  }
+
+  void _resetRegionFilter() {
+    setState(() {
+      _regions
+        ..clear()
+        ..add(_allLabel);
+      _bumpCameraFit();
+    });
+  }
+
   void _toggleFilter(Set<String> target, String value) {
     if (value == _allLabel) {
       target
@@ -147,7 +168,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
             onDeselect: () => setState(() => _selected = null),
-            myLocationEnabled: _isLocated,
+            showMyLocationMarker: provider.locationMode,
+            myLocationEnabled: provider.locationMode,
+            cameraFitToken: _cameraFitToken,
+            onMapReady: (map) => _mapState = map,
           ),
         ),
 
@@ -287,12 +311,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               items: _regionOpts,
                               selected: _regions,
                               multiSelect: true,
-                              onSelect: (v) => setState(() => _toggleFilter(_regions, v)),
-                              onReset: () => setState(() {
-                                _regions
-                                  ..clear()
-                                  ..add(_allLabel);
-                              }),
+                              onSelect: _onRegionFilterChanged,
+                              onReset: _resetRegionFilter,
                             )
                           : _openDropdown == 'cuisine'
                               ? _DropdownGrid(
@@ -488,7 +508,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                   showLocationPermissionDialog(context);
                   return;
                 }
-                setState(() => _isLocated = !_isLocated);
+                setState(() => _isLocated = true);
+                _mapState?.moveToMyLocation();
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),

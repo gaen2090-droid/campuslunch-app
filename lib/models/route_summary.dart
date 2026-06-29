@@ -28,17 +28,26 @@ class DirectionsResponse {
   bool get isOk => apiStatus == 'OK' && route != null;
 }
 
+/// 도보 4.8 km/h (= 80 m/분) 기준 소요 시간
+String formatWalkingDuration(int distanceMeters) {
+  const metersPerMinute = 80.0;
+  final minutes = (distanceMeters / metersPerMinute).ceil().clamp(1, 999);
+  if (minutes < 60) return '약 $minutes분';
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return m > 0 ? '약 $h시간 $m분' : '약 $h시간';
+}
+
 RouteSummary estimateStraightWalkingRoute({
   required MapLatLng origin,
   required MapLatLng destination,
 }) {
-  final meters = _haversineMeters(origin, destination);
-  final minutes = (meters / 80).ceil().clamp(1, 999);
+  final meters = _haversineMeters(origin, destination).round();
 
   return RouteSummary(
     points: [origin, destination],
-    distanceText: formatRouteDistance(meters.round()),
-    durationText: '약 $minutes분',
+    distanceText: formatRouteDistance(meters),
+    durationText: formatWalkingDuration(meters),
   );
 }
 
@@ -63,6 +72,7 @@ String formatRouteDistance(int meters) {
   return '${(meters / 1000).toStringAsFixed(1)} km';
 }
 
+/// OSRM 등 API duration(초) — 레거시. 도보 UI는 [formatWalkingDuration] 사용.
 String formatRouteDuration(int seconds) {
   if (seconds < 60) return '$seconds초';
   final mins = (seconds / 60).ceil();

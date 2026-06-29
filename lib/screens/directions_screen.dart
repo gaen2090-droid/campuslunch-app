@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,6 +11,7 @@ import '../models/route_summary.dart';
 import '../services/osrm_directions_service.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/kakao_route_line.dart';
+import '../utils/map_camera_fit.dart';
 
 /// OSRM 도보 경로 + 카카오맵 SDK (polyline은 네이티브 Shape API)
 class DirectionsScreen extends StatefulWidget {
@@ -140,91 +140,83 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
     final route = _route;
     if (controller == null || origin == null || route == null) return;
 
-    await KakaoRouteLine.clear(controller);
-    await removeMarkerQuietly(controller, id: 'route_origin');
-    await removeMarkerQuietly(controller, id: 'route_destination');
+    try {
+      await runWhenKakaoMapReady(controller, () async {
+        await KakaoRouteLine.clear(controller);
+        await removeMarkerQuietly(controller, id: 'route_origin');
+        await removeMarkerQuietly(controller, id: 'route_destination');
 
-    final lineColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF5E8C4A;
-    final borderColor = _isEstimatedRoute ? 0xFF9CA3AF : 0xFF5E8C4A;
+        final lineColor = _isEstimatedRoute
+            ? KakaoRouteLineStyle.estimatedColor
+            : KakaoRouteLineStyle.color;
+        final borderColor = _isEstimatedRoute
+            ? KakaoRouteLineStyle.estimatedBorderColor
+            : KakaoRouteLineStyle.borderColor;
+        final lineWidth = _isEstimatedRoute
+            ? KakaoRouteLineStyle.estimatedWidth
+            : KakaoRouteLineStyle.width;
 
-    final drawn = await KakaoRouteLine.set(
-      controller,
-      points: route.points,
-      color: lineColor,
-      borderColor: borderColor,
-    );
-    if (!drawn) {
-      debugPrint('[Directions] native route polyline failed');
+        final routeForDraw = simplifyRoutePoints(route.points);
+        final drawn = await KakaoRouteLine.set(
+          controller,
+          points: routeForDraw,
+          color: lineColor,
+          borderColor: borderColor,
+          width: lineWidth,
+        );
+        if (!drawn) {
+          debugPrint('[Directions] native route polyline failed');
+        }
+
+        final originStyle =
+            KakaoMarkerLayer.styleIdOrNull(controller, 'pin_my_location');
+        final destStyle =
+            KakaoMarkerLayer.styleIdOrNull(controller, 'pin_destination');
+
+        await controller.addMarker(
+          markerOption: MarkerOption(
+            id: 'route_origin',
+            latLng:
+                LatLng(latitude: origin.latitude, longitude: origin.longitude),
+            styleId: originStyle,
+            rank: 2,
+            text: '내 위치',
+          ),
+        );
+        await controller.addMarker(
+          markerOption: MarkerOption(
+            id: 'route_destination',
+            latLng: LatLng(
+              latitude: _destination.latitude,
+              longitude: _destination.longitude,
+            ),
+            styleId: destStyle,
+            rank: 2,
+            text: widget.restaurant.name,
+          ),
+        );
+
+        if (!mounted) return;
+        final screen = MediaQuery.sizeOf(context);
+        await MapCameraFit.moveToFit(
+          controller,
+          [
+            origin,
+            _destination,
+            ...boundsSampleFromRoute(route.points),
+          ],
+          paddingFraction: 0.04,
+          maxZoom: 19,
+          viewportSize: Size(screen.width, screen.height - 110),
+          viewportPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 20,
+          ),
+        );
+      });
+    } catch (e, st) {
+      debugPrint('[Directions] setupMap failed: $e\n$st');
     }
-
-    await controller.addMarker(
-      markerOption: MarkerOption(
-        id: 'route_origin',
-        latLng: LatLng(latitude: origin.latitude, longitude: origin.longitude),
-        styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_my_location'),
-        rank: 2,
-        text: '내 위치',
-      ),
-    );
-    await controller.addMarker(
-      markerOption: MarkerOption(
-        id: 'route_destination',
-        latLng: LatLng(
-          latitude: _destination.latitude,
-          longitude: _destination.longitude,
-        ),
-        styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_destination'),
-        rank: 2,
-        text: widget.restaurant.name,
-      ),
-    );
-
-    await _fitCameraToRoute(controller, route.points);
-  }
-
-  Future<void> _fitCameraToRoute(
-    KakaoMapController controller,
-    List<MapLatLng> points,
-  ) async {
-    if (points.isEmpty) return;
-
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
-
-    for (final p in points) {
-      minLat = math.min(minLat, p.latitude);
-      maxLat = math.max(maxLat, p.latitude);
-      minLng = math.min(minLng, p.longitude);
-      maxLng = math.max(maxLng, p.longitude);
-    }
-
-    final centerLat = (minLat + maxLat) / 2;
-    final centerLng = (minLng + maxLng) / 2;
-    final zoom = _zoomForSpan(math.max(maxLat - minLat, maxLng - minLng));
-
-    await controller.moveCamera(
-      cameraUpdate: CameraUpdate.fromLatLng(
-        LatLng(latitude: centerLat, longitude: centerLng),
-      ),
-      animation: const CameraAnimation(
-        duration: 300,
-        autoElevation: true,
-        isConsecutive: false,
-      ),
-    );
-    await controller.setZoomLevel(zoomLevel: zoom);
-  }
-
-  int _zoomForSpan(double span) {
-    if (span > 0.3) return 10;
-    if (span > 0.1) return 11;
-    if (span > 0.05) return 12;
-    if (span > 0.01) return 14;
-    if (span > 0.003) return 16;
-    if (span > 0.001) return 17;
-    return 18;
   }
 
   @override
@@ -258,14 +250,14 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              color: const Color(0xFFF3F8F0),
+              color: const Color(0xFFF0F4FA),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       const Icon(Icons.directions_walk,
-                          size: 18, color: Color(0xFF4C9C2A)),
+                          size: 18, color: Color(0xFF3566B8)),
                       const SizedBox(width: 8),
                       Text(
                         '${route.durationText} · ${route.distanceText}',
@@ -319,7 +311,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                 : origin == null || route == null
                     ? const Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF5E8C4A),
+                          color: Color(0xFF4A7FE5),
                         ),
                       )
                     : Stack(
@@ -357,7 +349,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                               color: Color(0x66FFFFFF),
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  color: Color(0xFF5E8C4A),
+                                  color: Color(0xFF4A7FE5),
                                 ),
                               ),
                             ),

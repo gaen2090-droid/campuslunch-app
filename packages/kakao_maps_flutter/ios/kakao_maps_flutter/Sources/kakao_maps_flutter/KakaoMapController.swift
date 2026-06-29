@@ -637,8 +637,22 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                 return
             }
             
-            let styleId = args["styleId"] as? String
-            let poiStyleID = styleId ?? "__default__"
+            let requestedStyleId = args["styleId"] as? String
+            let poiStyleID: String
+            if let sid = requestedStyleId,
+               !sid.isEmpty,
+               poiStyleRegistry[sid] != nil {
+                poiStyleID = sid
+            } else if let fallback = poiStyleRegistry.keys.sorted().first {
+                poiStyleID = fallback
+            } else {
+                result(FlutterError(
+                    code: "E003",
+                    message: "No registered marker style for addMarker",
+                    details: requestedStyleId
+                ))
+                return
+            }
             
             let poiOption = PoiOptions(styleID: poiStyleID, poiID: id)
             poiOption.clickable = true
@@ -1358,8 +1372,9 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                 return
             }
 
-            let bodyColor = UIColor.fromArgb((args["color"] as? Int) ?? 0xFF5E8C4A)
-            let bodyWidth = UInt(max(1, min(20, Int(round((args["width"] as? Double) ?? 5.0)))))
+            let bodyColor = UIColor.fromArgb((args["color"] as? Int) ?? 0xB84A7FE5)
+            let borderColor = UIColor.fromArgb((args["borderColor"] as? Int) ?? 0xFF3566B8)
+            let bodyWidth = UInt(max(1, min(20, Int(round((args["width"] as? Double) ?? 3.5)))))
             let styleSetId = "\(self.kRouteStyleSetId)_\((args["color"] as? Int) ?? 0)_\(bodyWidth)"
 
             if !self.registeredRouteStyleSetIds.contains(styleSetId) {
@@ -1367,8 +1382,8 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                     PerLevelPolylineStyle(
                         bodyColor: bodyColor,
                         bodyWidth: bodyWidth,
-                        strokeColor: bodyColor,
-                        strokeWidth: 0,
+                        strokeColor: borderColor,
+                        strokeWidth: 1,
                         level: 0
                     ),
                 ])
