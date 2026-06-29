@@ -245,6 +245,13 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                         color: Colors.white,
                         letterSpacing: -0.8,
                         height: 1.1,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black,
+                            offset: Offset.zero,
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 4),

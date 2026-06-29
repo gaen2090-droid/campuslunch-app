@@ -230,7 +230,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       debugPrint('[RestaurantKakaoMap] onMapCreated failed: $e\n$st');
       if (!mounted) return;
       setState(() {
-        _mapError = '지도를 불러오지 못했어요.\n네트워크 연결을 확인해주세요.';
+        _mapError = '지도 로드 실패(디버그):\n$e';
       });
     }
   }
