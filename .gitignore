@@ -36,6 +36,7 @@ migrate_working_dir/
 **/ios/Flutter/ephemeral/
 # sdk.dir 등 기기별 경로 — Flutter가 자동 생성 (키는 android/keys.properties)
 android/local.properties
+android/jdk.local.properties
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/

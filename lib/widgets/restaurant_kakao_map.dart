@@ -43,7 +43,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     with WidgetsBindingObserver {
   KakaoMapController? _controller;
   StreamSubscription? _labelSub;
-  bool _stylesReady = false;
+  bool _mapLayerReady = false;
+  String? _mapError;
   final Set<String> _markerIds = {};
   Future<void>? _syncInFlight;
   int _syncGeneration = 0;
@@ -55,7 +56,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   /// 길찾기 등 다른 화면에서 돌아온 뒤 iOS PlatformView 터치/라벨 클릭 복구
   void refreshAfterReturn() {
-    if (_controller == null || !_stylesReady) return;
+    if (_controller == null || !_mapLayerReady) return;
     _attachLabelListener();
     unawaited(_syncMarkers());
   }
@@ -87,7 +88,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   @override
   void didUpdateWidget(RestaurantKakaoMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_controller == null || !_stylesReady) return;
+    if (_controller == null || !_mapLayerReady) return;
 
     if (widget.myLocationEnabled != oldWidget.myLocationEnabled) {
       unawaited(_syncMarkers());
@@ -126,14 +127,22 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   Future<void> _onMapCreated(KakaoMapController controller) async {
     _controller = controller;
 
-    await runWhenKakaoMapReady(controller, () async {
-      await ensureKakaoMarkerLayer(controller);
-      if (!mounted) return;
-      _stylesReady = true;
+    try {
+      await runWhenKakaoMapReady(controller, () async {
+        await ensureKakaoMarkerLayer(controller);
+        if (!mounted) return;
+        _mapLayerReady = true;
 
-      _attachLabelListener();
-      await _syncMarkers();
-    });
+        _attachLabelListener();
+        await _syncMarkers();
+      });
+    } catch (e, st) {
+      debugPrint('[RestaurantKakaoMap] onMapCreated failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _mapError = '지도를 불러오지 못했어요.\n네트워크 연결을 확인해주세요.';
+      });
+    }
   }
 
   Future<void> _syncMarkers() {
@@ -150,7 +159,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   Future<void> _syncMarkersImpl() async {
     final controller = _controller;
-    if (controller == null || !_stylesReady) return;
+    if (controller == null || !_mapLayerReady) return;
 
     final gen = ++_syncGeneration;
 
@@ -173,12 +182,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             : noReport
                 ? 'pin_no_report'
                 : MapMarkerIcons.styleIdForStatus(r.status);
+        final styleId =
+            KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 
         await controller.addMarker(
           markerOption: MarkerOption(
             id: r.id,
             latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
-            styleId: KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId),
+            styleId: styleId,
             rank: isSelected ? 2 : 1,
             text: r.name,
           ),
@@ -194,6 +205,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             ),
           );
           if (gen != _syncGeneration) return;
+          final myStyleId = KakaoMarkerLayer.styleIdOrNull(
+            controller,
+            'pin_my_location',
+          );
           await controller.addMarker(
             markerOption: MarkerOption(
               id: 'my_location',
@@ -201,10 +216,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
                 latitude: pos.latitude,
                 longitude: pos.longitude,
               ),
-              styleId: KakaoMarkerLayer.styleIdOrNull(
-                controller,
-                'pin_my_location',
-              ),
+              styleId: myStyleId,
               rank: 3,
               text: '내 위치',
             ),
@@ -217,11 +229,13 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
       final pick = widget.pickMarker;
       if (pick != null && gen == _syncGeneration) {
+        final pickStyleId =
+            KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report');
         await controller.addMarker(
           markerOption: MarkerOption(
             id: 'pick',
             latLng: LatLng(latitude: pick.lat, longitude: pick.lng),
-            styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report'),
+            styleId: pickStyleId,
             rank: 3,
           ),
         );
@@ -268,14 +282,41 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   @override
   Widget build(BuildContext context) {
-    if (!Env.isKakaoMapConfigured) {
+    if (!Env.hasKakaoNativeKey) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.',
+            'KAKAO_NATIVE_APP_KEY가 설정되지 않았어요.\n'
+            'dart run tool/sync_env_to_native.dart 후 다시 빌드해주세요.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    if (!Env.kakaoMapSdkInitialized) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            '카카오맵 SDK 초기화에 실패했어요.\n앱을 다시 실행해주세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    if (_mapError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _mapError!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
         ),
       );

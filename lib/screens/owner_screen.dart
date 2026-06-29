@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../widgets/load_error_view.dart';
 import '../widgets/owner_verify_sheet.dart';
 import '../widgets/report_sheet.dart';
 
@@ -123,9 +124,23 @@ class _OwnerScreenState extends State<OwnerScreen> {
 
     if (ownedList.isEmpty) {
       if (ownerIds.isNotEmpty && allRestaurants.isEmpty) {
-        return const Scaffold(
-          backgroundColor: Color(0xFFFAFAF8),
-          body: Center(child: CircularProgressIndicator()),
+        if (provider.restaurantsLoading) {
+          return const Scaffold(
+            backgroundColor: Color(0xFFFAFAF8),
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAFAF8),
+          body: LoadErrorView(
+            message: provider.restaurantsLoadFailed
+                ? '네트워크 연결을 확인해주세요.'
+                : '매장 정보를 불러올 수 없어요.',
+            onRetry: () async {
+              await provider.refreshRestaurants();
+              await provider.refreshOwnerState();
+            },
+          ),
         );
       }
       return Stack(

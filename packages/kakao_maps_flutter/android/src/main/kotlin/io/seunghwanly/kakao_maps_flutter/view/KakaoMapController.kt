@@ -904,7 +904,7 @@ class KakaoMapController(
                     "KakaoMapController",
                     "Failed to decode icon bytes for styleId=$styleId (bytes=${iconBytes.size})"
                 )
-                return
+                continue
             }
 
             val stylesList = mutableListOf<LabelStyle>()

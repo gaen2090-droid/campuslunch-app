@@ -337,13 +337,15 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                               ),
                             )
                           else
-                            const Center(
+                            Center(
                               child: Padding(
-                                padding: EdgeInsets.all(24),
+                                padding: const EdgeInsets.all(24),
                                 child: Text(
-                                  'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.',
+                                  Env.hasKakaoNativeKey
+                                      ? '카카오맵 SDK 초기화에 실패했어요.\n앱을 다시 실행해주세요.'
+                                      : 'KAKAO_NATIVE_APP_KEY가 설정되지 않았어요.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF6B7280),
                                   ),

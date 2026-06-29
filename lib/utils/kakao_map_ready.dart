@@ -47,13 +47,18 @@ const _markerTextStyle = MarkerTextStyle(
 /// 마커 레이어 + 커스텀 핀 스타일 (viewId별 상태)
 class KakaoMarkerLayer {
   static final Map<int, bool> _stylesReadyByViewId = {};
+  static final Map<int, Set<String>> _registeredStyleIdsByViewId = {};
   static final Set<int> _layerReadyViewIds = {};
 
   static bool isReady(KakaoMapController controller) =>
       _stylesReadyByViewId[controller.viewId] == true;
 
+  static bool isStyleRegistered(KakaoMapController controller, String styleId) =>
+      _registeredStyleIdsByViewId[controller.viewId]?.contains(styleId) ?? false;
+
   static void release(int viewId) {
     _stylesReadyByViewId.remove(viewId);
+    _registeredStyleIdsByViewId.remove(viewId);
     _layerReadyViewIds.remove(viewId);
   }
 
@@ -61,33 +66,48 @@ class KakaoMarkerLayer {
     final viewId = controller.viewId;
 
     if (_stylesReadyByViewId[viewId] != true) {
-      try {
-        final bundles = await MapMarkerIcons.buildStatusStyles();
-        final markerLevels = Platform.isIOS ? const [3, 10, 15, 21] : const [15];
-        await controller.registerMarkerStyles(
-          styles: bundles
-              .map(
-                (s) => MarkerStyle(
-                  styleId: s.styleId,
-                  perLevels: markerLevels
-                      .map(
-                        (level) => MarkerPerLevelStyle.fromBytes(
-                          bytes: s.bytes,
-                          level: level,
-                          textStyle: _markerTextStyle,
-                        ),
-                      )
-                      .toList(),
-                ),
-              )
-              .toList(),
-        );
+      final bundles = await MapMarkerIcons.buildStatusStyles();
+      final markerLevels = Platform.isIOS ? const [3, 10, 15, 21] : const [15];
+      final registered = <String>{};
+
+      for (final bundle in bundles) {
+        try {
+          await controller.registerMarkerStyles(
+            styles: [
+              MarkerStyle(
+                styleId: bundle.styleId,
+                perLevels: markerLevels
+                    .map(
+                      (level) => MarkerPerLevelStyle.fromBytes(
+                        bytes: bundle.bytes,
+                        level: level,
+                        textStyle: _markerTextStyle,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          );
+          registered.add(bundle.styleId);
+        } catch (e, st) {
+          debugPrint(
+            '[KakaoMarkerLayer] style ${bundle.styleId} failed: $e\n$st',
+          );
+        }
+      }
+
+      _registeredStyleIdsByViewId[viewId] = registered;
+      if (registered.isNotEmpty) {
         _stylesReadyByViewId[viewId] = true;
         debugPrint(
-          '[KakaoMarkerLayer] styles registered viewId=$viewId (${bundles.length})',
+          '[KakaoMarkerLayer] styles registered viewId=$viewId '
+          '(${registered.length}/${bundles.length})',
         );
-      } catch (e, st) {
-        debugPrint('[KakaoMarkerLayer] style registration failed: $e\n$st');
+      } else {
+        debugPrint(
+          '[KakaoMarkerLayer] no styles registered viewId=$viewId '
+          '(${bundles.length} attempted)',
+        );
       }
     }
 
@@ -102,7 +122,7 @@ class KakaoMarkerLayer {
   }
 
   static String? styleIdOrNull(KakaoMapController controller, String styleId) =>
-      isReady(controller) ? styleId : null;
+      isStyleRegistered(controller, styleId) ? styleId : null;
 }
 
 Future<void> ensureKakaoMarkerLayer(KakaoMapController controller) =>

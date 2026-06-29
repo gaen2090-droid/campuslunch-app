@@ -68,10 +68,26 @@ class MapMarkerIcons {
       width: w,
       height: h,
       bytes: byteData.buffer,
+      bytesOffset: byteData.offsetInBytes,
       numChannels: 4,
       order: img.ChannelOrder.rgba,
     );
-    return Uint8List.fromList(img.encodePng(image));
+    final png = Uint8List.fromList(img.encodePng(image));
+    if (!_isValidPng(png)) {
+      throw StateError('Generated PNG failed signature check');
+    }
+    if (img.decodeImage(png) == null) {
+      throw StateError('Generated PNG failed round-trip decode');
+    }
+    return png;
+  }
+
+  static bool _isValidPng(Uint8List bytes) {
+    return bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47;
   }
 
   static String styleIdForStatus(String status) {

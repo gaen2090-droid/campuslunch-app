@@ -819,6 +819,10 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                         perLevelStyles.append(PerLevelPoiStyle(iconStyle: iconStyle, level: level))
                     }
                 }
+                guard !perLevelStyles.isEmpty else {
+                    NSLog("[KakaoMapController] Skipping styleId=%@ (no decodable icons)", styleId)
+                    continue
+                }
                 let poiStyle = PoiStyle(styleID: styleId, styles: perLevelStyles)
                 manager.removePoiStyle(styleId)
                 manager.addPoiStyle(poiStyle)
