@@ -93,7 +93,7 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 // 전체폭 이미지
                 SizedBox(
-                  height: r.imageUrl.isNotEmpty ? 220 : safeTop + 72,
+                  height: 220,
                   width: double.infinity,
                   child: RestaurantImage(
                     url: r.imageUrl,
