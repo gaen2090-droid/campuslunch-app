@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../widgets/load_error_view.dart';
 import '../widgets/restaurant_card.dart';
 import 'detail_screen.dart';
 
@@ -235,17 +236,35 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
 
           // 목록
           Expanded(
-            child: list.isEmpty
+            child: provider.restaurantsLoading && provider.restaurants.isEmpty
                 ? const Center(
-                    child: Text(
-                      '저장한 매장이 없어요',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFD1D5DB)),
-                    ),
+                    child: CircularProgressIndicator(color: Color(0xFF9ECA8B)),
                   )
-                : ListView.separated(
+                : list.isEmpty
+                    ? bookmarks.isEmpty
+                        ? const Center(
+                            child: Text(
+                              '저장한 매장이 없어요',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFD1D5DB)),
+                            ),
+                          )
+                        : provider.restaurantsLoadFailed
+                            ? LoadErrorView(
+                                onRetry: () => provider.refreshRestaurants(),
+                              )
+                            : const Center(
+                                child: Text(
+                                  '조건에 맞는 매장이 없어요',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFD1D5DB)),
+                                ),
+                              )
+                    : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
                     itemCount: list.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),

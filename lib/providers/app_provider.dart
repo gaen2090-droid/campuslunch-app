@@ -114,6 +114,10 @@ class AppProvider extends ChangeNotifier {
   /// true: 마지막 로드 시도가 네트워크/서버 오류로 실패함(매장이 진짜 0개인 것과 구분).
   bool get restaurantsLoadFailed => _restaurantsLoadFailed;
 
+  bool _rewardLoadFailed = false;
+  /// true: 스탬프/기프티콘 조회가 모두 실패함(빈 목록과 구분).
+  bool get rewardLoadFailed => _rewardLoadFailed;
+
   // ── 북마크 ──
   Set<String> _bookmarks = {};
   Set<String> get bookmarks => _bookmarks;
@@ -740,7 +744,9 @@ class AppProvider extends ChangeNotifier {
       return 'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.';
     }
     if (!SupabaseService.isReady) {
-      return 'Supabase 연결을 확인해주세요.';
+      return 'Supabase 연결을 확인해주세요.\n'
+          'APK 빌드 전 dart run tool/sync_env_to_native.dart 실행 후 '
+          'flutter clean && flutter build apk 해주세요.';
     }
 
     try {
@@ -767,9 +773,9 @@ class AppProvider extends ChangeNotifier {
           msg.contains('misconfigured')) {
         return '카카오 앱 설정 오류(KOE101).\n'
             '1) git pull 후 .env · android/keys.properties 확인\n'
-            '2) flutter clean && flutter pub get && flutter run\n'
+            '2) flutter clean && flutter pub get && flutter build apk\n'
             '3) Android: dart run tool/print_kakao_android_key_hash.dart 로 '
-            '키 해시를 카카오 콘솔에 등록 (docs/KAKAO_SUPABASE_SETUP.md)\n'
+            '릴리스 APK 서명 키 해시를 카카오 콘솔에 등록 (docs/KAKAO_SUPABASE_SETUP.md)\n'
             '4) iOS: Bundle ID com.campuslunch.app 등록 여부 확인';
       }
       return e.toString().replaceFirst('Exception: ', '');
@@ -783,7 +789,9 @@ class AppProvider extends ChangeNotifier {
           'docs/GOOGLE_SUPABASE_SETUP.md 참고.';
     }
     if (!SupabaseService.isReady) {
-      return 'Supabase 연결을 확인해주세요.';
+      return 'Supabase 연결을 확인해주세요.\n'
+          'APK 빌드 전 dart run tool/sync_env_to_native.dart 실행 후 '
+          'flutter clean && flutter build apk 해주세요.';
     }
 
     try {
@@ -847,6 +855,7 @@ class AppProvider extends ChangeNotifier {
     _locationMode = false;
     _notificationEnabled = false;
     _mainTabIndex = 0;
+    _rewardLoadFailed = false;
   }
 
   bool _ownsRestaurant(String restaurantId) =>
@@ -991,11 +1000,30 @@ class AppProvider extends ChangeNotifier {
     if (_mainTabIndex == next) return;
     _mainTabIndex = next;
     notifyListeners();
+    unawaited(_refreshForMainTab(next));
   }
 
   void openHomeFromPush([String? restaurantId]) {
     _mainTabIndex = homeTabIndex;
     notifyListeners();
+    unawaited(_refreshForMainTab(homeTabIndex));
+  }
+
+  /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.
+  Future<void> _refreshForMainTab(int index) async {
+    final myIndex = hasOwnerTab ? 3 : 2;
+    try {
+      if (index == myIndex) {
+        await fetchMyReward();
+        return;
+      }
+      await refreshRestaurants();
+      if (hasOwnerTab && index == 0) {
+        await refreshOwnerState();
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider] _refreshForMainTab failed: $e\n$st');
+    }
   }
 
   /// 푸시 알림 예약은 부가 기능이라 실패/지연이 화면 갱신·전환을 막으면 안 됨.
@@ -1837,6 +1865,7 @@ class AppProvider extends ChangeNotifier {
       _restaurantsLoadFailed = true;
     } finally {
       _restaurantsLoading = false;
+      notifyListeners();
     }
   }
 
@@ -1861,19 +1890,23 @@ class AppProvider extends ChangeNotifier {
   Future<void> fetchMyReward() async {
     final repo = _rewardRepo;
     if (repo == null) return;
+    var rewardOk = false;
+    var giftOk = false;
     try {
       _reward = await repo.fetchMyReward();
+      rewardOk = true;
       debugPrint('[Reward] fetched todayStamps=${_reward.todayStamps} totalStamps=${_reward.totalStamps}');
-      notifyListeners();
     } catch (e) {
       debugPrint('[Reward] fetchMyReward failed: $e');
     }
     try {
       _myGifticons = await repo.fetchMyGifticons();
-      notifyListeners();
+      giftOk = true;
     } catch (e) {
       debugPrint('[Reward] fetchMyGifticons failed: $e');
     }
+    _rewardLoadFailed = !rewardOk && !giftOk;
+    notifyListeners();
   }
 
 

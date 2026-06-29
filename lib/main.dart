@@ -22,28 +22,41 @@ import 'navigation/app_route_observer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
-  await Env.loadNativeKeyFallback();
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('[Env] .env load failed, using native_keys.json fallback: $e');
+  }
+  await Env.loadReleaseConfig();
 
   await KakaoAuthService.initialize();
   // kakao_maps_flutter는 Android/iOS 전용 — 웹(flutter run -d chrome)에서는
   // 네이티브 채널이 없어 MissingPluginException이 던져져 main()이 중단되고
   // 앱이 흰 화면으로 남는다. 웹에서는 건너뛴다.
-  if (Env.isKakaoMapConfigured && !kIsWeb) {
-    await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
+  if (Env.hasKakaoNativeKey && !kIsWeb) {
     try {
-      await MapMarkerIcons.buildStatusStyles();
+      await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
+      Env.kakaoMapSdkInitialized = true;
+      try {
+        await MapMarkerIcons.buildStatusStyles();
+      } catch (e, st) {
+        debugPrint('[MapMarkerIcons] prewarm failed: $e\n$st');
+      }
     } catch (e, st) {
-      debugPrint('[MapMarkerIcons] prewarm failed: $e\n$st');
+      debugPrint('[KakaoMap] SDK init failed: $e\n$st');
     }
   }
   await GoogleAuthService.initialize();
 
   if (Env.isSupabaseConfigured) {
-    await SupabaseService.initialize();
+    try {
+      await SupabaseService.initialize();
+    } catch (e, st) {
+      debugPrint('[Supabase] initialize failed: $e\n$st');
+    }
   } else if (kDebugMode) {
     debugPrint(
-      '[Supabase] SUPABASE_URL이 비어 있어 로컬 데이터만 사용합니다.',
+      '[Supabase] SUPABASE_URL/ANON_KEY가 비어 있어 로컬 데이터만 사용합니다.',
     );
   }
 

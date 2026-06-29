@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +9,7 @@ import '../config/campus.dart';
 import '../config/env.dart';
 import '../models/restaurant.dart';
 import '../utils/kakao_map_ready.dart';
+import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
 
 /// DB 매장 마커 + 혼잡도 색상 (카카오맵 SDK)
@@ -16,10 +18,12 @@ class RestaurantKakaoMap extends StatefulWidget {
   final Restaurant? selected;
   final ValueChanged<Restaurant> onSelect;
   final VoidCallback? onDeselect;
-  final bool showMyLocation;
+  final bool showMyLocationMarker;
   final bool myLocationEnabled;
+  final int cameraFitToken;
   final ValueChanged<MapLatLngCallback>? onMapTap;
   final ({double lat, double lng})? pickMarker;
+  final void Function(RestaurantKakaoMapState map)? onMapReady;
 
   const RestaurantKakaoMap({
     super.key,
@@ -27,10 +31,12 @@ class RestaurantKakaoMap extends StatefulWidget {
     required this.selected,
     required this.onSelect,
     this.onDeselect,
-    this.showMyLocation = true,
+    this.showMyLocationMarker = true,
     this.myLocationEnabled = false,
+    this.cameraFitToken = 0,
     this.onMapTap,
     this.pickMarker,
+    this.onMapReady,
   });
 
   @override
@@ -43,21 +49,79 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     with WidgetsBindingObserver {
   KakaoMapController? _controller;
   StreamSubscription? _labelSub;
-  bool _stylesReady = false;
+  bool _mapLayerReady = false;
+  String? _mapError;
   final Set<String> _markerIds = {};
   Future<void>? _syncInFlight;
   int _syncGeneration = 0;
+  String _lastFitKey = '';
+  int _lastFitToken = -1;
 
   static final _campus = LatLng(
     latitude: Campus.centerLat,
     longitude: Campus.centerLng,
   );
 
-  /// 길찾기 등 다른 화면에서 돌아온 뒤 iOS PlatformView 터치/라벨 클릭 복구
   void refreshAfterReturn() {
-    if (_controller == null || !_stylesReady) return;
+    if (_controller == null || !_mapLayerReady) return;
     _attachLabelListener();
     unawaited(_syncMarkers());
+  }
+
+  Future<void> moveToMyLocation() => _moveToUserLocation();
+
+  String _fitKeyFor(List<Restaurant> restaurants) {
+    final located = restaurants.where((r) => r.hasMapLocation).toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    return located
+        .map(
+          (r) =>
+              '${r.id}:${r.latitude.toStringAsFixed(6)}:${r.longitude.toStringAsFixed(6)}',
+        )
+        .join('|');
+  }
+
+  bool _shouldRefitCamera(RestaurantKakaoMap oldWidget) {
+    if (widget.cameraFitToken != oldWidget.cameraFitToken) return true;
+    return _fitKeyFor(widget.restaurants) != _fitKeyFor(oldWidget.restaurants);
+  }
+
+  Size _mapViewportSize() {
+    final mq = MediaQuery.sizeOf(context);
+    final top = MediaQuery.paddingOf(context).top + 150;
+    final bottom = widget.selected != null ? 260.0 : 72.0;
+    return Size(mq.width, math.max(200, mq.height - top - bottom));
+  }
+
+  EdgeInsets _mapViewportPadding() {
+    return const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+  }
+
+  Future<void> fitToRestaurants({bool animate = true}) async {
+    final controller = _controller;
+    if (controller == null || !_mapLayerReady) return;
+
+    final points = widget.restaurants
+        .where(
+          (r) => r.hasMapLocation && Campus.containsLatLng(r.latitude, r.longitude),
+        )
+        .map((r) => LatLng(latitude: r.latitude, longitude: r.longitude))
+        .toList();
+
+    if (points.isEmpty) return;
+
+    _lastFitKey = _fitKeyFor(widget.restaurants);
+    _lastFitToken = widget.cameraFitToken;
+
+    await MapCameraFit.moveToFitLatLngs(
+      controller,
+      points,
+      animate: animate,
+      paddingFraction: 0.04,
+      maxZoom: 19,
+      viewportSize: _mapViewportSize(),
+      viewportPadding: _mapViewportPadding(),
+    );
   }
 
   @override
@@ -87,13 +151,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   @override
   void didUpdateWidget(RestaurantKakaoMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_controller == null || !_stylesReady) return;
+    if (_controller == null || !_mapLayerReady) return;
 
-    if (widget.myLocationEnabled != oldWidget.myLocationEnabled) {
+    if (widget.myLocationEnabled != oldWidget.myLocationEnabled ||
+        widget.showMyLocationMarker != oldWidget.showMyLocationMarker) {
       unawaited(_syncMarkers());
-      if (widget.myLocationEnabled) {
-        _moveToUserLocation();
-      }
+    }
+    if (_shouldRefitCamera(oldWidget)) {
+      unawaited(fitToRestaurants());
     }
     if (widget.selected?.id != oldWidget.selected?.id &&
         widget.selected != null) {
@@ -126,14 +191,28 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   Future<void> _onMapCreated(KakaoMapController controller) async {
     _controller = controller;
 
-    await runWhenKakaoMapReady(controller, () async {
-      await ensureKakaoMarkerLayer(controller);
-      if (!mounted) return;
-      _stylesReady = true;
+    try {
+      await runWhenKakaoMapReady(controller, () async {
+        await ensureKakaoMarkerLayer(controller);
+        if (!mounted) return;
+        _mapLayerReady = true;
 
-      _attachLabelListener();
-      await _syncMarkers();
-    });
+        _attachLabelListener();
+        await _syncMarkers();
+        final fitKey = _fitKeyFor(widget.restaurants);
+        if (fitKey.isNotEmpty &&
+            (fitKey != _lastFitKey || widget.cameraFitToken != _lastFitToken)) {
+          await fitToRestaurants(animate: false);
+        }
+        widget.onMapReady?.call(this);
+      });
+    } catch (e, st) {
+      debugPrint('[RestaurantKakaoMap] onMapCreated failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _mapError = '지도를 불러오지 못했어요.\n네트워크 연결을 확인해주세요.';
+      });
+    }
   }
 
   Future<void> _syncMarkers() {
@@ -150,9 +229,11 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   Future<void> _syncMarkersImpl() async {
     final controller = _controller;
-    if (controller == null || !_stylesReady) return;
+    if (controller == null || !_mapLayerReady) return;
 
     final gen = ++_syncGeneration;
+    final showMyLocation =
+        widget.showMyLocationMarker && widget.myLocationEnabled;
 
     try {
       final toRemove = _markerIds.toList(growable: false);
@@ -173,12 +254,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             : noReport
                 ? 'pin_no_report'
                 : MapMarkerIcons.styleIdForStatus(r.status);
+        final styleId =
+            KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 
         await controller.addMarker(
           markerOption: MarkerOption(
             id: r.id,
             latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
-            styleId: KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId),
+            styleId: styleId,
             rank: isSelected ? 2 : 1,
             text: r.name,
           ),
@@ -186,7 +269,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         _markerIds.add(r.id);
       }
 
-      if (widget.myLocationEnabled) {
+      if (showMyLocation) {
         try {
           final pos = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
@@ -194,6 +277,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             ),
           );
           if (gen != _syncGeneration) return;
+          final myStyleId = KakaoMarkerLayer.styleIdOrNull(
+            controller,
+            'pin_my_location',
+          );
           await controller.addMarker(
             markerOption: MarkerOption(
               id: 'my_location',
@@ -201,10 +288,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
                 latitude: pos.latitude,
                 longitude: pos.longitude,
               ),
-              styleId: KakaoMarkerLayer.styleIdOrNull(
-                controller,
-                'pin_my_location',
-              ),
+              styleId: myStyleId,
               rank: 3,
               text: '내 위치',
             ),
@@ -217,11 +301,13 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
       final pick = widget.pickMarker;
       if (pick != null && gen == _syncGeneration) {
+        final pickStyleId =
+            KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report');
         await controller.addMarker(
           markerOption: MarkerOption(
             id: 'pick',
             latLng: LatLng(latitude: pick.lat, longitude: pick.lng),
-            styleId: KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report'),
+            styleId: pickStyleId,
             rank: 3,
           ),
         );
@@ -233,49 +319,69 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   }
 
   Future<void> _moveToUserLocation() async {
+    final controller = _controller;
+    if (controller == null) return;
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
         ),
       );
-      await _controller?.moveCamera(
-        cameraUpdate: CameraUpdate.fromLatLng(
-          LatLng(latitude: pos.latitude, longitude: pos.longitude),
-        ),
-        animation: const CameraAnimation(
-          duration: 400,
-          autoElevation: true,
-          isConsecutive: false,
-        ),
+      await MapCameraFit.moveToFitLatLngs(
+        controller,
+        [LatLng(latitude: pos.latitude, longitude: pos.longitude)],
+        animate: true,
       );
     } catch (_) {}
   }
 
   Future<void> _focusRestaurant(Restaurant r) async {
-    if (!r.hasMapLocation) return;
-    await _controller?.moveCamera(
-      cameraUpdate: CameraUpdate.fromLatLng(
-        LatLng(latitude: r.latitude, longitude: r.longitude),
-      ),
-      animation: const CameraAnimation(
-        duration: 400,
-        autoElevation: true,
-        isConsecutive: false,
-      ),
+    final controller = _controller;
+    if (!r.hasMapLocation || controller == null) return;
+    await MapCameraFit.moveToFitLatLngs(
+      controller,
+      [LatLng(latitude: r.latitude, longitude: r.longitude)],
+      animate: true,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!Env.isKakaoMapConfigured) {
+    if (!Env.hasKakaoNativeKey) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.',
+            'KAKAO_NATIVE_APP_KEY가 설정되지 않았어요.\n'
+            'dart run tool/sync_env_to_native.dart 후 다시 빌드해주세요.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    if (!Env.kakaoMapSdkInitialized) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            '카카오맵 SDK 초기화에 실패했어요.\n앱을 다시 실행해주세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    if (_mapError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _mapError!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
         ),
       );

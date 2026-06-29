@@ -1,5 +1,4 @@
-﻿import 'dart:math' as math;
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/map_pin_painter.dart';
 import '../utils/navigation_helper.dart';
@@ -27,9 +26,11 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   Restaurant? _selected;
   bool _isLocated = false;
   bool _isRefreshing = false;
+  int _cameraFitToken = 0;
+  RestaurantKakaoMapState? _mapState;
   static const _allLabel = '전체';
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
-  Set<String> _regions = {_allLabel};
+  Set<String> _regions = {'정문'};
   Set<String> _cuisines = {_allLabel};
   String? _openDropdown;
   bool _searchActive = false;
@@ -96,6 +97,26 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     return '${values.first} 외 ${values.length - 1}';
   }
 
+  void _bumpCameraFit() {
+    _cameraFitToken++;
+  }
+
+  void _onRegionFilterChanged(String value) {
+    setState(() {
+      _toggleFilter(_regions, value);
+      _bumpCameraFit();
+    });
+  }
+
+  void _resetRegionFilter() {
+    setState(() {
+      _regions
+        ..clear()
+        ..add(_allLabel);
+      _bumpCameraFit();
+    });
+  }
+
   void _toggleFilter(Set<String> target, String value) {
     if (value == _allLabel) {
       target
@@ -130,7 +151,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final all = context.watch<AppProvider>().restaurants;
+    final provider = context.watch<AppProvider>();
+    final all = provider.restaurants;
     final filtered = _filter(all);
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
@@ -146,7 +168,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
             onDeselect: () => setState(() => _selected = null),
-            myLocationEnabled: _isLocated,
+            showMyLocationMarker: provider.locationMode,
+            myLocationEnabled: provider.locationMode,
+            cameraFitToken: _cameraFitToken,
+            onMapReady: (map) => _mapState = map,
           ),
         ),
 
@@ -286,12 +311,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               items: _regionOpts,
                               selected: _regions,
                               multiSelect: true,
-                              onSelect: (v) => setState(() => _toggleFilter(_regions, v)),
-                              onReset: () => setState(() {
-                                _regions
-                                  ..clear()
-                                  ..add(_allLabel);
-                              }),
+                              onSelect: _onRegionFilterChanged,
+                              onReset: _resetRegionFilter,
                             )
                           : _openDropdown == 'cuisine'
                               ? _DropdownGrid(
@@ -389,6 +410,60 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             ),
           ),
 
+        if (!_searchActive &&
+            provider.restaurantsLoadFailed &&
+            !provider.restaurantsLoading)
+          Positioned(
+            top: safeTop + 64,
+            left: 16,
+            right: 16,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x21000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.wifi_off_rounded,
+                        size: 18, color: Color(0xFF9CA3AF)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '매장 정보를 불러오지 못했어요',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => provider.refreshRestaurants(),
+                      child: const Text(
+                        '다시 시도',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF5E8C4A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
         // ── 새로고침 / 내 위치 버튼 ──
         if (!_searchActive)
           Positioned(
@@ -433,7 +508,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                   showLocationPermissionDialog(context);
                   return;
                 }
-                setState(() => _isLocated = !_isLocated);
+                setState(() => _isLocated = true);
+                _mapState?.moveToMyLocation();
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),

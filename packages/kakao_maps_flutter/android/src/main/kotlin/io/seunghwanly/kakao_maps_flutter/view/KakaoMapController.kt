@@ -904,7 +904,7 @@ class KakaoMapController(
                     "KakaoMapController",
                     "Failed to decode icon bytes for styleId=$styleId (bytes=${iconBytes.size})"
                 )
-                return
+                continue
             }
 
             val stylesList = mutableListOf<LabelStyle>()
@@ -1353,8 +1353,9 @@ class KakaoMapController(
             return
         }
 
-        val bodyColor = args.optInt("color", 0xFF5E8C4A.toInt())
-        val bodyWidth = args.optDouble("width", 5.0).toFloat()
+        val bodyColor = args.optInt("color", 0xB84A7FE5.toInt())
+        val borderColor = args.optInt("borderColor", 0xFF3566B8.toInt())
+        val bodyWidth = args.optDouble("width", 3.5).toFloat()
 
         val latLngList = ArrayList<LatLng>(pointsArray.length())
         for (i in 0 until pointsArray.length()) {
@@ -1390,7 +1391,7 @@ class KakaoMapController(
             layer.remove(existing)
         }
 
-        val style = PolylineStyle.from(bodyWidth, bodyColor, 0f, bodyColor)
+        val style = PolylineStyle.from(bodyWidth, bodyColor, 1f, borderColor)
         val options = PolylineOptions.from(routePolylineId)
             .setMapPoints(MapPoints.fromLatLng(latLngList))
             .setStylesSet(PolylineStylesSet.from(PolylineStyles.from(style)))

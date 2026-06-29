@@ -154,7 +154,11 @@ class _MyScreenState extends State<MyScreen> {
               const SizedBox(height: 16),
 
               // ── 내 스탬프 ──
-              _RewardCard(reward: provider.reward),
+              _RewardCard(
+                reward: provider.reward,
+                loadFailed: provider.rewardLoadFailed,
+                onRetry: () => provider.fetchMyReward(),
+              ),
 
               const SizedBox(height: 16),
 
@@ -520,8 +524,14 @@ class _MyScreenState extends State<MyScreen> {
 
 class _RewardCard extends StatelessWidget {
   final dynamic reward; // UserReward
+  final bool loadFailed;
+  final VoidCallback? onRetry;
 
-  const _RewardCard({required this.reward});
+  const _RewardCard({
+    required this.reward,
+    this.loadFailed = false,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -530,10 +540,16 @@ class _RewardCard extends StatelessWidget {
     final remaining = (20 - total).clamp(0, 20);
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const RewardScreen()),
-      ),
+      onTap: () {
+        if (loadFailed) {
+          onRetry?.call();
+          return;
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RewardScreen()),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -588,6 +604,17 @@ class _RewardCard extends StatelessWidget {
                   const Icon(Icons.chevron_right, size: 16, color: Color(0xFFD1D5DB)),
                 ],
               ),
+              if (loadFailed) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  '스탬프 정보를 불러오지 못했어요. 탭해서 다시 시도',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               LayoutBuilder(
                 builder: (context, constraints) {

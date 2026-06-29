@@ -62,6 +62,47 @@ class _RewardScreenState extends State<RewardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (provider.rewardLoadFailed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.wifi_off_rounded,
+                            size: 18, color: Color(0xFF9CA3AF)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            '스탬프 정보를 불러오지 못했어요',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => provider.fetchMyReward(),
+                          child: const Text(
+                            '다시 시도',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF5E8C4A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               // ── 스탬프 현황 카드 ──
               _StampSummaryCard(total: total, today: today, remaining: remaining),
               const SizedBox(height: 20),

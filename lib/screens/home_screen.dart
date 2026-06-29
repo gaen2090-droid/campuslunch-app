@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../widgets/load_error_view.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
@@ -629,42 +630,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         color: Color(0xFF9ECA8B),
                       )
                     : loadFailed
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.wifi_off_rounded,
-                                  size: 28, color: Color(0xFF9CA3AF)),
-                              const SizedBox(height: 8),
-                              const Text(
-                                '네트워크 연결을 확인해주세요.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF9CA3AF),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              GestureDetector(
-                                onTap: () =>
-                                    context.read<AppProvider>().refreshRestaurants(),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Text(
-                                    '다시 시도',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                        ? LoadErrorView(
+                            onRetry: () => context
+                                .read<AppProvider>()
+                                .refreshRestaurants(),
                           )
                         : const Text(
                             '표시할 매장이 없어요.',

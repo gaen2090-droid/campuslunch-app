@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
+import '../widgets/load_error_view.dart';
 import 'gifticon_detail_screen.dart';
 
 class CouponBoxScreen extends StatefulWidget {
@@ -101,7 +102,16 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
         color: const Color(0xFF5E8C4A),
-        child: gifticons.isEmpty
+        child: provider.rewardLoadFailed && gifticons.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  LoadErrorView(
+                    onRetry: () => provider.fetchMyReward(),
+                  ),
+                ],
+              )
+            : gifticons.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
