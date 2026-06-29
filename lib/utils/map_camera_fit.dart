@@ -6,7 +6,54 @@ import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import '../config/campus.dart';
 import '../models/map_lat_lng.dart';
 
-/// 지도 카메라를 좌표 목록에 맞추는 유틸 (Mercator bounds → 최대 확대)
+/// 지도 카메라 맞춤 프로필
+enum CameraFitProfile {
+  /// 중문·후문 등 — 마커·라벨 여유 (기본)
+  balanced,
+  /// 정문 단독 — 조금 더 확대 (이전 tight 프로필)
+  tight,
+}
+
+class CameraFitOptions {
+  final double paddingFraction;
+  final int maxZoom;
+  final bool includeMarkerGraphics;
+  final double minSpanDegrees;
+  final int zoomBias;
+  final EdgeInsets viewportPadding;
+
+  const CameraFitOptions({
+    required this.paddingFraction,
+    required this.maxZoom,
+    required this.includeMarkerGraphics,
+    required this.minSpanDegrees,
+    required this.zoomBias,
+    required this.viewportPadding,
+  });
+
+  static CameraFitOptions forProfile(CameraFitProfile profile) {
+    return switch (profile) {
+      CameraFitProfile.tight => const CameraFitOptions(
+          paddingFraction: 0.04,
+          maxZoom: 19,
+          includeMarkerGraphics: false,
+          minSpanDegrees: 0.00012,
+          zoomBias: 1,
+          viewportPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+      CameraFitProfile.balanced => const CameraFitOptions(
+          paddingFraction: 0.08,
+          maxZoom: 18,
+          includeMarkerGraphics: true,
+          minSpanDegrees: 0.00028,
+          zoomBias: 0,
+          viewportPadding: EdgeInsets.fromLTRB(40, 56, 40, 44),
+        ),
+    };
+  }
+}
+
+/// 지도 카메라를 좌표 목록에 맞추는 유틸 (Mercator bounds + 마커·라벨 여유)
 abstract final class MapCameraFit {
   static const _animation = CameraAnimation(
     duration: 350,
@@ -14,19 +61,23 @@ abstract final class MapCameraFit {
     isConsecutive: false,
   );
 
-  /// 카카오맵 줌 스케일이 Web Mercator 공식보다 약 1레벨 넓게 보이는 경향 보정
-  static const _kakaoZoomBias = 1;
+  /// 핀(72×88) + 식당명 라벨이 잘리지 않도록 좌표 bounds 바깥으로 확장 (도, 캠퍼스 규모)
+  static const _pinPadNorth = 0.00052;
+  static const _pinPadSouth = 0.00008;
+  static const _pinPadSide = 0.00034;
 
   static Future<void> moveToFit(
     KakaoMapController controller,
     List<MapLatLng> points, {
-    double paddingFraction = 0.05,
+    CameraFitProfile profile = CameraFitProfile.balanced,
+    double? paddingFraction,
     int minZoom = 11,
-    int maxZoom = 19,
+    int? maxZoom,
     bool animate = true,
     bool campusBoundsOnly = false,
     Size? viewportSize,
-    EdgeInsets viewportPadding = EdgeInsets.zero,
+    EdgeInsets? viewportPadding,
+    bool? includeMarkerGraphics,
   }) async {
     final latLngs = points
         .map((p) => LatLng(latitude: p.latitude, longitude: p.longitude))
@@ -34,6 +85,7 @@ abstract final class MapCameraFit {
     await moveToFitLatLngs(
       controller,
       latLngs,
+      profile: profile,
       paddingFraction: paddingFraction,
       minZoom: minZoom,
       maxZoom: maxZoom,
@@ -41,20 +93,30 @@ abstract final class MapCameraFit {
       campusBoundsOnly: campusBoundsOnly,
       viewportSize: viewportSize,
       viewportPadding: viewportPadding,
+      includeMarkerGraphics: includeMarkerGraphics,
     );
   }
 
   static Future<void> moveToFitLatLngs(
     KakaoMapController controller,
     List<LatLng> points, {
-    double paddingFraction = 0.05,
+    CameraFitProfile profile = CameraFitProfile.balanced,
+    double? paddingFraction,
     int minZoom = 11,
-    int maxZoom = 19,
+    int? maxZoom,
     bool animate = true,
     bool campusBoundsOnly = false,
     Size? viewportSize,
-    EdgeInsets viewportPadding = EdgeInsets.zero,
+    EdgeInsets? viewportPadding,
+    bool? includeMarkerGraphics,
   }) async {
+    final opts = CameraFitOptions.forProfile(profile);
+    final padFraction = paddingFraction ?? opts.paddingFraction;
+    final zoomMax = maxZoom ?? opts.maxZoom;
+    final edgePad = viewportPadding ?? opts.viewportPadding;
+    final markerPad = includeMarkerGraphics ?? opts.includeMarkerGraphics;
+    final minSpan = opts.minSpanDegrees;
+    final zoomBias = opts.zoomBias;
     final filtered = campusBoundsOnly
         ? points
             .where(
@@ -70,18 +132,18 @@ abstract final class MapCameraFit {
 
     final viewW = math.max(
       120.0,
-      (viewportSize?.width ?? 390) - viewportPadding.horizontal,
+      (viewportSize?.width ?? 390) - edgePad.horizontal,
     );
     final viewH = math.max(
       120.0,
-      (viewportSize?.height ?? 640) - viewportPadding.vertical,
+      (viewportSize?.height ?? 640) - edgePad.vertical,
     );
 
     if (target.length == 1) {
       await _moveCenterAndZoom(
         controller,
         target.first,
-        math.min(18, maxZoom).clamp(minZoom, maxZoom),
+        math.min(17, zoomMax).clamp(minZoom, zoomMax),
         animate: animate,
       );
       return;
@@ -99,8 +161,7 @@ abstract final class MapCameraFit {
       maxLng = math.max(maxLng, p.longitude);
     }
 
-    // 한 점에 몰린 구역도 과도한 줌 방지용 최소 span
-    const minSpan = 0.00012;
+    // 좌표만 겹친 경우 과확대 방지
     if (maxLat - minLat < minSpan) {
       final mid = (maxLat + minLat) / 2;
       minLat = mid - minSpan / 2;
@@ -112,12 +173,19 @@ abstract final class MapCameraFit {
       maxLng = mid + minSpan / 2;
     }
 
-    final latPad = (maxLat - minLat) * paddingFraction;
-    final lngPad = (maxLng - minLng) * paddingFraction;
+    final latPad = (maxLat - minLat) * padFraction;
+    final lngPad = (maxLng - minLng) * padFraction;
     minLat -= latPad;
     maxLat += latPad;
     minLng -= lngPad;
     maxLng += lngPad;
+
+    if (markerPad) {
+      minLat -= _pinPadSouth;
+      maxLat += _pinPadNorth;
+      minLng -= _pinPadSide;
+      maxLng += _pinPadSide;
+    }
 
     final centerLat = (minLat + maxLat) / 2;
     final centerLng = (minLng + maxLng) / 2;
@@ -129,7 +197,8 @@ abstract final class MapCameraFit {
       mapWidthPx: viewW,
       mapHeightPx: viewH,
       minZoom: minZoom,
-      maxZoom: maxZoom,
+      maxZoom: zoomMax,
+      zoomBias: zoomBias,
     );
 
     await _moveCenterAndZoom(
@@ -155,7 +224,7 @@ abstract final class MapCameraFit {
     );
   }
 
-  /// Google Maps bounds zoom 알고리즘 (Mercator)
+  /// Google Maps bounds zoom (Mercator). floor → 이론상 들어가는 최대 정수 줌.
   static int boundsZoomLevel({
     required double minLat,
     required double maxLat,
@@ -165,6 +234,7 @@ abstract final class MapCameraFit {
     required double mapHeightPx,
     int minZoom = 11,
     int maxZoom = 19,
+    int zoomBias = 0,
   }) {
     const worldDim = 256.0;
 
@@ -176,9 +246,8 @@ abstract final class MapCameraFit {
 
     final latZoom = _zoomForFraction(mapHeightPx, worldDim, latFraction);
     final lngZoom = _zoomForFraction(mapWidthPx, worldDim, lngFraction);
-    final raw = math.min(latZoom, lngZoom) + _kakaoZoomBias;
 
-    return raw.clamp(minZoom, maxZoom);
+    return (math.min(latZoom, lngZoom) + zoomBias).clamp(minZoom, maxZoom);
   }
 
   static int _zoomForFraction(
@@ -216,7 +285,7 @@ List<MapLatLng> simplifyRoutePoints(
   return sampled;
 }
 
-/// 카메라 bounds용 — 전체 경로 min/max만 필요할 때
+/// 카메라 bounds용 — 경로 꺾임 포함 min/max (샘플링)
 List<MapLatLng> boundsSampleFromRoute(
   List<MapLatLng> points, {
   int maxPoints = 80,

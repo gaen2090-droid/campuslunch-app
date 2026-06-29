@@ -21,6 +21,7 @@ class RestaurantKakaoMap extends StatefulWidget {
   final bool showMyLocationMarker;
   final bool myLocationEnabled;
   final int cameraFitToken;
+  final CameraFitProfile cameraFitProfile;
   final ValueChanged<MapLatLngCallback>? onMapTap;
   final ({double lat, double lng})? pickMarker;
   final void Function(RestaurantKakaoMapState map)? onMapReady;
@@ -34,6 +35,7 @@ class RestaurantKakaoMap extends StatefulWidget {
     this.showMyLocationMarker = true,
     this.myLocationEnabled = false,
     this.cameraFitToken = 0,
+    this.cameraFitProfile = CameraFitProfile.balanced,
     this.onMapTap,
     this.pickMarker,
     this.onMapReady,
@@ -83,6 +85,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   bool _shouldRefitCamera(RestaurantKakaoMap oldWidget) {
     if (widget.cameraFitToken != oldWidget.cameraFitToken) return true;
+    if (widget.cameraFitProfile != oldWidget.cameraFitProfile) return true;
     return _fitKeyFor(widget.restaurants) != _fitKeyFor(oldWidget.restaurants);
   }
 
@@ -93,9 +96,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     return Size(mq.width, math.max(200, mq.height - top - bottom));
   }
 
-  EdgeInsets _mapViewportPadding() {
-    return const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
-  }
+  EdgeInsets _mapViewportPadding() =>
+      CameraFitOptions.forProfile(widget.cameraFitProfile).viewportPadding;
 
   Future<void> fitToRestaurants({bool animate = true}) async {
     final controller = _controller;
@@ -116,9 +118,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     await MapCameraFit.moveToFitLatLngs(
       controller,
       points,
+      profile: widget.cameraFitProfile,
       animate: animate,
-      paddingFraction: 0.04,
-      maxZoom: 19,
       viewportSize: _mapViewportSize(),
       viewportPadding: _mapViewportPadding(),
     );

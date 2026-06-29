@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/map_pin_painter.dart';
+import '../utils/map_camera_fit.dart';
 import '../utils/navigation_helper.dart';
 import '../navigation/app_route_observer.dart';
 import '../models/restaurant.dart';
@@ -133,6 +134,9 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     if (target.isEmpty) target.add(_allLabel);
   }
 
+  bool _isJeongmunOnly() =>
+      _regions.length == 1 && _regions.contains('정문');
+
   List<Restaurant> _filter(List<Restaurant> all) {
     return all.where((r) {
       final q = _searchCtrl.text.trim().toLowerCase();
@@ -171,6 +175,9 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             showMyLocationMarker: provider.locationMode,
             myLocationEnabled: provider.locationMode,
             cameraFitToken: _cameraFitToken,
+            cameraFitProfile: _isJeongmunOnly()
+                ? CameraFitProfile.tight
+                : CameraFitProfile.balanced,
             onMapReady: (map) => _mapState = map,
           ),
         ),

@@ -205,13 +205,8 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
             _destination,
             ...boundsSampleFromRoute(route.points),
           ],
-          paddingFraction: 0.04,
-          maxZoom: 19,
-          viewportSize: Size(screen.width, screen.height - 110),
-          viewportPadding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 20,
-          ),
+          profile: CameraFitProfile.balanced,
+          viewportSize: Size(screen.width, screen.height - 120),
         );
       });
     } catch (e, st) {
