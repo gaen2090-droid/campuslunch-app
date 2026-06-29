@@ -423,35 +423,44 @@ class _RecentReportsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '최근 제보',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...reports.map((r) {
-            final minutesAgo = DateTime.now().difference(r.createdAt).inMinutes;
-            final prefix = r.isOwner ? '사장님 · ' : '';
-            final statusLabel = r.status == '웨이팅많음' ? '웨이팅' : r.status;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                '$prefix${formatUpdateAge(minutesAgo)} · $statusLabel',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
-                ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F8F0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFBFE0B0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '최근 제보',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
               ),
-            );
-          }),
-        ],
+            ),
+            const SizedBox(height: 10),
+            ...reports.map((r) {
+              final minutesAgo = DateTime.now().difference(r.createdAt).inMinutes;
+              final prefix = r.isOwner ? '사장님 · ' : '';
+              final statusLabel = r.status == '웨이팅많음' ? '웨이팅' : r.status;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '$prefix${formatUpdateAge(minutesAgo)} · $statusLabel',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
