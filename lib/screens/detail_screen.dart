@@ -42,7 +42,7 @@ class _DetailScreenState extends State<DetailScreen> {
         return;
       }
       ReportSheet.show(context, r, (status) {
-        submitCrowdReportFeedback(context, r.id, status);
+        _submitReport(r.id, status);
       });
       _loadOwnerSeatUpdate();
       _loadRecentReports();
@@ -63,6 +63,12 @@ class _DetailScreenState extends State<DetailScreen> {
         .fetchRecentCrowdReports(widget.restaurant.id);
     if (!mounted) return;
     setState(() => _recentReports = reports.take(3).toList());
+  }
+
+  Future<void> _submitReport(String restaurantId, String status) async {
+    await submitCrowdReportFeedback(context, restaurantId, status);
+    if (!mounted) return;
+    await _loadRecentReports();
   }
 
   @override
@@ -246,7 +252,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
                       context,
                       r,
-                      (status) => submitCrowdReportFeedback(context, r.id, status),
+                      (status) => _submitReport(r.id, status),
                     ),
                     child: Container(
                       height: 52,

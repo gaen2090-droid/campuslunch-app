@@ -284,6 +284,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               : null,
                           labelFontFamily: 'OkDanDan',
                           labelFontSize: 14,
+                          verticalPadding: 6,
                         ),
                       ],
                     ),
@@ -582,6 +583,8 @@ class _CrowdLegend extends StatelessWidget {
           _LegendItem(color: Color(0xFFF97316), label: '자리없음'),
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFDC2626), label: '웨이팅'),
+          SizedBox(height: 4),
+          _LegendItem(color: Color(0xFF111827), label: '제보필요'),
         ],
       ),
     );
@@ -757,6 +760,7 @@ class _MapFilterChip extends StatelessWidget {
   final IconData? leadingIcon;
   final String? labelFontFamily;
   final double labelFontSize;
+  final double verticalPadding;
 
   const _MapFilterChip({
     required this.label,
@@ -768,6 +772,7 @@ class _MapFilterChip extends StatelessWidget {
     this.leadingIcon,
     this.labelFontFamily,
     this.labelFontSize = 12,
+    this.verticalPadding = 8,
   });
 
   @override
@@ -778,7 +783,7 @@ class _MapFilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
         decoration: BoxDecoration(
           color: on ? const Color(0xFF9ECA8B) : restBg,
           borderRadius: BorderRadius.circular(20),
