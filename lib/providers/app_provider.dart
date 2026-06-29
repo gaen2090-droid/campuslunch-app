@@ -24,6 +24,7 @@ import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
 import '../services/push_notification_service.dart';
+import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
 import '../utils/gifticon_csv_parser.dart';
@@ -182,7 +183,18 @@ class AppProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// 스플래시 → 다음 화면 전환 기준
+  ///
+  /// 1. [main] Supabase·환경키만 동기 초기화 후 runApp (카카오맵·푸시·Google은 첫 프레임 이후)
+  /// 2. [init] SharedPreferences 복원 → 최소 [kMinSplashDuration] 스플래시 표시
+  /// 3. 매장·리워드는 백그라운드 로드 (홈/지도는 restaurantsLoading 으로 스켈레톤)
+  /// 4. stage 결정:
+  ///    - Supabase 세션 있음 → prefs 복원 후 메인(또는 권한·가이드), 프로필은 백그라운드 동기화
+  ///    - 로컬 세션 만료 → login
+  ///    - 로컬 로그인 유지 → usage_guide / app
+  ///    - 비로그인 → onboarding(최초) / login
   Future<void> init() async {
+    final splashStarted = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
@@ -190,11 +202,8 @@ class AppProvider extends ChangeNotifier {
         Set<String>.from(prefs.getStringList(_kHiddenGifticons) ?? const []);
 
     _restaurants = [];
-    await _loadRestaurantsFromSupabase();
-    // 실시간 구독 제거: 다른 사용자의 제보로 목록이 계속 재정렬되면 혼란스럽다는
-    // 피드백에 따라, 새로고침(pull-to-refresh) 또는 본인 제보 시에만 갱신한다.
+    unawaited(_loadRestaurantsFromSupabase());
 
-    // 북마크 복원
     final bookmarksJson = prefs.getString(_kBookmarks);
     if (bookmarksJson != null) {
       _bookmarks = Set<String>.from(
@@ -209,55 +218,69 @@ class AppProvider extends ChangeNotifier {
       if (session != null &&
           user != null &&
           _isSupabaseSessionRestorable(user)) {
-        await _onSupabaseSignedIn(user);
-        await Future.delayed(const Duration(seconds: 2));
+        final prefsLoggedIn = prefs.getBool(_kLogin) ?? false;
+        if (prefsLoggedIn) {
+          await _restoreSessionFromPrefs(prefs);
+          final locationStored = prefs.containsKey(_kLocation);
+          _stage = locationStored
+              ? await _postAppStage(prefs)
+              : 'location_permission';
+          if (hasOwnerTab) _mainTabIndex = 0;
+          unawaited(_onSupabaseSignedIn(user));
+        } else {
+          await _onSupabaseSignedIn(user);
+        }
+        await waitMinSplashDuration(splashStarted);
         notifyListeners();
         return;
       }
     }
 
-    // 인증 상태 복원 (로컬 / 테스트 계정)
     final loggedIn = prefs.getBool(_kLogin) ?? false;
     final sessionExp = prefs.getInt(_kSessionExp) ?? 0;
     if (loggedIn && DateTime.now().millisecondsSinceEpoch > sessionExp) {
-      // 세션 만료
       await _clearSession(prefs);
+      await waitMinSplashDuration(splashStarted);
       _stage = 'login';
       notifyListeners();
       return;
     }
 
     if (loggedIn) {
-      _isLoggedIn = true;
-      _nickname = prefs.getString(_kNickname) ?? '';
-      _accountId = prefs.getString(_kAccountId) ?? '';
-      _userRole = prefs.getString(_kUserRole) ?? 'user';
-      _ownerRestaurantIds = List<String>.from(
-          jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List);
-      if (_userRole == 'owner') {
-        _userRole = 'user';
-        await prefs.setString(_kUserRole, 'user');
-      }
+      await _restoreSessionFromPrefs(prefs);
       if (SupabaseService.isReady &&
           SupabaseService.client.auth.currentUser != null) {
-        await _syncOwnerRestaurantIdsFromDb(prefs);
+        unawaited(_syncOwnerRestaurantIdsFromDb(prefs));
       }
-      _locationMode = prefs.getBool(_kLocation) ?? false;
-      _notificationEnabled = prefs.getBool(_kPush) ?? false;
-      _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
-      _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
-      await fetchMyReward();
-
-      await Future.delayed(const Duration(seconds: 2));
+      unawaited(fetchMyReward());
+      await waitMinSplashDuration(splashStarted);
       _stage = await _postAppStage(prefs);
       if (hasOwnerTab) _mainTabIndex = 0;
     } else {
       final locationStored = prefs.containsKey(_kLocation);
-      await Future.delayed(const Duration(seconds: 2));
+      await waitMinSplashDuration(splashStarted);
       _stage = locationStored ? 'login' : 'onboarding';
     }
 
     notifyListeners();
+  }
+
+  Future<void> _restoreSessionFromPrefs(SharedPreferences prefs) async {
+    _isLoggedIn = true;
+    _nickname = prefs.getString(_kNickname) ?? '';
+    _accountId = prefs.getString(_kAccountId) ?? '';
+    _userRole = prefs.getString(_kUserRole) ?? 'user';
+    _ownerRestaurantIds = List<String>.from(
+      jsonDecode(prefs.getString(_kOwnerIds) ?? '[]') as List,
+    );
+    if (_userRole == 'owner') {
+      _userRole = 'user';
+      await prefs.setString(_kUserRole, 'user');
+    }
+    _locationMode = prefs.getBool(_kLocation) ?? false;
+    _notificationEnabled = prefs.getBool(_kPush) ?? false;
+    _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
+    _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
   }
 
   // ── 로그인 ──
@@ -327,7 +350,14 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<String?> register(String email, String password, String nick) async {
-    final nickname = nick.isEmpty ? generateNickname() : nick;
+    final trimmedNick = nick.trim();
+    if (trimmedNick.isNotEmpty) {
+      final taken = await _profileRepo.isNicknameTaken(trimmedNick);
+      if (taken == true) return '이미 사용 중인 닉네임이에요.';
+    }
+    final nickname = trimmedNick.isEmpty
+        ? await generateAvailableNickname(_profileRepo.isNicknameTaken)
+        : trimmedNick;
     final trimmedEmail = email.trim();
 
     if (SupabaseService.isReady) {
@@ -386,6 +416,11 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
     if (accounts.any((a) => a.id == email)) return '이미 사용 중인 이메일이에요.';
+    if (accounts.any(
+      (a) => a.nickname.trim().toLowerCase() == nickname.trim().toLowerCase(),
+    )) {
+      return '이미 사용 중인 닉네임이에요.';
+    }
     final account = Account(id: email, password: password, nickname: nickname);
     _saveAccounts(prefs, [...accounts, account]);
     await _saveSession(prefs, account);
@@ -595,13 +630,20 @@ class AppProvider extends ChangeNotifier {
     final appMeta = user.appMetadata;
     var nickname = profile?.nickname ?? meta?['nickname'] as String?;
     if (isPlaceholderNickname(nickname)) {
-      nickname = generateNickname();
+      nickname = await generateAvailableNickname(_profileRepo.isNicknameTaken);
       await _syncMetadata({'nickname': nickname});
+    } else if (nickname != null) {
+      final taken = await _profileRepo.isNicknameTaken(nickname);
+      if (taken == true) {
+        nickname = await generateAvailableNickname(_profileRepo.isNicknameTaken);
+        await _syncMetadata({'nickname': nickname});
+      }
     }
-    nickname ??= generateNickname();
+    nickname ??= await generateAvailableNickname(_profileRepo.isNicknameTaken);
 
     await _profileRepo.upsertFromAuthUser(
       SupabaseService.client.auth.currentUser ?? user,
+      nicknameOverride: nickname,
     );
     final metaRole = meta?['role'] as String?;
     final profileRole = profile?.role;
@@ -1327,7 +1369,11 @@ class AppProvider extends ChangeNotifier {
         return '이미 사용 중인 닉네임이에요.';
       }
       if (available == null) {
-        return '닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요.';
+        final taken = await _profileRepo.isNicknameTaken(trimmed);
+        if (taken == true) return '이미 사용 중인 닉네임이에요.';
+        if (taken == null) {
+          return '닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요.';
+        }
       }
     }
 

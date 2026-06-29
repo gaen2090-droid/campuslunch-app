@@ -8,6 +8,7 @@ import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 import '../config/campus.dart';
 import '../config/env.dart';
 import '../models/restaurant.dart';
+import '../services/kakao_map_bootstrap.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
@@ -125,10 +126,24 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     );
   }
 
+  bool _waitingKakaoMapSdk = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _ensureKakaoMapSdk();
+  }
+
+  void _ensureKakaoMapSdk() {
+    if (Env.kakaoMapSdkInitialized || !Env.hasKakaoNativeKey) return;
+    _waitingKakaoMapSdk = true;
+    unawaited(
+      KakaoMapBootstrap.ensureInitialized().then((_) {
+        if (!mounted) return;
+        setState(() => _waitingKakaoMapSdk = false);
+      }),
+    );
   }
 
   @override
@@ -200,10 +215,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
         _attachLabelListener();
         await _syncMarkers();
+        if (!mounted) return;
         final fitKey = _fitKeyFor(widget.restaurants);
         if (fitKey.isNotEmpty &&
             (fitKey != _lastFitKey || widget.cameraFitToken != _lastFitToken)) {
-          await fitToRestaurants(animate: false);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            unawaited(fitToRestaurants(animate: false));
+          });
         }
         widget.onMapReady?.call(this);
       });
@@ -244,6 +263,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       if (gen != _syncGeneration) return;
       _markerIds.clear();
 
+      final markerBatch = <MarkerOption>[];
       for (final r in widget.restaurants) {
         if (!r.hasMapLocation) continue;
         if (gen != _syncGeneration) return;
@@ -258,8 +278,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         final styleId =
             KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 
-        await controller.addMarker(
-          markerOption: MarkerOption(
+        markerBatch.add(
+          MarkerOption(
             id: r.id,
             latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
             styleId: styleId,
@@ -268,6 +288,30 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
           ),
         );
         _markerIds.add(r.id);
+      }
+
+      for (var i = 0; i < markerBatch.length; i += 25) {
+        if (gen != _syncGeneration) return;
+        final chunk = markerBatch.sublist(
+          i,
+          math.min(i + 25, markerBatch.length),
+        );
+        try {
+          await controller.addMarkers(markerOptions: chunk);
+        } catch (e, st) {
+          debugPrint('[RestaurantKakaoMap] addMarkers batch failed: $e\n$st');
+          for (final option in chunk) {
+            if (gen != _syncGeneration) return;
+            try {
+              await controller.addMarker(markerOption: option);
+            } catch (e2) {
+              debugPrint(
+                '[RestaurantKakaoMap] marker ${option.id} skipped: $e2',
+              );
+              _markerIds.remove(option.id);
+            }
+          }
+        }
       }
 
       if (showMyLocation) {
@@ -363,6 +407,28 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     }
 
     if (!Env.kakaoMapSdkInitialized) {
+      if (_waitingKakaoMapSdk || !KakaoMapBootstrap.initFailed) {
+        return const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Color(0xFF5E8C4A),
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                '지도를 준비하고 있어요…',
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+              ),
+            ],
+          ),
+        );
+      }
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),

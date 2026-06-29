@@ -19,6 +19,7 @@
 --   4b. supabase/rpc_release_owner.sql
 --   5. supabase/rpc_delete_own_account.sql
 --   6. supabase/rpc_nickname_available.sql
+--   6b. supabase/users_nickname_unique.sql
 --   7. supabase/rpc_oauth_login_email_check.sql
 --   8. supabase/analytics_events.sql
 --   9. supabase/crowd_status.sql          (스키마·헬퍼·submit_crowd_report)

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:image/image.dart' as img;
 
 import '../models/restaurant.dart';
@@ -23,12 +24,30 @@ class MapMarkerIcons {
   static Uint8List? _closedBytes;
   static Uint8List? _noReportBytes;
   static final Map<int, Uint8List> _colorCache = {};
+  static List<MarkerStyleBundle>? _cachedBundles;
+  static Future<List<MarkerStyleBundle>>? _bundlesInFlight;
+  static bool _uiReady = false;
 
   /// 핀 디자인 변경 시 캐시 무효화 (hot reload 대응)
   static void clearCache() {
     _closedBytes = null;
     _noReportBytes = null;
     _colorCache.clear();
+    _cachedBundles = null;
+    _bundlesInFlight = null;
+    _uiReady = false;
+  }
+
+  /// release APK에서 main() 직후 toImage()가 실패하는 경우 방지
+  static Future<void> _awaitFlutterUiReady() async {
+    if (_uiReady) return;
+    final binding = WidgetsBinding.instance;
+    if (binding.schedulerPhase == SchedulerPhase.idle) {
+      await Future<void>.delayed(Duration.zero);
+    } else {
+      await binding.endOfFrame;
+    }
+    _uiReady = true;
   }
 
   static Future<Uint8List> closed() async {
@@ -52,6 +71,16 @@ class MapMarkerIcons {
 
   /// 카카오맵 POI 핀 — 2x 크기 + 2x 슈퍼샘플링
   static Future<Uint8List> _pinMarkerBytes(Color color) async {
+    await _awaitFlutterUiReady();
+    try {
+      return await _pinMarkerBytesFromCanvas(color);
+    } catch (e, st) {
+      debugPrint('[MapMarkerIcons] canvas pin failed, using fallback: $e\n$st');
+      return _fallbackPinPng(color);
+    }
+  }
+
+  static Future<Uint8List> _pinMarkerBytesFromCanvas(Color color) async {
     const w = 72;
     const h = 88;
     const pixelRatio = 2;
@@ -99,6 +128,33 @@ class MapMarkerIcons {
     return png;
   }
 
+  /// Canvas 렌더 실패 시 image 패키지로 단순 핀 생성 (네이티브 등록용)
+  static Uint8List _fallbackPinPng(Color color) {
+    const w = 72;
+    const h = 88;
+    final image = img.Image(width: w, height: h, numChannels: 4);
+    final c = img.ColorRgba8(
+      (color.r * 255).round().clamp(0, 255),
+      (color.g * 255).round().clamp(0, 255),
+      (color.b * 255).round().clamp(0, 255),
+      255,
+    );
+    final cx = w ~/ 2;
+    final headR = 22;
+    final headCy = 28;
+    img.fillCircle(image, x: cx, y: headCy, radius: headR + 2, color: img.ColorRgba8(255, 255, 255, 255));
+    img.fillCircle(image, x: cx, y: headCy, radius: headR, color: c);
+    img.fillCircle(image, x: cx, y: headCy, radius: 8, color: img.ColorRgba8(255, 255, 255, 230));
+    for (var y = headCy + headR - 2; y < h - 4; y++) {
+      final t = (y - (headCy + headR - 2)) / (h - 4 - (headCy + headR - 2));
+      final half = (12 * (1 - t)).round().clamp(1, 12);
+      for (var x = cx - half; x <= cx + half; x++) {
+        image.setPixel(x, y, c);
+      }
+    }
+    return Uint8List.fromList(img.encodePng(image));
+  }
+
   static bool _isValidPng(Uint8List bytes) {
     return bytes.length >= 8 &&
         bytes[0] == 0x89 &&
@@ -125,7 +181,26 @@ class MapMarkerIcons {
   }
 
   static Future<List<MarkerStyleBundle>> buildStatusStyles() async {
-    clearCache();
+    final cached = _cachedBundles;
+    if (cached != null) return cached;
+
+    final inFlight = _bundlesInFlight;
+    if (inFlight != null) return inFlight;
+
+    final task = _buildStatusStylesImpl();
+    _bundlesInFlight = task;
+    try {
+      final bundles = await task;
+      _cachedBundles = bundles;
+      return bundles;
+    } finally {
+      if (identical(_bundlesInFlight, task)) {
+        _bundlesInFlight = null;
+      }
+    }
+  }
+
+  static Future<List<MarkerStyleBundle>> _buildStatusStylesImpl() async {
     final styles = <MarkerStyleBundle>[];
     for (final entry in statusMetaMap.entries) {
       styles.add(MarkerStyleBundle(

@@ -32,6 +32,23 @@ class ProfileRepository {
 
   static const _table = 'users';
 
+  /// 로그인 전 포함 — DB에 동일 닉네임이 있는지 (RPC 미배포 시 null)
+  Future<bool?> isNicknameTaken(String nickname) async {
+    final trimmed = nickname.trim();
+    if (trimmed.isEmpty) return true;
+    try {
+      final result = await _client.rpc(
+        'is_nickname_taken',
+        params: {'p_nickname': trimmed},
+      );
+      if (result is bool) return result;
+      return result == true;
+    } catch (e, st) {
+      debugPrint('[Profile] isNicknameTaken failed: $e\n$st');
+      return null;
+    }
+  }
+
   Future<UserProfile?> fetch(String userId) async {
     try {
       final row = await _client
@@ -142,9 +159,9 @@ class ProfileRepository {
     }
   }
 
-  Future<void> upsertFromAuthUser(User user) async {
+  Future<void> upsertFromAuthUser(User user, {String? nicknameOverride}) async {
     final meta = user.userMetadata;
-    final nickname = meta?['nickname'] as String? ?? '사용자';
+    final nickname = nicknameOverride ?? meta?['nickname'] as String? ?? '사용자';
     final existing = await fetch(user.id);
     final provider = meta?['auth_provider'] as String? ??
         user.appMetadata['provider'] as String? ??

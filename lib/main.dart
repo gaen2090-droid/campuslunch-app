@@ -1,14 +1,15 @@
-﻿import 'package:flutter/foundation.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
-import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
-import 'utils/map_marker_icons.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
+import 'services/kakao_map_bootstrap.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
@@ -30,23 +31,6 @@ Future<void> main() async {
   await Env.loadReleaseConfig();
 
   await KakaoAuthService.initialize();
-  // kakao_maps_flutter는 Android/iOS 전용 — 웹(flutter run -d chrome)에서는
-  // 네이티브 채널이 없어 MissingPluginException이 던져져 main()이 중단되고
-  // 앱이 흰 화면으로 남는다. 웹에서는 건너뛴다.
-  if (Env.hasKakaoNativeKey && !kIsWeb) {
-    try {
-      await KakaoMapsFlutter.init(Env.kakaoNativeAppKey);
-      Env.kakaoMapSdkInitialized = true;
-      try {
-        await MapMarkerIcons.buildStatusStyles();
-      } catch (e, st) {
-        debugPrint('[MapMarkerIcons] prewarm failed: $e\n$st');
-      }
-    } catch (e, st) {
-      debugPrint('[KakaoMap] SDK init failed: $e\n$st');
-    }
-  }
-  await GoogleAuthService.initialize();
 
   if (Env.isSupabaseConfigured) {
     try {
@@ -60,25 +44,38 @@ Future<void> main() async {
     );
   }
 
-  await PushNotificationService.instance.initialize(
-    onOpenHome: (_) {},
-  );
-
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
+
+  late final AppProvider appProvider;
   runApp(
     ChangeNotifierProvider(
       create: (_) {
-        final provider = AppProvider()..init();
-        PushNotificationService.instance.onOpenHome = (_) =>
-            provider.openHomeFromPush();
-        return provider;
+        appProvider = AppProvider()..init();
+        return appProvider;
       },
       child: const CampusLunchApp(),
     ),
   );
+
+  // 첫 프레임 이후 무거운 네이티브 초기화 (스플래시·흰 화면 지연 방지)
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_deferredStartup(appProvider));
+  });
+}
+
+Future<void> _deferredStartup(AppProvider provider) async {
+  unawaited(GoogleAuthService.initialize());
+  unawaited(KakaoMapBootstrap.ensureInitialized());
+  try {
+    await PushNotificationService.instance.initialize(
+      onOpenHome: (_) => provider.openHomeFromPush(),
+    );
+  } catch (e, st) {
+    debugPrint('[Push] deferred init failed: $e\n$st');
+  }
 }
 
 class CampusLunchApp extends StatelessWidget {

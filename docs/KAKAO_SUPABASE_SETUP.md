@@ -53,6 +53,8 @@ https://vkacsvoknnlmcyplprft.supabase.co/auth/v1/callback
 3. `supabase/rpc_email_signup_status.sql`
 4. `supabase/rpc_claim_owner.sql`
 5. `supabase/rpc_delete_own_account.sql`
+6. `supabase/rpc_nickname_available.sql`
+7. `supabase/users_nickname_unique.sql`
 
 ## 4. 앱 `.env`
 
@@ -141,3 +143,4 @@ dart run tool/print_kakao_android_key_hash.dart --release
 | **KOE101** / 앱 관리자 설정 오류 | 빈 키, REST 키 사용, 키 해시 미등록 | 위 §6 |
 | `Unacceptable audience in id_token:[4365f2a2d44f911f29d65544f88b8cc6]` | Supabase에 REST API 키만 넣음 | Kakao → **Native App Key**(또는 REST API Key 칸)에 **네이티브 앱 키** 입력 |
 | `카카오 OpenID 토큰이 없습니다` | 카카오 콘솔 OpenID Connect 미활성 | 카카오 개발자 → 카카오 로그인 → OpenID Connect ON |
+| 카톡 인증 후 **앱으로 안 돌아옴** | Android `kakao{네이티브앱키}://oauth` 미등록 | `AndroidManifest.xml`에 AuthCodeCustomTabsActivity·MainActivity intent-filter 확인 후 재빌드 |

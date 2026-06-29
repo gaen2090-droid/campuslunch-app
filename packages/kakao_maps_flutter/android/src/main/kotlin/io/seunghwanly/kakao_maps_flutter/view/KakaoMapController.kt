@@ -3,6 +3,7 @@ package io.seunghwanly.kakao_maps_flutter.view
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
+import java.nio.ByteBuffer
 import android.view.View
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
@@ -860,39 +861,13 @@ class KakaoMapController(
             val first = perLevels.first()
 
             // Extract icon bytes
-            val iconBytes: ByteArray? = when (first) {
-                is Map<*, *> -> {
-                    val iconAny = first["icon"]
-                    when (iconAny) {
-                        is ByteArray -> iconAny
-                        is List<*> -> (iconAny.filterIsInstance<Number>()
-                            .map { it.toByte() }).toByteArray()
-
-                        is String -> Base64.Default.decode(
-                            iconAny.substringAfter(
-                                "base64,", iconAny
-                            )
-                        )
-
-                        else -> null
-                    }
+            val iconBytes: ByteArray? = decodeIconBytes(
+                when (first) {
+                    is Map<*, *> -> first["icon"]
+                    is JSONObject -> first.opt("icon")
+                    else -> null
                 }
-
-                is JSONObject -> {
-                    val rawIcon = first.opt("icon")
-                    when (rawIcon) {
-                        is String -> Base64.Default.decode(
-                            rawIcon.substringAfter(
-                                "base64,", rawIcon
-                            )
-                        )
-
-                        else -> null
-                    }
-                }
-
-                else -> null
-            }
+            )
 
             if (iconBytes == null || iconBytes.isEmpty()) {
                 Log.e("KakaoMapController", "Invalid icon bytes for styleId=$styleId")
@@ -951,14 +926,37 @@ class KakaoMapController(
 
             stylesList.add(LabelStyle.from(bitmap).setTextStyles(labelTextStyle))
 
-            val labelStyles = LabelStyles.from(styleId, *stylesList.toTypedArray())
-            kMap.labelManager?.addLabelStyles(labelStyles)
-            registeredLabelStylesIds.add(styleId)
+            try {
+                val labelStyles = LabelStyles.from(styleId, *stylesList.toTypedArray())
+                kMap.labelManager?.addLabelStyles(labelStyles)
+                registeredLabelStylesIds.add(styleId)
+            } catch (e: Exception) {
+                Log.e(
+                    "KakaoMapController",
+                    "addLabelStyles failed for styleId=$styleId: ${e.message}",
+                    e
+                )
+            }
         }
 
         Log.d("KakaoMapController", "Marker styles registered: $registeredLabelStylesIds")
 
         result.success(null)
+    }
+
+    private fun decodeIconBytes(iconAny: Any?): ByteArray? {
+        return when (iconAny) {
+            is ByteArray -> iconAny
+            is ByteBuffer -> {
+                val arr = ByteArray(iconAny.remaining())
+                iconAny.get(arr)
+                arr
+            }
+            is List<*> -> iconAny.filterIsInstance<Number>().map { it.toInt() and 0xFF }
+                .map { it.toByte() }.toByteArray()
+            is String -> Base64.Default.decode(iconAny.substringAfter("base64,", iconAny))
+            else -> null
+        }
     }
 
     private fun removeMarkerStyles(args: JSONObject, result: MethodChannel.Result) {
