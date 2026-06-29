@@ -70,7 +70,8 @@ class SplashScreen extends StatelessWidget {
                 const Text(
                   '캠퍼스런치',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontFamily: 'OkDanDan',
+                    fontSize: 30,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFF5E8C4A),
                     letterSpacing: -1.0,
