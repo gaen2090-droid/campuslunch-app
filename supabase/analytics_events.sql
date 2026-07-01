@@ -175,8 +175,12 @@ declare
   today_by_restaurant jsonb;
   week_by_restaurant jsonb;
 begin
-  -- security definer 로 집계만 반환 (개인 식별 정보 없음).
-  -- admin/admin123 등 Supabase 세션 없이도 anon 키로 호출 가능해야 대시보드가 동작함.
+  if auth.uid() is null then
+    raise exception 'login required';
+  end if;
+  if not public.is_admin() then
+    raise exception 'admin only';
+  end if;
 
   today_start := date_trunc('day', now() at time zone tz) at time zone tz;
   week_start := today_start - interval '6 days';
@@ -350,4 +354,5 @@ end;
 $$;
 
 revoke all on function public.admin_dashboard_metrics() from public;
-grant execute on function public.admin_dashboard_metrics() to anon, authenticated;
+revoke all on function public.admin_dashboard_metrics() from anon;
+grant execute on function public.admin_dashboard_metrics() to authenticated;

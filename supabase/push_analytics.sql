@@ -99,6 +99,13 @@ declare
   today_by_restaurant jsonb;
   week_by_restaurant jsonb;
 begin
+  if auth.uid() is null then
+    raise exception 'login required';
+  end if;
+  if not public.is_admin() then
+    raise exception 'admin only';
+  end if;
+
   today_start := date_trunc('day', now() at time zone tz) at time zone tz;
   week_start := today_start - interval '6 days';
   mau_start := today_start - interval '29 days';
@@ -305,4 +312,5 @@ end;
 $$;
 
 revoke all on function public.admin_dashboard_metrics() from public;
-grant execute on function public.admin_dashboard_metrics() to anon, authenticated;
+revoke all on function public.admin_dashboard_metrics() from anon;
+grant execute on function public.admin_dashboard_metrics() to authenticated;

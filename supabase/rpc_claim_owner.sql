@@ -67,4 +67,4 @@ where u.role = 'owner'::public.user_role
   );
 
 revoke all on function public.claim_owner_by_code(text) from public;
-grant execute on function public.claim_owner_by_code(text) to anon, authenticated;
+grant execute on function public.claim_owner_by_code(text) to authenticated;

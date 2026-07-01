@@ -260,7 +260,7 @@ class _StampSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             remaining > 0
-                ? '아메리카노 쿠폰까지 $remaining개 남았어요'
+                ? '기프티콘(쿠폰)까지 $remaining개 남았어요'
                 : '쿠폰이 발급됐어요!',
             style: TextStyle(
               fontSize: 13,

@@ -54,14 +54,7 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data ->> 'nickname', '사용자'),
-    coalesce(
-      case
-        when new.raw_user_meta_data ->> 'role' in ('user', 'owner', 'admin')
-        then (new.raw_user_meta_data ->> 'role')::public.user_role
-        else 'user'::public.user_role
-      end,
-      'user'::public.user_role
-    ),
+    'user'::public.user_role,
     coalesce(
       new.raw_user_meta_data ->> 'auth_provider',
       new.raw_app_meta_data ->> 'provider',

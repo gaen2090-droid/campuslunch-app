@@ -10,13 +10,10 @@ class SupabaseService {
 
   static SupabaseClient get client => Supabase.instance.client;
 
-  /// Supabase Auth JWT `app_metadata.role` 또는 `user_metadata.role` 이 admin 인지
+  /// 관리자 여부 — public.users.role 만 신뢰 (JWT user_metadata는 사용하지 않음)
   static bool get isAdmin {
-    final user = client.auth.currentUser;
-    if (user == null) return false;
-    final appRole = user.appMetadata['role'];
-    final userRole = user.userMetadata?['role'];
-    return appRole == 'admin' || userRole == 'admin';
+    // 동기 호출용; 정본은 AppProvider._userRole (DB fetch 후)
+    return false;
   }
 
   static Future<void> initialize() async {

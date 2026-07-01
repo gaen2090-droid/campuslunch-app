@@ -13,6 +13,8 @@ import 'services/kakao_map_bootstrap.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
+import 'screens/legal_terms_consent_screen.dart';
+import 'screens/permissions_consent_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
@@ -20,6 +22,7 @@ import 'screens/location_permission_screen.dart';
 import 'screens/notification_permission_screen.dart';
 import 'screens/usage_guide_screen.dart';
 import 'navigation/app_route_observer.dart';
+import 'utils/app_startup.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,10 +63,8 @@ Future<void> main() async {
     ),
   );
 
-  // 첫 프레임 이후 무거운 네이티브 초기화 (스플래시·흰 화면 지연 방지)
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(_deferredStartup(appProvider));
-  });
+  runDeferredStartupOnce = () => _deferredStartup(appProvider);
+  // 권한 안내 완료 후 AppProvider.triggerDeferredStartup() 에서 실행
 }
 
 Future<void> _deferredStartup(AppProvider provider) async {
@@ -136,6 +137,10 @@ class _Root extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       child: switch (stage) {
         'splash' => const SplashScreen(key: ValueKey('splash')),
+        'permissions_consent' =>
+          const PermissionsConsentScreen(key: ValueKey('permissions_consent')),
+        'legal_terms_consent' =>
+          const LegalTermsConsentScreen(key: ValueKey('legal_terms_consent')),
         'onboarding' =>
           const OnboardingScreen(key: ValueKey('onboarding')),
         'login' => const LoginScreen(key: ValueKey('login')),

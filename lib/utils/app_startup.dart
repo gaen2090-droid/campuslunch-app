@@ -8,3 +8,15 @@ Future<void> waitMinSplashDuration(DateTime startedAt) async {
     await Future.delayed(remaining);
   }
 }
+
+/// 권한 안내 완료 후에만 실행 (카카오맵·푸시 등 — OS 권한 팝업 선행 방지)
+Future<void> Function()? runDeferredStartupOnce;
+bool _deferredStartupDone = false;
+
+Future<void> triggerDeferredStartup() async {
+  if (_deferredStartupDone) return;
+  final fn = runDeferredStartupOnce;
+  if (fn == null) return;
+  _deferredStartupDone = true;
+  await fn();
+}

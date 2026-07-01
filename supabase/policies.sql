@@ -9,17 +9,12 @@ stable
 security definer
 set search_path = public
 as $$
-  select
-    coalesce(
-      auth.jwt() -> 'app_metadata' ->> 'role',
-      auth.jwt() -> 'user_metadata' ->> 'role'
-    ) = 'admin'
-    or exists (
-      select 1
-      from public.users u
-      where u.id = auth.uid()
-        and u.role = 'admin'::public.user_role
-    );
+  select exists (
+    select 1
+    from public.users u
+    where u.id = auth.uid()
+      and u.role = 'admin'::public.user_role
+  );
 $$;
 
 alter table public.restaurants enable row level security;
@@ -69,4 +64,24 @@ create policy "restaurants_update_admin" on public.restaurants
   using (public.is_admin())
   with check (public.is_admin());
 
--- 사장님 인증번호 등록 완료 (RPC에서 security definer로 처리 — policies.sql 하단)
+-- users.role 자가 변경 차단
+create or replace function public.users_guard_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE' and new.role is distinct from old.role then
+    if not public.is_admin() then
+      new.role := old.role;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_users_guard_role on public.users;
+create trigger trg_users_guard_role
+  before update on public.users
+  for each row execute function public.users_guard_role();

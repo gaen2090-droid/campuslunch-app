@@ -48,10 +48,17 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     setState(() => _submitting = true);
     try {
       final user = SupabaseService.client.auth.currentUser;
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인 후 피드백을 보낼 수 있어요.')),
+        );
+        return;
+      }
       await SupabaseService.client.from('app_feedback').insert({
         'category': _category,
         'content': content,
-        'user_id': user?.id,
+        'user_id': user.id,
       });
       if (!mounted) return;
       Navigator.pop(context);

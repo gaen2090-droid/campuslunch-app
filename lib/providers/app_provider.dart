@@ -23,6 +23,7 @@ import '../data/reward_repository.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
+import '../services/device_permission_service.dart';
 import '../services/push_notification_service.dart';
 import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
@@ -141,6 +142,9 @@ class AppProvider extends ChangeNotifier {
 
   // ── 키 ──
   static const _kLocation = 'cl_location_mode';
+  static const _kPermissionsConsentSeen = 'cl_permissions_consent_seen';
+  static const _kLegalTermsAcceptedUsers = 'cl_legal_terms_accepted_users';
+  static const _kPendingLegalTermsUsers = 'cl_pending_legal_terms_users';
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
@@ -168,7 +172,7 @@ class AppProvider extends ChangeNotifier {
 
   /// Supabase admin 세션 + role=admin (로컬 admin/admin123 제외)
   bool get _canAdminOps =>
-      _hasSupabaseSession && (_userRole == 'admin' || SupabaseService.isAdmin);
+      _hasSupabaseSession && _userRole == 'admin';
 
   StreamSubscription<AuthState>? _authSub;
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
@@ -192,7 +196,8 @@ class AppProvider extends ChangeNotifier {
   ///    - Supabase 세션 있음 → prefs 복원 후 메인(또는 권한·가이드), 프로필은 백그라운드 동기화
   ///    - 로컬 세션 만료 → login
   ///    - 로컬 로그인 유지 → usage_guide / app
-  ///    - 비로그인 → onboarding(최초) / login
+    ///    - 비로그인 → permissions(최초) / login
+    ///    - 회원가입 직후 → legal_terms_consent → app
   Future<void> init() async {
     final splashStarted = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
@@ -221,16 +226,16 @@ class AppProvider extends ChangeNotifier {
         final prefsLoggedIn = prefs.getBool(_kLogin) ?? false;
         if (prefsLoggedIn) {
           await _restoreSessionFromPrefs(prefs);
-          final locationStored = prefs.containsKey(_kLocation);
-          _stage = locationStored
-              ? await _postAppStage(prefs)
-              : 'location_permission';
+          _stage = await _resolveStageAfterSplash(prefs);
           if (hasOwnerTab) _mainTabIndex = 0;
           unawaited(_onSupabaseSignedIn(user));
         } else {
           await _onSupabaseSignedIn(user);
         }
         await waitMinSplashDuration(splashStarted);
+        if (_hasPermissionsConsent(prefs)) {
+          unawaited(triggerDeferredStartup());
+        }
         notifyListeners();
         return;
       }
@@ -254,12 +259,15 @@ class AppProvider extends ChangeNotifier {
       }
       unawaited(fetchMyReward());
       await waitMinSplashDuration(splashStarted);
-      _stage = await _postAppStage(prefs);
+      _stage = await _resolveStageAfterSplash(prefs);
       if (hasOwnerTab) _mainTabIndex = 0;
     } else {
-      final locationStored = prefs.containsKey(_kLocation);
       await waitMinSplashDuration(splashStarted);
-      _stage = locationStored ? 'login' : 'onboarding';
+      _stage = await _resolveStageAfterSplash(prefs);
+    }
+
+    if (_hasPermissionsConsent(prefs)) {
+      unawaited(triggerDeferredStartup());
     }
 
     notifyListeners();
@@ -349,6 +357,7 @@ class AppProvider extends ChangeNotifier {
     return true;
   }
 
+  /// 이메일 회원가입
   Future<String?> register(String email, String password, String nick) async {
     final trimmedNick = nick.trim();
     if (trimmedNick.isNotEmpty) {
@@ -549,7 +558,7 @@ class AppProvider extends ChangeNotifier {
 
       await prefs.remove(_kAwaitingEmailConfirm);
       await _clearPendingSignupCredentials();
-      await _onSupabaseSignedIn(user);
+      await _onSupabaseSignedIn(user, isNewSignup: true);
       notifyListeners();
       return null;
     } on AuthException catch (e) {
@@ -617,7 +626,10 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> _onSupabaseSignedIn(User user) async {
+  Future<void> _onSupabaseSignedIn(
+    User user, {
+    bool isNewSignup = false,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
       _showSignupCompleteMessage = true;
@@ -674,6 +686,12 @@ class AppProvider extends ChangeNotifier {
         restaurantIds: restaurantIds,
       ),
       authProvider: authProvider,
+      supabaseUserId: user.id,
+      needsLegalTerms: _needsLegalTermsConsent(
+        prefs,
+        user.id,
+        isNewSignup: isNewSignup,
+      ),
     );
     await recordAppSession();
     await _syncPushNotifications();
@@ -684,6 +702,8 @@ class AppProvider extends ChangeNotifier {
     SharedPreferences prefs,
     Account account, {
     String authProvider = 'email',
+    String supabaseUserId = '',
+    bool needsLegalTerms = false,
   }) async {
     _isLoggedIn = true;
     _nickname = account.nickname;
@@ -700,13 +720,24 @@ class AppProvider extends ChangeNotifier {
         DateTime.now().add(_sessionDuration).millisecondsSinceEpoch);
     await prefs.setString(_kAuthProvider, authProvider);
 
-    final locationStored = prefs.containsKey(_kLocation);
     _locationMode = prefs.getBool(_kLocation) ?? false;
     _notificationEnabled = prefs.getBool(_kPush) ?? false;
     _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
     _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
 
-    _stage = locationStored ? await _postAppStage(prefs) : 'location_permission';
+    final userId = supabaseUserId.isNotEmpty
+        ? supabaseUserId
+        : (_hasSupabaseSession
+            ? SupabaseService.client.auth.currentUser!.id
+            : account.id);
+    if (needsLegalTerms) {
+      await _markPendingLegalTerms(prefs, userId);
+    }
+    _stage = await _resolveStageForSession(
+      prefs,
+      userId: userId,
+      needsLegalTerms: needsLegalTerms,
+    );
     if (account.restaurantIds.isNotEmpty) {
       _mainTabIndex = 0;
     }
@@ -793,7 +824,11 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final result = await KakaoAuthService.signInWithSupabase();
-      await _onSupabaseSignedIn(result.user);
+      final user = result.user!;
+      await _onSupabaseSignedIn(
+        user,
+        isNewSignup: _isLikelyNewAccount(user),
+      );
       return null;
     } on AuthException catch (e) {
       if (e.message.contains('Unacceptable audience in id_token')) {
@@ -838,7 +873,11 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final result = await GoogleAuthService.signInWithSupabase();
-      await _onSupabaseSignedIn(result.user);
+      final user = result.user!;
+      await _onSupabaseSignedIn(
+        user,
+        isNewSignup: _isLikelyNewAccount(user),
+      );
       return null;
     } on GoogleSignInCancelled {
       return _oauthCancelledMessage();
@@ -957,7 +996,23 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 위치 권한 ──
+  Future<bool> requestLocationOsPermission() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      return permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+    } catch (e) {
+      debugPrint('[Permissions] location: $e');
+      return false;
+    }
+  }
+
   Future<void> enableLocation() async {
+    final granted = await requestLocationOsPermission();
+    if (!granted) return;
     final prefs = await SharedPreferences.getInstance();
     _locationMode = true;
     await prefs.setBool(_kLocation, true);
@@ -1251,10 +1306,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<Position?> _currentPosition() async {
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         return null;
@@ -1317,6 +1369,172 @@ class AppProvider extends ChangeNotifier {
     }
     await prefs.setString(_kBookmarks, jsonEncode(_bookmarks.toList()));
     await _syncMetadata({'bookmarks': _bookmarks.toList()});
+    notifyListeners();
+  }
+
+  // ── 권한 동의 (첫 앱 실행) · 약관 동의 (회원가입 직후) ──
+  bool _hasPermissionsConsent(SharedPreferences prefs) =>
+      prefs.getBool(_kPermissionsConsentSeen) ?? false;
+
+  bool _hasLegalTermsConsent(SharedPreferences prefs, String userId) {
+    if (userId.isEmpty) return false;
+    final accepted = prefs.getStringList(_kLegalTermsAcceptedUsers) ?? [];
+    return accepted.contains(userId);
+  }
+
+  bool _isPendingLegalTerms(SharedPreferences prefs, String userId) {
+    if (userId.isEmpty) return false;
+    final pending = prefs.getStringList(_kPendingLegalTermsUsers) ?? [];
+    return pending.contains(userId);
+  }
+
+  Future<void> _markPendingLegalTerms(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final pending = List<String>.from(
+      prefs.getStringList(_kPendingLegalTermsUsers) ?? const [],
+    );
+    if (!pending.contains(userId)) {
+      pending.add(userId);
+      await prefs.setStringList(_kPendingLegalTermsUsers, pending);
+    }
+  }
+
+  Future<void> _clearPendingLegalTerms(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final pending = List<String>.from(
+      prefs.getStringList(_kPendingLegalTermsUsers) ?? const [],
+    );
+    if (pending.remove(userId)) {
+      await prefs.setStringList(_kPendingLegalTermsUsers, pending);
+    }
+  }
+
+  bool _isLikelyNewAccount(User user) {
+    final created = DateTime.tryParse(user.createdAt);
+    if (created == null) return false;
+    return DateTime.now().difference(created).inMinutes < 15;
+  }
+
+  bool _needsLegalTermsConsent(
+    SharedPreferences prefs,
+    String userId, {
+    required bool isNewSignup,
+  }) {
+    if (userId.isEmpty || _hasLegalTermsConsent(prefs, userId)) return false;
+    if (isNewSignup) return true;
+    return _isPendingLegalTerms(prefs, userId);
+  }
+
+  String _sessionUserId(SharedPreferences prefs) {
+    if (_hasSupabaseSession) {
+      return SupabaseService.client.auth.currentUser!.id;
+    }
+    return prefs.getString(_kAccountId) ?? '';
+  }
+
+  Future<String> _resolveStageAfterSplash(SharedPreferences prefs) async {
+    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
+    if (_isLoggedIn) {
+      final userId = _sessionUserId(prefs);
+      if (_needsLegalTermsConsent(
+        prefs,
+        userId,
+        isNewSignup: false,
+      )) {
+        return 'legal_terms_consent';
+      }
+      return 'app';
+    }
+    return 'login';
+  }
+
+  Future<String> _resolveStageForSession(
+    SharedPreferences prefs, {
+    required String userId,
+    required bool needsLegalTerms,
+  }) async {
+    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
+    if (needsLegalTerms &&
+        userId.isNotEmpty &&
+        _needsLegalTermsConsent(
+          prefs,
+          userId,
+          isNewSignup: true,
+        )) {
+      return 'legal_terms_consent';
+    }
+    if (userId.isNotEmpty &&
+        _needsLegalTermsConsent(prefs, userId, isNewSignup: false)) {
+      return 'legal_terms_consent';
+    }
+    return 'app';
+  }
+
+  /// OS 권한 요청. 위치(필수) 거부 시 false.
+  Future<bool> completePermissionsConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final locationGranted = await requestLocationOsPermission();
+    if (!locationGranted) return false;
+
+    // Android: 위치 직후 '주변 기기'·Wi-Fi 스캔(정확도 보조) — 확인 버튼 시점
+    await DevicePermissionService.requestAndroidNearbyScanForLocation();
+
+    var pushGranted = false;
+    try {
+      pushGranted =
+          await PushNotificationService.instance.requestPermission();
+    } catch (e, st) {
+      debugPrint('[Permissions] push: $e\n$st');
+    }
+
+    _locationMode = true;
+    _notificationEnabled = pushGranted;
+    _lunchPushEnabled = pushGranted;
+    _dinnerPushEnabled = pushGranted;
+
+    await prefs.setBool(_kPermissionsConsentSeen, true);
+    await prefs.setBool(_kLocation, true);
+    await prefs.setBool(_kPush, pushGranted);
+    await prefs.setBool(_kLunchPush, pushGranted);
+    await prefs.setBool(_kDinnerPush, pushGranted);
+
+    if (_hasSupabaseSession && pushGranted) {
+      unawaited(_syncPushNotifications());
+    }
+
+    _stage = await _resolveStageAfterSplash(prefs);
+    notifyListeners();
+    unawaited(triggerDeferredStartup());
+    return true;
+  }
+
+  Future<void> completeLegalTermsConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = _sessionUserId(prefs);
+    if (userId.isEmpty) {
+      _stage = 'login';
+      notifyListeners();
+      return;
+    }
+
+    final accepted = List<String>.from(
+      prefs.getStringList(_kLegalTermsAcceptedUsers) ?? const [],
+    );
+    if (!accepted.contains(userId)) {
+      accepted.add(userId);
+      await prefs.setStringList(_kLegalTermsAcceptedUsers, accepted);
+    }
+    await _clearPendingLegalTerms(prefs, userId);
+
+    _stage = 'app';
+    if (hasOwnerTab) _mainTabIndex = 0;
     notifyListeners();
   }
 

@@ -32,8 +32,17 @@ class PushNotificationService {
   Future<void> initialize({
     required void Function(String? restaurantId) onOpenHome,
   }) async {
-    if (_initialized) return;
     this.onOpenHome = onOpenHome;
+    await _ensurePluginReady(registerTapHandlers: true);
+  }
+
+  /// 권한 요청 전 플러그인 초기화 (deferred startup 이전에도 동작)
+  Future<void> ensureReadyForPermissionRequest() async {
+    await _ensurePluginReady(registerTapHandlers: true);
+  }
+
+  Future<void> _ensurePluginReady({required bool registerTapHandlers}) async {
+    if (_initialized) return;
 
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
@@ -46,8 +55,10 @@ class PushNotificationService {
     );
     await _plugin.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
-      onDidReceiveNotificationResponse: _onForegroundResponse,
-      onDidReceiveBackgroundNotificationResponse: _onBackgroundResponse,
+      onDidReceiveNotificationResponse:
+          registerTapHandlers ? _onForegroundResponse : null,
+      onDidReceiveBackgroundNotificationResponse:
+          registerTapHandlers ? _onBackgroundResponse : null,
     );
 
     await _plugin
@@ -66,7 +77,7 @@ class PushNotificationService {
   }
 
   Future<bool> requestPermission() async {
-    if (!_initialized) return false;
+    await ensureReadyForPermissionRequest();
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final ios = _plugin.resolvePlatformSpecificImplementation<

@@ -30,6 +30,7 @@
 --  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
 --  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
 --  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
+--  15. supabase/deploy_prelaunch_security.sql (배포 전 보안 패치)
 --
 -- 타입 오류 hotfix (level/source enum):
 --   supabase/hotfix_crowd_report_types.sql

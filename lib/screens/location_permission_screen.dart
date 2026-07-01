@@ -2,24 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 
-Future<void> showLocationPermissionDialog(BuildContext context, {VoidCallback? onGranted}) {
+Future<void> showLocationPermissionDialog(
+  BuildContext context, {
+  VoidCallback? onGranted,
+}) {
   return showDialog(
     context: context,
     barrierColor: const Color(0x59000000),
-    barrierDismissible: true,
     builder: (ctx) {
-      final provider = ctx.read<AppProvider>();
-      void grant() {
-        Navigator.pop(ctx);
-        provider.enableLocation();
-        onGranted?.call();
-      }
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Material(
             color: Colors.transparent,
             child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(26),
@@ -30,25 +27,70 @@ Future<void> showLocationPermissionDialog(BuildContext context, {VoidCallback? o
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 28, 24, 20),
-                    child: Text(
-                      '캠퍼스런치가 사용자의 위치에\n접근하도록 허용하시겠습니까?',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        height: 1.45,
-                        color: Color(0xFF111827),
+                  const Text(
+                    '위치 권한이 필요해요',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '지도·가까운순 정렬·혼잡도 제보를 위해 '
+                    '기기 설정에서 위치 접근을 허용해주세요.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6B7280),
+                      height: 1.55,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () async {
+                      final provider = ctx.read<AppProvider>();
+                      final granted = await provider.requestLocationOsPermission();
+                      if (!ctx.mounted) return;
+                      if (granted) {
+                        await provider.enableLocation();
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        onGranted?.call();
+                      }
+                    },
+                    child: Container(
+                      height: 48,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9ECA8B),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          '권한 허용하기',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  _PermBtn(label: '앱을 사용하는 동안 허용', onTap: grant),
-                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  _PermBtn(label: '한 번 허용', onTap: grant),
-                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  _PermBtn(label: '허용 안 함', onTap: () => Navigator.pop(ctx)),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text(
+                      '나중에',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -64,85 +106,52 @@ class LocationPermissionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<AppProvider>();
-
     return Scaffold(
       backgroundColor: const Color(0x59000000),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(26),
-              boxShadow: const [
-                BoxShadow(color: Color(0x40000000), blurRadius: 40),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 제목
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 28, 24, 20),
-                  child: Text(
-                    '캠퍼스런치가 사용자의 위치에\n접근하도록 허용하시겠습니까?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      height: 1.45,
-                      color: Color(0xFF111827),
+                const Text(
+                  '위치 권한이 필요해요',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    final provider = context.read<AppProvider>();
+                    final granted = await provider.requestLocationOsPermission();
+                    if (!context.mounted) return;
+                    if (granted) await provider.enableLocation();
+                  },
+                  child: Container(
+                    height: 48,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9ECA8B),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '권한 허용하기',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
                 ),
-
-                // 버튼 목록
-                const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                _PermBtn(
-                  label: '앱을 사용하는 동안 허용',
-                  onTap: () => provider.setLocationMode(true),
-                ),
-                const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                _PermBtn(
-                  label: '한 번 허용',
-                  onTap: () => provider.setLocationMode(true),
-                ),
-                const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                _PermBtn(
-                  label: '허용 안 함',
-                  onTap: () => provider.setLocationMode(false),
-                ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PermBtn extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _PermBtn({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: double.infinity,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF3B82F6),
             ),
           ),
         ),

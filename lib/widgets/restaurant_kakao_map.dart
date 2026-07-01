@@ -330,29 +330,33 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
       if (showMyLocation) {
         try {
-          final pos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-            ),
-          );
-          if (gen != _syncGeneration) return;
-          final myStyleId = KakaoMarkerLayer.styleIdOrNull(
-            controller,
-            'pin_my_location',
-          );
-          await controller.addMarker(
-            markerOption: MarkerOption(
-              id: 'my_location',
-              latLng: LatLng(
-                latitude: pos.latitude,
-                longitude: pos.longitude,
+          final permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.always ||
+              permission == LocationPermission.whileInUse) {
+            final pos = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.medium,
               ),
-              styleId: myStyleId,
-              rank: 3,
-              text: '내 위치',
-            ),
-          );
-          _markerIds.add('my_location');
+            );
+            if (gen != _syncGeneration) return;
+            final myStyleId = KakaoMarkerLayer.styleIdOrNull(
+              controller,
+              'pin_my_location',
+            );
+            await controller.addMarker(
+              markerOption: MarkerOption(
+                id: 'my_location',
+                latLng: LatLng(
+                  latitude: pos.latitude,
+                  longitude: pos.longitude,
+                ),
+                styleId: myStyleId,
+                rank: 3,
+                text: '내 위치',
+              ),
+            );
+            _markerIds.add('my_location');
+          }
         } catch (e) {
           debugPrint('[RestaurantKakaoMap] my location marker failed: $e');
         }
@@ -381,6 +385,11 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     final controller = _controller;
     if (controller == null) return;
     try {
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return;
+      }
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,

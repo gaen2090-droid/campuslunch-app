@@ -502,6 +502,12 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
         _error = err;
       } else {
         _verified = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (context.read<AppProvider>().stage == 'legal_terms_consent') {
+            _finish();
+          }
+        });
       }
     });
   }

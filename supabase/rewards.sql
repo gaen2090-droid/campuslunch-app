@@ -92,12 +92,9 @@ create policy "user_rewards_select_own" on public.user_rewards
   );
 
 drop policy if exists "user_rewards_update_own" on public.user_rewards;
-create policy "user_rewards_update_own" on public.user_rewards
-  for update using (user_id = auth.uid());
-
 drop policy if exists "user_rewards_insert_own" on public.user_rewards;
-create policy "user_rewards_insert_own" on public.user_rewards
-  for insert with check (user_id = auth.uid());
+
+-- user_rewards INSERT/UPDATE는 grant_stamp·redeem RPC(security definer)만 허용
 
 -- 5.5. 기프티콘 자동 배정 (총 스탬프 20개 도달 시 grant_stamp에서 호출)
 --      재고 없으면 'sold_out', 부족하면 'not_enough' 반환 (이 경우 차감 안 함)
@@ -174,7 +171,7 @@ $$;
 
 -- 6. 스탬프 지급 함수 (submit_crowd_report trigger에서 호출)
 --    source='user' 제보 성공 시 호출됨
---    KST 기준 하루 최대 999개 (테스트용, 출시 전 3으로 복구)
+--    KST 기준 하루 최대 999개 (디버깅·테스트용)
 --    누적 20개 도달 시 _perform_gifticon_redeem으로 기프티콘 자동 배정
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb
@@ -358,7 +355,9 @@ $$;
 
 grant execute on function public.submit_crowd_report(uuid, text, text, double precision, double precision)
   to authenticated;
-grant execute on function public.grant_stamp(uuid, int) to authenticated;
+revoke all on function public.grant_stamp(uuid, int) from public;
+revoke all on function public.grant_stamp(uuid, int) from anon;
+revoke all on function public.grant_stamp(uuid, int) from authenticated;
 drop function if exists public.grant_stamp(uuid);
 
 -- 8. 쿠폰 교환 RPC (atomic, FOR UPDATE SKIP LOCKED)

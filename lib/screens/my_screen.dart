@@ -651,8 +651,8 @@ class _RewardCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 remaining > 0
-                    ? '아메리카노 쿠폰까지 $remaining개 남았어요'
-                    : '아메리카노 쿠폰을 받을 수 있어요!',
+                    ? '기프티콘(쿠폰)까지 $remaining개 남았어요'
+                    : '기프티콘(쿠폰)을 받을 수 있어요!',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
