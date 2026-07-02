@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
-  static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
+  static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
   bool _filterLoaded = false;
 
@@ -105,23 +105,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return a.updated.compareTo(b.updated);
       }
 
-      if (_sortBy == '여유로운순') {
-        if (isClosed) {
-          final am = BusinessHoursData(hoursCanonical: a.hours).minutesUntilNextOpen(now);
-          final bm = BusinessHoursData(hoursCanonical: b.hours).minutesUntilNextOpen(now);
-          if (am != bm) return am.compareTo(bm);
-          return pop(b).compareTo(pop(a));
-        }
-        // 바로입장가능: 여유로움→약간혼잡 / 붐비는매장: 자리없음→웨이팅많음 → 최신순 → 인기순
-        final sd = isBusy
-            ? busySortStatusPriority(a.status) - busySortStatusPriority(b.status)
-            : availableSortStatusPriority(a.status) - availableSortStatusPriority(b.status);
-        if (sd != 0) return sd;
-        final ud = a.updated.compareTo(b.updated);
-        if (ud != 0) return ud;
-        return pop(b).compareTo(pop(a));
-      }
-
       // 최신순
       if (isClosed) {
         final am = BusinessHoursData(hoursCanonical: a.hours).minutesUntilNextOpen(now);
@@ -130,9 +113,11 @@ class _HomeScreenState extends State<HomeScreen> {
         return pop(b).compareTo(pop(a));
       }
 
-      final ag = isBusy ? busyLatestGroup(a) : availableLatestGroup(a);
-      final bg = isBusy ? busyLatestGroup(b) : availableLatestGroup(b);
-      if (ag != bg) return ag.compareTo(bg);
+      if (isBusy) {
+        final ag = busyLatestGroup(a);
+        final bg = busyLatestGroup(b);
+        if (ag != bg) return ag.compareTo(bg);
+      }
       final updatedD = a.updated.compareTo(b.updated);
       if (updatedD != 0) return updatedD;
       return pop(b).compareTo(pop(a));
@@ -288,7 +273,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     final stampList = filtered
         .where((r) => r.status != '영업안함' && !r.hasCrowdUpdate)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        if (_sortBy == '가까운순') return a.distance.compareTo(b.distance);
+        final useAlgo = provider.useAlgorithmRanking;
+        return popularityScore(b, useAlgo).compareTo(popularityScore(a, useAlgo));
+      });
 
     final busyListRecent = _sortSection(
       filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
@@ -668,7 +658,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final stampCards = stampList.take(5).toList();
     final busyCards = busyList.take(5).toList();
 
-    const emptyMsg = '최근 제보된 매장이 없어요. 제보하고 스탬프를 받아보세요!';
+    const emptyMsg = '제보된 매장이 없어요. 제보하고 스탬프를 받아보세요!';
 
     Widget crowdBadge(String label, Color bg, Color fg) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -873,27 +863,26 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 title: '혼잡도를 알려주세요',
                 dotColor: const Color(0xFF111827),
                 onMore: () => goTo(RestaurantListMode.stamp),
-                trailing: CompositedTransformTarget(
-                  link: _stampInfoLink,
-                  child: OverlayPortal(
-                    controller: _stampInfoOverlay,
-                    overlayChildBuilder: (context) => StampInfoPopup(
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CompositedTransformTarget(
                       link: _stampInfoLink,
-                      onDismiss: _stampInfoOverlay.hide,
-                    ),
-                    child: GestureDetector(
-                      onTap: _stampInfoOverlay.toggle,
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
-                          SizedBox(width: 4),
-                          Text('스탬프',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
-                        ],
+                      child: OverlayPortal(
+                        controller: _stampInfoOverlay,
+                        overlayChildBuilder: (context) => StampInfoPopup(
+                          link: _stampInfoLink,
+                          onDismiss: _stampInfoOverlay.hide,
+                        ),
+                        child: GestureDetector(
+                          onTap: _stampInfoOverlay.toggle,
+                          child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    crowdBadge('제보필요', const Color(0xFFF3F4F6), const Color(0xFF111827)),
+                  ],
                 ),
               ),
               ...stampCards.map((r) => Padding(
@@ -1025,10 +1014,8 @@ class _SectionButton extends StatelessWidget {
             Expanded(
               child: Text(label,
                   style: const TextStyle(
-                      fontFamily: 'OkDanDan',
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: -1,
                       color: Color(0xFF111827))),
             ),
             Text('$count',
@@ -1148,9 +1135,10 @@ class StampInfoPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const lines = [
-      '최초 제보 시 스탬프를 2개 받을 수 있어요.',
-      '이외의 매장에 제보 시 스탬프를 1개 지급 받아요.',
+      '혼잡도를 제보하면 스탬프를 1개 받아요.',
+      '최초 제보 시에는 스탬프를 2개 받아요.',
       '단, 하루 최대 3개의 스탬프를 획득할 수 있어요.',
+      '획득한 스탬프는 마이페이지에서 확인할 수 있어요.',
     ];
 
     return Stack(
@@ -1170,7 +1158,7 @@ class StampInfoPopup extends StatelessWidget {
           child: Align(
             alignment: Alignment.topRight,
             child: Container(
-              width: 250,
+              width: 300,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -1430,7 +1418,7 @@ class HomeFilterSheet extends StatefulWidget {
 
 class _FilterSheetState extends State<HomeFilterSheet> {
   static const _allLabel = '전체';
-  static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
+  static const _sortOpts = ['최신순', '인기순', '가까운순'];
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
 
@@ -1712,7 +1700,7 @@ class HomeCafeFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '카페만 보기',
+              '카페',
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,

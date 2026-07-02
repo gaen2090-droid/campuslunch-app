@@ -38,7 +38,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   Set<String> _cuisines = {'전체'};
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
-  static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
+  static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
 
   String get _modeKey => widget.mode.name;
@@ -193,21 +193,6 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
         if (isClosed) return 0;
         return a.updated.compareTo(b.updated);
       }
-      if (_sortBy == '여유로운순') {
-        if (isClosed) {
-          final am = BusinessHoursData(hoursCanonical: a.hours).minutesUntilNextOpen(now);
-          final bm = BusinessHoursData(hoursCanonical: b.hours).minutesUntilNextOpen(now);
-          if (am != bm) return am.compareTo(bm);
-          return pop(b).compareTo(pop(a));
-        }
-        final sd = isBusy
-            ? busySortStatusPriority(a.status) - busySortStatusPriority(b.status)
-            : availableSortStatusPriority(a.status) - availableSortStatusPriority(b.status);
-        if (sd != 0) return sd;
-        final ud = a.updated.compareTo(b.updated);
-        if (ud != 0) return ud;
-        return pop(b).compareTo(pop(a));
-      }
       // 최신순
       if (isClosed) {
         final am = BusinessHoursData(hoursCanonical: a.hours).minutesUntilNextOpen(now);
@@ -215,9 +200,11 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
         if (am != bm) return am.compareTo(bm);
         return pop(b).compareTo(pop(a));
       }
-      final ag = isBusy ? busyLatestGroup(a) : availableLatestGroup(a);
-      final bg = isBusy ? busyLatestGroup(b) : availableLatestGroup(b);
-      if (ag != bg) return ag.compareTo(bg);
+      if (isBusy) {
+        final ag = busyLatestGroup(a);
+        final bg = busyLatestGroup(b);
+        if (ag != bg) return ag.compareTo(bg);
+      }
       final ud = a.updated.compareTo(b.updated);
       if (ud != 0) return ud;
       return pop(b).compareTo(pop(a));

@@ -69,7 +69,7 @@ class _MainScreenState extends State<MainScreen> {
 
     // PlatformView(카카오맵)는 IndexedStack 비활성 자식에 두면 iOS 터치가 막힘
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F7),
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [

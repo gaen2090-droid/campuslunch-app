@@ -81,6 +81,7 @@ class Restaurant {
     String? crowdBaseSource,
     String? crowdConfidence,
     bool? hasCrowdUpdate,
+    double? distance,
   }) =>
       Restaurant(
         id: id,
@@ -95,7 +96,7 @@ class Restaurant {
         manualRank: manualRank,
         ownerCode: ownerCode,
         ownerRegistered: ownerRegistered,
-        distance: distance,
+        distance: distance ?? this.distance,
         latitude: latitude,
         longitude: longitude,
         x: x,

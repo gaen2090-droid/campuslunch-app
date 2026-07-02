@@ -1016,6 +1016,7 @@ class AppProvider extends ChangeNotifier {
       _restaurants = fetched;
       _restaurantsLoadFailed = false;
       notifyListeners();
+      unawaited(_updateDistances());
     } catch (e, st) {
       debugPrint('[Supabase] refreshRestaurants failed: $e\n$st');
       _restaurantsLoadFailed = true;
@@ -1028,6 +1029,29 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e, st) {
       debugPrint('[Supabase] refreshRestaurants post-sync failed: $e\n$st');
+    }
+  }
+
+  Future<void> _updateDistances() async {
+    if (!_locationMode) return;
+    try {
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
+        );
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+      if (pos == null) return;
+      _restaurants = _restaurants.map((r) {
+        if (!r.hasMapLocation) return r;
+        final dist = Geolocator.distanceBetween(pos!.latitude, pos.longitude, r.latitude, r.longitude);
+        return r.copyWith(distance: dist);
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Location] _updateDistances failed: $e');
     }
   }
 
@@ -1053,6 +1077,7 @@ class AppProvider extends ChangeNotifier {
     _locationMode = true;
     await prefs.setBool(_kLocation, true);
     notifyListeners();
+    unawaited(_updateDistances());
   }
 
   Future<void> setLocationMode(bool enabled) async {
@@ -1063,6 +1088,7 @@ class AppProvider extends ChangeNotifier {
       _stage = prefs.containsKey(_kPush) ? await _postAppStage(prefs) : 'notification_permission';
     }
     notifyListeners();
+    if (enabled) unawaited(_updateDistances());
   }
 
   Future<void> completeNotificationPermission(bool enabled) async {

@@ -234,6 +234,7 @@ class _MyScreenState extends State<MyScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
                     boxShadow: [
                       BoxShadow(
                           color: Colors.black.withAlpha(8),
@@ -695,8 +696,8 @@ class _RewardCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 remaining > 0
-                    ? '기프티콘(쿠폰)까지 $remaining개 남았어요'
-                    : '기프티콘(쿠폰)을 받을 수 있어요!',
+                    ? '아메리카노 쿠폰까지 $remaining개 남았어요'
+                    : '커피 쿠폰을 받을 수 있어요!',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
