@@ -72,6 +72,42 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── 필터 (세션 내 유지, 앱 재시작 시 초기화) ──
+  String homeFilterSortBy = '최신순';
+  Set<String> homeFilterRegions = {'전체'};
+  Set<String> homeFilterCuisines = {'전체'};
+
+  void setHomeFilter({
+    required String sortBy,
+    required Set<String> regions,
+    required Set<String> cuisines,
+  }) {
+    homeFilterSortBy = sortBy;
+    homeFilterRegions = regions;
+    homeFilterCuisines = cuisines;
+    notifyListeners();
+  }
+
+  // 각 더보기 페이지 필터: key = RestaurantListMode.name
+  final Map<String, String> _listFilterSortBy = {};
+  final Map<String, Set<String>> _listFilterRegions = {};
+  final Map<String, Set<String>> _listFilterCuisines = {};
+
+  String listFilterSortBy(String mode) => _listFilterSortBy[mode] ?? '최신순';
+  Set<String> listFilterRegions(String mode) => _listFilterRegions[mode] ?? {'전체'};
+  Set<String> listFilterCuisines(String mode) => _listFilterCuisines[mode] ?? {'전체'};
+
+  void setListFilter(String mode, {
+    required String sortBy,
+    required Set<String> regions,
+    required Set<String> cuisines,
+  }) {
+    _listFilterSortBy[mode] = sortBy;
+    _listFilterRegions[mode] = regions;
+    _listFilterCuisines[mode] = cuisines;
+    notifyListeners();
+  }
+
   // ── 설정 ──
   bool _locationMode = false;
   bool _notificationEnabled = false;

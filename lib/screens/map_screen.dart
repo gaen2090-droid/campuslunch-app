@@ -12,6 +12,7 @@ import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_kakao_map.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
+import 'home_screen.dart' show SimpleFilterSheet;
 import 'location_permission_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -33,11 +34,9 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
-  String? _openDropdown;
   bool _searchActive = false;
   final _searchCtrl = TextEditingController();
 
-  static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [
     _allLabel,
     '한식',
@@ -48,8 +47,6 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     '분식',
     '카페',
   ];
-  static const _reportOpts = [_allLabel, '제보있음', '제보없음'];
-  static const _reportOptLabels = {_allLabel: '전체', '제보있음': '스탬프 1개', '제보없음': '스탬프 2개'};
 
   @override
   void didChangeDependencies() {
@@ -102,20 +99,29 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     _cameraFitToken++;
   }
 
-  void _onRegionFilterChanged(String value) {
-    setState(() {
-      _toggleFilter(_regions, value);
-      _bumpCameraFit();
-    });
-  }
-
-  void _resetRegionFilter() {
-    setState(() {
-      _regions
-        ..clear()
-        ..add(_allLabel);
-      _bumpCameraFit();
-    });
+  void _openSimpleSheet({
+    required String title,
+    required List<String> items,
+    required Set<String> selected,
+    required void Function(Set<String>) onApply,
+    required VoidCallback onReset,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SimpleFilterSheet(
+        title: title,
+        items: items,
+        selected: selected,
+        multiSelect: true,
+        isActive: false,
+        locationMode: context.read<AppProvider>().locationMode,
+        onApply: onApply,
+        onReset: onReset,
+        onRequestLocation: () {},
+      ),
+    );
   }
 
   void _toggleFilter(Set<String> target, String value) {
@@ -239,7 +245,6 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                           onTap: () => setState(() {
                             _searchActive = false;
                             _searchCtrl.clear();
-                            _openDropdown = null;
                           }),
                           child: const Text('취소',
                               style: TextStyle(
@@ -259,38 +264,48 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _MapFilterChip(
-                          label: _filterChipLabel(_regions, '위치'),
-                          active: !_isAllFilter(_regions),
-                          open: _openDropdown == 'region',
-                          onTap: () => setState(() =>
-                              _openDropdown =
-                                  _openDropdown == 'region' ? null : 'region'),
-                        ),
-                        const SizedBox(width: 8),
+                        ...['정문', '중문', '후문'].map((area) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _MapFilterChip(
+                            label: area,
+                            active: _regions.length == 1 && _regions.contains(area),
+                            open: false,
+                            showArrow: false,
+                            onTap: () {
+                              final isActive = _regions.length == 1 && _regions.contains(area);
+                              setState(() {
+                                if (isActive) {
+                                  _regions = {_allLabel};
+                                } else {
+                                  _regions = {area};
+                                }
+                                _bumpCameraFit();
+                              });
+                            },
+                          ),
+                        )),
                         _MapFilterChip(
                           label: _filterChipLabel(_cuisines, '음식종류'),
                           active: !_isAllFilter(_cuisines),
-                          open: _openDropdown == 'cuisine',
-                          onTap: () => setState(() =>
-                              _openDropdown =
-                                  _openDropdown == 'cuisine' ? null : 'cuisine'),
+                          open: false,
+                          onTap: () => _openSimpleSheet(
+                            title: '음식종류',
+                            items: _cuisineOpts,
+                            selected: Set.from(_cuisines),
+                            onApply: (v) => setState(() => _cuisines = v),
+                            onReset: () => setState(() { _cuisines = {_allLabel}; }),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         _MapFilterChip(
-                          label: _reportFilter == _allLabel
-                              ? '스탬프'
-                              : _reportOptLabels[_reportFilter]!,
-                          active: _reportFilter != _allLabel,
-                          open: _openDropdown == 'report',
-                          onTap: () => setState(() =>
-                              _openDropdown =
-                                  _openDropdown == 'report' ? null : 'report'),
-                          restingBg: const Color(0xFFF3F8F0),
-                          restingText: const Color(0xFF4C9C2A),
-                          leadingIcon: _reportFilter == _allLabel
-                              ? Icons.stars_rounded
-                              : null,
+                          label: '스탬프 2개',
+                          active: _reportFilter == '제보없음',
+                          open: false,
+                          showArrow: false,
+                          onTap: () => setState(() {
+                            _reportFilter = _reportFilter == '제보없음' ? _allLabel : '제보없음';
+                          }),
+                          leadingIcon: Icons.stars_rounded,
                           labelFontFamily: 'OkDanDan',
                           labelFontSize: 14,
                           verticalPadding: 6,
@@ -299,53 +314,6 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                     ),
                   ),
 
-                  // 드롭다운 패널
-                  if (_openDropdown != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(top: 8, left: 4, right: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Color(0x24000000),
-                              blurRadius: 22,
-                              offset: Offset(0, 0)),
-                        ],
-                      ),
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                      clipBehavior: Clip.antiAlias,
-                      child: _openDropdown == 'region'
-                          ? _DropdownGrid(
-                              items: _regionOpts,
-                              selected: _regions,
-                              multiSelect: true,
-                              onSelect: _onRegionFilterChanged,
-                              onReset: _resetRegionFilter,
-                            )
-                          : _openDropdown == 'cuisine'
-                              ? _DropdownGrid(
-                                  items: _cuisineOpts,
-                                  selected: _cuisines,
-                                  multiSelect: true,
-                                  onSelect: (v) => setState(() => _toggleFilter(_cuisines, v)),
-                                  onReset: () => setState(() {
-                                    _cuisines
-                                      ..clear()
-                                      ..add(_allLabel);
-                                  }),
-                                )
-                              : _DropdownGrid(
-                                  items: _reportOpts,
-                                  labelFor: (v) => _reportOptLabels[v]!,
-                                  selected: {_reportFilter},
-                                  onSelect: (v) => setState(() {
-                                    _reportFilter = v;
-                                    _openDropdown = null;
-                                  }),
-                                ),
-                    ),
 
                   // 범례 (필터 펼침 시 아래로 밀림)
                   if (!_searchActive) ...[
@@ -592,8 +560,6 @@ class _CrowdLegend extends StatelessWidget {
           _LegendItem(color: Color(0xFFF97316), label: '자리없음'),
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFDC2626), label: '웨이팅'),
-          SizedBox(height: 4),
-          _LegendItem(color: Color(0xFF111827), label: '제보필요'),
         ],
       ),
     );
@@ -765,11 +731,14 @@ class _MapFilterChip extends StatelessWidget {
   /// 미선택 상태 배경/글자색을 기본값과 다르게 쓰고 싶을 때만 지정
   final Color? restingBg;
   final Color? restingText;
+  final Color? activeBg;
+  final Color? activeText;
   /// 라벨 앞에 표시할 아이콘 (선택)
   final IconData? leadingIcon;
   final String? labelFontFamily;
   final double labelFontSize;
   final double verticalPadding;
+  final bool showArrow;
 
   const _MapFilterChip({
     required this.label,
@@ -778,10 +747,13 @@ class _MapFilterChip extends StatelessWidget {
     required this.onTap,
     this.restingBg,
     this.restingText,
+    this.activeBg,
+    this.activeText,
     this.leadingIcon,
     this.labelFontFamily,
     this.labelFontSize = 12,
     this.verticalPadding = 8,
+    this.showArrow = true,
   });
 
   @override
@@ -789,12 +761,14 @@ class _MapFilterChip extends StatelessWidget {
     final on = active || open;
     final restBg = restingBg ?? Colors.white;
     final restText = restingText ?? const Color(0xFF374151);
+    final bgColor = on ? (activeBg ?? const Color(0xFF9ECA8B)) : restBg;
+    final textColor = on ? (activeText ?? const Color(0xFF111827)) : restText;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF9ECA8B) : restBg,
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -807,7 +781,7 @@ class _MapFilterChip extends StatelessWidget {
               Icon(
                 leadingIcon,
                 size: 14,
-                color: on ? const Color(0xFF111827) : restText,
+                color: textColor,
               ),
               const SizedBox(width: 4),
             ],
@@ -816,13 +790,15 @@ class _MapFilterChip extends StatelessWidget {
                     fontFamily: labelFontFamily,
                     fontSize: labelFontSize,
                     fontWeight: FontWeight.w900,
-                    color: on ? const Color(0xFF111827) : restText)),
-            const SizedBox(width: 4),
-            Icon(
-              open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: 12,
-              color: on ? const Color(0xFF111827) : restText,
-            ),
+                    color: textColor)),
+            if (showArrow) ...[
+              const SizedBox(width: 4),
+              Icon(
+                open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                size: 12,
+                color: on ? const Color(0xFF111827) : restText,
+              ),
+            ],
           ],
         ),
       ),
@@ -830,106 +806,6 @@ class _MapFilterChip extends StatelessWidget {
   }
 }
 
-// ── 드롭다운 그리드 ──
-class _DropdownGrid extends StatelessWidget {
-  final List<String> items;
-  final Set<String> selected;
-  final bool multiSelect;
-  final ValueChanged<String> onSelect;
-  final VoidCallback? onReset;
-  final String Function(String)? labelFor;
-  final bool forceFourColumns;
-
-  const _DropdownGrid({
-    required this.items,
-    required this.selected,
-    this.multiSelect = false,
-    required this.onSelect,
-    this.onReset,
-    this.labelFor,
-    this.forceFourColumns = false,
-  });
-
-  static bool _isAllSelected(Set<String> s) =>
-      s.length == 1 && s.contains('전체');
-
-  @override
-  Widget build(BuildContext context) {
-    const spacing = 6.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (multiSelect && selected.isNotEmpty && !_isAllSelected(selected))
-          GestureDetector(
-            onTap: onReset,
-            child: const Padding(
-              padding: EdgeInsets.only(top: 4, right: 4, bottom: 8),
-              child: Text('초기화',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF5E8C4A))),
-            ),
-          ),
-        LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = forceFourColumns ? 4 : (items.length <= 3 ? items.length : 4);
-        final itemWidth =
-            (constraints.maxWidth - spacing * (cols - 1)) / cols;
-
-        return SizedBox(
-          width: constraints.maxWidth,
-          child: Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: items.map((opt) {
-            final on = selected.contains(opt);
-            return SizedBox(
-              width: itemWidth,
-              child: GestureDetector(
-                onTap: () => onSelect(opt),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          labelFor != null ? labelFor!(opt) : opt,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: on
-                                ? const Color(0xFF5E8C4A)
-                                : const Color(0xFF374151),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (on)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Icon(Icons.check,
-                              size: 14, color: Color(0xFF5E8C4A)),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          ),
-        );
-      },
-    ),
-      ],
-    );
-  }
-}
 
 // ── 선택된 매장 카드 (바텀시트 스타일) ──
 class _SelectedCard extends StatelessWidget {

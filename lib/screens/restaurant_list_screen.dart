@@ -12,17 +12,15 @@ import '../utils/report_feedback.dart';
 import 'home_screen.dart'
     show
         NeedsReportCard,
-        CrowdLevelInfoPopup,
-        StampInfoPopup,
         HomeFilterIconButton,
         HomeFilterSheet,
         HomeCafeFilterChip,
         HomeFilterChip,
-        HomeDropdownGrid;
+        SimpleFilterSheet;
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 
-enum RestaurantListMode { available, stamp, busy, closed }
+enum RestaurantListMode { available, slightlyBusy, stamp, busy, closed }
 
 class RestaurantListScreen extends StatefulWidget {
   final RestaurantListMode mode;
@@ -36,30 +34,39 @@ class RestaurantListScreen extends StatefulWidget {
 class _RestaurantListScreenState extends State<RestaurantListScreen> {
   static const _allLabel = '전체';
   String _sortBy = '최신순';
-  Set<String> _regions = {_allLabel};
-  Set<String> _cuisines = {_allLabel};
-  String? _openDropdown;
-
+  Set<String> _regions = {'전체'};
+  Set<String> _cuisines = {'전체'};
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
 
-  final _crowdInfoOverlay = OverlayPortalController();
-  final _crowdInfoLink = LayerLink();
-  final _stampInfoOverlay = OverlayPortalController();
-  final _stampInfoLink = LayerLink();
+
+  String get _modeKey => widget.mode.name;
+
+  bool _filterLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_filterLoaded) {
+      _filterLoaded = true;
+      final p = context.read<AppProvider>();
+      _sortBy = p.listFilterSortBy(_modeKey);
+      _regions = Set.from(p.listFilterRegions(_modeKey));
+      _cuisines = Set.from(p.listFilterCuisines(_modeKey));
+    }
+  }
+
+  void _saveFilter() {
+    context.read<AppProvider>().setListFilter(
+      _modeKey,
+      sortBy: _sortBy,
+      regions: Set.from(_regions),
+      cuisines: Set.from(_cuisines),
+    );
+  }
 
   bool _isAll(Set<String> s) => s.contains(_allLabel) && s.length == 1;
-
-  void _toggleFilter(Set<String> target, String value) {
-    if (value == _allLabel) {
-      target..clear()..add(_allLabel);
-      return;
-    }
-    target.remove(_allLabel);
-    target.contains(value) ? target.remove(value) : target.add(value);
-    if (target.isEmpty) target.add(_allLabel);
-  }
 
   List<Restaurant> _applyFilter(List<Restaurant> all) {
     return all.where((r) {
@@ -67,6 +74,36 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       return regionOk && cuisineOk;
     }).toList();
+  }
+
+  void _openSimpleSheet({
+    required String title,
+    required List<String> items,
+    required Set<String> selected,
+    required bool multiSelect,
+    required void Function(Set<String>) onApply,
+    required VoidCallback onReset,
+  }) {
+    final locationMode = context.read<AppProvider>().locationMode;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SimpleFilterSheet(
+        title: title,
+        items: items,
+        selected: selected,
+        multiSelect: multiSelect,
+        isActive: false,
+        locationMode: locationMode,
+        onApply: onApply,
+        onReset: onReset,
+        onRequestLocation: () => showLocationPermissionDialog(context, onGranted: () {
+          setState(() => _sortBy = '가까운순');
+          _saveFilter();
+        }),
+      ),
+    );
   }
 
   void _openFilterSheet(bool locationMode) {
@@ -85,10 +122,12 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
             _regions = regions;
             _cuisines = cuisines;
           });
+          _saveFilter();
         },
         onRequestLocation: () {
           showLocationPermissionDialog(context, onGranted: () {
             setState(() => _sortBy = '가까운순');
+            _saveFilter();
           });
         },
       ),
@@ -114,6 +153,11 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
             .where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate)
             .toList();
         return _sortSection(openWithReport, provider);
+      case RestaurantListMode.slightlyBusy:
+        return _sortSection(
+          filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate).toList(),
+          provider,
+        );
       case RestaurantListMode.stamp:
         return filtered.where((r) => r.status != '영업안함' && !r.hasCrowdUpdate).toList();
       case RestaurantListMode.busy:
@@ -184,6 +228,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   String get _title {
     switch (widget.mode) {
       case RestaurantListMode.available: return '바로 입장 가능해요';
+      case RestaurantListMode.slightlyBusy: return '빈자리 조금 있어요';
       case RestaurantListMode.stamp: return '혼잡도를 알려주세요';
       case RestaurantListMode.busy: return '붐비고 있어요';
       case RestaurantListMode.closed: return '영업이 종료됐어요';
@@ -193,6 +238,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   Color get _dotColor {
     switch (widget.mode) {
       case RestaurantListMode.available: return const Color(0xFF4C9C2A);
+      case RestaurantListMode.slightlyBusy: return const Color(0xFFF59E0B);
       case RestaurantListMode.stamp: return const Color(0xFF111827);
       case RestaurantListMode.busy: return const Color(0xFFEF4444);
       case RestaurantListMode.closed: return const Color(0xFF9CA3AF);
@@ -206,10 +252,6 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
     }
   }
 
-  bool get _showCrowdInfo =>
-      widget.mode == RestaurantListMode.available || widget.mode == RestaurantListMode.busy;
-
-  bool get _showStampInfo => widget.mode == RestaurantListMode.stamp;
 
   @override
   Widget build(BuildContext context) {
@@ -244,8 +286,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
               Container(
                 color: Colors.white,
                 padding: EdgeInsets.fromLTRB(
-                    20, MediaQuery.of(context).padding.top + 12, 20,
-                    _openDropdown != null ? 0 : 12),
+                    20, MediaQuery.of(context).padding.top + 12, 20, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -274,61 +315,6 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     color: _titleColor)),
                           ],
                         ),
-                        const Spacer(),
-                        if (_showCrowdInfo)
-                          CompositedTransformTarget(
-                            link: _crowdInfoLink,
-                            child: OverlayPortal(
-                              controller: _crowdInfoOverlay,
-                              overlayChildBuilder: (ctx) => CrowdLevelInfoPopup(
-                                link: _crowdInfoLink,
-                                onDismiss: _crowdInfoOverlay.hide,
-                              ),
-                              child: GestureDetector(
-                                onTap: _crowdInfoOverlay.toggle,
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.info_outline,
-                                        size: 14, color: Color(0xFF9CA3AF)),
-                                    SizedBox(width: 4),
-                                    Text('혼잡도 기준',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF9CA3AF))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (_showStampInfo)
-                          CompositedTransformTarget(
-                            link: _stampInfoLink,
-                            child: OverlayPortal(
-                              controller: _stampInfoOverlay,
-                              overlayChildBuilder: (ctx) => StampInfoPopup(
-                                link: _stampInfoLink,
-                                onDismiss: _stampInfoOverlay.hide,
-                              ),
-                              child: GestureDetector(
-                                onTap: _stampInfoOverlay.toggle,
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.info_outline,
-                                        size: 14, color: Color(0xFF9CA3AF)),
-                                    SizedBox(width: 4),
-                                    Text('스탬프 지급',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF9CA3AF))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -340,19 +326,54 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                         children: [
                           HomeFilterIconButton(
                             active: hasFilter,
-                            onTap: () {
-                              setState(() => _openDropdown = null);
-                              _openFilterSheet(locationMode);
-                            },
+                            onTap: () => _openFilterSheet(locationMode),
                           ),
                           const SizedBox(width: 8),
+                          if (hasFilter) ...[
+                            GestureDetector(
+                              onTap: () {
+                              setState(() {
+                                _sortBy = '최신순';
+                                _regions = {_allLabel};
+                                _cuisines = {_allLabel};
+                              });
+                              _saveFilter();
+                            },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.refresh_rounded, size: 12, color: Color(0xFF374151)),
+                                    SizedBox(width: 4),
+                                    Text('초기화',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF374151))),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           HomeFilterChip(
                             label: _sortBy,
                             active: _sortBy != '최신순',
-                            open: _openDropdown == 'sort',
-                            onTap: () => setState(() =>
-                                _openDropdown =
-                                    _openDropdown == 'sort' ? null : 'sort'),
+                            open: false,
+                            onTap: () => _openSimpleSheet(
+                              title: '정렬',
+                              items: _sortOpts,
+                              selected: {_sortBy},
+                              multiSelect: false,
+                              onApply: (v) { setState(() => _sortBy = v.first); _saveFilter(); },
+                              onReset: () { setState(() => _sortBy = '최신순'); _saveFilter(); },
+                            ),
                           ),
                           const SizedBox(width: 8),
                           HomeFilterChip(
@@ -362,9 +383,15 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     ? _regions.first
                                     : '${_regions.first} 외 ${_regions.length - 1}',
                             active: !_isAll(_regions) && _regions.isNotEmpty,
-                            open: _openDropdown == 'region',
-                            onTap: () => setState(() => _openDropdown =
-                                _openDropdown == 'region' ? null : 'region'),
+                            open: false,
+                            onTap: () => _openSimpleSheet(
+                              title: '위치',
+                              items: _regionOpts,
+                              selected: Set.from(_regions),
+                              multiSelect: true,
+                              onApply: (v) { setState(() => _regions = v); _saveFilter(); },
+                              onReset: () { setState(() => _regions = {_allLabel}); _saveFilter(); },
+                            ),
                           ),
                           const SizedBox(width: 8),
                           HomeFilterChip(
@@ -374,23 +401,29 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     ? _cuisines.first
                                     : '${_cuisines.first} 외 ${_cuisines.length - 1}',
                             active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
-                            open: _openDropdown == 'cuisine',
-                            onTap: () => setState(() => _openDropdown =
-                                _openDropdown == 'cuisine' ? null : 'cuisine'),
+                            open: false,
+                            onTap: () => _openSimpleSheet(
+                              title: '음식종류',
+                              items: _cuisineOpts,
+                              selected: Set.from(_cuisines),
+                              multiSelect: true,
+                              onApply: (v) { setState(() => _cuisines = v); _saveFilter(); },
+                              onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
+                            ),
                           ),
                           const SizedBox(width: 8),
                           HomeCafeFilterChip(
-                            active: _cuisines.length == 1 &&
-                                _cuisines.contains('카페'),
-                            onTap: () => setState(() {
-                              _openDropdown = null;
-                              if (_cuisines.length == 1 &&
-                                  _cuisines.contains('카페')) {
-                                _cuisines = {_allLabel};
-                              } else {
-                                _cuisines = {'카페'};
-                              }
-                            }),
+                            active: _cuisines.length == 1 && _cuisines.contains('카페'),
+                            onTap: () {
+                              setState(() {
+                                if (_cuisines.length == 1 && _cuisines.contains('카페')) {
+                                  _cuisines = {_allLabel};
+                                } else {
+                                  _cuisines = {'카페'};
+                                }
+                              });
+                              _saveFilter();
+                            },
                           ),
                         ],
                       ),
@@ -399,75 +432,9 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                 ),
               ),
 
-              // ── 드롭다운 ──
-              if (_openDropdown != null)
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withAlpha(10), blurRadius: 8)
-                      ],
-                    ),
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                    child: _openDropdown == 'sort'
-                        ? HomeDropdownGrid(
-                            items: _sortOpts,
-                            selected: {_sortBy},
-                            onSelect: (v) {
-                              if (v == '가까운순' && !locationMode) {
-                                showLocationPermissionDialog(context,
-                                    onGranted: () {
-                                  setState(() => _sortBy = '가까운순');
-                                });
-                                return;
-                              }
-                              setState(() => _sortBy = v);
-                            },
-                            showReset: _sortBy != '최신순',
-                            onReset: () => setState(() => _sortBy = '최신순'),
-                          )
-                        : _openDropdown == 'region'
-                            ? HomeDropdownGrid(
-                                items: _regionOpts,
-                                selected: _regions,
-                                multiSelect: true,
-                                onSelect: (v) =>
-                                    setState(() => _toggleFilter(_regions, v)),
-                                showReset: !_isAll(_regions),
-                                onReset: () => setState(() {
-                                  _regions.clear();
-                                  _regions.add(_allLabel);
-                                }),
-                              )
-                            : HomeDropdownGrid(
-                                items: _cuisineOpts,
-                                selected: _cuisines,
-                                multiSelect: true,
-                                onSelect: (v) =>
-                                    setState(() => _toggleFilter(_cuisines, v)),
-                                showReset: !_isAll(_cuisines),
-                                onReset: () => setState(() {
-                                  _cuisines.clear();
-                                  _cuisines.add(_allLabel);
-                                }),
-                              ),
-                  ),
-                ),
-
               // ── 콘텐츠 ──
               Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (_openDropdown != null)
-                      setState(() => _openDropdown = null);
-                  },
-                  child: RefreshIndicator(
+                child: RefreshIndicator(
                     color: const Color(0xFF5E8C4A),
                     onRefresh: () => provider.refreshRestaurants(),
                     child: ListView(
@@ -530,7 +497,6 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                       ],
                     ),
                   ),
-                ),
               ),
             ],
           ),
