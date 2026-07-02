@@ -218,7 +218,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF1F2937)),
                           decoration: const InputDecoration(
-                            hintText: '매장명, 구역, 음식종류 검색',
+                            hintText: '매장명, 위치, 음식종류 검색',
                             hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
                             border: InputBorder.none,
                             isDense: true,
@@ -260,7 +260,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                     child: Row(
                       children: [
                         _MapFilterChip(
-                          label: _filterChipLabel(_regions, '구역'),
+                          label: _filterChipLabel(_regions, '위치'),
                           active: !_isAllFilter(_regions),
                           open: _openDropdown == 'region',
                           onTap: () => setState(() =>

@@ -14,7 +14,7 @@ String _shareSummary(Restaurant r) {
   final statusLine = r.status == '영업안함'
       ? '지금 영업 종료예요'
       : r.hasCrowdUpdate
-          ? '지금 ${r.status} · ${formatUpdateAge(r.updated)}'
+          ? '지금 ${r.status} · ${formatUpdateAgeFromDateTime(r.updatedAt)}'
           : '아직 제보가 없어요';
   return '${r.name}\n$statusLine\n캠퍼스런치에서 다른 매장도 확인해보세요!';
 }

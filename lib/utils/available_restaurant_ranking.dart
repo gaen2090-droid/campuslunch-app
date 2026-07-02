@@ -70,8 +70,8 @@ AvailableSection buildAvailableSection(
 ) {
   final available = filterAvailableRestaurants(filtered);
 
-  // 추천 배너: 여유로움 10분 이내 → 없으면 약간혼잡 10분 이내 → 없으면 숨김
-  // 각 후보군 내: 최신순 → 인기순
+  // 추천 배너: 여유로움 10분 이내만 대상 → 없으면 숨김
+  // 후보군 내: 최신순 → 인기순
   int Function(Restaurant, Restaurant) recSort(bool useAlgo) =>
       (a, b) {
         final ud = a.updated.compareTo(b.updated);
@@ -85,16 +85,7 @@ AvailableSection buildAvailableSection(
       .toList()
     ..sort(recSort(useAlgorithmRanking));
 
-  final busyRecent = available
-      .where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && r.updated <= 10)
-      .toList()
-    ..sort(recSort(useAlgorithmRanking));
-
-  final recommended = relaxedRecent.isNotEmpty
-      ? relaxedRecent.first
-      : busyRecent.isNotEmpty
-          ? busyRecent.first
-          : null;
+  final recommended = relaxedRecent.isNotEmpty ? relaxedRecent.first : null;
 
   final sorted = sortAvailableRestaurants(available, useAlgorithmRanking);
   return AvailableSection(

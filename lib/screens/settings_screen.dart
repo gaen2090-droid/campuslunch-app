@@ -148,8 +148,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onClose: () => setState(() => _showOwnerVerify = false),
               onSuccess: (_) {
                 setState(() => _showOwnerVerify = false);
-                context.read<AppProvider>().setMainTabIndex(0);
-                Navigator.pop(context);
+                // provider가 이미 _mainTabIndex=0 + notifyListeners() 처리함
+                // pop은 다음 프레임에 실행해 rebuild와 충돌 방지
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                });
               },
             ),
           ),

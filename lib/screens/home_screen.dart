@@ -11,8 +11,10 @@ import '../utils/business_hours.dart';
 import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
+import 'bookmark_list_screen.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
+import 'restaurant_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,16 +30,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _cuisines = {_allLabel};
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
-  int _activeTab = 0; // 0:바로 입장 1:붐비는 매장 2:스탬프 2개 3:영업종료
   String? _lastBannerImpressionId;
   final _searchCtrl = TextEditingController();
   final _crowdInfoOverlay = OverlayPortalController();
   final _crowdInfoLink = LayerLink();
+  final _stampInfoOverlay = OverlayPortalController();
+  final _stampInfoLink = LayerLink();
 
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
   static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
   static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
-  static const _tabLabels = ['바로 입장', '붐비는 매장', '스탬프 2개', '영업종료'];
 
   @override
   void dispose() {
@@ -148,6 +150,32 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     context.read<AppProvider>().recordBannerImpression(recommended.id);
   }
 
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => HomeFilterSheet(
+        sortBy: _sortBy,
+        regions: Set.from(_regions),
+        cuisines: Set.from(_cuisines),
+        locationMode: context.read<AppProvider>().locationMode,
+        onApply: (sortBy, regions, cuisines) {
+          setState(() {
+            _sortBy = sortBy;
+            _regions = regions;
+            _cuisines = cuisines;
+          });
+        },
+        onRequestLocation: () {
+          showLocationPermissionDialog(context, onGranted: () {
+            setState(() => _sortBy = '가까운순');
+          });
+        },
+      ),
+    );
+  }
+
   void _openReport(Restaurant r) {
     if (r.status == '영업안함') return;
     ReportSheet.show(context, r, (status) {
@@ -163,32 +191,33 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final filtered = _filter(all);
     final searchResults = _search(all, _searchCtrl.text);
 
-    // 붐비는 매장(자리없음/웨이팅많음 — 여유로움/약간혼잡이 "바로 입장 가능"에 합쳐지는 것과 동일한 방식)
     bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
 
-    // 제보 있는 영업 중 매장과 제보 없는 매장 분리
-    final openWithReport = filtered.where((r) =>
-        r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate).toList();
-    final needsReport = filtered.where((r) =>
-        r.status != '영업안함' && !r.hasCrowdUpdate).toList();
-
+    final openWithReport = filtered
+        .where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate)
+        .toList();
     final availableSorted = _sortSection(openWithReport);
-    // 추천 배너는 항상 최신순 기준 알고리즘으로 고정
     final recommended = buildAvailableSection(filtered, provider.useAlgorithmRanking).recommended;
-    final availableCards = recommended == null
-        ? availableSorted
-        : availableSorted.where((r) => r.id != recommended.id).toList();
-    final busy = _sortSection(
-      filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate).toList(),
-      isBusy: true,
-    );
-    final closedAll = filtered.where((r) => r.status == '영업안함').toList();
-    final closed = _sortSection(
-      closedAll,
-      isClosed: true,
-    );
+    // 10분 이내 제보만 홈에 노출
+    final recentAvailable = availableSorted.where((r) => r.updated <= 10).toList();
+    final recentCards = recommended == null
+        ? recentAvailable
+        : recentAvailable.where((r) => r.id != recommended.id).toList();
 
-    if (_activeTab == 0) _trackBannerImpression(recommended);
+    _trackBannerImpression(recommended);
+
+    final countAvailable = filtered
+        .where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate)
+        .length;
+    final countStamp = filtered
+        .where((r) => r.status != '영업안함' && !r.hasCrowdUpdate)
+        .length;
+    final countBusy = filtered
+        .where((r) => isBusyStatus(r) && r.hasCrowdUpdate)
+        .length;
+    final countClosed = filtered
+        .where((r) => r.status == '영업안함')
+        .length;
 
     return Stack(
       fit: StackFit.expand,
@@ -240,7 +269,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF1F2937)),
                               decoration: const InputDecoration(
-                                hintText: '매장명, 구역, 음식종류 검색',
+                                hintText: '매장명, 위치, 음식종류 검색',
                                 hintStyle: TextStyle(
                                     fontSize: 14, color: Color(0xFF9CA3AF)),
                                 border: InputBorder.none,
@@ -275,33 +304,49 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF6B7280))),
                     ),
+                  ] else ...[
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
+                      ),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.bookmark_rounded,
+                              size: 20, color: Color(0xFF5E8C4A)),
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
 
               if (!_searchActive) ...[
-                const SizedBox(height: 20),
-                // 세부 탭
-                Row(
-                  children: [
-                    for (var i = 0; i < _tabLabels.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 20),
-                      _HomeTab(
-                        label: _tabLabels[i],
-                        active: _activeTab == i,
-                        onTap: () => setState(() => _activeTab = i),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 // 필터 칩
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
-                      _FilterChip(
+                      HomeFilterIconButton(
+                        active: _sortBy != '최신순' ||
+                            (!_isAll(_regions) && _regions.isNotEmpty) ||
+                            (!_isAll(_cuisines) && _cuisines.isNotEmpty),
+                        onTap: () {
+                          setState(() => _openDropdown = null);
+                          _openFilterSheet();
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      HomeFilterChip(
                         label: _sortBy,
                         active: _sortBy != '최신순',
                         open: _openDropdown == 'sort',
@@ -309,9 +354,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             _openDropdown = _openDropdown == 'sort' ? null : 'sort'),
                       ),
                       const SizedBox(width: 8),
-                      _FilterChip(
+                      HomeFilterChip(
                         label: _isAll(_regions) || _regions.isEmpty
-                            ? '구역'
+                            ? '위치'
                             : _regions.length == 1
                                 ? _regions.first
                                 : '${_regions.first} 외 ${_regions.length - 1}',
@@ -321,7 +366,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             _openDropdown = _openDropdown == 'region' ? null : 'region'),
                       ),
                       const SizedBox(width: 8),
-                      _FilterChip(
+                      HomeFilterChip(
                         label: _isAll(_cuisines) || _cuisines.isEmpty
                             ? '음식종류'
                             : _cuisines.length == 1
@@ -331,6 +376,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         open: _openDropdown == 'cuisine',
                         onTap: () => setState(() =>
                             _openDropdown = _openDropdown == 'cuisine' ? null : 'cuisine'),
+                      ),
+                      const SizedBox(width: 8),
+                      HomeCafeFilterChip(
+                        active: _cuisines.length == 1 && _cuisines.contains('카페'),
+                        onTap: () => setState(() {
+                          _openDropdown = null;
+                          if (_cuisines.length == 1 && _cuisines.contains('카페')) {
+                            _cuisines = {_allLabel};
+                          } else {
+                            _cuisines = {'카페'};
+                          }
+                        }),
                       ),
                     ],
                   ),
@@ -354,21 +411,23 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               ),
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
               child: _openDropdown == 'sort'
-                  ? _DropdownGrid(
+                  ? HomeDropdownGrid(
                       items: _sortOpts,
                       selected: {_sortBy},
                       onSelect: (v) {
                         if (v == '가까운순' && !locationMode) {
                           showLocationPermissionDialog(context, onGranted: () {
-                            setState(() { _sortBy = '가까운순'; _openDropdown = null; });
+                            setState(() => _sortBy = '가까운순');
                           });
                           return;
                         }
-                        setState(() { _sortBy = v; _openDropdown = null; });
+                        setState(() => _sortBy = v);
                       },
+                      showReset: _sortBy != '최신순',
+                      onReset: () => setState(() => _sortBy = '최신순'),
                     )
                   : _openDropdown == 'region'
-                      ? _DropdownGrid(
+                      ? HomeDropdownGrid(
                           items: _regionOpts,
                           selected: _regions,
                           multiSelect: true,
@@ -378,7 +437,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             _regions.add(_allLabel);
                           }),
                         )
-                      : _DropdownGrid(
+                      : HomeDropdownGrid(
                           items: _cuisineOpts,
                           selected: _cuisines,
                           multiSelect: true,
@@ -395,7 +454,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         Expanded(
           child: _searchActive
               ? _buildSearch(searchResults)
-              : _buildTab(recommended, availableCards, needsReport, busy, closed, provider.restaurantsLoading, provider.restaurantsLoadFailed),
+              : _buildHome(
+                  recommended, recentCards,
+                  provider.restaurantsLoading, provider.restaurantsLoadFailed,
+                  countAvailable, countStamp, countBusy, countClosed,
+                ),
         ),
           ],
         ),
@@ -480,65 +543,20 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     );
   }
 
-  Widget _buildTab(Restaurant? recommended, List<Restaurant> available, List<Restaurant> needsReport, List<Restaurant> busy, List<Restaurant> closed, bool loading, bool loadFailed) {
-    final showCrowdInfo = _activeTab == 0 || _activeTab == 1;
-    final List<Widget> items;
-    switch (_activeTab) {
-      case 0:
-        items = [
-          if (recommended != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: HeroRestaurantCard(
-                restaurant: recommended,
-                onDetail: () => _openRecommendedDetail(recommended),
-                onReport: () => _openReport(recommended),
-              ),
-            ),
-          ...available.map((r) => Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-              )),
-        ];
-        break;
-      case 1:
-        items = busy
-            .map((r) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-                ))
-            .toList();
-        break;
-      case 2:
-        items = needsReport
-            .map((r) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: _NeedsReportCard(restaurant: r, onTap: () => _openDetail(r)),
-                ))
-            .toList();
-        break;
-      default:
-        items = closed
-            .map((r) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-                ))
-            .toList();
-    }
+  Widget _buildHome(
+    Restaurant? recommended,
+    List<Restaurant> recentCards,
+    bool loading,
+    bool loadFailed,
+    int countAvailable,
+    int countStamp,
+    int countBusy,
+    int countClosed,
+  ) {
+    void goTo(RestaurantListMode mode) => Navigator.push(
+          context, MaterialPageRoute(builder: (_) => RestaurantListScreen(mode: mode)));
 
-    const sectionTitles = ['바로 입장 가능해요', '붐비고 있어요', '혼잡도를 알려주세요', '영업이 종료됐어요'];
-    const sectionDotColors = [
-      Color(0xFF4C9C2A),
-      Color(0xFFEF4444),
-      Color(0xFF111827),
-      Color(0xFF9CA3AF),
-    ];
-    const sectionTextColors = [
-      Color(0xFF111827),
-      Color(0xFF111827),
-      Color(0xFF111827),
-      Color(0xFF9CA3AF),
-    ];
+    final hasRecent = recommended != null || recentCards.isNotEmpty;
 
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
@@ -548,81 +566,157 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8, height: 8,
-                        decoration: BoxDecoration(
-                            color: sectionDotColors[_activeTab], shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(sectionTitles[_activeTab],
-                          style: TextStyle(
-                              fontFamily: 'OkDanDan',
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: sectionTextColors[_activeTab])),
-                    ],
-                  ),
-                  if (showCrowdInfo)
-                    CompositedTransformTarget(
-                      link: _crowdInfoLink,
-                      child: OverlayPortal(
-                        controller: _crowdInfoOverlay,
-                        overlayChildBuilder: (context) => _CrowdLevelInfoPopup(
-                          link: _crowdInfoLink,
-                          onDismiss: _crowdInfoOverlay.hide,
+            // ── 바로 입장 가능 섹션 (매장이 있을 때만) ──
+            if (hasRecent) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8, height: 8,
+                          decoration: const BoxDecoration(
+                              color: Color(0xFF4C9C2A), shape: BoxShape.circle),
                         ),
-                        child: GestureDetector(
-                          onTap: _crowdInfoOverlay.toggle,
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
-                              SizedBox(width: 4),
-                              Text('혼잡도 기준',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF9CA3AF))),
-                            ],
+                        const SizedBox(width: 8),
+                        const Text('바로 입장 가능해요',
+                            style: TextStyle(
+                                fontFamily: 'OkDanDan',
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827))),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CompositedTransformTarget(
+                          link: _stampInfoLink,
+                          child: OverlayPortal(
+                            controller: _stampInfoOverlay,
+                            overlayChildBuilder: (context) => StampInfoPopup(
+                              link: _stampInfoLink,
+                              onDismiss: _stampInfoOverlay.hide,
+                            ),
+                            child: GestureDetector(
+                              onTap: _stampInfoOverlay.toggle,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                                  SizedBox(width: 4),
+                                  Text('스탬프 지급',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF9CA3AF))),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        CompositedTransformTarget(
+                          link: _crowdInfoLink,
+                          child: OverlayPortal(
+                            controller: _crowdInfoOverlay,
+                            overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+                              link: _crowdInfoLink,
+                              onDismiss: _crowdInfoOverlay.hide,
+                            ),
+                            child: GestureDetector(
+                              onTap: _crowdInfoOverlay.toggle,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                                  SizedBox(width: 4),
+                                  Text('혼잡도 기준',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF9CA3AF))),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            ...items,
-            if (items.isEmpty)
+              if (recommended != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: HeroRestaurantCard(
+                    restaurant: recommended,
+                    onDetail: () => _openRecommendedDetail(recommended),
+                    onReport: () => _openReport(recommended),
+                  ),
+                ),
+              ...recentCards.map((r) => Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                    child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
+                  )),
+            ],
+
+            // 로딩/에러 (매장도 없고 로딩/에러 상태일 때만)
+            if (!hasRecent && (loading || loadFailed))
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
                 child: Center(
                   child: loading
-                      ? const CircularProgressIndicator(
-                          color: Color(0xFF9ECA8B),
-                        )
-                      : loadFailed
-                          ? LoadErrorView(
-                              onRetry: () => context
-                                  .read<AppProvider>()
-                                  .refreshRestaurants(),
-                            )
-                          : const Text(
-                              '표시할 매장이 없어요.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF9CA3AF),
-                              ),
-                            ),
+                      ? const CircularProgressIndicator(color: Color(0xFF9ECA8B))
+                      : LoadErrorView(
+                          onRetry: () => context.read<AppProvider>().refreshRestaurants()),
                 ),
               ),
+
+            SizedBox(height: hasRecent ? 8 : 20),
+
+            // ── 섹션 버튼 4개 ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: Column(
+                children: [
+                  if (countStamp > 0) ...[
+                    _SectionButton(
+                      label: '스탬프 2개 받기',
+                      dotColor: const Color(0xFF111827),
+                      count: countStamp,
+                      leadingIcon: Icons.stars_rounded,
+                      leadingIconColor: const Color(0xFF111827),
+                      highlighted: true,
+                      onTap: () => goTo(RestaurantListMode.stamp),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  _SectionButton(
+                    label: '바로 입장 가능',
+                    dotColor: const Color(0xFF4C9C2A),
+                    count: countAvailable,
+                    onTap: () => goTo(RestaurantListMode.available),
+                  ),
+                  const SizedBox(height: 10),
+                  _SectionButton(
+                    label: '붐비는 매장',
+                    dotColor: const Color(0xFFEF4444),
+                    count: countBusy,
+                    onTap: () => goTo(RestaurantListMode.busy),
+                  ),
+                  const SizedBox(height: 10),
+                  _SectionButton(
+                    label: '영업 종료',
+                    dotColor: const Color(0xFF9CA3AF),
+                    count: countClosed,
+                    onTap: () => goTo(RestaurantListMode.closed),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -630,18 +724,94 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
   }
 }
 
-class _CrowdLevelInfoPopup extends StatelessWidget {
+class _SectionButton extends StatelessWidget {
+  final String label;
+  final Color dotColor;
+  final int count;
+  final VoidCallback onTap;
+  final IconData? leadingIcon;
+  final Color? leadingIconColor;
+  final bool highlighted;
+
+  const _SectionButton({
+    required this.label,
+    required this.dotColor,
+    required this.count,
+    required this.onTap,
+    this.leadingIcon,
+    this.leadingIconColor,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: BoxDecoration(
+          color: highlighted ? const Color(0xFFF3F8F0) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: highlighted ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 8,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: leadingIcon != null
+                  ? Icon(leadingIcon, size: 14, color: leadingIconColor ?? dotColor)
+                  : Center(
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      fontFamily: 'OkDanDan',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1,
+                      color: Color(0xFF111827))),
+            ),
+            Text('$count',
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9CA3AF))),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, size: 20, color: Color(0xFFD1D5DB)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CrowdLevelInfoPopup extends StatelessWidget {
   final LayerLink link;
   final VoidCallback onDismiss;
-  const _CrowdLevelInfoPopup({required this.link, required this.onDismiss});
+  const CrowdLevelInfoPopup({required this.link, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
     const items = [
-      _CrowdLevelInfo(status: '여유로움', description: '바로 앉을 수 있어요'),
-      _CrowdLevelInfo(status: '약간혼잡', description: '빈자리 조금 있어요'),
-      _CrowdLevelInfo(status: '자리없음', description: '조금 기다려야 해요'),
-      _CrowdLevelInfo(status: '웨이팅많음', description: '웨이팅이 많아요'),
+      CrowdLevelInfo(status: '여유로움', description: '바로 앉을 수 있어요'),
+      CrowdLevelInfo(status: '약간혼잡', description: '빈자리 조금 있어요'),
+      CrowdLevelInfo(status: '자리없음', description: '조금 기다려야 해요'),
+      CrowdLevelInfo(status: '웨이팅많음', description: '웨이팅이 많아요'),
     ];
 
     return Stack(
@@ -697,7 +867,7 @@ class _CrowdLevelInfoPopup extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _StatusBadgePreview(status: items[idx].status),
+                          StatusBadgePreview(status: items[idx].status),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Padding(
@@ -725,20 +895,103 @@ class _CrowdLevelInfoPopup extends StatelessWidget {
   }
 }
 
-class _CrowdLevelInfo {
+class StampInfoPopup extends StatelessWidget {
+  final LayerLink link;
+  final VoidCallback onDismiss;
+  const StampInfoPopup({required this.link, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    const lines = [
+      '최초 제보 시 스탬프를 2개 받을 수 있어요.',
+      '이외의 매장에 제보 시 스탬프를 1개 지급 받아요.',
+      '단, 하루 최대 3개의 스탬프를 획득할 수 있어요.',
+    ];
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: onDismiss,
+          ),
+        ),
+        CompositedTransformFollower(
+          link: link,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.bottomRight,
+          followerAnchor: Alignment.topRight,
+          offset: const Offset(0, 8),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Container(
+              width: 250,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < lines.length; i++)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: i == lines.length - 1 ? 0 : 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Icon(Icons.circle, size: 5, color: Color(0xFF9CA3AF)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              lines[i],
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                height: 1.5,
+                                color: Color(0xFF374151),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class CrowdLevelInfo {
   final String status;
   final String description;
 
-  const _CrowdLevelInfo({
+  const CrowdLevelInfo({
     required this.status,
     required this.description,
   });
 }
 
 /// 홈화면 매장 카드 뱃지와 동일한 모양 (업데이트 시간 표시는 제외)
-class _StatusBadgePreview extends StatelessWidget {
+class StatusBadgePreview extends StatelessWidget {
   final String status;
-  const _StatusBadgePreview({required this.status});
+  const StatusBadgePreview({required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -781,10 +1034,10 @@ class _StatusBadgePreview extends StatelessWidget {
   }
 }
 
-class _NeedsReportCard extends StatelessWidget {
+class NeedsReportCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onTap;
-  const _NeedsReportCard({required this.restaurant, required this.onTap});
+  const NeedsReportCard({super.key, required this.restaurant, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -870,34 +1123,37 @@ class _NeedsReportCard extends StatelessWidget {
   }
 }
 
-class _HomeTab extends StatelessWidget {
-  final String label;
+class HomeFilterIconButton extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  const _HomeTab({required this.label, required this.active, required this.onTap});
+  const HomeFilterIconButton({required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: IntrinsicWidth(
-        child: Column(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Icon(Icons.tune_rounded,
+                size: 13,
+                color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
+            const SizedBox(width: 5),
             Text(
-              label,
+              '필터',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              height: 2,
-              width: double.infinity,
-              color: active ? const Color(0xFF111827) : Colors.transparent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
             ),
           ],
         ),
@@ -906,13 +1162,337 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class HomeFilterSheet extends StatefulWidget {
+  final String sortBy;
+  final Set<String> regions;
+  final Set<String> cuisines;
+  final bool locationMode;
+  final void Function(String sortBy, Set<String> regions, Set<String> cuisines) onApply;
+  final VoidCallback onRequestLocation;
+
+  const HomeFilterSheet({
+    required this.sortBy,
+    required this.regions,
+    required this.cuisines,
+    required this.locationMode,
+    required this.onApply,
+    required this.onRequestLocation,
+  });
+
+  @override
+  State<HomeFilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<HomeFilterSheet> {
+  static const _allLabel = '전체';
+  static const _sortOpts = ['최신순', '인기순', '가까운순', '여유로운순'];
+  static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+
+  late String _sortBy;
+  late Set<String> _regions;
+  late Set<String> _cuisines;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortBy = widget.sortBy;
+    _regions = Set.from(widget.regions);
+    _cuisines = Set.from(widget.cuisines);
+  }
+
+  bool _isAll(Set<String> s) => s.contains(_allLabel) && s.length == 1;
+
+  void _toggleMulti(Set<String> target, String value) {
+    if (value == _allLabel) {
+      target..clear()..add(_allLabel);
+      return;
+    }
+    target.remove(_allLabel);
+    target.contains(value) ? target.remove(value) : target.add(value);
+    if (target.isEmpty) target.add(_allLabel);
+  }
+
+  bool get _hasActive =>
+      _sortBy != '최신순' ||
+      (!_isAll(_regions) && _regions.isNotEmpty) ||
+      (!_isAll(_cuisines) && _cuisines.isNotEmpty);
+
+  void _reset() => setState(() {
+        _sortBy = '최신순';
+        _regions = {_allLabel};
+        _cuisines = {_allLabel};
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, safeBottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 핸들
+          Center(
+            child: Container(
+              width: 40, height: 5,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(3)),
+            ),
+          ),
+          // 헤더
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('필터',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827))),
+              if (_hasActive)
+                GestureDetector(
+                  onTap: _reset,
+                  child: const Text('초기화',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF5E8C4A))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 정렬
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('정렬',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF6B7280))),
+              if (_sortBy != '최신순')
+                GestureDetector(
+                  onTap: () => setState(() => _sortBy = '최신순'),
+                  child: const Text('초기화',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF9CA3AF))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _sortOpts.map((opt) {
+              final on = _sortBy == opt;
+              return GestureDetector(
+                onTap: () {
+                  if (opt == '가까운순' && !widget.locationMode) {
+                    Navigator.pop(context);
+                    widget.onRequestLocation();
+                    return;
+                  }
+                  setState(() => _sortBy = opt);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                  ),
+                  child: Text(opt,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+
+          // 위치
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('위치',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF6B7280))),
+              if (!_isAll(_regions))
+                GestureDetector(
+                  onTap: () => setState(() => _regions = {_allLabel}),
+                  child: const Text('초기화',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF9CA3AF))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _regionOpts.map((opt) {
+              final on = _regions.contains(opt);
+              return GestureDetector(
+                onTap: () => setState(() => _toggleMulti(_regions, opt)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                  ),
+                  child: Text(opt,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+
+          // 음식종류
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('음식종류',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF6B7280))),
+              if (!_isAll(_cuisines))
+                GestureDetector(
+                  onTap: () => setState(() => _cuisines = {_allLabel}),
+                  child: const Text('초기화',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF9CA3AF))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _cuisineOpts.map((opt) {
+              final on = _cuisines.contains(opt);
+              return GestureDetector(
+                onTap: () => setState(() => _toggleMulti(_cuisines, opt)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                  ),
+                  child: Text(opt,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 28),
+
+          // 적용 버튼
+          GestureDetector(
+            onTap: () {
+              widget.onApply(_sortBy, _regions, _cuisines);
+              Navigator.pop(context);
+            },
+            child: Container(
+              height: 52,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF9ECA8B),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Text('적용하기',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827))),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeCafeFilterChip extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+
+  const HomeCafeFilterChip({required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '카페만 보기',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.coffee_rounded,
+              size: 14,
+              color: active ? const Color(0xFF111827) : const Color(0xFF5E8C4A),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HomeFilterChip extends StatelessWidget {
   final String label;
   final bool active;
   final bool open;
   final VoidCallback onTap;
 
-  const _FilterChip({
+  const HomeFilterChip({
     required this.label,
     required this.active,
     required this.open,
@@ -955,19 +1535,21 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _DropdownGrid extends StatelessWidget {
+class HomeDropdownGrid extends StatelessWidget {
   final List<String> items;
   final Set<String> selected;
   final bool multiSelect;
   final ValueChanged<String> onSelect;
   final VoidCallback? onReset;
+  final bool showReset;
 
-  const _DropdownGrid({
+  const HomeDropdownGrid({
     required this.items,
     required this.selected,
     this.multiSelect = false,
     required this.onSelect,
     this.onReset,
+    this.showReset = false,
   });
 
   static bool _isAllSelected(Set<String> s) =>
@@ -979,18 +1561,6 @@ class _DropdownGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (multiSelect && selected.isNotEmpty && !_isAllSelected(selected))
-          GestureDetector(
-            onTap: onReset,
-            child: const Padding(
-              padding: EdgeInsets.only(top: 4, right: 4, bottom: 8),
-              child: Text('초기화',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF5E8C4A))),
-            ),
-          ),
         LayoutBuilder(
           builder: (context, constraints) {
             final cols = items.length <= 3 ? items.length : 4;
@@ -1046,6 +1616,18 @@ class _DropdownGrid extends StatelessWidget {
             );
           },
         ),
+        if (showReset || (multiSelect && selected.isNotEmpty && !_isAllSelected(selected)))
+          GestureDetector(
+            onTap: onReset,
+            child: const Padding(
+              padding: EdgeInsets.only(top: 8, right: 4),
+              child: Text('초기화',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF5E8C4A))),
+            ),
+          ),
       ],
     );
   }

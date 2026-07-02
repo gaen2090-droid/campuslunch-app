@@ -213,8 +213,8 @@ class _DetailScreenState extends State<DetailScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 r.crowdBaseSource == 'owner'
-                                    ? '사장님 · ${formatUpdateAge(r.updated)}'
-                                    : formatUpdateAge(r.updated),
+                                    ? '사장님 · ${formatUpdateAgeFromDateTime(r.updatedAt)}'
+                                    : formatUpdateAgeFromDateTime(r.updatedAt),
                                 maxLines: 1,
                                 textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis,
@@ -452,7 +452,7 @@ class _RecentReportsSection extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  '$prefix${formatUpdateAge(minutesAgo)} · $statusLabel',
+                  '$prefix$statusLabel · ${formatUpdateAge(minutesAgo)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

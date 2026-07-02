@@ -363,7 +363,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                     '\'${restaurant.name}\' 혼잡도를 \'${opt.status}\'으로 업데이트했어요');
                               },
                               child: AnimatedContainer(
-                                height: 72,
+                                height: 80,
                                 duration: const Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
                                   color: selected ? opt.bgColor : Colors.white,
@@ -393,16 +393,32 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 16),
-                                          Text(
-                                            opt.label,
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: -0.78,
-                                              color: selected
-                                                  ? opt.textColor
-                                                  : const Color(0xFF374151),
-                                            ),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                opt.label,
+                                                style: TextStyle(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: -0.78,
+                                                  color: selected
+                                                      ? opt.textColor
+                                                      : const Color(0xFF374151),
+                                                ),
+                                              ),
+                                              Text(
+                                                opt.subtitle,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: selected
+                                                      ? opt.textColor.withAlpha(180)
+                                                      : const Color(0xFF9CA3AF),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),

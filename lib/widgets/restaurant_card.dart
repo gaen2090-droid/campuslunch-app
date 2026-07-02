@@ -104,7 +104,7 @@ class RestaurantCard extends StatelessWidget {
                       ),
                     if (r.status != '영업안함' && r.hasCrowdUpdate)
                       TextSpan(
-                        text: ' · ${formatUpdateAge(r.updated)}',
+                        text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -172,17 +172,22 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
   Widget build(BuildContext context) {
     final r = widget.restaurant;
     final hasImage = !_isFallback;
+    final isBusy = r.status == '약간혼잡';
+    final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
+    final reportTextColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF5E8C4A);
+    final statusLabel = r.status == '웨이팅많음' ? '🔥웨이팅' : r.status;
+
     return GestureDetector(
       onTap: widget.onDetail,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: const Color(0xFF9ECA8B), width: 2),
+          border: Border.all(color: keyColor, width: 2),
         ),
         child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: SizedBox(
-          height: 210,
+          height: 196,
           width: double.infinity,
           child: Stack(
             fit: StackFit.expand,
@@ -208,30 +213,33 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 추천 뱃지 (사진 없는 매장은 배경색과 겹치므로 흰색으로 전환)
+                    // 현재 상태 뱃지
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: hasImage ? const Color(0xFF9ECA8B) : Colors.white,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFF111827), shape: BoxShape.circle),
+                      child: Text.rich(
+                        TextSpan(
+                          text: statusLabel,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
                           ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            '추천 매장',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827)),
-                          ),
-                        ],
+                          children: [
+                            if (r.status != '영업안함' && r.hasCrowdUpdate)
+                              TextSpan(
+                                text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF9CA3AF),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -263,33 +271,6 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                           color: Colors.white.withAlpha(150)),
                     ),
                     const Spacer(),
-                    Text.rich(
-                      TextSpan(
-                        text: '현재 ',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white.withAlpha(150)),
-                        children: [
-                          TextSpan(
-                            text: r.status == '웨이팅많음' ? '🔥웨이팅' : r.status,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white),
-                          ),
-                          if (r.status != '영업안함' && r.hasCrowdUpdate)
-                            TextSpan(
-                              text: ' · ${formatUpdateAge(r.updated)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withAlpha(150),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
@@ -323,13 +304,13 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Text(
                                   '혼잡도 제보하기',
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF5E8C4A)),
+                                      color: reportTextColor),
                                 ),
                               ),
                             ),

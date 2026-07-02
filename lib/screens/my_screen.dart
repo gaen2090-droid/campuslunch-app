@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import 'bookmark_list_screen.dart';
 import 'reward_screen.dart';
@@ -216,6 +217,49 @@ class _MyScreenState extends State<MyScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Icon(Icons.chevron_right,
+                            size: 16, color: Color(0xFFD1D5DB)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => launchUrl(
+                  Uri.parse('https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withAlpha(8),
+                          blurRadius: 8,
+                          offset: const Offset(0, 1))
+                    ],
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.help_rounded,
+                            size: 16,
+                            color: Color(0xFF5E8C4A)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '캠퍼스런치 사용 가이드',
+                            style: TextStyle(
+                                fontFamily: 'OkDanDan',
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827)),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right,
                             size: 16, color: Color(0xFFD1D5DB)),
                       ],
                     ),

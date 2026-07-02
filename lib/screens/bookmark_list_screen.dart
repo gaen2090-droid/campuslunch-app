@@ -161,7 +161,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: _isAll(_regions) || _regions.isEmpty
-                          ? '구역'
+                          ? '위치'
                           : _regions.length == 1
                               ? _regions.first
                               : '${_regions.first} 외 ${_regions.length - 1}',

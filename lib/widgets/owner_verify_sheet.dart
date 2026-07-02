@@ -34,6 +34,9 @@ class _OwnerVerifySheetState extends State<OwnerVerifySheet> {
     final error = await context.read<AppProvider>().verifyOwnerCode(_ctrl.text.trim());
     if (!mounted) return;
     if (error == null) {
+      setState(() => _status = 'success');
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
       widget.onSuccess(0);
     } else {
       setState(() {

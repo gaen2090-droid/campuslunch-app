@@ -37,6 +37,7 @@ class Restaurant {
   final String crowdConfidence;
   /// crowd_status 행 기준 실제 업데이트가 있을 때만 `n분 전 업데이트` 표시
   final bool hasCrowdUpdate;
+  final DateTime? updatedAt;
   final DateTime? createdAt;
   final DateTime? ownerUpdatedAt;
   /// DB is_active. 일반 앱 목록은 true 만 로드, 어드민은 false 포함 가능.
@@ -67,6 +68,7 @@ class Restaurant {
     this.crowdBaseSource = '',
     this.crowdConfidence = '',
     this.hasCrowdUpdate = true,
+    this.updatedAt,
     this.createdAt,
     this.ownerUpdatedAt,
     this.isActive = true,
@@ -105,6 +107,7 @@ class Restaurant {
         crowdBaseSource: crowdBaseSource ?? this.crowdBaseSource,
         crowdConfidence: crowdConfidence ?? this.crowdConfidence,
         hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
+        updatedAt: updatedAt,
         createdAt: createdAt,
         ownerUpdatedAt: ownerUpdatedAt,
         isActive: isActive,

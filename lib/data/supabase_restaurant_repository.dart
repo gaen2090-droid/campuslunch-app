@@ -513,6 +513,7 @@ class SupabaseRestaurantRepository {
 
     late final String finalStatus;
     var updated = 0;
+    DateTime? updatedAt;
     var hasCrowdUpdate = false;
 
     // 제보필요 기준: 이번 영업 세션 시작 이후 제보가 하나라도 있는가.
@@ -525,6 +526,7 @@ class SupabaseRestaurantRepository {
           .map((r) => DateTime.parse(r['created_at'] as String).toLocal())
           .reduce((a, b) => a.isAfter(b) ? a : b);
       updated = at.difference(latestReportTime).inMinutes.clamp(0, 99999);
+      updatedAt = latestReportTime;
       hasCrowdUpdate = true;
     } else {
       // 이번 세션에 제보가 하나도 없음 → 제보필요
@@ -587,6 +589,7 @@ class SupabaseRestaurantRepository {
               sessionStart != null &&
               ownerUpdatedAt.isAfter(sessionStart)),
       updated: updated,
+      updatedAt: updatedAt,
       createdAt: row['created_at'] != null
           ? DateTime.tryParse(row['created_at'] as String)?.toLocal()
           : null,
