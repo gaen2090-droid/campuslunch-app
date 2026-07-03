@@ -18,8 +18,19 @@ class MyScreen extends StatefulWidget {
 class _MyScreenState extends State<MyScreen> {
   bool _showEditSheet = false;
   String _editNickname = '';
+  final _nicknameCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nicknameCtrl.dispose();
+    super.dispose();
+  }
 
   void _openEdit(String current) {
+    _nicknameCtrl.value = TextEditingValue(
+      text: current,
+      selection: TextSelection.collapsed(offset: current.length),
+    );
     setState(() {
       _editNickname = current;
       _showEditSheet = true;
@@ -457,15 +468,16 @@ class _MyScreenState extends State<MyScreen> {
                                   Expanded(
                                     child: TextField(
                                       autofocus: true,
-                                      controller: TextEditingController.fromValue(
-                                        TextEditingValue(
-                                          text: _editNickname,
-                                          selection: TextSelection.collapsed(
-                                              offset: _editNickname.length),
-                                        ),
-                                      ),
-                                      onChanged: (v) => setState(
-                                          () => _editNickname = v.length > 20 ? v.substring(0, 20) : v),
+                                      controller: _nicknameCtrl,
+                                      onChanged: (v) {
+                                        if (v.length > 20) {
+                                          _nicknameCtrl.value = TextEditingValue(
+                                            text: v.substring(0, 20),
+                                            selection: const TextSelection.collapsed(offset: 20),
+                                          );
+                                        }
+                                        setState(() => _editNickname = _nicknameCtrl.text);
+                                      },
                                       onSubmitted: (_) => _saveNickname(),
                                       style: const TextStyle(
                                           fontSize: 14,

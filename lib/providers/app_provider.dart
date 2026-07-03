@@ -676,11 +676,15 @@ class AppProvider extends ChangeNotifier {
 
     final meta = user.userMetadata;
     final appMeta = user.appMetadata;
-    var nickname = profile?.nickname ?? meta?['nickname'] as String?;
+    // DB 프로필 닉네임 우선 — 본인 row이므로 taken 체크 불필요
+    var nickname = profile?.nickname;
+    final fromMeta = nickname == null;
+    nickname ??= meta?['nickname'] as String?;
     if (isPlaceholderNickname(nickname)) {
       nickname = await generateAvailableNickname(_profileRepo.isNicknameTaken);
       await _syncMetadata({'nickname': nickname});
-    } else if (nickname != null) {
+    } else if (fromMeta && nickname != null) {
+      // meta에서 온 경우에만 중복 체크
       final taken = await _profileRepo.isNicknameTaken(nickname);
       if (taken == true) {
         nickname = await generateAvailableNickname(_profileRepo.isNicknameTaken);
@@ -1501,7 +1505,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<String> _resolveStageAfterSplash(SharedPreferences prefs) async {
-    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
+    // permissions 동의 전이면 시작하기 화면으로 (onboarding → permissions_consent 순서)
+    if (!_hasPermissionsConsent(prefs)) return 'onboarding';
     if (_isLoggedIn) {
       final userId = _sessionUserId(prefs);
       if (_needsLegalTermsConsent(
@@ -1521,7 +1526,7 @@ class AppProvider extends ChangeNotifier {
     required String userId,
     required bool needsLegalTerms,
   }) async {
-    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
+    if (!_hasPermissionsConsent(prefs)) return 'onboarding';
     if (needsLegalTerms &&
         userId.isNotEmpty &&
         _needsLegalTermsConsent(
@@ -1535,7 +1540,7 @@ class AppProvider extends ChangeNotifier {
         _needsLegalTermsConsent(prefs, userId, isNewSignup: false)) {
       return 'legal_terms_consent';
     }
-    return 'app';
+    return await _postAppStage(prefs);
   }
 
   /// OS 권한 요청. 위치(필수) 거부 시 false.
@@ -1602,7 +1607,7 @@ class AppProvider extends ChangeNotifier {
 
   // ── 온보딩 완료 ──
   void completeOnboarding() {
-    _stage = 'login';
+    _stage = 'permissions_consent';
     notifyListeners();
   }
 
