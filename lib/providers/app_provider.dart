@@ -1543,20 +1543,26 @@ class AppProvider extends ChangeNotifier {
     return await _postAppStage(prefs);
   }
 
-  /// OS 권한 요청. 위치(필수) 거부 시 false.
+  /// OS 권한 요청(확인 버튼 시점만). 위치(필수) 거부 시 false.
+  /// 순서: 위치 → 주변 기기(Android만) → 알림
+  ///
+  /// iOS 「로컬 네트워크」팝업은 Flutter `flutter run` 디버그 연결이
+  /// 앱 시작 시 띄우며, 이 메서드와 무관하다.
   Future<bool> completePermissionsConsent() async {
     final prefs = await SharedPreferences.getInstance();
+    debugPrint('[Permissions] confirm tapped — requesting OS permissions');
 
     final locationGranted = await requestLocationOsPermission();
+    debugPrint('[Permissions] location granted=$locationGranted');
     if (!locationGranted) return false;
 
-    // Android: 위치 직후 '주변 기기'·Wi-Fi 스캔(정확도 보조) — 확인 버튼 시점
     await DevicePermissionService.requestAndroidNearbyScanForLocation();
 
     var pushGranted = false;
     try {
       pushGranted =
           await PushNotificationService.instance.requestPermission();
+      debugPrint('[Permissions] notification granted=$pushGranted');
     } catch (e, st) {
       debugPrint('[Permissions] push: $e\n$st');
     }
@@ -1576,9 +1582,11 @@ class AppProvider extends ChangeNotifier {
       unawaited(_syncPushNotifications());
     }
 
+    // 네이티브 SDK(카카오맵 등)는 권한 팝업이 끝난 뒤에만 초기화
+    await triggerDeferredStartup();
+
     _stage = await _resolveStageAfterSplash(prefs);
     notifyListeners();
-    unawaited(triggerDeferredStartup());
     return true;
   }
 

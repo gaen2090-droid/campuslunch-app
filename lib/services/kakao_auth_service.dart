@@ -17,8 +17,10 @@ class KakaoAuthResult {
 
 class KakaoAuthService {
   static bool get isConfigured => Env.isKakaoConfigured;
+  static bool _initialized = false;
 
   static Future<void> initialize() async {
+    if (_initialized) return;
     if (!isConfigured) {
       debugPrint('[Kakao] KAKAO_NATIVE_APP_KEY 없음 — .env / keys.properties 확인');
       return;
@@ -31,6 +33,7 @@ class KakaoAuthService {
       );
     }
     KakaoSdk.init(nativeAppKey: key);
+    _initialized = true;
     debugPrint('[Kakao] SDK initialized (key …${key.substring(key.length - 4)})');
   }
 
@@ -46,6 +49,7 @@ class KakaoAuthService {
     if (!SupabaseService.isReady) {
       throw Exception('Supabase가 설정되지 않았습니다.');
     }
+    await initialize();
 
     final token = await _loginWithKakao();
     final idToken = token.idToken;

@@ -1,96 +1,89 @@
-﻿import 'dart:ui';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../widgets/rice_ball_icon.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // 다음 화면 전환 전에 로고 디코딩을 끝냄
+      precacheImage(
+        ResizeImage(
+          const AssetImage(RiceBallIcon.assetPath),
+          width: 120,
+          height: 120,
+        ),
+        context,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // 블러 장식 - 우측 상단
-          Positioned(
-            right: -80,
-            top: 60,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC8E6BA),
-                  shape: BoxShape.circle,
-                ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SplashLogo(),
+            SizedBox(height: 20),
+            Text(
+              '캠퍼스런치',
+              style: TextStyle(
+                fontFamily: 'OkDanDan',
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF5E8C4A),
+                letterSpacing: -1.0,
               ),
             ),
-          ),
-          // 블러 장식 - 좌측 하단
-          Positioned(
-            left: -100,
-            bottom: 100,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B).withAlpha(180),
-                  shape: BoxShape.circle,
-                ),
+            SizedBox(height: 8),
+            Text(
+              '지금 어디가 여유로울까?',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF9CA3AF),
+                letterSpacing: -0.5,
               ),
             ),
-          ),
-          // 중앙 로고
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF9ECA8B),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0xFFC8E6BA),
-                        blurRadius: 28,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: RiceBallIcon(size: 40),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  '캠퍼스런치',
-                  style: TextStyle(
-                    fontFamily: 'OkDanDan',
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF5E8C4A),
-                    letterSpacing: -1.0,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '지금 어디가 여유로울까?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF9CA3AF),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashLogo extends StatelessWidget {
+  const _SplashLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: const Color(0xFF9ECA8B),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xFFC8E6BA),
+            blurRadius: 28,
+            offset: Offset(0, 10),
           ),
         ],
+      ),
+      child: const Center(
+        child: RiceBallIcon(size: 40),
       ),
     );
   }

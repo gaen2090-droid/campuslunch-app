@@ -60,6 +60,13 @@
 	<string>주변 식당과 내 위치를 지도에 표시하기 위해 위치 권한이 필요합니다.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>기프티콘 쿠폰 이미지를 사진 앨범에 저장하기 위해 권한이 필요합니다.</string>
+	<!-- flutter run(디버그) 시 Dart VM 연결용. 앱 시작 직후 OS가 띄우며 앱 코드로 시점 제어 불가. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>개발 중 디버그 연결 및 지도 기능에 사용됩니다.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartobservatory._tcp</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

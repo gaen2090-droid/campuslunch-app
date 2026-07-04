@@ -33,8 +33,6 @@ Future<void> main() async {
   }
   await Env.loadReleaseConfig();
 
-  await KakaoAuthService.initialize();
-
   if (Env.isSupabaseConfigured) {
     try {
       await SupabaseService.initialize();
@@ -63,11 +61,12 @@ Future<void> main() async {
     ),
   );
 
+  // 카카오·지도·푸시·Google — 권한 안내 확인 이후에만 (OS 권한 팝업 선행 방지)
   runDeferredStartupOnce = () => _deferredStartup(appProvider);
-  // 권한 안내 완료 후 AppProvider.triggerDeferredStartup() 에서 실행
 }
 
 Future<void> _deferredStartup(AppProvider provider) async {
+  await KakaoAuthService.initialize();
   unawaited(GoogleAuthService.initialize());
   unawaited(KakaoMapBootstrap.ensureInitialized());
   try {
