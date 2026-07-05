@@ -19,6 +19,7 @@ begin
   delete from public.user_devices where user_id = uid;
   delete from public.crowd_reports where user_id = uid;
   delete from public.analytics_events where user_id = uid;
+  delete from public.app_feedback where user_id = uid;
 
   update public.restaurants set owner_id = null where owner_id = uid;
 

@@ -694,10 +694,10 @@ class _RewardCard extends StatelessWidget {
                         ),
                         child: Center(
                           child: filled
-                              ? RiceBallIcon(size: cellSize * 0.55)
+                              ? StampRiceBallIcon(size: cellSize * 0.55)
                               : Opacity(
                                   opacity: 0.35,
-                                  child: RiceBallIcon(size: cellSize * 0.55),
+                                  child: StampRiceBallIcon(size: cellSize * 0.55),
                                 ),
                         ),
                       );

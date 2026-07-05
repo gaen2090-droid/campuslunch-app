@@ -20,12 +20,7 @@ class RestaurantImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fb = fallback?.call() ??
-        Container(
-          color: const Color(0xFF9ECA8B),
-          child: const Center(
-            child: RiceBallIcon(size: 22),
-          ),
-        );
+        const RiceBallIcon(size: null);
 
     if (url.isEmpty) {
       onFallbackChanged?.call(true);

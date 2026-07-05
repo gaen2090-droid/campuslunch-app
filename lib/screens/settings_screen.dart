@@ -42,7 +42,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(err)),
                 );
+                return;
               }
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text('탈퇴하기',
                 style: TextStyle(

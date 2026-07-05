@@ -65,10 +65,8 @@ class OnboardingScreen extends StatelessWidget {
                       Container(
                         width: 48,
                         height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF9ECA8B),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
+                        decoration: const BoxDecoration(
+                          boxShadow: [
                             BoxShadow(
                               color: Color(0xFFC8E6BA),
                               blurRadius: 20,
@@ -76,9 +74,7 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: const Center(
-                          child: RiceBallIcon(size: 26),
-                        ),
+                        child: const RiceBallIcon(size: 48),
                       ),
                       const SizedBox(width: 12),
                       const Column(

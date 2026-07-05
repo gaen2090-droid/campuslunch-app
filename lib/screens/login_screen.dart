@@ -1,5 +1,4 @@
-﻿import 'dart:ui';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/email_auth.dart';
@@ -116,27 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          Positioned(
-            right: -80, top: 60,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 240, height: 240,
-                decoration: const BoxDecoration(color: Color(0xFFC8E6BA), shape: BoxShape.circle),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -100, bottom: 80,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 220, height: 220,
-                decoration: BoxDecoration(
-                    color: const Color(0xFF9ECA8B).withAlpha(180), shape: BoxShape.circle),
-              ),
-            ),
-          ),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(28, 36, 28, 36),
