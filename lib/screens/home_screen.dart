@@ -316,12 +316,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       width: 40,
                       height: 40,
                       margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: const Center(
-                          child: RiceBallIcon(size: 22)),
+                      child: const RiceBallIcon(size: 40),
                     ),
                   Expanded(
                     child: Container(
@@ -1300,13 +1295,7 @@ class NeedsReportCard extends StatelessWidget {
                 width: 48, height: 48,
                 child: RestaurantImage(
                   url: r.imageUrl,
-                  fallback: () => Container(
-                    width: 48, height: 48,
-                    decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
-                    child: const Center(
-                      child: RiceBallIcon(size: 22),
-                    ),
-                  ),
+                  fallback: () => const RiceBallIcon(size: 48),
                 ),
               ),
             ),

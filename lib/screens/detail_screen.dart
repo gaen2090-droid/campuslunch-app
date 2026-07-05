@@ -25,10 +25,12 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   OwnerSeatUpdate? _ownerSeatUpdate;
   List<RecentCrowdReport> _recentReports = [];
+  late bool _hasImage;
 
   @override
   void initState() {
     super.initState();
+    _hasImage = widget.restaurant.imageUrl.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final provider = context.read<AppProvider>();
@@ -89,62 +91,68 @@ class _DetailScreenState extends State<DetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── 이미지 + 플로팅 헤더 ──
-            Stack(
-              children: [
-                // 전체폭 이미지
-                SizedBox(
-                  height: 220,
-                  width: double.infinity,
-                  child: RestaurantImage(
-                    url: r.imageUrl,
-                    fallback: () => Container(
-                      color: const Color(0xFF9ECA8B),
-                      child: const Center(
-                        child: RiceBallIcon(size: 56),
+            SizedBox(
+              height: _hasImage ? 220 : safeTop + 16 + 32,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  // 전체폭 이미지 (사진 없으면 영역 자체를 접음)
+                  if (_hasImage)
+                    SizedBox(
+                      height: 220,
+                      width: double.infinity,
+                      child: RestaurantImage(
+                        url: r.imageUrl,
+                        fallback: () => const RiceBallIcon(size: null),
+                        onFallbackChanged: (hasFallback) {
+                          if (hasFallback == !_hasImage) return;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _hasImage = !hasFallback);
+                          });
+                        },
                       ),
                     ),
-                  ),
-                ),
 
-                // 플로팅 헤더 버튼
-                Positioned(
-                  top: safeTop + 16,
-                  left: 20,
-                  right: 20,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _HeaderBtn(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.chevron_left,
-                            size: 18, color: Color(0xFF374151)),
-                      ),
-                      Row(
-                        children: [
-                          _HeaderBtn(
-                            onTap: () => provider.toggleBookmark(r.id),
-                            child: Icon(
-                              isBookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                              size: 16,
-                              color: isBookmarked
-                                  ? const Color(0xFF5E8C4A)
-                                  : const Color(0xFF6B7280),
+                  // 플로팅 헤더 버튼
+                  Positioned(
+                    top: safeTop + 16,
+                    left: 20,
+                    right: 20,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _HeaderBtn(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(Icons.chevron_left,
+                              size: 18, color: Color(0xFF374151)),
+                        ),
+                        Row(
+                          children: [
+                            _HeaderBtn(
+                              onTap: () => provider.toggleBookmark(r.id),
+                              child: Icon(
+                                isBookmarked
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                size: 16,
+                                color: isBookmarked
+                                    ? const Color(0xFF5E8C4A)
+                                    : const Color(0xFF6B7280),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          _HeaderBtn(
-                            onTap: () => showShareSheet(context, r),
-                            child: const Icon(Icons.share_outlined,
-                                size: 16, color: Color(0xFF6B7280)),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 8),
+                            _HeaderBtn(
+                              onTap: () => showShareSheet(context, r),
+                              child: const Icon(Icons.share_outlined,
+                                  size: 16, color: Color(0xFF6B7280)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             // ── 기본 정보 (좁은 화면·큰 글꼴에서도 오버플로우 없음) ──

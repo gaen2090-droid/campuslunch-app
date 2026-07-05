@@ -130,14 +130,7 @@ class _IconBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(color: Color(0xFF9ECA8B)),
-      child: const Center(
-        child: RiceBallIcon(size: 22),
-      ),
-    );
+    return const RiceBallIcon(size: 48);
   }
 }
 

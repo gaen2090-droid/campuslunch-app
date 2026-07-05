@@ -71,10 +71,9 @@ class _SplashLogo extends StatelessWidget {
     return Container(
       width: 72,
       height: 72,
-      decoration: BoxDecoration(
-        color: const Color(0xFF9ECA8B),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(22)),
+        boxShadow: [
           BoxShadow(
             color: Color(0xFFC8E6BA),
             blurRadius: 28,
@@ -82,9 +81,8 @@ class _SplashLogo extends StatelessWidget {
           ),
         ],
       ),
-      child: const Center(
-        child: RiceBallIcon(size: 40),
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: const RiceBallIcon(size: 72),
     );
   }
 }

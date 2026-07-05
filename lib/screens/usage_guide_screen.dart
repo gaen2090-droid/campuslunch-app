@@ -80,6 +80,11 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
     _goTo(_page + 1);
   }
 
+  void _prev() {
+    if (_page == 0) return;
+    _goTo(_page - 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLast = _page == _pages.length - 1;
@@ -139,11 +144,35 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                     ),
                   ),
                   Expanded(
-                    child: PageView.builder(
-                      controller: _controller,
-                      itemCount: _pages.length,
-                      onPageChanged: (i) => setState(() => _page = i),
-                      itemBuilder: (context, i) => _GuidePageView(page: _pages[i]),
+                    child: Stack(
+                      children: [
+                        PageView.builder(
+                          controller: _controller,
+                          itemCount: _pages.length,
+                          onPageChanged: (i) => setState(() => _page = i),
+                          itemBuilder: (context, i) => _GuidePageView(page: _pages[i]),
+                        ),
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 56,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: _prev,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 56,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: _next,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -592,10 +621,10 @@ class _StampCell extends StatelessWidget {
       ),
       child: Center(
         child: filled
-            ? const RiceBallIcon(size: 18)
+            ? const StampRiceBallIcon(size: 18)
             : const Opacity(
                 opacity: 0.35,
-                child: RiceBallIcon(size: 18),
+                child: StampRiceBallIcon(size: 18),
               ),
       ),
     );

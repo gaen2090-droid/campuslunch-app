@@ -28,11 +28,13 @@ class ConsentCheckItem {
     required this.id,
     required this.label,
     required this.required,
+    this.subtitle,
   });
 
   final String id;
   final String label;
   final bool required;
+  final String? subtitle;
 }
 
 class _ConsentChecklistState extends State<ConsentChecklist> {
@@ -83,25 +85,20 @@ class _ConsentChecklistState extends State<ConsentChecklist> {
               children: [
                 _ConsentRow(
                   label: item.label,
+                  subtitle: item.subtitle,
                   checked: widget.agreed[item.id] ?? false,
                   required: item.required,
                   onChanged: (v) => _setOne(item.id, v),
                   trailing: canView
-                      ? TextButton(
+                      ? IconButton(
                           onPressed: () => widget.onViewDocument!(item.id),
-                          style: TextButton.styleFrom(
-                            minimumSize: Size.zero,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          icon: const Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color: Color(0xFF9CA3AF),
                           ),
-                          child: const Text(
-                            '전문 보기',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF5E8C4A),
-                            ),
-                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         )
                       : summary != null
                           ? IconButton(
@@ -151,9 +148,11 @@ class _ConsentRow extends StatelessWidget {
     this.required,
     this.emphasized = false,
     this.trailing,
+    this.subtitle,
   });
 
   final String label;
+  final String? subtitle;
   final bool checked;
   final bool? required;
   final bool emphasized;
@@ -172,6 +171,7 @@ class _ConsentRow extends StatelessWidget {
             vertical: emphasized ? 14 : 12,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _CheckBox(checked: checked, emphasized: emphasized),
               const SizedBox(width: 10),
@@ -180,13 +180,31 @@ class _ConsentRow extends StatelessWidget {
                 const SizedBox(width: 6),
               ],
               Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: emphasized ? 14 : 13,
-                    fontWeight: emphasized ? FontWeight.w900 : FontWeight.w700,
-                    color: const Color(0xFF111827),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: emphasized ? 14 : 13,
+                        fontWeight:
+                            emphasized ? FontWeight.w900 : FontWeight.w700,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (trailing != null) trailing!,
