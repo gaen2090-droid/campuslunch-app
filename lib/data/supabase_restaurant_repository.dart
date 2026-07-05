@@ -88,6 +88,56 @@ class SupabaseRestaurantRepository {
     }).toList();
   }
 
+  /// App Link 번호(/r/{linkNo})로 매장 1건 조회
+  Future<Restaurant?> fetchByLinkNo(int linkNo) async {
+    if (linkNo <= 0) return null;
+    try {
+      final rows = await _client
+          .from('restaurants')
+          .select()
+          .eq('link_no', linkNo)
+          .eq('is_active', true)
+          .limit(1);
+      if (rows.isEmpty) return null;
+      final row = rows.first;
+      final id = row['id'] as String;
+      final now = DateTime.now();
+      final todayStart =
+          DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+      final reports = await _client
+          .from('crowd_reports')
+          .select()
+          .eq('restaurant_id', id)
+          .gte('created_at', todayStart);
+      final crowdMap = await _fetchCrowdStatusMap();
+      final extra = _parseDescription(row['description']);
+      final bh = BusinessHoursData.fromDescription(extra);
+      final isOpen = bh.isOpenAt(now);
+      final userReports = List<Map<String, dynamic>>.from(reports)
+          .where((r) => (r['source'] as String?) != 'system')
+          .toList();
+      if (isOpen) {
+        return _mergeRow(
+          row,
+          userReports,
+          crowdStatus: crowdMap[id],
+          now: now,
+          isOpen: true,
+        );
+      }
+      return _mergeRow(
+        row,
+        List<Map<String, dynamic>>.from(reports),
+        crowdStatus: crowdMap[id],
+        now: now,
+        isOpen: false,
+      ).copyWith(status: '영업안함', updated: 0, hasCrowdUpdate: false);
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchByLinkNo failed: $e\n$st');
+      return null;
+    }
+  }
+
   Future<int> fetchOwnerInfluence() async {
     try {
       final raw = await _client.rpc('get_owner_influence');
@@ -559,6 +609,7 @@ class SupabaseRestaurantRepository {
 
     return Restaurant(
       id: id,
+      linkNo: (row['link_no'] as num?)?.toInt() ?? 0,
       name: row['name'] as String,
       category: row['category'] as String,
       area: row['area'] as String,

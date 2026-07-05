@@ -22,6 +22,12 @@ begin
   delete from public.user_devices where user_id = uid;
   delete from public.crowd_reports where user_id = uid;
   delete from public.analytics_events where user_id = uid;
+  delete from public.app_feedback where user_id = uid;
+  delete from public.owner_seat_updates where owner_id = uid;
+  delete from public.user_rewards where user_id = uid;
+  update public.gifticons
+  set assigned_user_id = null, assigned_at = null
+  where assigned_user_id = uid;
   update public.restaurants set owner_id = null where owner_id = uid;
 
   delete from public.users where id = uid;

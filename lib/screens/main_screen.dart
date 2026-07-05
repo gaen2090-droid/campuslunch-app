@@ -1,8 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/coach_mark_step.dart';
 import '../providers/app_provider.dart';
 import '../widgets/coach_mark_overlay.dart';
+import '../constants/app_links.dart';
+import 'coupon_box_screen.dart';
+import 'detail_screen.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
@@ -21,6 +24,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   bool _mapMounted = false;
   bool _showCoachMark = false;
+  bool _handlingAppLink = false;
 
   @override
   void initState() {
@@ -52,8 +56,47 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
+      _handlePendingAppLink();
       _maybeShowCoachMark();
     });
+  }
+
+  Future<void> _handlePendingAppLink() async {
+    if (_handlingAppLink || !mounted) return;
+    final provider = context.read<AppProvider>();
+    if (!provider.hasPendingAppLink) return;
+
+    _handlingAppLink = true;
+    final pending = provider.consumePendingAppLink();
+    if (pending == null) {
+      _handlingAppLink = false;
+      return;
+    }
+
+    try {
+      switch (pending.target) {
+        case AppLinkTarget.home:
+          provider.setMainTabIndex(provider.homeTabIndex);
+        case AppLinkTarget.coupons:
+          if (!mounted) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
+          );
+        case AppLinkTarget.restaurant:
+          final linkNo = pending.linkNo;
+          if (linkNo == null || linkNo <= 0) return;
+          final restaurant =
+              await provider.fetchRestaurantByLinkNo(linkNo);
+          if (!mounted || restaurant == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => DetailScreen(restaurant: restaurant),
+            ),
+          );
+      }
+    } finally {
+      _handlingAppLink = false;
+    }
   }
 
   Future<void> _maybeShowCoachMark() async {
@@ -72,6 +115,11 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    if (provider.hasPendingAppLink && !_handlingAppLink) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handlePendingAppLink();
+      });
+    }
     final hasOwner = provider.hasOwnerTab;
     final index = provider.mainTabIndex.clamp(0, hasOwner ? 3 : 2);
     final mapIndex = hasOwner ? 2 : 1;

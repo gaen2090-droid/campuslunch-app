@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.campuslunch.app",
+      "sha256_cert_fingerprints": [
+        "1D:5E:C8:2B:E3:EB:79:FC:E6:FC:F4:4D:1D:7C:E5:5E:30:D7:24:C8:74:A2:49:79:98:44:AE:81:94:1B:44:C7",
+        "CB:52:B2:BF:5D:D7:40:F8:8B:92:A3:91:22:8D:2A:03:23:4D:75:9D:D8:AF:6E:57:26:98:65:28:5B:B1:40:46"
+      ]
+    }
+  }
+]

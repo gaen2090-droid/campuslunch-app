@@ -13,7 +13,11 @@ import { GifticonsPage } from "./pages/GifticonsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapRegisterPage } from "./pages/MapRegisterPage";
 import { PopularityPage } from "./pages/PopularityPage";
+import { PushSettingsPage } from "./pages/PushSettingsPage";
 import { RestaurantsPage } from "./pages/RestaurantsPage";
+import { UsersPage } from "./pages/UsersPage";
+import { usePushConfig } from "./hooks/usePushConfig";
+import { useUsers } from "./hooks/useUsers";
 
 export default function App() {
   const auth = useAuth();
@@ -25,6 +29,8 @@ export default function App() {
   const restaurantsState = useRestaurants(enabled);
   const gifticonsState = useGifticons(enabled && tab === "gifticons");
   const feedbackState = useFeedback(enabled && tab === "feedback");
+  const usersState = useUsers(enabled && tab === "users");
+  const pushConfigState = usePushConfig(enabled && tab === "push");
 
   const refreshAll = useCallback(async () => {
     await Promise.all([
@@ -32,8 +38,10 @@ export default function App() {
       restaurantsState.reload(),
       tab === "gifticons" ? gifticonsState.reload() : Promise.resolve(),
       tab === "feedback" ? feedbackState.reload() : Promise.resolve(),
+      tab === "users" ? usersState.reload() : Promise.resolve(),
+      tab === "push" ? pushConfigState.reload() : Promise.resolve(),
     ]);
-  }, [metricsState, restaurantsState, gifticonsState, feedbackState, tab]);
+  }, [metricsState, restaurantsState, gifticonsState, feedbackState, usersState, pushConfigState, tab]);
 
   if (auth.loading) {
     return <div className="center-msg">불러오는 중…</div>;
@@ -103,6 +111,28 @@ export default function App() {
       );
     }
 
+    if (tab === "users") {
+      return (
+        <UsersPage
+          users={usersState.users}
+          loading={usersState.loading}
+          error={usersState.error}
+          onReload={usersState.reload}
+        />
+      );
+    }
+
+    if (tab === "push") {
+      return (
+        <PushSettingsPage
+          config={pushConfigState.config}
+          loading={pushConfigState.loading}
+          error={pushConfigState.error}
+          onReload={pushConfigState.reload}
+        />
+      );
+    }
+
     return (
       <GifticonsPage
         gifticons={gifticonsState.gifticons}
@@ -121,6 +151,8 @@ export default function App() {
           setTab(next);
           if (next === "gifticons") gifticonsState.reload();
           if (next === "feedback") feedbackState.reload();
+          if (next === "users") usersState.reload();
+          if (next === "push") pushConfigState.reload();
         }}
         onSignOut={auth.signOut}
         onExport={() => setShowExport(true)}

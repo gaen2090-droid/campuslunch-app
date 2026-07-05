@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
 import '../config/env.dart';
 import '../utils/nickname_generator.dart';
@@ -19,6 +21,7 @@ import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../models/reward.dart';
+import '../data/push_config_repository.dart';
 import '../data/reward_repository.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
@@ -146,6 +149,10 @@ class AppProvider extends ChangeNotifier {
   /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
   int get homeTabIndex => hasOwnerTab ? 1 : 0;
 
+  int get myTabIndex => hasOwnerTab ? 3 : 2;
+
+  bool get hasPendingAppLink => _pendingAppLink != null;
+
   bool get locationMode => _locationMode;
   bool get notificationEnabled => _notificationEnabled;
   bool get lunchPushEnabled => _lunchPushEnabled;
@@ -229,16 +236,88 @@ class AppProvider extends ChangeNotifier {
       _hasSupabaseSession && _userRole == 'admin';
 
   StreamSubscription<AuthState>? _authSub;
+  /// 스플래시·init() 중 notifyListeners 억제 (AnimatedSwitcher 크래시 방지)
+  bool _bootstrapping = true;
+  Uri? _queuedIncomingUri;
+  AppLinkTarget? _pendingAppLink;
+  int? _pendingRestaurantLinkNo;
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
   final Map<String, DateTime> _lastReportTime = {};
   final ProfileRepository _profileRepo = ProfileRepository();
   final AuthRepository _authRepo = AuthRepository();
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
+  final PushConfigRepository _pushConfigRepo = PushConfigRepository();
 
   @override
   void dispose() {
     _authSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (_bootstrapping) return;
+    super.notifyListeners();
+  }
+
+  void _finishBootstrap() {
+    if (!_bootstrapping) return;
+    _bootstrapping = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      super.notifyListeners();
+      final queued = _queuedIncomingUri;
+      _queuedIncomingUri = null;
+      if (queued != null) handleIncomingUri(queued);
+    });
+  }
+
+  /// App Link 수신. 미로그인·앱 메인 전(stage≠app)이면 무시 → 초기 화면 플로우 유지.
+  void handleIncomingUri(Uri uri) {
+    if (_bootstrapping) {
+      _queuedIncomingUri = uri;
+      return;
+    }
+    final parsed = AppLinks.parse(uri);
+    if (parsed == null) return;
+    if (!_isLoggedIn || _stage != 'app') {
+      debugPrint('[AppLink] ignored (loggedIn=$_isLoggedIn stage=$_stage): $uri');
+      return;
+    }
+    _pendingAppLink = parsed.target;
+    _pendingRestaurantLinkNo = parsed.linkNo;
+    notifyListeners();
+  }
+
+  /// MainScreen에서 소비 후 null 반환
+  ({AppLinkTarget target, int? linkNo})? consumePendingAppLink() {
+    final target = _pendingAppLink;
+    final linkNo = _pendingRestaurantLinkNo;
+    _pendingAppLink = null;
+    _pendingRestaurantLinkNo = null;
+    if (target == null) return null;
+    return (target: target, linkNo: linkNo);
+  }
+
+  Restaurant? restaurantByLinkNo(int linkNo) {
+    if (linkNo <= 0) return null;
+    for (final r in _restaurants) {
+      if (r.linkNo == linkNo) return r;
+    }
+    return null;
+  }
+
+  Future<Restaurant?> fetchRestaurantByLinkNo(int linkNo) async {
+    final cached = restaurantByLinkNo(linkNo);
+    if (cached != null) return cached;
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    final fetched = await repo.fetchByLinkNo(linkNo);
+    if (fetched == null) return null;
+    final idx = _restaurants.indexWhere((r) => r.id == fetched.id);
+    if (idx >= 0) {
+      _restaurants[idx] = fetched;
+    }
+    return fetched;
   }
 
   /// 스플래시 → 다음 화면 전환 기준
@@ -253,6 +332,7 @@ class AppProvider extends ChangeNotifier {
     ///    - 비로그인 → permissions(최초) / login
     ///    - 회원가입 직후 → legal_terms_consent → app
   Future<void> init() async {
+    _bootstrapping = true;
     final splashStarted = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
 
@@ -270,61 +350,72 @@ class AppProvider extends ChangeNotifier {
       );
     }
 
-    if (SupabaseService.isReady) {
-      _bindAuthListener();
-      final session = SupabaseService.client.auth.currentSession;
-      final user = SupabaseService.client.auth.currentUser;
-      if (session != null &&
-          user != null &&
-          _isSupabaseSessionRestorable(user)) {
-        final prefsLoggedIn = prefs.getBool(_kLogin) ?? false;
-        if (prefsLoggedIn) {
-          await _restoreSessionFromPrefs(prefs);
-          _stage = await _resolveStageAfterSplash(prefs);
-          if (hasOwnerTab) _mainTabIndex = 0;
-          unawaited(_onSupabaseSignedIn(user));
-        } else {
-          await _onSupabaseSignedIn(user);
+    try {
+      if (SupabaseService.isReady) {
+        final session = SupabaseService.client.auth.currentSession;
+        final user = SupabaseService.client.auth.currentUser;
+        if (session != null &&
+            user != null &&
+            _isSupabaseSessionRestorable(user)) {
+          final prefsLoggedIn = prefs.getBool(_kLogin) ?? false;
+          if (prefsLoggedIn) {
+            await _restoreSessionFromPrefs(prefs);
+            _stage = await _resolveStageAfterSplash(prefs);
+            if (hasOwnerTab) _mainTabIndex = 0;
+          } else {
+            await _onSupabaseSignedIn(user);
+          }
+          await waitMinSplashDuration(splashStarted);
+          if (_hasPermissionsConsent(prefs)) {
+            unawaited(triggerDeferredStartup());
+          }
+          _finishBootstrap();
+          _bindAuthListener();
+          if (prefsLoggedIn) {
+            unawaited(_onSupabaseSignedIn(user, updateStage: false, notify: false));
+          }
+          return;
         }
+      }
+
+      final loggedIn = prefs.getBool(_kLogin) ?? false;
+      final sessionExp = prefs.getInt(_kSessionExp) ?? 0;
+      if (loggedIn && DateTime.now().millisecondsSinceEpoch > sessionExp) {
+        await _clearSession(prefs);
         await waitMinSplashDuration(splashStarted);
-        if (_hasPermissionsConsent(prefs)) {
-          unawaited(triggerDeferredStartup());
-        }
-        notifyListeners();
+        _stage = 'login';
+        _finishBootstrap();
+        if (SupabaseService.isReady) _bindAuthListener();
         return;
       }
-    }
 
-    final loggedIn = prefs.getBool(_kLogin) ?? false;
-    final sessionExp = prefs.getInt(_kSessionExp) ?? 0;
-    if (loggedIn && DateTime.now().millisecondsSinceEpoch > sessionExp) {
-      await _clearSession(prefs);
-      await waitMinSplashDuration(splashStarted);
-      _stage = 'login';
-      notifyListeners();
-      return;
-    }
-
-    if (loggedIn) {
-      await _restoreSessionFromPrefs(prefs);
-      if (SupabaseService.isReady &&
-          SupabaseService.client.auth.currentUser != null) {
-        unawaited(_syncOwnerRestaurantIdsFromDb(prefs));
+      if (loggedIn) {
+        await _restoreSessionFromPrefs(prefs);
+        if (SupabaseService.isReady &&
+            SupabaseService.client.auth.currentUser != null) {
+          unawaited(_syncOwnerRestaurantIdsFromDb(prefs));
+        }
+        unawaited(fetchMyReward());
+        await waitMinSplashDuration(splashStarted);
+        _stage = await _resolveStageAfterSplash(prefs);
+        if (hasOwnerTab) _mainTabIndex = 0;
+      } else {
+        await waitMinSplashDuration(splashStarted);
+        _stage = await _resolveStageAfterSplash(prefs);
       }
-      unawaited(fetchMyReward());
-      await waitMinSplashDuration(splashStarted);
-      _stage = await _resolveStageAfterSplash(prefs);
-      if (hasOwnerTab) _mainTabIndex = 0;
-    } else {
-      await waitMinSplashDuration(splashStarted);
-      _stage = await _resolveStageAfterSplash(prefs);
-    }
 
-    if (_hasPermissionsConsent(prefs)) {
-      unawaited(triggerDeferredStartup());
-    }
+      if (_hasPermissionsConsent(prefs)) {
+        unawaited(triggerDeferredStartup());
+      }
 
-    notifyListeners();
+      _finishBootstrap();
+      if (SupabaseService.isReady) _bindAuthListener();
+    } catch (e, st) {
+      debugPrint('[AppProvider] init failed: $e\n$st');
+      _stage = 'login';
+      _finishBootstrap();
+      if (SupabaseService.isReady) _bindAuthListener();
+    }
   }
 
   Future<void> _restoreSessionFromPrefs(SharedPreferences prefs) async {
@@ -455,20 +546,8 @@ class AppProvider extends ChangeNotifier {
         if (msg.contains('already') || msg.contains('registered')) {
           return _emailAlreadyRegisteredMessage(trimmedEmail);
         }
-        if (msg.contains('rate') || msg.contains('limit')) {
-          return '메일 발송 한도에 걸렸어요.\n'
-              '잠시 후 다시 시도하거나 docs/EMAIL_OTP_SETUP.md 의 Rate limits 를 확인해주세요.';
-        }
-        if (msg.contains('confirmation email') ||
-            msg.contains('sending confirmation') ||
-            msg.contains('unexpected_failure')) {
-          return '인증 메일 발송에 실패했어요.\n'
-              '· Resend 테스트 발신(onboarding@resend.dev)은 Resend 가입 이메일로만 '
-              '받을 수 있는 경우가 많아요.\n'
-              '· 다른 주소로 테스트하려면 Resend 도메인 인증 후 SMTP 발신 주소 변경.\n'
-              '· Chrome(웹)이 아니라 iOS/Android 시뮬레이터로 테스트해 보세요.\n'
-              '· Resend 대시보드 → Logs 에서 거절 사유 확인.';
-        }
+        final emailErr = _formatAuthEmailSendFailure(e);
+        if (emailErr != null) return emailErr;
         return e.message;
       } catch (e) {
         debugPrint('[Supabase] register failed: $e');
@@ -495,6 +574,25 @@ class AppProvider extends ChangeNotifier {
       'Table Editor의 public.users 만 지운 경우 auth.users 에 남아 있을 수 있어요.\n'
       'Supabase → Authentication → Users 에서 삭제하거나\n'
       'dart run tool/purge_auth_user.dart --email=$email';
+
+  /// Supabase Auth 메일 발송 실패 시 사용자 안내. 해당 없으면 null.
+  static String? _formatAuthEmailSendFailure(AuthException e) {
+    final msg = e.message.toLowerCase();
+    if (msg.contains('rate') || msg.contains('limit')) {
+      return '메일 발송 한도에 걸렸어요.\n'
+          '잠시 후 다시 시도해주세요.';
+    }
+    if (msg.contains('confirmation email') ||
+        msg.contains('sending confirmation') ||
+        msg.contains('unexpected_failure')) {
+      debugPrint('[Supabase] email send failed: ${e.message}');
+      return '인증 메일 발송에 실패했어요.\n'
+          '· Resend 대시보드 → Logs 에서 거절 사유를 확인해주세요.\n'
+          '· SMTP 변경 후 `dart run tool/setup_supabase_smtp.dart` 를 실행했는지 확인해주세요.\n'
+          '· 잠시 후 다시 시도하거나 스팸함을 확인해주세요.';
+    }
+    return null;
+  }
 
   static String _oauthLoginBlockedMessage(OAuthLoginEmailStatus status) {
     switch (status) {
@@ -553,6 +651,8 @@ class AppProvider extends ChangeNotifier {
       );
     } on AuthException catch (e) {
       debugPrint('[Supabase] resend pending signup OTP: ${e.message}');
+      final emailErr = _formatAuthEmailSendFailure(e);
+      if (emailErr != null) return emailErr;
       return '인증번호 재발송에 실패했어요. (${e.message})';
     }
     final prefs = await SharedPreferences.getInstance();
@@ -613,7 +713,6 @@ class AppProvider extends ChangeNotifier {
       await prefs.remove(_kAwaitingEmailConfirm);
       await _clearPendingSignupCredentials();
       await _onSupabaseSignedIn(user, isNewSignup: true);
-      notifyListeners();
       return null;
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
@@ -649,7 +748,8 @@ class AppProvider extends ChangeNotifier {
       );
       return null;
     } on AuthException catch (e) {
-      return e.message;
+      final emailErr = _formatAuthEmailSendFailure(e);
+      return emailErr ?? e.message;
     } catch (e) {
       debugPrint('[Supabase] resend OTP failed: $e');
       return '메일 재발송에 실패했어요.';
@@ -669,13 +769,17 @@ class AppProvider extends ChangeNotifier {
   }
 
   void _bindAuthListener() {
-    _authSub?.cancel();
+    if (_authSub != null) return;
     _authSub = SupabaseService.client.auth.onAuthStateChange.listen((data) async {
+      if (data.event == AuthChangeEvent.initialSession) return;
       if (data.event == AuthChangeEvent.signedIn && data.session != null) {
         final user = data.session!.user;
-        if (_isSupabaseSessionRestorable(user)) {
-          await _onSupabaseSignedIn(user);
+        if (!_isSupabaseSessionRestorable(user)) return;
+        if (_isLoggedIn &&
+            SupabaseService.client.auth.currentUser?.id == user.id) {
+          return;
         }
+        await _onSupabaseSignedIn(user);
       }
     });
   }
@@ -683,6 +787,8 @@ class AppProvider extends ChangeNotifier {
   Future<void> _onSupabaseSignedIn(
     User user, {
     bool isNewSignup = false,
+    bool updateStage = true,
+    bool notify = true,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
@@ -750,6 +856,8 @@ class AppProvider extends ChangeNotifier {
         user.id,
         isNewSignup: isNewSignup,
       ),
+      updateStage: updateStage,
+      notify: notify,
     );
     await recordAppSession();
     await _syncPushNotifications();
@@ -762,6 +870,8 @@ class AppProvider extends ChangeNotifier {
     String authProvider = 'email',
     String supabaseUserId = '',
     bool needsLegalTerms = false,
+    bool updateStage = true,
+    bool notify = true,
   }) async {
     _isLoggedIn = true;
     _nickname = account.nickname;
@@ -791,15 +901,17 @@ class AppProvider extends ChangeNotifier {
     if (needsLegalTerms) {
       await _markPendingLegalTerms(prefs, userId);
     }
-    _stage = await _resolveStageForSession(
-      prefs,
-      userId: userId,
-      needsLegalTerms: needsLegalTerms,
-    );
+    if (updateStage) {
+      _stage = await _resolveStageForSession(
+        prefs,
+        userId: userId,
+        needsLegalTerms: needsLegalTerms,
+      );
+    }
     if (account.restaurantIds.isNotEmpty) {
       _mainTabIndex = 0;
     }
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   Future<void> logout() async {
@@ -1189,6 +1301,14 @@ class AppProvider extends ChangeNotifier {
     _mainTabIndex = homeTabIndex;
     notifyListeners();
     unawaited(_refreshForMainTab(homeTabIndex));
+    if (restaurantId != null && restaurantId.isNotEmpty) {
+      final r = _restaurants.where((x) => x.id == restaurantId).firstOrNull;
+      if (r != null && r.linkNo > 0) {
+        _pendingAppLink = AppLinkTarget.restaurant;
+        _pendingRestaurantLinkNo = r.linkNo;
+        notifyListeners();
+      }
+    }
   }
 
   /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.
@@ -1217,17 +1337,20 @@ class AppProvider extends ChangeNotifier {
       final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
       final recommended =
           pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
+      final pushConfig = await _pushConfigRepo.fetchConfig();
 
       await PushNotificationService.instance.syncDeliveredAnalytics(
         lunchEnabled: lunchOn,
         dinnerEnabled: dinnerOn,
         restaurantId: recommended?.id,
+        config: pushConfig,
       );
       await PushNotificationService.instance.refreshSchedules(
         lunchEnabled: lunchOn,
         dinnerEnabled: dinnerOn,
         restaurants: _restaurants,
         useAlgorithmRanking: _useAlgorithmRanking,
+        config: pushConfig,
       );
       if (kDebugMode) {
         await PushNotificationService.instance.logPendingNotifications();

@@ -12,6 +12,8 @@ class MenuItem {
 
 class Restaurant {
   final String id;
+  /// App Link 경로 번호 (/r/{linkNo}). DB INSERT 시 자동 배정.
+  final int linkNo;
   final String name;
   final String category;
   final String area;
@@ -45,6 +47,7 @@ class Restaurant {
 
   Restaurant({
     required this.id,
+    this.linkNo = 0,
     required this.name,
     required this.category,
     required this.area,
@@ -85,6 +88,7 @@ class Restaurant {
   }) =>
       Restaurant(
         id: id,
+        linkNo: linkNo,
         name: name,
         category: category,
         area: area,

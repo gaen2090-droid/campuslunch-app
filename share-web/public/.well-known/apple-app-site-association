@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "WQRY89A2Z3.com.campuslunch.app",
+        "paths": [
+          "/",
+          "/home",
+          "/coupons",
+          "/r/*",
+          "/restaurant/*"
+        ]
+      }
+    ]
+  }
+}

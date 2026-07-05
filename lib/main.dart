@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'services/app_link_service.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/kakao_map_bootstrap.dart';
@@ -63,6 +64,8 @@ Future<void> main() async {
 
   // 카카오·지도·푸시·Google — 권한 안내 확인 이후에만 (OS 권한 팝업 선행 방지)
   runDeferredStartupOnce = () => _deferredStartup(appProvider);
+
+  unawaited(AppLinkService.instance.initialize(appProvider));
 }
 
 Future<void> _deferredStartup(AppProvider provider) async {
@@ -125,32 +128,56 @@ class CampusLunchApp extends StatelessWidget {
   }
 }
 
-class _Root extends StatelessWidget {
+class _Root extends StatefulWidget {
   const _Root();
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  String? _previousStage;
 
   @override
   Widget build(BuildContext context) {
     final stage = context.watch<AppProvider>().stage;
+    _clearStaleRoutesIfNeeded(stage);
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: switch (stage) {
-        'splash' => const SplashScreen(key: ValueKey('splash')),
-        'permissions_consent' =>
-          const PermissionsConsentScreen(key: ValueKey('permissions_consent')),
-        'legal_terms_consent' =>
-          const LegalTermsConsentScreen(key: ValueKey('legal_terms_consent')),
-        'onboarding' =>
-          const OnboardingScreen(key: ValueKey('onboarding')),
-        'login' => const LoginScreen(key: ValueKey('login')),
-        'location_permission' =>
-          const LocationPermissionScreen(key: ValueKey('location')),
-        'notification_permission' =>
-          const NotificationPermissionScreen(key: ValueKey('notification')),
-        'usage_guide' => const UsageGuideScreen(key: ValueKey('usage_guide')),
-        'app' => const MainScreen(key: ValueKey('app')),
-        _ => const MainScreen(key: ValueKey('app')),
-      },
-    );
+    return switch (stage) {
+      'splash' => const SplashScreen(key: ValueKey('splash')),
+      'permissions_consent' =>
+        const PermissionsConsentScreen(key: ValueKey('permissions_consent')),
+      'legal_terms_consent' =>
+        const LegalTermsConsentScreen(key: ValueKey('legal_terms_consent')),
+      'onboarding' =>
+        const OnboardingScreen(key: ValueKey('onboarding')),
+      'login' => const LoginScreen(key: ValueKey('login')),
+      'location_permission' =>
+        const LocationPermissionScreen(key: ValueKey('location')),
+      'notification_permission' =>
+        const NotificationPermissionScreen(key: ValueKey('notification')),
+      'usage_guide' => const UsageGuideScreen(key: ValueKey('usage_guide')),
+      'app' => const MainScreen(key: ValueKey('app')),
+      _ => const MainScreen(key: ValueKey('app')),
+    };
+  }
+
+  /// 로그인 플로우 위에 쌓인 라우트(인증번호 화면 등) 또는 로그아웃 시 잔여 라우트 정리
+  void _clearStaleRoutesIfNeeded(String stage) {
+    final prev = _previousStage;
+    _previousStage = stage;
+    if (prev == null) return;
+
+    final leavingLogin = prev == 'login' && stage != 'login';
+    final loggedOut = stage == 'login' && prev != 'login';
+    if (!leavingLogin && !loggedOut) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.popUntil((route) => route.isFirst);
+      }
+    });
   }
 }

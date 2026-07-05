@@ -1,6 +1,9 @@
 // ignore_for_file: avoid_print
 /// Supabase Auth에 Resend(또는 SMTP) 연동 + 메일 발송 한도 상향
 ///
+/// `.env.secrets`의 SMTP_ADMIN_EMAIL 을 바꿔도 Supabase 서버에는 자동 반영되지 않습니다.
+/// 반드시 이 스크립트를 실행해야 Dashboard Auth SMTP 설정이 갱신됩니다.
+///
 ///   /Users/dongha/develop/flutter/bin/dart run tool/setup_supabase_smtp.dart
 ///
 /// `.env.secrets` (또는 실행 시 입력):

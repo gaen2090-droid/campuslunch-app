@@ -81,4 +81,10 @@ class Env {
 
   static bool get isGoogleOAuthConfigured =>
       googleOAuthWebClientId.isNotEmpty;
+
+  /// App Link / Universal Link 호스트 (예: campuslunch.shop)
+  static String get appLinkHost =>
+      _get('APP_LINK_HOST').isNotEmpty
+          ? _get('APP_LINK_HOST')
+          : 'campuslunch.shop';
 }

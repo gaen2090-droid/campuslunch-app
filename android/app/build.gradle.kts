@@ -69,6 +69,8 @@ android {
             )
         }
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        val appLinkHost = prop("APP_LINK_HOST").trim().ifEmpty { "campuslunch.shop" }
+        manifestPlaceholders["APP_LINK_HOST"] = appLinkHost
     }
 
     signingConfigs {
