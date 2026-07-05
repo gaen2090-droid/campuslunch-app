@@ -66,6 +66,23 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 홈 화면 코치마크(필터/혼잡도/스탬프/지도 안내)를 아직 안 봤으면 true.
+  /// SharedPreferences 조회가 비동기라 캐시해두고, 앱 시작 시 1회 로드한다.
+  bool? _coachMarkSeenCache;
+
+  Future<bool> shouldShowCoachMark() async {
+    if (_coachMarkSeenCache != null) return !_coachMarkSeenCache!;
+    final prefs = await SharedPreferences.getInstance();
+    _coachMarkSeenCache = prefs.getBool(_kCoachMarkSeen) ?? false;
+    return !_coachMarkSeenCache!;
+  }
+
+  void completeCoachMark() {
+    _coachMarkSeenCache = true;
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_kCoachMarkSeen, true));
+  }
+
   void clearSignupCompleteMessage() {
     if (!_showSignupCompleteMessage) return;
     _showSignupCompleteMessage = false;
@@ -182,6 +199,7 @@ class AppProvider extends ChangeNotifier {
   static const _kLegalTermsAcceptedUsers = 'cl_legal_terms_accepted_users';
   static const _kPendingLegalTermsUsers = 'cl_pending_legal_terms_users';
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
+  static const _kCoachMarkSeen = 'cl_coach_mark_seen';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';

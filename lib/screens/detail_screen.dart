@@ -92,7 +92,7 @@ class _DetailScreenState extends State<DetailScreen> {
           children: [
             // ── 이미지 + 플로팅 헤더 ──
             SizedBox(
-              height: _hasImage ? 220 : safeTop + 16 + 32,
+              height: _hasImage ? 220 : safeTop + 16 + 36 + 12,
               width: double.infinity,
               child: Stack(
                 children: [

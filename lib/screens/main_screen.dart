@@ -1,10 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/coach_mark_step.dart';
 import '../providers/app_provider.dart';
+import '../widgets/coach_mark_overlay.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
 import 'owner_screen.dart';
+
+/// 지도 탭 아이콘 코치마크가 위치를 찾을 수 있도록 전역으로 노출
+final mapNavIconKey = GlobalKey();
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,6 +20,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool _mapMounted = false;
+  bool _showCoachMark = false;
 
   @override
   void initState() {
@@ -23,29 +29,44 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       context.read<AppProvider>().recordAppSession();
       final provider = context.read<AppProvider>();
-      if (!provider.showSignupCompleteMessage) return;
-      provider.clearSignupCompleteMessage();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            '회원가입이 완료되었어요! 환영합니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+      if (provider.showSignupCompleteMessage) {
+        provider.clearSignupCompleteMessage();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '회원가입이 완료되었어요! 환영합니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
+            backgroundColor: const Color(0xFF111827),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            duration: const Duration(seconds: 3),
           ),
-          backgroundColor: const Color(0xFF111827),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+        );
+      }
+      _maybeShowCoachMark();
     });
+  }
+
+  Future<void> _maybeShowCoachMark() async {
+    if (!mounted) return;
+    final provider = context.read<AppProvider>();
+    final show = await provider.shouldShowCoachMark();
+    if (!mounted || !show) return;
+    setState(() => _showCoachMark = true);
+  }
+
+  void _finishCoachMark() {
+    context.read<AppProvider>().completeCoachMark();
+    setState(() => _showCoachMark = false);
   }
 
   @override
@@ -68,22 +89,64 @@ class _MainScreenState extends State<MainScreen> {
         index == mapIndex ? 0 : (index > mapIndex ? index - 1 : index);
 
     // PlatformView(카카오맵)는 IndexedStack 비활성 자식에 두면 iOS 터치가 막힘
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (index != mapIndex)
-            IndexedStack(index: nonMapIndex, children: nonMapTabs),
-          if (_mapMounted && index == mapIndex)
-            const MapScreen(key: ValueKey('main_map_tab')),
-        ],
-      ),
-      bottomNavigationBar: _BottomNav(
-        hasOwnerTab: hasOwner,
-        current: index,
-        onTap: (i) => provider.setMainTabIndex(i),
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (index != mapIndex)
+                IndexedStack(index: nonMapIndex, children: nonMapTabs),
+              if (_mapMounted && index == mapIndex)
+                const MapScreen(key: ValueKey('main_map_tab')),
+            ],
+          ),
+          bottomNavigationBar: _BottomNav(
+            hasOwnerTab: hasOwner,
+            current: index,
+            mapIndex: mapIndex,
+            onTap: (i) => provider.setMainTabIndex(i),
+          ),
+        ),
+        // bottomNavigationBar(지도 탭 아이콘)까지 덮으려면 Scaffold 밖, 화면 전체를
+        // 덮는 최상위 Stack에 있어야 한다. Scaffold.body 안에 두면 nav bar 영역은
+        // 가려지지 않아 4번째 스텝(지도 아이콘)이 화면에 그려지지 않는다.
+        if (_showCoachMark && index != mapIndex)
+          CoachMarkOverlay(
+            steps: [
+              CoachMarkStep(
+                targetKeys: [HomeScreen.filterRowKey],
+                title: '원하는 조건으로 걸러봐요',
+                subtitle: '내가 원하는 조건의 매장을 찾을 수 있어요',
+              ),
+              CoachMarkStep(
+                targetKeys: [HomeScreen.availableBadgeKey],
+                title: '혼잡도를 한눈에 확인',
+                subtitle: '바로 입장 가능한 매장을 확인해보세요',
+              ),
+              // 추천 배너(Hero) 제외, 화면에 실제로 존재하는 첫 카드를 섹션 순서대로 후보에 넣는다.
+              // 대상이 스크롤 뷰포트 밖이어도 CoachMarkOverlay가 자동 스크롤 후 가리킨다.
+              CoachMarkStep(
+                targetKeys: [
+                  HomeScreen.firstAvailableCardKey,
+                  HomeScreen.firstSlightlyBusyCardKey,
+                  HomeScreen.stampCardKey,
+                  HomeScreen.firstBusyCardKey,
+                ],
+                title: '제보하고 스탬프 적립',
+                subtitle: '카드를 눌러 제보하면 스탬프를 받아요. 모으면 커피 쿠폰으로 교환해요',
+              ),
+              CoachMarkStep(
+                targetKeys: [mapNavIconKey],
+                title: '지도로도 볼 수 있어요',
+                subtitle: '내 주변 매장을 지도에서 한눈에',
+              ),
+            ],
+            onFinish: _finishCoachMark,
+          ),
+      ],
     );
   }
 }
@@ -91,11 +154,13 @@ class _MainScreenState extends State<MainScreen> {
 class _BottomNav extends StatelessWidget {
   final bool hasOwnerTab;
   final int current;
+  final int mapIndex;
   final ValueChanged<int> onTap;
 
   const _BottomNav({
     required this.hasOwnerTab,
     required this.current,
+    required this.mapIndex,
     required this.onTap,
   });
 
@@ -159,6 +224,7 @@ class _BottomNav extends StatelessWidget {
                   current: current,
                   item: items[i],
                   onTap: onTap,
+                  iconKey: i == mapIndex ? mapNavIconKey : null,
                 ),
             ],
           ),
@@ -185,12 +251,14 @@ class _NavTab extends StatelessWidget {
   final int current;
   final _NavItem item;
   final ValueChanged<int> onTap;
+  final Key? iconKey;
 
   const _NavTab({
     required this.index,
     required this.current,
     required this.item,
     required this.onTap,
+    this.iconKey,
   });
 
   @override
@@ -203,10 +271,15 @@ class _NavTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              active ? item.activeIcon : item.icon,
-              size: 22,
-              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+            SizedBox(
+              key: iconKey,
+              width: 22,
+              height: 22,
+              child: Icon(
+                active ? item.activeIcon : item.icon,
+                size: 22,
+                color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+              ),
             ),
             const SizedBox(height: 2),
             Text(

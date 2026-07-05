@@ -185,8 +185,12 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 배경 이미지
-              RestaurantImage(url: r.imageUrl, onFallbackChanged: _setFallback),
+              // 배경 이미지 (없으면 브랜드 그린 배경)
+              RestaurantImage(
+                url: r.imageUrl,
+                fallback: () => Container(color: const Color(0xFF9ECA8B)),
+                onFallbackChanged: _setFallback,
+              ),
 
               // 하단 다크 그라디언트 (텍스트 가독성)
               Container(

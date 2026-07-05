@@ -165,6 +165,13 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     final all = provider.restaurants;
     final filtered = _filter(all);
     final jeongmunRestaurants = all.where((r) => r.area == '정문').toList();
+    final hasNeedsReportRestaurant =
+        all.any((r) => r.status != '영업안함' && !r.hasCrowdUpdate);
+    if (!hasNeedsReportRestaurant && _reportFilter == '제보없음') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _reportFilter = _allLabel);
+      });
+    }
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final q = _searchCtrl.text.trim();
@@ -296,20 +303,22 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                             onReset: () => setState(() { _cuisines = {_allLabel}; }),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        _MapFilterChip(
-                          label: '스탬프 2개',
-                          active: _reportFilter == '제보없음',
-                          open: false,
-                          showArrow: false,
-                          onTap: () => setState(() {
-                            _reportFilter = _reportFilter == '제보없음' ? _allLabel : '제보없음';
-                          }),
-                          leadingIcon: Icons.stars_rounded,
-                          labelFontFamily: 'OkDanDan',
-                          labelFontSize: 14,
-                          verticalPadding: 6,
-                        ),
+                        if (hasNeedsReportRestaurant) ...[
+                          const SizedBox(width: 8),
+                          _MapFilterChip(
+                            label: '스탬프 2개',
+                            active: _reportFilter == '제보없음',
+                            open: false,
+                            showArrow: false,
+                            onTap: () => setState(() {
+                              _reportFilter = _reportFilter == '제보없음' ? _allLabel : '제보없음';
+                            }),
+                            leadingIcon: Icons.stars_rounded,
+                            labelFontFamily: 'OkDanDan',
+                            labelFontSize: 14,
+                            verticalPadding: 6,
+                          ),
+                        ],
                       ],
                     ),
                   ),

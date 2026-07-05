@@ -19,6 +19,18 @@ import 'restaurant_list_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  /// 코치마크가 위치를 찾기 위한 전역 키 (홈 화면 항상 마운트되어 있음)
+  static final filterRowKey = GlobalKey();
+  static final availableBadgeKey = GlobalKey();
+  /// "화면에 실제로 뜨는 첫 카드" 후보들 — 추천 배너(Hero) 제외, 위에서부터 순서대로.
+  /// 어떤 섹션에 매장이 있는지는 그때그때 다르므로 각 섹션 첫 카드에 전부 key를 걸어두고,
+  /// 코치마크가 그중 존재하는 첫 번째를 찾아 자동 스크롤 후 가리킨다.
+  /// i==0 자리에만 key를 주므로 GlobalKey가 형제 사이를 옮겨 다니지 않는다(항상 슬롯 0 고정).
+  static final firstAvailableCardKey = GlobalKey();
+  static final firstSlightlyBusyCardKey = GlobalKey();
+  static final stampCardKey = GlobalKey();
+  static final firstBusyCardKey = GlobalKey();
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -242,11 +254,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     const _sectionMaxMinutes = 30;
 
+    // 바로 입장 가능해요 = 여유로움만 (약간혼잡은 "빈자리 조금 있어요"로 분리)
     final availableListRecent = _sortSection(
-      filtered.where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
+      filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
     );
     final availableListAll = _sortSection(
-      filtered.where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate).toList(),
+      filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate).toList(),
     );
     final availableStale = availableListRecent.isEmpty && availableListAll.isNotEmpty;
     final availableList = availableStale ? availableListAll : availableListRecent;
@@ -403,6 +416,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 const SizedBox(height: 12),
                 // 필터 칩
                 SingleChildScrollView(
+                  key: HomeScreen.filterRowKey,
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -791,7 +805,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  crowdBadge('여유로움', const Color(0xFFDAFFCA), const Color(0xFF4C9C2A)),
+                  KeyedSubtree(
+                    key: HomeScreen.availableBadgeKey,
+                    child: crowdBadge('여유로움', const Color(0xFFDAFFCA), const Color(0xFF4C9C2A)),
+                  ),
                 ],
               ),
             ),
@@ -807,10 +824,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                     onReport: () => _openReport(recommended),
                   ),
                 ),
-              ...top5Available.map((r) => Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                    child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-                  )),
+              for (var i = 0; i < top5Available.length; i++)
+                Padding(
+                  key: ValueKey('available_${top5Available[i].id}'),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: KeyedSubtree(
+                    key: i == 0 ? HomeScreen.firstAvailableCardKey : null,
+                    child: RestaurantCard(
+                      restaurant: top5Available[i],
+                      onTap: () => _openDetail(top5Available[i]),
+                    ),
+                  ),
+                ),
               moreButton(() => goTo(RestaurantListMode.available)),
             ],
 
@@ -845,10 +870,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             if (slightlyBusyList.isEmpty)
               emptyCard()
             else ...[
-              ...top5SlightlyBusy.map((r) => Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                    child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-                  )),
+              for (var i = 0; i < top5SlightlyBusy.length; i++)
+                Padding(
+                  key: ValueKey('slightlybusy_${top5SlightlyBusy[i].id}'),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: KeyedSubtree(
+                    key: i == 0 ? HomeScreen.firstSlightlyBusyCardKey : null,
+                    child: RestaurantCard(
+                      restaurant: top5SlightlyBusy[i],
+                      onTap: () => _openDetail(top5SlightlyBusy[i]),
+                    ),
+                  ),
+                ),
               moreButton(() => goTo(RestaurantListMode.slightlyBusy)),
             ],
 
@@ -880,10 +913,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   ],
                 ),
               ),
-              ...stampCards.map((r) => Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                    child: NeedsReportCard(restaurant: r, onTap: () => _openDetail(r)),
-                  )),
+              for (var i = 0; i < stampCards.length; i++)
+                Padding(
+                  key: ValueKey('stamp_${stampCards[i].id}'),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: KeyedSubtree(
+                    key: i == 0 ? HomeScreen.stampCardKey : null,
+                    child: NeedsReportCard(
+                      restaurant: stampCards[i],
+                      onTap: () => _openDetail(stampCards[i]),
+                    ),
+                  ),
+                ),
               moreButton(() => goTo(RestaurantListMode.stamp)),
             ],
 
@@ -920,10 +961,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             if (busyList.isEmpty)
               emptyCard()
             else ...[
-              ...busyCards.map((r) => Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                    child: RestaurantCard(restaurant: r, onTap: () => _openDetail(r)),
-                  )),
+              for (var i = 0; i < busyCards.length; i++)
+                Padding(
+                  key: ValueKey('busy_${busyCards[i].id}'),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: KeyedSubtree(
+                    key: i == 0 ? HomeScreen.firstBusyCardKey : null,
+                    child: RestaurantCard(
+                      restaurant: busyCards[i],
+                      onTap: () => _openDetail(busyCards[i]),
+                    ),
+                  ),
+                ),
               moreButton(() => goTo(RestaurantListMode.busy)),
             ],
 
