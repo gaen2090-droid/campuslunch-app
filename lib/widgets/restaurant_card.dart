@@ -73,6 +73,24 @@ class RestaurantCard extends StatelessWidget {
             ),
             // 상태 뱃지
             const SizedBox(width: 8),
+            if (r.hasCrowdUpdate && r.crowdBaseSource == 'owner') ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Color(meta.bgColor),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '사장님',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Color(meta.color),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
             Container(
               constraints: const BoxConstraints(maxWidth: 140),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -169,6 +187,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
     final reportTextColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF5E8C4A);
     final statusLabel = r.status == '웨이팅많음' ? '🔥웨이팅' : r.status;
+    final meta = crowdStatusMeta(r.status);
 
     return GestureDetector(
       onTap: widget.onDetail,
@@ -211,33 +230,56 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 현재 상태 뱃지
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text.rich(
-                        TextSpan(
-                          text: statusLabel,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
-                          ),
-                          children: [
-                            if (r.status != '영업안함' && r.hasCrowdUpdate)
-                              TextSpan(
-                                text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF9CA3AF),
-                                ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (r.hasCrowdUpdate && r.crowdBaseSource == 'owner') ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Color(meta.bgColor),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '사장님',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: Color(meta.color),
                               ),
-                          ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Color(meta.bgColor),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text.rich(
+                            TextSpan(
+                              text: statusLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: Color(meta.color),
+                              ),
+                              children: [
+                                if (r.status != '영업안함' && r.hasCrowdUpdate)
+                                  TextSpan(
+                                    text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -262,10 +304,18 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                     const SizedBox(height: 4),
                     Text(
                       r.area == r.category ? r.area : '${r.area} · ${r.category}',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white.withAlpha(150)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black,
+                            offset: Offset.zero,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
                     ),
                     const Spacer(),
                     Row(

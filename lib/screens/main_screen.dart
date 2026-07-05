@@ -43,10 +43,10 @@ class _MainScreenState extends State<MainScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: Color(0xFF111827),
               ),
             ),
-            backgroundColor: const Color(0xFF111827),
+            backgroundColor: const Color(0xFF9ECA8B),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -162,7 +162,9 @@ class _MainScreenState extends State<MainScreen> {
         // 덮는 최상위 Stack에 있어야 한다. Scaffold.body 안에 두면 nav bar 영역은
         // 가려지지 않아 4번째 스텝(지도 아이콘)이 화면에 그려지지 않는다.
         if (_showCoachMark && index != mapIndex)
-          CoachMarkOverlay(
+          Material(
+            type: MaterialType.transparency,
+            child: CoachMarkOverlay(
             steps: [
               CoachMarkStep(
                 targetKeys: [HomeScreen.filterRowKey],
@@ -193,6 +195,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ],
             onFinish: _finishCoachMark,
+            ),
           ),
       ],
     );

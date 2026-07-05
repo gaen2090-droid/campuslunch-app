@@ -235,7 +235,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
       (r) => r.id.toString() == selectedId,
       orElse: () => ownedList.first,
     );
-    final current = restaurant.status;
+    // 아직 혼잡도 제보/업데이트가 없는 매장은 어떤 옵션도 선택되지 않은 상태로 보여준다.
+    final current = restaurant.hasCrowdUpdate ? restaurant.status : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAF8),

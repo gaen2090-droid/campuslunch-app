@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/supabase_service.dart';
 import '../widgets/owner_verify_sheet.dart';
 import '../widgets/feedback_sheet.dart';
 import 'push_notification_settings_screen.dart';
@@ -55,10 +56,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _loginMethodLabel() {
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) return '';
+    final authProvider = user.appMetadata['provider'] as String?;
+    return switch (authProvider) {
+      'kakao' => '카카오 로그인',
+      'google' => '구글 로그인',
+      _ => '',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final hasOwner = provider.hasOwnerTab;
+    final email = SupabaseService.client.auth.currentUser?.email ?? '';
+    final loginMethod = _loginMethodLabel();
 
     return Stack(
       children: [
@@ -85,6 +99,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
           body: ListView(
             padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
             children: [
+              if (email.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        '내 아이디',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        email,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (loginMethod.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        '연동된 서비스',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        loginMethod,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               _SettingsButton(
                 label: '푸시 알림 설정',
                 onTap: () => Navigator.push(

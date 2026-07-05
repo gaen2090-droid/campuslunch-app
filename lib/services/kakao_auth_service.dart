@@ -44,10 +44,10 @@ class KakaoAuthService {
   /// 닉네임은 AppProvider에서 앙대+과일+숫자 형식으로 생성
   static Future<KakaoAuthResult> signInWithSupabase() async {
     if (!isConfigured) {
-      throw Exception('KAKAO_NATIVE_APP_KEY가 .env에 없습니다.');
+      throw Exception('카카오 로그인을 사용할 수 없어요.');
     }
     if (!SupabaseService.isReady) {
-      throw Exception('Supabase가 설정되지 않았습니다.');
+      throw Exception('서버 연결에 실패했어요.');
     }
     await initialize();
 

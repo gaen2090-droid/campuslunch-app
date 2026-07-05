@@ -26,7 +26,12 @@ Future<void> runWhenKakaoMapReady(
     } on PlatformException catch (e) {
       lastError = e;
       final msg = e.message ?? '';
-      if (e.code == 'E000' || msg.contains('MapView not found')) {
+      final details = e.details?.toString() ?? '';
+      final notReadyYet = e.code == 'E000' ||
+          msg.contains('MapView not found') ||
+          msg.contains('kakaoMap is not initialized') ||
+          details.contains('kakaoMap is not initialized');
+      if (notReadyYet) {
         await Future.delayed(const Duration(milliseconds: 100));
         continue;
       }

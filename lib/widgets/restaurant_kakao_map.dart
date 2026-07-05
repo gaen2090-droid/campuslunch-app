@@ -244,7 +244,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       debugPrint('[RestaurantKakaoMap] onMapCreated failed: $e\n$st');
       if (!mounted) return;
       setState(() {
-        _mapError = '지도 로드 실패(디버그):\n$e';
+        _mapError = '지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
       });
     }
   }
@@ -420,8 +420,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'KAKAO_NATIVE_APP_KEY가 설정되지 않았어요.\n'
-            'dart run tool/sync_env_to_native.dart 후 다시 빌드해주세요.',
+            '지도를 불러올 수 없어요. 잠시 후 다시 시도해주세요.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),

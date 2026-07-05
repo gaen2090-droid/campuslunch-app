@@ -63,7 +63,16 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('피드백이 전송되었어요. 감사합니다!')),
+        SnackBar(
+          content: const Text(
+            '피드백이 전송되었어요. 감사합니다!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          ),
+          backgroundColor: const Color(0xFF9ECA8B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       );
     } catch (_) {
       if (!mounted) return;

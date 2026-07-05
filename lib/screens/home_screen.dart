@@ -782,199 +782,226 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               ),
 
             // ── 바로 입장 가능해요 ──
-            sectionHeader(
-              title: '바로 입장 가능해요',
-              dotColor: const Color(0xFF4C9C2A),
-              onMore: () => goTo(RestaurantListMode.available),
-              subText: availableStale ? '최근 제보가 없어요' : null,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CompositedTransformTarget(
-                    link: _crowdInfoLink,
-                    child: OverlayPortal(
-                      controller: _crowdInfoOverlay,
-                      overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+            // 각 섹션 블록 전체에 고유 key 부여: "혼잡도를 알려주세요" 섹션처럼
+            // 조건부로 나타났다 사라지는 블록이 있으면 뒤따르는 섹션들이 리스트에서
+            // 밀리는데, key가 없으면 Flutter가 위치 기준으로 element를 재사용하다가
+            // 서로 다른 OverlayPortalController를 같은 element에 잘못 붙이며 충돌한다.
+            Column(
+              key: const ValueKey('section_available'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sectionHeader(
+                  title: '바로 입장 가능해요',
+                  dotColor: const Color(0xFF4C9C2A),
+                  onMore: () => goTo(RestaurantListMode.available),
+                  subText: availableStale ? '최근 제보가 없어요' : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CompositedTransformTarget(
                         link: _crowdInfoLink,
-                        onDismiss: _crowdInfoOverlay.hide,
+                        child: OverlayPortal(
+                          controller: _crowdInfoOverlay,
+                          overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+                            link: _crowdInfoLink,
+                            onDismiss: _crowdInfoOverlay.hide,
+                          ),
+                          child: GestureDetector(
+                            onTap: _crowdInfoOverlay.toggle,
+                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
                       ),
-                      child: GestureDetector(
-                        onTap: _crowdInfoOverlay.toggle,
-                        child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                      const SizedBox(width: 6),
+                      KeyedSubtree(
+                        key: HomeScreen.availableBadgeKey,
+                        child: crowdBadge('여유로움', const Color(0xFFDAFFCA), const Color(0xFF4C9C2A)),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!hasAvailable)
+                  emptyCard()
+                else ...[
+                  if (recommended != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      child: HeroRestaurantCard(
+                        restaurant: recommended,
+                        onDetail: () => _openRecommendedDetail(recommended),
+                        onReport: () => _openReport(recommended),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  KeyedSubtree(
-                    key: HomeScreen.availableBadgeKey,
-                    child: crowdBadge('여유로움', const Color(0xFFDAFFCA), const Color(0xFF4C9C2A)),
-                  ),
+                  for (var i = 0; i < top5Available.length; i++)
+                    Padding(
+                      key: ValueKey('available_${top5Available[i].id}'),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      child: KeyedSubtree(
+                        key: i == 0 ? HomeScreen.firstAvailableCardKey : null,
+                        child: RestaurantCard(
+                          restaurant: top5Available[i],
+                          onTap: () => _openDetail(top5Available[i]),
+                        ),
+                      ),
+                    ),
+                  moreButton(() => goTo(RestaurantListMode.available)),
                 ],
-              ),
+              ],
             ),
-            if (!hasAvailable)
-              emptyCard()
-            else ...[
-              if (recommended != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: HeroRestaurantCard(
-                    restaurant: recommended,
-                    onDetail: () => _openRecommendedDetail(recommended),
-                    onReport: () => _openReport(recommended),
-                  ),
-                ),
-              for (var i = 0; i < top5Available.length; i++)
-                Padding(
-                  key: ValueKey('available_${top5Available[i].id}'),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: KeyedSubtree(
-                    key: i == 0 ? HomeScreen.firstAvailableCardKey : null,
-                    child: RestaurantCard(
-                      restaurant: top5Available[i],
-                      onTap: () => _openDetail(top5Available[i]),
-                    ),
-                  ),
-                ),
-              moreButton(() => goTo(RestaurantListMode.available)),
-            ],
 
             // ── 빈자리 조금 있어요 ──
-            sectionHeader(
-              title: '빈자리 조금 있어요',
-              dotColor: const Color(0xFFF59E0B),
-              onMore: () => goTo(RestaurantListMode.slightlyBusy),
-              subText: slightlyBusyStale ? '최근 제보가 없어요' : null,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CompositedTransformTarget(
-                    link: _crowdInfoLink2,
-                    child: OverlayPortal(
-                      controller: _crowdInfoOverlay2,
-                      overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+            Column(
+              key: const ValueKey('section_slightly_busy'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sectionHeader(
+                  title: '빈자리 조금 있어요',
+                  dotColor: const Color(0xFFF59E0B),
+                  onMore: () => goTo(RestaurantListMode.slightlyBusy),
+                  subText: slightlyBusyStale ? '최근 제보가 없어요' : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CompositedTransformTarget(
                         link: _crowdInfoLink2,
-                        onDismiss: _crowdInfoOverlay2.hide,
+                        child: OverlayPortal(
+                          controller: _crowdInfoOverlay2,
+                          overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+                            link: _crowdInfoLink2,
+                            onDismiss: _crowdInfoOverlay2.hide,
+                          ),
+                          child: GestureDetector(
+                            onTap: _crowdInfoOverlay2.toggle,
+                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
                       ),
-                      child: GestureDetector(
-                        onTap: _crowdInfoOverlay2.toggle,
-                        child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  crowdBadge('약간혼잡', const Color(0xFFFEF3C7), const Color(0xFFF59E0B)),
-                ],
-              ),
-            ),
-            if (slightlyBusyList.isEmpty)
-              emptyCard()
-            else ...[
-              for (var i = 0; i < top5SlightlyBusy.length; i++)
-                Padding(
-                  key: ValueKey('slightlybusy_${top5SlightlyBusy[i].id}'),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: KeyedSubtree(
-                    key: i == 0 ? HomeScreen.firstSlightlyBusyCardKey : null,
-                    child: RestaurantCard(
-                      restaurant: top5SlightlyBusy[i],
-                      onTap: () => _openDetail(top5SlightlyBusy[i]),
-                    ),
+                      const SizedBox(width: 6),
+                      crowdBadge('약간혼잡', const Color(0xFFFEF3C7), const Color(0xFFF59E0B)),
+                    ],
                   ),
                 ),
-              moreButton(() => goTo(RestaurantListMode.slightlyBusy)),
-            ],
+                if (slightlyBusyList.isEmpty)
+                  emptyCard()
+                else ...[
+                  for (var i = 0; i < top5SlightlyBusy.length; i++)
+                    Padding(
+                      key: ValueKey('slightlybusy_${top5SlightlyBusy[i].id}'),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      child: KeyedSubtree(
+                        key: i == 0 ? HomeScreen.firstSlightlyBusyCardKey : null,
+                        child: RestaurantCard(
+                          restaurant: top5SlightlyBusy[i],
+                          onTap: () => _openDetail(top5SlightlyBusy[i]),
+                        ),
+                      ),
+                    ),
+                  moreButton(() => goTo(RestaurantListMode.slightlyBusy)),
+                ],
+              ],
+            ),
 
             // ── 혼잡도를 알려주세요 (매장 있을 때만) ──
-            if (stampList.isNotEmpty) ...[
-              sectionHeader(
-                title: '혼잡도를 알려주세요',
-                dotColor: const Color(0xFF111827),
-                onMore: () => goTo(RestaurantListMode.stamp),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CompositedTransformTarget(
-                      link: _stampInfoLink,
-                      child: OverlayPortal(
-                        controller: _stampInfoOverlay,
-                        overlayChildBuilder: (context) => StampInfoPopup(
-                          link: _stampInfoLink,
-                          onDismiss: _stampInfoOverlay.hide,
-                        ),
-                        child: GestureDetector(
-                          onTap: _stampInfoOverlay.toggle,
-                          child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    crowdBadge('제보필요', const Color(0xFFF3F4F6), const Color(0xFF111827)),
-                  ],
-                ),
-              ),
-              for (var i = 0; i < stampCards.length; i++)
-                Padding(
-                  key: ValueKey('stamp_${stampCards[i].id}'),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: KeyedSubtree(
-                    key: i == 0 ? HomeScreen.stampCardKey : null,
-                    child: NeedsReportCard(
-                      restaurant: stampCards[i],
-                      onTap: () => _openDetail(stampCards[i]),
-                    ),
-                  ),
-                ),
-              moreButton(() => goTo(RestaurantListMode.stamp)),
-            ],
-
-            // ── 붐비고 있어요 ──
-            sectionHeader(
-              title: '붐비고 있어요',
-              dotColor: const Color(0xFFEF4444),
-              onMore: () => goTo(RestaurantListMode.busy),
-              subText: busyStale ? '최근 제보가 없어요' : null,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+            if (stampList.isNotEmpty)
+              Column(
+                key: const ValueKey('section_stamp'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CompositedTransformTarget(
-                    link: _crowdInfoLink3,
-                    child: OverlayPortal(
-                      controller: _crowdInfoOverlay3,
-                      overlayChildBuilder: (context) => CrowdLevelInfoPopup(
-                        link: _crowdInfoLink3,
-                        onDismiss: _crowdInfoOverlay3.hide,
-                      ),
-                      child: GestureDetector(
-                        onTap: _crowdInfoOverlay3.toggle,
-                        child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
-                      ),
+                  sectionHeader(
+                    title: '혼잡도를 알려주세요',
+                    dotColor: const Color(0xFF111827),
+                    onMore: () => goTo(RestaurantListMode.stamp),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CompositedTransformTarget(
+                          link: _stampInfoLink,
+                          child: OverlayPortal(
+                            controller: _stampInfoOverlay,
+                            overlayChildBuilder: (context) => StampInfoPopup(
+                              link: _stampInfoLink,
+                              onDismiss: _stampInfoOverlay.hide,
+                            ),
+                            child: GestureDetector(
+                              onTap: _stampInfoOverlay.toggle,
+                              child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        crowdBadge('제보필요', const Color(0xFFF3F4F6), const Color(0xFF111827)),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  crowdBadge('자리없음', const Color(0xFFFFEDD5), const Color(0xFFF97316)),
-                  const SizedBox(width: 6),
-                  crowdBadge('🔥웨이팅', const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                  for (var i = 0; i < stampCards.length; i++)
+                    Padding(
+                      key: ValueKey('stamp_${stampCards[i].id}'),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      child: KeyedSubtree(
+                        key: i == 0 ? HomeScreen.stampCardKey : null,
+                        child: NeedsReportCard(
+                          restaurant: stampCards[i],
+                          onTap: () => _openDetail(stampCards[i]),
+                        ),
+                      ),
+                    ),
+                  moreButton(() => goTo(RestaurantListMode.stamp)),
                 ],
               ),
-            ),
-            if (busyList.isEmpty)
-              emptyCard()
-            else ...[
-              for (var i = 0; i < busyCards.length; i++)
-                Padding(
-                  key: ValueKey('busy_${busyCards[i].id}'),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: KeyedSubtree(
-                    key: i == 0 ? HomeScreen.firstBusyCardKey : null,
-                    child: RestaurantCard(
-                      restaurant: busyCards[i],
-                      onTap: () => _openDetail(busyCards[i]),
-                    ),
+
+            // ── 붐비고 있어요 ──
+            Column(
+              key: const ValueKey('section_busy'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sectionHeader(
+                  title: '붐비고 있어요',
+                  dotColor: const Color(0xFFEF4444),
+                  onMore: () => goTo(RestaurantListMode.busy),
+                  subText: busyStale ? '최근 제보가 없어요' : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CompositedTransformTarget(
+                        link: _crowdInfoLink3,
+                        child: OverlayPortal(
+                          controller: _crowdInfoOverlay3,
+                          overlayChildBuilder: (context) => CrowdLevelInfoPopup(
+                            link: _crowdInfoLink3,
+                            onDismiss: _crowdInfoOverlay3.hide,
+                          ),
+                          child: GestureDetector(
+                            onTap: _crowdInfoOverlay3.toggle,
+                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      crowdBadge('자리없음', const Color(0xFFFFEDD5), const Color(0xFFF97316)),
+                      const SizedBox(width: 6),
+                      crowdBadge('🔥웨이팅', const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                    ],
                   ),
                 ),
-              moreButton(() => goTo(RestaurantListMode.busy)),
-            ],
+                if (busyList.isEmpty)
+                  emptyCard()
+                else ...[
+                  for (var i = 0; i < busyCards.length; i++)
+                    Padding(
+                      key: ValueKey('busy_${busyCards[i].id}'),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      child: KeyedSubtree(
+                        key: i == 0 ? HomeScreen.firstBusyCardKey : null,
+                        child: RestaurantCard(
+                          restaurant: busyCards[i],
+                          onTap: () => _openDetail(busyCards[i]),
+                        ),
+                      ),
+                    ),
+                  moreButton(() => goTo(RestaurantListMode.busy)),
+                ],
+              ],
+            ),
 
             // ── 영업 종료 버튼 ──
             const SizedBox(height: 16),

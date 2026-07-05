@@ -82,13 +82,10 @@ class GoogleAuthService {
       );
     }
     if (!isConfigured) {
-      throw Exception(
-        'GOOGLE_OAUTH_WEB_CLIENT_ID가 .env에 없습니다. '
-        'docs/GOOGLE_SUPABASE_SETUP.md 참고.',
-      );
+      throw Exception('구글 로그인을 사용할 수 없어요.');
     }
     if (!SupabaseService.isReady) {
-      throw Exception('Supabase가 설정되지 않았습니다.');
+      throw Exception('서버 연결에 실패했어요.');
     }
     if (!_initialized) {
       await initialize();
@@ -113,13 +110,7 @@ class GoogleAuthService {
       if (s.contains('ApiException: 10') ||
           s.contains('DEVELOPER_ERROR') ||
           s.contains('sign_in_failed')) {
-        throw Exception(
-          'Google Android OAuth 설정 오류(DEVELOPER_ERROR).\n'
-          'Google Cloud Console → Android OAuth 클라이언트에\n'
-          '패키지 com.campuslunch.app + APK 서명 SHA-1을 등록하세요.\n'
-          'cd android && ./gradlew :app:signingReport\n'
-          'docs/GOOGLE_SUPABASE_SETUP.md 참고',
-        );
+        throw Exception('구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요.');
       }
       rethrow;
     }

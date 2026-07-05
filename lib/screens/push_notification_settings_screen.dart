@@ -13,7 +13,6 @@ class PushNotificationSettingsScreen extends StatefulWidget {
 class _PushNotificationSettingsScreenState
     extends State<PushNotificationSettingsScreen> {
   bool _lunchPush = false;
-  bool _dinnerPush = false;
   bool _initialized = false;
 
   @override
@@ -23,7 +22,6 @@ class _PushNotificationSettingsScreenState
       _initialized = true;
       final provider = context.read<AppProvider>();
       _lunchPush = provider.lunchPushEnabled;
-      _dinnerPush = provider.dinnerPushEnabled;
     }
   }
 
@@ -65,7 +63,7 @@ class _PushNotificationSettingsScreenState
             children: [
               _ToggleRow(
                 title: '점심 피크 추천 알림',
-                desc: '평일 12:00에 여유로운 매장을 알려드려요!',
+                desc: '점심 피크 시간대에 추천 매장 정보를 보내드려요.',
                 enabled: _lunchPush,
                 onToggle: () async {
                   final next = !_lunchPush;
@@ -77,36 +75,9 @@ class _PushNotificationSettingsScreenState
                       content: const Text(
                         '평일 12:00에 알림을 보내드릴게요!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                       ),
-                      backgroundColor: const Color(0xFF111827),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                      duration: const Duration(milliseconds: 1600),
-                      elevation: 0,
-                    ));
-                  }
-                },
-              ),
-              const Divider(color: Color(0xFFE5E7EB), height: 1),
-              _ToggleRow(
-                title: '저녁 피크 추천 알림',
-                desc: '평일 18:00에 여유로운 매장을 알려드려요!',
-                enabled: _dinnerPush,
-                onToggle: () async {
-                  final next = !_dinnerPush;
-                  setState(() => _dinnerPush = next);
-                  await context.read<AppProvider>().setDinnerPush(next);
-                  if (!context.mounted) return;
-                  if (next) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text(
-                        '평일 18:00에 알림을 보내드릴게요!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                      backgroundColor: const Color(0xFF111827),
+                      backgroundColor: const Color(0xFF9ECA8B),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

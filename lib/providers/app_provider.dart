@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
-import '../config/env.dart';
 import '../utils/nickname_generator.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
@@ -197,6 +196,19 @@ class AppProvider extends ChangeNotifier {
   List<Gifticon> get visibleMyGifticons =>
       _myGifticons.where((g) => !_hiddenGifticonIds.contains(g.id)).toList();
 
+  Set<String> _seenGifticonIds = {};
+  bool get hasUnseenCoupon =>
+      visibleMyGifticons.any((g) => !_seenGifticonIds.contains(g.id));
+
+  Future<void> markCouponBoxSeen() async {
+    final ids = visibleMyGifticons.map((g) => g.id).toSet();
+    if (ids.difference(_seenGifticonIds).isEmpty) return;
+    _seenGifticonIds = {..._seenGifticonIds, ...ids};
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kSeenGifticons, _seenGifticonIds.toList());
+  }
+
   RewardRepository? get _rewardRepo =>
       SupabaseService.isReady ? RewardRepository(SupabaseService.client) : null;
 
@@ -221,6 +233,7 @@ class AppProvider extends ChangeNotifier {
   static const _kOverrides = 'cl_restaurant_overrides';
   static const _kUseAlgorithmRanking = 'cl_use_algorithm_ranking';
   static const _kAwaitingEmailConfirm = 'cl_awaiting_email_confirm';
+  static const _kSeenGifticons = 'cl_seen_gifticon_ids';
   static const _kPendingSignupPassword = 'cl_pending_signup_password';
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
   static const _kAuthProvider = 'cl_auth_provider';
@@ -339,6 +352,8 @@ class AppProvider extends ChangeNotifier {
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
     _hiddenGifticonIds =
         Set<String>.from(prefs.getStringList(_kHiddenGifticons) ?? const []);
+    _seenGifticonIds =
+        Set<String>.from(prefs.getStringList(_kSeenGifticons) ?? const []);
 
     _restaurants = [];
     unawaited(_loadRestaurantsFromSupabase());
@@ -571,9 +586,7 @@ class AppProvider extends ChangeNotifier {
 
   static String _emailAlreadyRegisteredMessage(String email) =>
       '이미 가입된 이메일이에요.\n'
-      'Table Editor의 public.users 만 지운 경우 auth.users 에 남아 있을 수 있어요.\n'
-      'Supabase → Authentication → Users 에서 삭제하거나\n'
-      'dart run tool/purge_auth_user.dart --email=$email';
+      '다른 이메일로 가입하거나 로그인해주세요.';
 
   /// Supabase Auth 메일 발송 실패 시 사용자 안내. 해당 없으면 null.
   static String? _formatAuthEmailSendFailure(AuthException e) {
@@ -587,9 +600,7 @@ class AppProvider extends ChangeNotifier {
         msg.contains('unexpected_failure')) {
       debugPrint('[Supabase] email send failed: ${e.message}');
       return '인증 메일 발송에 실패했어요.\n'
-          '· Resend 대시보드 → Logs 에서 거절 사유를 확인해주세요.\n'
-          '· SMTP 변경 후 `dart run tool/setup_supabase_smtp.dart` 를 실행했는지 확인해주세요.\n'
-          '· 잠시 후 다시 시도하거나 스팸함을 확인해주세요.';
+          '잠시 후 다시 시도하거나 스팸함을 확인해주세요.';
     }
     return null;
   }
@@ -967,29 +978,18 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// OAuth SDK가 설정 오류를 cancel로 반환할 때 APK용 안내
+  /// OAuth SDK가 설정 오류를 cancel로 반환할 때 안내
   String _oauthCancelledMessage() {
-    if (kReleaseMode) {
-      return '로그인이 취소되었어요.\n\n'
-          'APK(릴리스)는 flutter run과 서명 키가 다를 수 있어요.\n'
-          '• Google: Cloud Console Android OAuth에 SHA-1 등록\n'
-          '• Kakao: 개발자 콘솔 Android 키 해시 등록\n'
-          '  dart run tool/print_kakao_android_key_hash.dart --release\n'
-          '  (또는 cd android && ./gradlew :app:signingReport)\n'
-          'docs/GOOGLE_SUPABASE_SETUP.md · docs/KAKAO_SUPABASE_SETUP.md';
-    }
     return '로그인이 취소되었어요.';
   }
 
   /// 카카오 로그인 (Supabase Auth + public.users)
   Future<String?> loginWithKakao() async {
     if (!KakaoAuthService.isConfigured) {
-      return 'KAKAO_NATIVE_APP_KEY가 .env에 없습니다.';
+      return '카카오 로그인을 사용할 수 없어요. 잠시 후 다시 시도해주세요.';
     }
     if (!SupabaseService.isReady) {
-      return 'Supabase 연결을 확인해주세요.\n'
-          'APK 빌드 전 dart run tool/sync_env_to_native.dart 실행 후 '
-          'flutter clean && flutter build apk 해주세요.';
+      return '서버 연결에 실패했어요. 잠시 후 다시 시도해주세요.';
     }
 
     try {
@@ -1002,10 +1002,7 @@ class AppProvider extends ChangeNotifier {
       return null;
     } on AuthException catch (e) {
       if (e.message.contains('Unacceptable audience in id_token')) {
-        return 'Supabase Kakao 설정을 확인해주세요.\n'
-            'Authentication → Providers → Kakao → '
-            'Native App Key(또는 REST API Key 칸)에 '
-            '네이티브 앱 키(${Env.kakaoNativeAppKey})를 넣어야 합니다.';
+        return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
       return e.message;
     } catch (e) {
@@ -1018,27 +1015,19 @@ class AppProvider extends ChangeNotifier {
           msg.contains('invalid_client') ||
           msg.contains('invalidclient') ||
           msg.contains('misconfigured')) {
-        return '카카오 앱 설정 오류(KOE101).\n'
-            '1) git pull 후 .env · android/keys.properties 확인\n'
-            '2) flutter clean && flutter pub get && flutter build apk\n'
-            '3) Android: dart run tool/print_kakao_android_key_hash.dart 로 '
-            '릴리스 APK 서명 키 해시를 카카오 콘솔에 등록 (docs/KAKAO_SUPABASE_SETUP.md)\n'
-            '4) iOS: Bundle ID com.campuslunch.app 등록 여부 확인';
+        return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
-      return e.toString().replaceFirst('Exception: ', '');
+      return '로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
     }
   }
 
   /// Google 로그인 (Supabase Auth + public.users)
   Future<String?> loginWithGoogle() async {
     if (!GoogleAuthService.isConfigured) {
-      return 'GOOGLE_OAUTH_WEB_CLIENT_ID가 .env에 없습니다.\n'
-          'docs/GOOGLE_SUPABASE_SETUP.md 참고.';
+      return '구글 로그인을 사용할 수 없어요. 잠시 후 다시 시도해주세요.';
     }
     if (!SupabaseService.isReady) {
-      return 'Supabase 연결을 확인해주세요.\n'
-          'APK 빌드 전 dart run tool/sync_env_to_native.dart 실행 후 '
-          'flutter clean && flutter build apk 해주세요.';
+      return '서버 연결에 실패했어요. 잠시 후 다시 시도해주세요.';
     }
 
     try {
@@ -1062,16 +1051,12 @@ class AppProvider extends ChangeNotifier {
             '이메일·비밀번호로 로그인해주세요.';
       }
       if (msg.contains('nonce')) {
-        return 'Google 로그인 검증 오류가 발생했어요.\n'
-            '앱을 완전히 종료한 뒤 다시 시도해주세요.\n'
-            '계속되면 Supabase → Google Provider → '
-            '「Skip nonce check」를 켜주세요. (docs/GOOGLE_SUPABASE_SETUP.md)';
+        return '구글 로그인 인증에 실패했어요.\n'
+            '앱을 완전히 종료한 뒤 다시 시도해주세요.';
       }
       if (e.message.contains('Unacceptable audience in id_token') ||
           e.message.contains('audience')) {
-        return 'Supabase Google 설정을 확인해주세요.\n'
-            'Authentication → Providers → Google → Client ID에 '
-            '웹 Client ID(${Env.googleOAuthWebClientId})를 넣어야 합니다.';
+        return '구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
       return e.message;
     } catch (e) {
@@ -1086,7 +1071,10 @@ class AppProvider extends ChangeNotifier {
       if (msg.contains('cancel') || msg.contains('canceled')) {
         return _oauthCancelledMessage();
       }
-      return e.toString().replaceFirst('Exception: ', '');
+      if (msg.contains('developer_error') || msg.contains('apiexception: 10')) {
+        return '구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+      return '로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
     }
   }
 
@@ -1358,43 +1346,6 @@ class AppProvider extends ChangeNotifier {
     } catch (e, st) {
       debugPrint('[Push] _syncPushNotifications failed: $e\n$st');
     }
-  }
-
-  /// 디버그: N초 후 테스트 푸시 예약 (앱 종료 후 수신 확인)
-  Future<String> debugSchedulePushTest({
-    Duration delay = const Duration(seconds: 30),
-  }) async {
-    if (!kDebugMode) return '디버그 빌드에서만 사용할 수 있어요.';
-    final granted = await PushNotificationService.instance.requestPermission();
-    if (!granted) {
-      return '알림 권한이 없어요. 설정 → 캠퍼스런치 → 알림을 켜주세요.';
-    }
-    return PushNotificationService.instance.scheduleDebugNotification(
-      restaurants: _restaurants,
-      useAlgorithmRanking: _useAlgorithmRanking,
-      delay: delay,
-    );
-  }
-
-  /// 디버그: 스케줄/권한 상태 요약
-  Future<String> debugPushDiagnostics() async {
-    if (!kDebugMode) return '';
-    final lunchOn = _notificationEnabled && _lunchPushEnabled;
-    final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
-    final recommended =
-        pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
-    final pending =
-        await PushNotificationService.instance.pendingNotificationSummaries();
-    final now = DateTime.now();
-    final weekday = isWeekdayKst(now);
-
-    return [
-      '알림 ON: ${lunchOn ? '점심 ' : ''}${dinnerOn ? '저녁' : ''}${!lunchOn && !dinnerOn ? '없음' : ''}',
-      '평일(KST): $weekday (주말이면 12/18 스케줄 없음)',
-      '추천 매장: ${recommended?.name ?? '없음'}',
-      '예약 대기: ${pending.length}건',
-      if (pending.isNotEmpty) pending.take(3).join('\n'),
-    ].join('\n');
   }
 
   // ── 혼잡도 제보 ──

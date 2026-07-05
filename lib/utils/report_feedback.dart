@@ -60,10 +60,10 @@ Future<void> submitCrowdReportFeedback(
         style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: Color(0xFF111827),
         ),
       ),
-      backgroundColor: const Color(0xFF111827),
+      backgroundColor: const Color(0xFF9ECA8B),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

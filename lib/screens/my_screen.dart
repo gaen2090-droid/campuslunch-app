@@ -1,5 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
@@ -302,105 +301,6 @@ class _MyScreenState extends State<MyScreen> {
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-
-              // ── 개발자 옵션 ──
-              if (kDebugMode) ...[
-                const SizedBox(height: 40),
-                Container(
-                  decoration: const BoxDecoration(
-                    border: Border(
-                        top: BorderSide(
-                            color: Color(0xFFE5E7EB),
-                            style: BorderStyle.solid)),
-                  ),
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '개발자 옵션',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFD1D5DB)),
-                      ),
-                      const SizedBox(height: 12),
-                      GestureDetector(
-                        onTap: () async {
-                          final msg = await context
-                              .read<AppProvider>()
-                              .debugSchedulePushTest();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(msg),
-                              duration: const Duration(seconds: 5),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFBBF7D0)),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '30초 후 푸시 테스트 (앱 종료 후 확인)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF5E8C4A),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () async {
-                          final msg = await context
-                              .read<AppProvider>()
-                              .debugPushDiagnostics();
-                          if (!context.mounted) return;
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('푸시 디버그'),
-                              content: Text(msg),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('닫기'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '푸시 예약 상태 보기',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF9CA3AF),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],

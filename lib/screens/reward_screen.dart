@@ -145,9 +145,27 @@ class _RewardScreenState extends State<RewardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '쿠폰함',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                            Row(
+                              children: [
+                                const Text(
+                                  '쿠폰함',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                                ),
+                                if (provider.hasUnseenCoupon) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF5E8C4A),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'NEW',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 2),
                             Text(

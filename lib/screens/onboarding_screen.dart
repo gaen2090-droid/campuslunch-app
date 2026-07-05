@@ -6,9 +6,12 @@ import '../widgets/rice_ball_icon.dart';
 import '../data/restaurants.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/crowd_status_label.dart';
 
 // 온보딩용 고정 미리보기 데이터 (영업시간 무관하게 항상 표시)
 final _previewRestaurants = initialRestaurants.take(3).toList();
+/// 사용법 가이드 1페이지와 동일한 고정 "n분 전" 표기 (3분 전 / 5분 전 / 방금 전)
+const _previewUpdatedMinutes = [3, 5, 0];
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -16,6 +19,13 @@ class OnboardingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top3 = _previewRestaurants;
+    // 시드 데이터의 이미지 URL(구글 Place Photo)은 만료되어 깨질 수 있으므로,
+    // 실제 DB에 등록된 같은 이름의 매장 사진이 있으면 그걸 우선 사용한다.
+    final liveRestaurants = context.watch<AppProvider>().restaurants;
+    String imageUrlFor(Restaurant seed) {
+      final live = liveRestaurants.where((r) => r.name == seed.name).firstOrNull;
+      return (live != null && live.imageUrl.isNotEmpty) ? live.imageUrl : '';
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -157,7 +167,7 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             const Text(
-                              '지금 바로 입장 가능',
+                              '바로 입장 가능해요',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
@@ -167,7 +177,12 @@ class OnboardingScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        ...top3.map((r) => _RestaurantRow(restaurant: r)),
+                        for (var i = 0; i < top3.length; i++)
+                          _RestaurantRow(
+                            restaurant: top3[i],
+                            imageUrl: imageUrlFor(top3[i]),
+                            updatedMinutes: _previewUpdatedMinutes[i],
+                          ),
                       ],
                     ),
                   ),
@@ -215,7 +230,13 @@ class OnboardingScreen extends StatelessWidget {
 
 class _RestaurantRow extends StatelessWidget {
   final Restaurant restaurant;
-  const _RestaurantRow({required this.restaurant});
+  final String imageUrl;
+  final int updatedMinutes;
+  const _RestaurantRow({
+    required this.restaurant,
+    required this.imageUrl,
+    required this.updatedMinutes,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -228,8 +249,8 @@ class _RestaurantRow extends StatelessWidget {
             child: SizedBox(
               width: 40, height: 40,
               child: RestaurantImage(
-                url: restaurant.imageUrl,
-                fallback: () => _InitialCircle(name: restaurant.name),
+                url: imageUrl,
+                fallback: () => Container(color: const Color(0xFF9ECA8B)),
               ),
             ),
           ),
@@ -261,12 +282,24 @@ class _RestaurantRow extends StatelessWidget {
               color: const Color(0xFFDAFFCA),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              '여유로움',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF4C9C2A),
+            child: Text.rich(
+              TextSpan(
+                text: '여유로움',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF4C9C2A),
+                ),
+                children: [
+                  TextSpan(
+                    text: ' · ${formatUpdateAge(updatedMinutes)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -276,30 +309,3 @@ class _RestaurantRow extends StatelessWidget {
   }
 }
 
-class _InitialCircle extends StatelessWidget {
-  final String name;
-  const _InitialCircle({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0] : '?';
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F8F0),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          initial,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF5E8C4A),
-          ),
-        ),
-      ),
-    );
-  }
-}

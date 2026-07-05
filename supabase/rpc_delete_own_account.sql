@@ -20,6 +20,10 @@ begin
   delete from public.crowd_reports where user_id = uid;
   delete from public.analytics_events where user_id = uid;
   delete from public.app_feedback where user_id = uid;
+  delete from public.community_reports where reporter_id = uid;
+  delete from public.community_likes where user_id = uid;
+  delete from public.community_comments where user_id = uid;
+  delete from public.community_posts where user_id = uid;
   delete from public.owner_seat_updates where owner_id = uid;
   delete from public.user_rewards where user_id = uid;
   update public.gifticons

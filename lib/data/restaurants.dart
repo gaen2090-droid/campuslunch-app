@@ -7,7 +7,7 @@ const List<String> sortOptions = ['최신순', '인기순', '가까운순'];
 final List<Restaurant> initialRestaurants = [
   Restaurant(
     id: 'rice-potato-1',
-    name: '라이스 앤 포테이토',
+    name: '라이스&포테이토',
     category: '한식',
     area: '정문',
     address: '정문 근처',
@@ -28,7 +28,7 @@ final List<Restaurant> initialRestaurants = [
   ),
   Restaurant(
     id: '2',
-    name: '양쉐프',
+    name: '양셰프',
     category: '양식',
     area: '정문',
     address: '정문 근처',

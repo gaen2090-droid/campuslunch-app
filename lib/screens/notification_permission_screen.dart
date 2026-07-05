@@ -84,9 +84,9 @@ class NotificationPermissionScreen extends StatelessWidget {
                               content: const Text(
                                 '평일 12:00·18:00에 알림을 보내드릴게요!',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                               ),
-                              backgroundColor: const Color(0xFF111827),
+                              backgroundColor: const Color(0xFF9ECA8B),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

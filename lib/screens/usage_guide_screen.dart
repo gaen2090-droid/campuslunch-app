@@ -152,21 +152,22 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                           onPageChanged: (i) => setState(() => _page = i),
                           itemBuilder: (context, i) => _GuidePageView(page: _pages[i]),
                         ),
+                        // 좌우 28px 여백(Padding)까지 포함해 화면 진짜 끝부터 터치되도록 확장
                         Positioned(
-                          left: 0,
+                          left: -28,
                           top: 0,
                           bottom: 0,
-                          width: 56,
+                          width: 56 + 28,
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
                             onTap: _prev,
                           ),
                         ),
                         Positioned(
-                          right: 0,
+                          right: -28,
                           top: 0,
                           bottom: 0,
-                          width: 56,
+                          width: 56 + 28,
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
                             onTap: _next,
@@ -317,11 +318,12 @@ class _CrowdListMockup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final liveRestaurants = context.watch<AppProvider>().restaurants;
+    // 시드 데이터의 imageUrl(구글 Place Photo)은 만료되어 깨질 수 있으므로,
+    // 실제 DB 매장을 못 찾으면 시드 이미지로 폴백하지 않고 빈 값으로 둔다
+    // (그러면 _PreviewRestaurantRow가 브랜드 컬러 폴백을 사용).
     String imageUrlFor(Restaurant seed) {
       final live = liveRestaurants.where((r) => r.name == seed.name).firstOrNull;
-      return (live != null && live.imageUrl.isNotEmpty)
-          ? live.imageUrl
-          : seed.imageUrl;
+      return (live != null && live.imageUrl.isNotEmpty) ? live.imageUrl : '';
     }
 
     return _PreviewCard(
@@ -342,7 +344,7 @@ class _CrowdListMockup extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Text(
-                '지금 바로 입장 가능',
+                '바로 입장 가능해요',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
@@ -387,7 +389,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
               height: 36,
               child: RestaurantImage(
                 url: imageUrl,
-                fallback: () => _InitialCircle(name: restaurant.name),
+                fallback: () => Container(color: const Color(0xFF9ECA8B)),
               ),
             ),
           ),
@@ -444,34 +446,6 @@ class _PreviewRestaurantRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InitialCircle extends StatelessWidget {
-  final String name;
-  const _InitialCircle({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0] : '?';
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F8F0),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          initial,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF5E8C4A),
-          ),
-        ),
       ),
     );
   }

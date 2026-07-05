@@ -44,7 +44,17 @@ class _ShareSheet extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('클립보드에 복사했어요.')),
+      SnackBar(
+        content: const Text(
+          '클립보드에 복사했어요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+        ),
+        backgroundColor: const Color(0xFF9ECA8B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      ),
     );
   }
 

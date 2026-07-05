@@ -76,13 +76,13 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
         content: Text(
           err ?? '사진 앨범에 저장했어요.',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: err != null ? Colors.white : const Color(0xFF111827),
           ),
         ),
-        backgroundColor: err != null ? const Color(0xFF111827) : const Color(0xFF5E8C4A),
+        backgroundColor: err != null ? const Color(0xFF111827) : const Color(0xFF9ECA8B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -235,24 +235,6 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: const Text(
-                '매장에서 쿠폰 이미지를 보여주세요.\n사용 후에는 쿠폰함 우측 상단 편집에서 목록을 정리할 수 있어요.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B7280),
-                  height: 1.5,
                 ),
               ),
             ),

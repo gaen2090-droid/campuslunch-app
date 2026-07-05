@@ -20,8 +20,11 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppProvider>().fetchMyReward();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<AppProvider>();
+      await provider.fetchMyReward();
+      if (!mounted) return;
+      await provider.markCouponBoxSeen();
     });
   }
 

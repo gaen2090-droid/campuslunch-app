@@ -150,7 +150,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
     switch (widget.mode) {
       case RestaurantListMode.available:
         final openWithReport = filtered
-            .where((r) => r.status != '영업안함' && !isBusyStatus(r) && r.hasCrowdUpdate)
+            .where((r) => r.status == '여유로움' && r.hasCrowdUpdate)
             .toList();
         return _sortSection(openWithReport, provider);
       case RestaurantListMode.slightlyBusy:
