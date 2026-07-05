@@ -6,6 +6,12 @@ import type {
   RestaurantFormData,
 } from "../types/restaurant";
 import type { Gifticon } from "../types/gifticon";
+import { parseAdminUser, type AdminUser } from "../types/user";
+import {
+  DEFAULT_PUSH_CONFIG,
+  parsePushConfig,
+  type PushNotificationConfig,
+} from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
 
 function parseDescription(raw: unknown): Record<string, unknown> | null {
@@ -574,6 +580,57 @@ export async function deleteGifticon(id: string): Promise<void> {
       console.warn("[Admin] gifticon storage remove failed:", storageErr.message);
     }
   }
+}
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const { data, error } = await supabase.rpc("admin_list_users");
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) =>
+    parseAdminUser(row as Record<string, unknown>),
+  );
+}
+
+export async function purgeAdminUser(email: string): Promise<string> {
+  const { data, error } = await supabase.rpc("admin_purge_user_by_email", {
+    p_email: email.trim(),
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  if (result.ok !== true) {
+    throw new Error(String(result.message ?? "삭제에 실패했어요."));
+  }
+  return String(result.message ?? "삭제 완료");
+}
+
+export async function fetchPushNotificationConfig(): Promise<PushNotificationConfig> {
+  const { data, error } = await supabase.rpc("get_push_notification_config");
+  if (error) throw error;
+  if (!data || typeof data !== "object") return DEFAULT_PUSH_CONFIG;
+  return parsePushConfig(data as Record<string, unknown>);
+}
+
+export async function updatePushNotificationConfig(
+  config: PushNotificationConfig,
+): Promise<PushNotificationConfig> {
+  const { data, error } = await supabase.rpc(
+    "admin_update_push_notification_config",
+    {
+      p_lunch_hour: config.lunchHour,
+      p_lunch_minute: config.lunchMinute,
+      p_dinner_hour: config.dinnerHour,
+      p_dinner_minute: config.dinnerMinute,
+      p_title_template: config.titleTemplate,
+      p_body_template: config.bodyTemplate,
+      p_weekdays_only: config.weekdaysOnly,
+      p_schedule_days_ahead: config.scheduleDaysAhead,
+    },
+  );
+  if (error) throw error;
+  if (!data || typeof data !== "object") {
+    throw new Error("설정 저장 응답이 올바르지 않아요.");
+  }
+  return parsePushConfig(data as Record<string, unknown>);
 }
 
 export const AREAS = ["정문", "중문", "후문"] as const;
