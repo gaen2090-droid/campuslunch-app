@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 
+import '../constants/app_links.dart';
 import '../models/restaurant.dart';
 import '../utils/crowd_status_label.dart';
 
-// TODO: 출시 후 App Links/Universal Links 설정 완료 시 실제 도메인으로 교체
-const _shareBaseUrl = 'https://example.com/restaurant';
-
-String buildShareLink(Restaurant r) => '$_shareBaseUrl/${r.id}';
+String buildShareLink(Restaurant r) {
+  if (r.linkNo > 0) return AppLinks.restaurantUrl(r.linkNo);
+  return AppLinks.homeUrl();
+}
 
 String _shareSummary(Restaurant r) {
   final statusLine = r.status == '영업안함'

@@ -178,6 +178,16 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                       </div>
                     )}
                     <div className="owner-code-row">
+                      <span className="muted xs">App Link </span>
+                      {r.linkNo > 0 ? (
+                        <code className="owner-code">
+                          https://campuslunch.shop/r/{r.linkNo}
+                        </code>
+                      ) : (
+                        <span className="muted xs">번호 미배정 (SQL 실행 필요)</span>
+                      )}
+                    </div>
+                    <div className="owner-code-row">
                       <span className="muted xs">사장님 코드 </span>
                       {r.ownerCode ? (
                         <code className="owner-code">{r.ownerCode}</code>

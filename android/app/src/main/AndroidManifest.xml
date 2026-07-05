@@ -37,6 +37,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:path="/"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/home"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/coupons"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/r"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/restaurant"/>
+            </intent-filter>
         </activity>
         <meta-data
             android:name="flutterEmbedding"

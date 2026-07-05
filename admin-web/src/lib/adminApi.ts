@@ -135,6 +135,7 @@ function mergeRestaurant(
 
   return {
     id,
+    linkNo: Number(row.link_no ?? 0) || 0,
     name: String(row.name ?? ""),
     category: String(row.category ?? ""),
     area: String(row.area ?? ""),

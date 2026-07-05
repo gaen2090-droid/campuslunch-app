@@ -1,5 +1,24 @@
 {
   "rewrites": [
-    { "source": "/restaurant/:id", "destination": "/api/restaurant?id=:id" }
+    {
+      "source": "/.well-known/:path*",
+      "destination": "/.well-known/:path*"
+    },
+    {
+      "source": "/r/:linkNo",
+      "destination": "/api/link?kind=restaurant&no=:linkNo"
+    },
+    {
+      "source": "/coupons",
+      "destination": "/api/link?kind=coupons"
+    },
+    {
+      "source": "/home",
+      "destination": "/api/link?kind=home"
+    },
+    {
+      "source": "/restaurant/:id",
+      "destination": "/api/restaurant?id=:id"
+    }
   ]
 }

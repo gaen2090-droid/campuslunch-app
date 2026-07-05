@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
 import 'providers/app_provider.dart';
+import 'services/app_link_service.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/kakao_map_bootstrap.dart';
@@ -63,6 +64,8 @@ Future<void> main() async {
 
   // 카카오·지도·푸시·Google — 권한 안내 확인 이후에만 (OS 권한 팝업 선행 방지)
   runDeferredStartupOnce = () => _deferredStartup(appProvider);
+
+  unawaited(AppLinkService.instance.initialize(appProvider));
 }
 
 Future<void> _deferredStartup(AppProvider provider) async {

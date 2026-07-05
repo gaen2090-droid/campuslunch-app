@@ -5,6 +5,7 @@ export interface MenuItem {
 
 export interface AdminRestaurant {
   id: string;
+  linkNo: number;
   name: string;
   category: string;
   area: string;

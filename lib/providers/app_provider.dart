@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
 import '../config/env.dart';
 import '../utils/nickname_generator.dart';
@@ -131,6 +132,10 @@ class AppProvider extends ChangeNotifier {
   /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
   int get homeTabIndex => hasOwnerTab ? 1 : 0;
 
+  int get myTabIndex => hasOwnerTab ? 3 : 2;
+
+  bool get hasPendingAppLink => _pendingAppLink != null;
+
   bool get locationMode => _locationMode;
   bool get notificationEnabled => _notificationEnabled;
   bool get lunchPushEnabled => _lunchPushEnabled;
@@ -215,6 +220,9 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<AuthState>? _authSub;
   /// 스플래시·init() 중 notifyListeners 억제 (AnimatedSwitcher 크래시 방지)
   bool _bootstrapping = true;
+  Uri? _queuedIncomingUri;
+  AppLinkTarget? _pendingAppLink;
+  int? _pendingRestaurantLinkNo;
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
   final Map<String, DateTime> _lastReportTime = {};
   final ProfileRepository _profileRepo = ProfileRepository();
@@ -239,7 +247,59 @@ class AppProvider extends ChangeNotifier {
     _bootstrapping = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       super.notifyListeners();
+      final queued = _queuedIncomingUri;
+      _queuedIncomingUri = null;
+      if (queued != null) handleIncomingUri(queued);
     });
+  }
+
+  /// App Link 수신. 미로그인·앱 메인 전(stage≠app)이면 무시 → 초기 화면 플로우 유지.
+  void handleIncomingUri(Uri uri) {
+    if (_bootstrapping) {
+      _queuedIncomingUri = uri;
+      return;
+    }
+    final parsed = AppLinks.parse(uri);
+    if (parsed == null) return;
+    if (!_isLoggedIn || _stage != 'app') {
+      debugPrint('[AppLink] ignored (loggedIn=$_isLoggedIn stage=$_stage): $uri');
+      return;
+    }
+    _pendingAppLink = parsed.target;
+    _pendingRestaurantLinkNo = parsed.linkNo;
+    notifyListeners();
+  }
+
+  /// MainScreen에서 소비 후 null 반환
+  ({AppLinkTarget target, int? linkNo})? consumePendingAppLink() {
+    final target = _pendingAppLink;
+    final linkNo = _pendingRestaurantLinkNo;
+    _pendingAppLink = null;
+    _pendingRestaurantLinkNo = null;
+    if (target == null) return null;
+    return (target: target, linkNo: linkNo);
+  }
+
+  Restaurant? restaurantByLinkNo(int linkNo) {
+    if (linkNo <= 0) return null;
+    for (final r in _restaurants) {
+      if (r.linkNo == linkNo) return r;
+    }
+    return null;
+  }
+
+  Future<Restaurant?> fetchRestaurantByLinkNo(int linkNo) async {
+    final cached = restaurantByLinkNo(linkNo);
+    if (cached != null) return cached;
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    final fetched = await repo.fetchByLinkNo(linkNo);
+    if (fetched == null) return null;
+    final idx = _restaurants.indexWhere((r) => r.id == fetched.id);
+    if (idx >= 0) {
+      _restaurants[idx] = fetched;
+    }
+    return fetched;
   }
 
   /// 스플래시 → 다음 화면 전환 기준
@@ -1223,6 +1283,14 @@ class AppProvider extends ChangeNotifier {
     _mainTabIndex = homeTabIndex;
     notifyListeners();
     unawaited(_refreshForMainTab(homeTabIndex));
+    if (restaurantId != null && restaurantId.isNotEmpty) {
+      final r = _restaurants.where((x) => x.id == restaurantId).firstOrNull;
+      if (r != null && r.linkNo > 0) {
+        _pendingAppLink = AppLinkTarget.restaurant;
+        _pendingRestaurantLinkNo = r.linkNo;
+        notifyListeners();
+      }
+    }
   }
 
   /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.

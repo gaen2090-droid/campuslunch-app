@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../constants/app_links.dart';
+import 'coupon_box_screen.dart';
+import 'detail_screen.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
@@ -15,6 +18,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool _mapMounted = false;
+  bool _handlingAppLink = false;
 
   @override
   void initState() {
@@ -23,34 +27,79 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       context.read<AppProvider>().recordAppSession();
       final provider = context.read<AppProvider>();
-      if (!provider.showSignupCompleteMessage) return;
-      provider.clearSignupCompleteMessage();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            '회원가입이 완료되었어요! 환영합니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+      if (provider.showSignupCompleteMessage) {
+        provider.clearSignupCompleteMessage();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '회원가입이 완료되었어요! 환영합니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
+            backgroundColor: const Color(0xFF111827),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            duration: const Duration(seconds: 3),
           ),
-          backgroundColor: const Color(0xFF111827),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+        );
+      }
+      _handlePendingAppLink();
     });
+  }
+
+  Future<void> _handlePendingAppLink() async {
+    if (_handlingAppLink || !mounted) return;
+    final provider = context.read<AppProvider>();
+    if (!provider.hasPendingAppLink) return;
+
+    _handlingAppLink = true;
+    final pending = provider.consumePendingAppLink();
+    if (pending == null) {
+      _handlingAppLink = false;
+      return;
+    }
+
+    try {
+      switch (pending.target) {
+        case AppLinkTarget.home:
+          provider.setMainTabIndex(provider.homeTabIndex);
+        case AppLinkTarget.coupons:
+          if (!mounted) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
+          );
+        case AppLinkTarget.restaurant:
+          final linkNo = pending.linkNo;
+          if (linkNo == null || linkNo <= 0) return;
+          final restaurant =
+              await provider.fetchRestaurantByLinkNo(linkNo);
+          if (!mounted || restaurant == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => DetailScreen(restaurant: restaurant),
+            ),
+          );
+      }
+    } finally {
+      _handlingAppLink = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    if (provider.hasPendingAppLink && !_handlingAppLink) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handlePendingAppLink();
+      });
+    }
     final hasOwner = provider.hasOwnerTab;
     final index = provider.mainTabIndex.clamp(0, hasOwner ? 3 : 2);
     final mapIndex = hasOwner ? 2 : 1;
