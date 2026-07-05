@@ -482,7 +482,10 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
         _verified = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (context.read<AppProvider>().stage == 'legal_terms_consent') {
+          final stage = context.read<AppProvider>().stage;
+          if (stage == 'legal_terms_consent' ||
+              stage == 'app' ||
+              stage == 'usage_guide') {
             _finish();
           }
         });
@@ -496,236 +499,236 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 40, 28, 36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(12),
+        child: GestureDetector(
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(28, 40, 28, 36 + bottomInset),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new,
+                        size: 16, color: Color(0xFF374151)),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new,
-                      size: 16, color: Color(0xFF374151)),
                 ),
-              ),
-              const SizedBox(height: 48),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F8F0),
-                  borderRadius: BorderRadius.circular(24),
+                const SizedBox(height: 48),
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F8F0),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.pin_outlined,
+                        size: 36, color: Color(0xFF5E8C4A)),
+                  ),
                 ),
-                child: const Center(
-                  child: Icon(Icons.pin_outlined,
-                      size: 36, color: Color(0xFF5E8C4A)),
+                const SizedBox(height: 28),
+                const Text(
+                  '인증번호를 입력해주세요',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF111827),
+                    letterSpacing: -1.0,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                '인증번호를 입력해주세요',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
-                  letterSpacing: -1.0,
+                const SizedBox(height: 12),
+                Text(
+                  '${widget.email}\n으로 ${emailSignupOtpLength}자리 인증번호를 보냈어요.\n'
+                  '메일에 적힌 번호를 아래에 입력하면 가입이 완료돼요.',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF6B7280),
+                    height: 1.6,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '${widget.email}\n으로 ${emailSignupOtpLength}자리 인증번호를 보냈어요.\n'
-                '메일에 적힌 번호를 아래에 입력하면 가입이 완료돼요.',
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF6B7280),
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '메일에 6자리 숫자가 보여야 해요. 링크만 있다면\n'
-                'Supabase → Email Templates → Magic Link 를\n'
-                'docs/EMAIL_OTP_SETUP.md 대로 바꾸거나\n'
-                'dart run tool/apply_supabase_email_templates.dart 를 실행하세요.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF), height: 1.5),
-              ),
-              const SizedBox(height: 28),
-              TextField(
-                controller: _otpCtrl,
-                enabled: !_verified && !_verifying,
-                keyboardType: TextInputType.number,
-                maxLength: emailSignupOtpLength,
-                textAlign: TextAlign.center,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setState(() => _error = null),
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 12,
-                  color: Color(0xFF111827),
-                ),
-                decoration: InputDecoration(
-                  hintText: List.filled(emailSignupOtpLength, '0').join(),
-                  hintStyle: const TextStyle(
+                const SizedBox(height: 28),
+                TextField(
+                  controller: _otpCtrl,
+                  enabled: !_verified && !_verifying,
+                  keyboardType: TextInputType.number,
+                  maxLength: emailSignupOtpLength,
+                  textAlign: TextAlign.center,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => setState(() => _error = null),
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 12,
-                    color: Color(0xFFD1D5DB),
+                    color: Color(0xFF111827),
                   ),
-                  counterText: '',
-                  filled: true,
-                  fillColor: const Color(0xFFF9FAFB),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5E8C4A), width: 1.5),
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFEF4444),
+                  decoration: InputDecoration(
+                    hintText: List.filled(emailSignupOtpLength, '0').join(),
+                    hintStyle: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 12,
+                      color: Color(0xFFD1D5DB),
+                    ),
+                    counterText: '',
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF5E8C4A), width: 1.5),
+                    ),
                   ),
                 ),
-              ],
-              if (_resendMsg != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _resendMsg!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _resendMsg!.contains('실패') ||
-                            _resendMsg!.contains('없')
-                        ? const Color(0xFFEF4444)
-                        : const Color(0xFF5E8C4A),
+                if (_error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _error!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFEF4444),
+                    ),
                   ),
-                ),
-              ],
-              if (_verified) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  '이메일 인증이 완료됐어요!',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF5E8C4A),
+                ],
+                if (_resendMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _resendMsg!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _resendMsg!.contains('실패') ||
+                              _resendMsg!.contains('없')
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF5E8C4A),
+                    ),
                   ),
-                ),
-              ],
-              const Spacer(),
-              if (!_verified) ...[
+                ],
+                if (_verified) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    '이메일 인증이 완료됐어요!',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF5E8C4A),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                if (!_verified) ...[
+                  GestureDetector(
+                    onTap: (_verifying ||
+                            _otpCtrl.text.length != emailSignupOtpLength)
+                        ? null
+                        : _verify,
+                    child: Container(
+                      height: 56,
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: (_verifying ||
+                                _otpCtrl.text.length != emailSignupOtpLength)
+                            ? const Color(0xFFBFE0B0)
+                            : const Color(0xFF9ECA8B),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Center(
+                        child: _verifying
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Color(0xFF111827)))
+                            : const Text(
+                                '인증하기',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _resending ? null : _resend,
+                    child: Container(
+                      height: 52,
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Center(
+                        child: _resending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text(
+                                '인증번호 다시 받기',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
                 GestureDetector(
-                  onTap: (_verifying ||
-                          _otpCtrl.text.length != emailSignupOtpLength)
-                      ? null
-                      : _verify,
+                  onTap: _verified ? _finish : () => Navigator.pop(context),
                   child: Container(
                     height: 56,
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
-                      color: (_verifying ||
-                              _otpCtrl.text.length != emailSignupOtpLength)
-                          ? const Color(0xFFBFE0B0)
-                          : const Color(0xFF9ECA8B),
+                      color: _verified
+                          ? const Color(0xFF9ECA8B)
+                          : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Center(
-                      child: _verifying
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Color(0xFF111827)))
-                          : const Text(
-                              '인증하기',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _resending ? null : _resend,
-                  child: Container(
-                    height: 52,
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: Center(
-                      child: _resending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text(
-                              '인증번호 다시 받기',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF374151),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ],
-              GestureDetector(
-                onTap: _verified ? _finish : () => Navigator.pop(context),
-                child: Container(
-                  height: 56,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: _verified
-                        ? const Color(0xFF9ECA8B)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _verified ? '시작하기' : '로그인 화면으로',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color:
-                            _verified ? const Color(0xFF111827) : const Color(0xFF374151),
+                      child: Text(
+                        _verified ? '시작하기' : '로그인 화면으로',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: _verified
+                              ? const Color(0xFF111827)
+                              : const Color(0xFF374151),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
