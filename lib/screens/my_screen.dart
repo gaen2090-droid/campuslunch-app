@@ -98,7 +98,7 @@ class _MyScreenState extends State<MyScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.settings_outlined,
-                            size: 20, color: Color(0xFF374151)),
+                            size: 20, color: Color(0xFF5E8C4A)),
                       ),
                     ),
                   ],

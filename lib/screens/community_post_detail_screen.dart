@@ -30,12 +30,40 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   bool _submittingComment = false;
   bool _changed = false;
   bool _deleted = false;
+  bool _subscribed = false;
+  bool _subscribedLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _post = widget.post;
     _loadComments();
+    _loadSubscription();
+  }
+
+  Future<void> _loadSubscription() async {
+    try {
+      final subscribed = await _repo.isSubscribed(_post.id);
+      if (!mounted) return;
+      setState(() {
+        _subscribed = subscribed;
+        _subscribedLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _subscribedLoaded = true);
+    }
+  }
+
+  Future<void> _toggleSubscription() async {
+    final next = !_subscribed;
+    setState(() => _subscribed = next);
+    try {
+      await _repo.setSubscribed(_post.id, next);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _subscribed = !next);
+    }
   }
 
   @override
@@ -222,8 +250,17 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
           ),
           centerTitle: false,
           actions: [
+            if (_subscribedLoaded)
+              IconButton(
+                onPressed: _toggleSubscription,
+                icon: Icon(
+                  _subscribed ? Icons.notifications_active : Icons.notifications_off_outlined,
+                  color: _subscribed ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                ),
+              ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Color(0xFF111827)),
+              offset: const Offset(0, 44),
               onSelected: (v) {
                 if (v == 'edit') _editPost();
                 if (v == 'delete') _deletePost();

@@ -1,10 +1,16 @@
 import { useState } from "react";
-import type { BannedWord, CommunityPostAdmin, CommunityReport } from "../types/community";
+import type {
+  BannedWord,
+  CommunityNoticeAdmin,
+  CommunityPostAdmin,
+  CommunityReport,
+} from "../types/community";
 
 interface Props {
   reports: CommunityReport[];
   posts: CommunityPostAdmin[];
   bannedWords: BannedWord[];
+  notices: CommunityNoticeAdmin[];
   loading: boolean;
   error: string | null;
   onHidePost: (id: string, hidden: boolean) => Promise<void>;
@@ -13,6 +19,10 @@ interface Props {
   onRemoveComment: (id: string) => Promise<void>;
   onAddWord: (word: string) => Promise<void>;
   onRemoveWord: (id: string) => Promise<void>;
+  onAddNotice: (content: string) => Promise<void>;
+  onEditNotice: (id: string, content: string) => Promise<void>;
+  onToggleNoticeActive: (id: string, active: boolean) => Promise<void>;
+  onRemoveNotice: (id: string) => Promise<void>;
 }
 
 function formatDate(d: Date): string {
@@ -29,6 +39,7 @@ export function CommunityAdminPage({
   reports,
   posts,
   bannedWords,
+  notices,
   loading,
   error,
   onHidePost,
@@ -37,11 +48,17 @@ export function CommunityAdminPage({
   onRemoveComment,
   onAddWord,
   onRemoveWord,
+  onAddNotice,
+  onEditNotice,
+  onToggleNoticeActive,
+  onRemoveNotice,
 }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [newWord, setNewWord] = useState("");
   const [wordBusy, setWordBusy] = useState(false);
+  const [newNotice, setNewNotice] = useState("");
+  const [noticeBusy, setNoticeBusy] = useState(false);
 
   async function submitWord() {
     const word = newWord.trim();
@@ -55,6 +72,21 @@ export function CommunityAdminPage({
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setWordBusy(false);
+    }
+  }
+
+  async function submitNotice() {
+    const content = newNotice.trim();
+    if (!content || noticeBusy) return;
+    setNoticeBusy(true);
+    setActionError(null);
+    try {
+      await onAddNotice(content);
+      setNewNotice("");
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setNoticeBusy(false);
     }
   }
 
@@ -73,10 +105,52 @@ export function CommunityAdminPage({
   return (
     <div className="page">
       <div className="panel-head">
-        <h2>커뮤니티 신고함</h2>
+        <h2>관리자 공지</h2>
       </div>
 
       {(error || actionError) && <div className="alert">{error ?? actionError}</div>}
+
+      <div className="field-group">
+        <input
+          className="search-input"
+          type="text"
+          placeholder="공지 내용 (커뮤니티 탭 최상단에 노출)"
+          value={newNotice}
+          onChange={(e) => setNewNotice(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submitNotice();
+          }}
+        />
+        <button
+          type="button"
+          className="btn sm"
+          disabled={noticeBusy || !newNotice.trim()}
+          onClick={submitNotice}
+        >
+          공지 추가
+        </button>
+      </div>
+
+      {notices.length === 0 ? (
+        <p className="muted center">등록된 공지가 없어요.</p>
+      ) : (
+        <ul className="feedback-list">
+          {notices.map((n) => (
+            <NoticeRow
+              key={n.id}
+              notice={n}
+              busy={busyId === n.id}
+              onEdit={(content) => onEditNotice(n.id, content)}
+              onToggleActive={() => run(n.id, () => onToggleNoticeActive(n.id, !n.isActive))}
+              onRemove={() => run(n.id, () => onRemoveNotice(n.id))}
+            />
+          ))}
+        </ul>
+      )}
+
+      <div className="panel-head" style={{ marginTop: 32 }}>
+        <h2>커뮤니티 신고함</h2>
+      </div>
 
       {loading ? (
         <p className="muted center">불러오는 중…</p>
@@ -211,5 +285,93 @@ export function CommunityAdminPage({
         </div>
       )}
     </div>
+  );
+}
+
+function NoticeRow({
+  notice,
+  busy,
+  onEdit,
+  onToggleActive,
+  onRemove,
+}: {
+  notice: CommunityNoticeAdmin;
+  busy: boolean;
+  onEdit: (content: string) => Promise<void>;
+  onToggleActive: () => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [content, setContent] = useState(notice.content);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await onEdit(content);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li className="feedback-row">
+      <div className="feedback-row-head">
+        <span className={`badge ${notice.isActive ? "assigned" : "danger"}`}>
+          {notice.isActive ? "노출중" : "비노출"}
+        </span>
+        <span className="muted sm">
+          {notice.createdAt.toLocaleString("ko-KR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+
+      {editing ? (
+        <div className="field-group" style={{ marginTop: 4 }}>
+          <input
+            className="search-input"
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <button type="button" className="btn sm" disabled={saving} onClick={save}>
+            저장
+          </button>
+          <button
+            type="button"
+            className="btn ghost sm"
+            disabled={saving}
+            onClick={() => {
+              setContent(notice.content);
+              setEditing(false);
+            }}
+          >
+            취소
+          </button>
+        </div>
+      ) : (
+        <p className="feedback-content">{notice.content}</p>
+      )}
+
+      <div className="row-actions">
+        {!editing && (
+          <button type="button" className="btn ghost sm" onClick={() => setEditing(true)}>
+            수정
+          </button>
+        )}
+        <button type="button" className="btn ghost sm" disabled={busy} onClick={onToggleActive}>
+          {notice.isActive ? "비노출로 전환" : "노출하기"}
+        </button>
+        <button type="button" className="btn danger sm" disabled={busy} onClick={onRemove}>
+          삭제
+        </button>
+      </div>
+    </li>
   );
 }

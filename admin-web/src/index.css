@@ -678,6 +678,69 @@ code {
   margin-bottom: 8px;
 }
 
+.field-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.drag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: grab;
+}
+
+.drag-row:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  color: #9ca3af;
+  font-size: 1rem;
+  user-select: none;
+}
+
+.field-group .search-input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.search-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.search-dropdown-item:hover {
+  background: #f9fafb;
+}
+
 .feedback-content {
   margin: 0;
   font-size: 0.875rem;

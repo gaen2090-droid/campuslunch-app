@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/community_repository.dart';
+import '../models/collection.dart';
+import '../models/community_notice.dart';
 import '../models/community_post.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
-import '../utils/time_ago.dart';
+import '../widgets/collection_comments_sheet.dart';
+import '../widgets/collection_section.dart';
 import '../widgets/community_guideline_sheet.dart';
+import '../widgets/community_post_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
+import 'collection_detail_screen.dart';
+import 'community_my_activity_screen.dart';
+import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
 import 'detail_screen.dart';
 
@@ -27,11 +34,31 @@ class _CommunityScreenState extends State<CommunityScreen> {
   bool _hasMore = true;
   String? _error;
 
+  int _segment = 0; // 0: 자유게시판, 1: 맛집 컬렉션
+  List<RestaurantCollection> _collections = [];
+  final Map<String, List<CollectionItem>> _collectionItems = {};
+  bool _collectionsLoading = true;
+  String? _collectionsError;
+
+  CommunityNotice? _notice;
+
   @override
   void initState() {
     super.initState();
+    _loadNotice();
     _loadFeed();
+    _loadCollections();
     _maybeShowGuideline();
+  }
+
+  Future<void> _loadNotice() async {
+    try {
+      final notice = await _repo.fetchActiveNotice();
+      if (!mounted) return;
+      setState(() => _notice = notice);
+    } catch (_) {
+      // 공지 로드 실패는 무시 (핵심 기능 아님)
+    }
   }
 
   Future<void> _maybeShowGuideline() async {
@@ -80,6 +107,52 @@ class _CommunityScreenState extends State<CommunityScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _loadCollections() async {
+    setState(() {
+      _collectionsLoading = true;
+      _collectionsError = null;
+    });
+    try {
+      final collections = await _repo.fetchCollections();
+      final itemsByCollection = <String, List<CollectionItem>>{};
+      for (final c in collections) {
+        itemsByCollection[c.id] = await _repo.fetchCollectionItems(c.id);
+      }
+      if (!mounted) return;
+      setState(() {
+        _collections = collections;
+        _collectionItems
+          ..clear()
+          ..addAll(itemsByCollection);
+        _collectionsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _collectionsError = '컬렉션을 불러오지 못했어요.';
+        _collectionsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleCollectionLike(RestaurantCollection collection) async {
+    final index = _collections.indexWhere((c) => c.id == collection.id);
+    if (index == -1) return;
+    final wasLiked = collection.likedByMe;
+    setState(() {
+      _collections[index] = collection.copyWith(
+        likedByMe: !wasLiked,
+        likeCount: collection.likeCount + (wasLiked ? -1 : 1),
+      );
+    });
+    try {
+      await _repo.toggleCollectionLike(collection.id, wasLiked);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _collections[index] = collection);
     }
   }
 
@@ -133,9 +206,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
       }
     }
     if (match == null) return;
+    _pushDetail(match);
+  }
+
+  void _pushDetail(Restaurant restaurant) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DetailScreen(restaurant: match!)),
+      MaterialPageRoute(builder: (_) => DetailScreen(restaurant: restaurant)),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CommunityNotificationsScreen()),
     );
   }
 
@@ -143,40 +227,223 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openEditor(),
-        backgroundColor: const Color(0xFF5E8C4A),
-        child: const Icon(Icons.edit_outlined, color: Colors.white),
-      ),
+      floatingActionButton: _segment == 0
+          ? FloatingActionButton(
+              onPressed: () => _openEditor(),
+              backgroundColor: const Color(0xFF5E8C4A),
+              child: const Icon(Icons.edit_outlined, color: Colors.white),
+            )
+          : null,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: _loadFeed,
-          child: _buildBody(),
+          onRefresh: _segment == 0 ? _loadFeed : _loadCollections,
+          child: _segment == 0 ? _buildBody() : _buildCollectionsBody(),
         ),
       ),
     );
   }
 
   Widget _header() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(8, 16, 8, 20),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '커뮤니티',
+                    style: TextStyle(
+                      fontFamily: 'OkDanDan',
+                      fontSize: 31,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF5E8C4A),
+                      letterSpacing: -0.8,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _openNotifications,
+                  icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A)),
+                ),
+                PopupMenuButton<MyActivityMode>(
+                  icon: const Icon(Icons.menu, color: Color(0xFF5E8C4A)),
+                  offset: const Offset(0, 44),
+                  onSelected: (mode) => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CommunityMyActivityScreen(mode: mode),
+                    ),
+                  ),
+                  itemBuilder: (ctx) => const [
+                    PopupMenuItem(value: MyActivityMode.myPosts, child: Text('내가 쓴 글')),
+                    PopupMenuItem(value: MyActivityMode.commentedPosts, child: Text('댓글 단 글')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_notice != null) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _noticeBox(_notice!),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _segmentControl(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _noticeBox(CommunityNotice notice) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F8F0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBFE0B0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.campaign, size: 18, color: Color(0xFF5E8C4A)),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '커뮤니티',
-              style: TextStyle(
-                fontFamily: 'OkDanDan',
-                fontSize: 31,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF5E8C4A),
-                letterSpacing: -0.8,
+              notice.content,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF4C9C2A),
+                height: 1.4,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _segmentControl() {
+    return Row(
+      children: [
+        _segmentTab('자유게시판', 0),
+        _segmentTab('맛집 컬렉션', 1),
+      ],
+    );
+  }
+
+  Widget _segmentTab(String label, int index) {
+    final active = _segment == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _segment = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                width: active ? 2 : 1,
+              ),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollectionsBody() {
+    if (_collectionsLoading) {
+      return ListView(
+        children: [
+          _header(),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 80),
+            child: Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A))),
+          ),
+        ],
+      );
+    }
+    if (_collectionsError != null) {
+      return ListView(
+        children: [
+          _header(),
+          const SizedBox(height: 80),
+          Center(
+            child: Text(_collectionsError!, style: const TextStyle(color: Color(0xFF9CA3AF))),
+          ),
+        ],
+      );
+    }
+    if (_collections.isEmpty) {
+      return ListView(
+        children: [
+          _header(),
+          const SizedBox(height: 120),
+          const Center(
+            child: Text(
+              '아직 등록된 컬렉션이 없어요.',
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+            ),
+          ),
+        ],
+      );
+    }
+    final restaurants = context.watch<AppProvider>().restaurants;
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 96),
+      children: [
+        _header(),
+        for (final collection in _collections)
+          CollectionSection(
+            collection: collection,
+            items: _collectionItems[collection.id] ?? const [],
+            restaurants: restaurants,
+            onTapRestaurant: _pushDetail,
+            onSeeAll: (c, items) => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CollectionDetailScreen(
+                  collection: c,
+                  items: items,
+                  restaurants: restaurants,
+                ),
+              ),
+            ),
+            onTapComments: (c) async {
+              await CollectionCommentsSheet.show(
+                context,
+                collectionId: c.id,
+                collectionTitle: c.title,
+              );
+              if (mounted) _loadCollections();
+            },
+            onTapLike: () => _toggleCollectionLike(collection),
+          ),
+      ],
     );
   }
 
@@ -226,7 +493,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         return false;
       },
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+        padding: const EdgeInsets.only(bottom: 96),
         itemCount: _posts.length + (_hasMore ? 1 : 0) + 1,
         itemBuilder: (context, i) {
           if (i == 0) {
@@ -246,143 +513,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
             );
           }
           final post = _posts[postIndex];
-          return _PostCard(
-            post: post,
-            onTap: () => _openDetail(post),
-            onLike: () => _toggleLike(post),
-            onRestaurantTap: post.restaurantId != null
-                ? () => _openRestaurant(post.restaurantId!)
-                : null,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: CommunityPostCard(
+              post: post,
+              onTap: () => _openDetail(post),
+              onLike: () => _toggleLike(post),
+              onRestaurantTap: post.restaurantId != null
+                  ? () => _openRestaurant(post.restaurantId!)
+                  : null,
+            ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _PostCard extends StatelessWidget {
-  final CommunityPost post;
-  final VoidCallback onTap;
-  final VoidCallback onLike;
-  final VoidCallback? onRestaurantTap;
-
-  const _PostCard({
-    required this.post,
-    required this.onTap,
-    required this.onLike,
-    this.onRestaurantTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  post.nickname,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  timeAgo(post.createdAt),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                ),
-                if (post.updatedAt != null) ...[
-                  const SizedBox(width: 4),
-                  const Text('· 수정됨', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                ],
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              post.content,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4),
-            ),
-            if (post.imageUrls.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  post.imageUrls.first,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 160,
-                    color: const Color(0xFFF3F4F6),
-                  ),
-                ),
-              ),
-            ],
-            if (post.restaurantId != null && post.restaurantName != null) ...[
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: onRestaurantTap,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F8F0),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF5E8C4A)),
-                      const SizedBox(width: 4),
-                      Text(
-                        post.restaurantName!,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: onLike,
-                  child: Row(
-                    children: [
-                      Icon(
-                        post.likedByMe ? Icons.favorite : Icons.favorite_border,
-                        size: 18,
-                        color: post.likedByMe ? const Color(0xFFEF4444) : const Color(0xFF9CA3AF),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${post.likeCount}',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFF9CA3AF)),
-                const SizedBox(width: 4),
-                Text(
-                  '${post.commentCount}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

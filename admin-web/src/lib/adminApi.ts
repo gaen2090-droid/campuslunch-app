@@ -15,12 +15,22 @@ import {
 import type { AppFeedback } from "../types/feedback";
 import {
   parseBannedWord,
+  parseCommunityNoticeAdmin,
   parseCommunityPostAdmin,
   parseCommunityReport,
   type BannedWord,
+  type CommunityNoticeAdmin,
   type CommunityPostAdmin,
   type CommunityReport,
 } from "../types/community";
+import {
+  parseCollectionCommentAdmin,
+  parseCollectionItem,
+  parseRestaurantCollection,
+  type CollectionCommentAdmin,
+  type CollectionItem,
+  type RestaurantCollection,
+} from "../types/collection";
 
 function parseDescription(raw: unknown): Record<string, unknown> | null {
   if (raw == null) return null;
@@ -714,6 +724,181 @@ export async function deleteBannedWord(id: string): Promise<void> {
     .from("community_banned_words")
     .delete()
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchCommunityNotices(): Promise<CommunityNoticeAdmin[]> {
+  const { data, error } = await supabase
+    .from("community_notices")
+    .select("id, content, is_active, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map(parseCommunityNoticeAdmin);
+}
+
+export async function createCommunityNotice(content: string): Promise<void> {
+  const { error } = await supabase
+    .from("community_notices")
+    .insert({ content: content.trim() });
+  if (error) throw error;
+}
+
+export async function updateCommunityNotice(
+  id: string,
+  content: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("community_notices")
+    .update({ content: content.trim() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function setCommunityNoticeActive(
+  id: string,
+  active: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("community_notices")
+    .update({ is_active: active })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCommunityNotice(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("community_notices")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchAdminCollections(): Promise<RestaurantCollection[]> {
+  const { data, error } = await supabase
+    .from("collections")
+    .select("id, title, subtitle, sort_order, is_published, created_at")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map(parseRestaurantCollection);
+}
+
+export async function createCollection(params: {
+  title: string;
+  subtitle: string;
+  sortOrder: number;
+}): Promise<void> {
+  const { error } = await supabase.from("collections").insert({
+    title: params.title.trim(),
+    subtitle: params.subtitle.trim() || null,
+    sort_order: params.sortOrder,
+  });
+  if (error) throw error;
+}
+
+export async function updateCollection(
+  id: string,
+  params: { title: string; subtitle: string; sortOrder: number },
+): Promise<void> {
+  const { error } = await supabase
+    .from("collections")
+    .update({
+      title: params.title.trim(),
+      subtitle: params.subtitle.trim() || null,
+      sort_order: params.sortOrder,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function setCollectionPublished(
+  id: string,
+  published: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("collections")
+    .update({ is_published: published })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  const { error } = await supabase.from("collections").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchCollectionItems(
+  collectionId: string,
+): Promise<CollectionItem[]> {
+  const { data, error } = await supabase
+    .from("collection_items")
+    .select("id, collection_id, restaurant_id, note, sort_order, restaurants(name)")
+    .eq("collection_id", collectionId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map((raw) => {
+    const restaurant = raw.restaurants as { name?: string } | null;
+    return parseCollectionItem({ ...raw, restaurant_name: restaurant?.name ?? null });
+  });
+}
+
+export async function addCollectionItem(params: {
+  collectionId: string;
+  restaurantId: string;
+  note: string;
+  sortOrder: number;
+}): Promise<void> {
+  const { error } = await supabase.from("collection_items").insert({
+    collection_id: params.collectionId,
+    restaurant_id: params.restaurantId,
+    note: params.note.trim() || null,
+    sort_order: params.sortOrder,
+  });
+  if (error) throw error;
+}
+
+export async function removeCollectionItem(id: string): Promise<void> {
+  const { error } = await supabase.from("collection_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function reorderCollectionItems(
+  orderedIds: string[],
+): Promise<void> {
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from("collection_items").update({ sort_order: index }).eq("id", id),
+    ),
+  ).then((results) => {
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+  });
+}
+
+export async function fetchCollectionComments(): Promise<CollectionCommentAdmin[]> {
+  const { data, error } = await supabase.rpc("admin_list_collection_comments", {
+    p_limit: 100,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseCollectionCommentAdmin(row as Record<string, unknown>));
+}
+
+export async function setCollectionCommentHidden(
+  id: string,
+  hidden: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("collection_comments")
+    .update({ is_hidden: hidden })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCollectionComment(id: string): Promise<void> {
+  const { error } = await supabase.from("collection_comments").delete().eq("id", id);
   if (error) throw error;
 }
 

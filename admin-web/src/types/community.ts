@@ -51,6 +51,24 @@ export function parseBannedWord(raw: Record<string, unknown>): BannedWord {
   };
 }
 
+export interface CommunityNoticeAdmin {
+  id: string;
+  content: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export function parseCommunityNoticeAdmin(
+  raw: Record<string, unknown>,
+): CommunityNoticeAdmin {
+  return {
+    id: String(raw.id),
+    content: String(raw.content ?? ""),
+    isActive: Boolean(raw.is_active),
+    createdAt: new Date(String(raw.created_at)),
+  };
+}
+
 export function parseCommunityPostAdmin(raw: Record<string, unknown>): CommunityPostAdmin {
   return {
     id: String(raw.id),

@@ -35,6 +35,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   List<String> _existingImageUrls = [];
   _SelectedRestaurant? _selectedRestaurant;
   bool _submitting = false;
+  String? _validationError;
 
   static const _maxImages = 4;
 
@@ -90,12 +91,13 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
     final content = _contentCtrl.text.trim();
     if (content.isEmpty || _submitting) return;
     if (containsProfanity(content)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('커뮤니티 이용 정책에 위배되는 표현이 포함되어 있어요.')),
-      );
+      setState(() => _validationError = '커뮤니티 이용 정책에 위배되는 표현이 포함되어 있어요.');
       return;
     }
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _validationError = null;
+    });
 
     final repo = CommunityRepository();
     try {
@@ -124,10 +126,10 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('게시에 실패했어요. 다시 시도해주세요.')),
-      );
+      setState(() {
+        _submitting = false;
+        _validationError = '게시에 실패했어요. 다시 시도해주세요.';
+      });
     }
   }
 
@@ -182,6 +184,9 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
               controller: _contentCtrl,
               maxLines: 5,
               maxLength: 1000,
+              onChanged: (_) {
+                if (_validationError != null) setState(() => _validationError = null);
+              },
               decoration: InputDecoration(
                 hintText: '커뮤니티 이용 정책을 지켜 자유롭게 이야기해주세요.',
                 filled: true,
@@ -192,6 +197,15 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                 ),
               ),
             ),
+            if (_validationError != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(
+                  _validationError!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFEF4444), fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
             if (_totalImageCount > 0) ...[
               const SizedBox(height: 8),
               SizedBox(

@@ -3,11 +3,13 @@ import { ExportModal } from "./components/ExportModal";
 import { Layout } from "./components/Layout";
 import type { AdminTab } from "./components/Tabs";
 import { useAuth } from "./hooks/useAuth";
+import { useCollections } from "./hooks/useCollections";
 import { useCommunity } from "./hooks/useCommunity";
 import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
 import { useMetrics } from "./hooks/useMetrics";
 import { useRestaurants } from "./hooks/useRestaurants";
+import { CollectionsPage } from "./pages/CollectionsPage";
 import { CommunityAdminPage } from "./pages/CommunityAdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -32,6 +34,7 @@ export default function App() {
   const gifticonsState = useGifticons(enabled && tab === "gifticons");
   const feedbackState = useFeedback(enabled && tab === "feedback");
   const communityState = useCommunity(enabled && tab === "community");
+  const collectionsState = useCollections(enabled && tab === "collections");
   const usersState = useUsers(enabled && tab === "users");
   const pushConfigState = usePushConfig(enabled && tab === "push");
 
@@ -42,6 +45,7 @@ export default function App() {
       tab === "gifticons" ? gifticonsState.reload() : Promise.resolve(),
       tab === "feedback" ? feedbackState.reload() : Promise.resolve(),
       tab === "community" ? communityState.reload() : Promise.resolve(),
+      tab === "collections" ? collectionsState.reload() : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
     ]);
@@ -51,6 +55,7 @@ export default function App() {
     gifticonsState,
     feedbackState,
     communityState,
+    collectionsState,
     usersState,
     pushConfigState,
     tab,
@@ -130,6 +135,7 @@ export default function App() {
           reports={communityState.reports}
           posts={communityState.posts}
           bannedWords={communityState.bannedWords}
+          notices={communityState.notices}
           loading={communityState.loading}
           error={communityState.error}
           onHidePost={communityState.hidePost}
@@ -138,6 +144,32 @@ export default function App() {
           onRemoveComment={communityState.removeComment}
           onAddWord={communityState.addWord}
           onRemoveWord={communityState.removeWord}
+          onAddNotice={communityState.addNotice}
+          onEditNotice={communityState.editNotice}
+          onToggleNoticeActive={communityState.toggleNoticeActive}
+          onRemoveNotice={communityState.removeNotice}
+        />
+      );
+    }
+
+    if (tab === "collections") {
+      return (
+        <CollectionsPage
+          restaurants={restaurantsState.restaurants}
+          collections={collectionsState.collections}
+          items={collectionsState.items}
+          comments={collectionsState.comments}
+          loading={collectionsState.loading}
+          error={collectionsState.error}
+          onAddCollection={collectionsState.addCollection}
+          onEditCollection={collectionsState.editCollection}
+          onTogglePublished={collectionsState.togglePublished}
+          onRemoveCollection={collectionsState.removeCollection}
+          onAddItem={collectionsState.addItem}
+          onRemoveItem={collectionsState.removeItem}
+          onReorderItems={collectionsState.reorderItems}
+          onHideComment={collectionsState.hideComment}
+          onRemoveComment={collectionsState.removeComment}
         />
       );
     }
@@ -183,6 +215,7 @@ export default function App() {
           if (next === "gifticons") gifticonsState.reload();
           if (next === "feedback") feedbackState.reload();
           if (next === "community") communityState.reload();
+          if (next === "collections") collectionsState.reload();
           if (next === "users") usersState.reload();
           if (next === "push") pushConfigState.reload();
         }}

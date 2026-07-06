@@ -6,6 +6,7 @@ export type AdminTab =
   | "gifticons"
   | "feedback"
   | "community"
+  | "collections"
   | "users"
   | "push";
 
@@ -17,6 +18,7 @@ export const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "gifticons", label: "기프티콘" },
   { id: "feedback", label: "피드백" },
   { id: "community", label: "커뮤니티" },
+  { id: "collections", label: "맛집 컬렉션" },
   { id: "users", label: "회원 관리" },
   { id: "push", label: "푸시 설정" },
 ];
