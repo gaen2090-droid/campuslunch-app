@@ -1,0 +1,70 @@
+class CommunityPost {
+  final String id;
+  final String content;
+  final List<String> imageUrls;
+  final String nickname;
+  final String? restaurantId;
+  final String? restaurantName;
+  final int likeCount;
+  final int commentCount;
+  final bool likedByMe;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isOwner;
+
+  const CommunityPost({
+    required this.id,
+    required this.content,
+    required this.imageUrls,
+    required this.nickname,
+    this.restaurantId,
+    this.restaurantName,
+    required this.likeCount,
+    required this.commentCount,
+    required this.likedByMe,
+    required this.createdAt,
+    this.updatedAt,
+    required this.isOwner,
+  });
+
+  factory CommunityPost.fromMap(Map<String, dynamic> map) {
+    return CommunityPost(
+      id: map['id'] as String,
+      content: map['content'] as String,
+      imageUrls: (map['image_urls'] as List<dynamic>? ?? const [])
+          .map((e) => e as String)
+          .toList(),
+      nickname: map['nickname'] as String? ?? '탈퇴한 사용자',
+      restaurantId: map['restaurant_id'] as String?,
+      restaurantName: map['restaurant_name'] as String?,
+      likeCount: map['like_count'] as int? ?? 0,
+      commentCount: map['comment_count'] as int? ?? 0,
+      likedByMe: map['liked_by_me'] as bool? ?? false,
+      createdAt: DateTime.parse(map['created_at'] as String),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
+          : null,
+      isOwner: map['is_owner'] as bool? ?? false,
+    );
+  }
+
+  CommunityPost copyWith({
+    int? likeCount,
+    bool? likedByMe,
+  }) {
+    return CommunityPost(
+      id: id,
+      content: content,
+      imageUrls: imageUrls,
+      nickname: nickname,
+      restaurantId: restaurantId,
+      restaurantName: restaurantName,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount,
+      likedByMe: likedByMe ?? this.likedByMe,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      isOwner: isOwner,
+    );
+  }
+}

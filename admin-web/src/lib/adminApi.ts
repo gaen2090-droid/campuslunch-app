@@ -13,6 +13,14 @@ import {
   type PushNotificationConfig,
 } from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
+import {
+  parseBannedWord,
+  parseCommunityPostAdmin,
+  parseCommunityReport,
+  type BannedWord,
+  type CommunityPostAdmin,
+  type CommunityReport,
+} from "../types/community";
 
 function parseDescription(raw: unknown): Record<string, unknown> | null {
   if (raw == null) return null;
@@ -632,6 +640,81 @@ export async function updatePushNotificationConfig(
     throw new Error("설정 저장 응답이 올바르지 않아요.");
   }
   return parsePushConfig(data as Record<string, unknown>);
+}
+
+export async function fetchCommunityReports(): Promise<CommunityReport[]> {
+  const { data, error } = await supabase.rpc("admin_list_community_reports");
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseCommunityReport(row as Record<string, unknown>));
+}
+
+export async function fetchCommunityPosts(): Promise<CommunityPostAdmin[]> {
+  const { data, error } = await supabase.rpc("admin_list_community_posts", {
+    p_limit: 50,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseCommunityPostAdmin(row as Record<string, unknown>));
+}
+
+export async function setCommunityPostHidden(
+  id: string,
+  hidden: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("community_posts")
+    .update({ is_hidden: hidden })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCommunityPost(id: string): Promise<void> {
+  const { error } = await supabase.from("community_posts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function setCommunityCommentHidden(
+  id: string,
+  hidden: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("community_comments")
+    .update({ is_hidden: hidden })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCommunityComment(id: string): Promise<void> {
+  const { error } = await supabase.from("community_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchBannedWords(): Promise<BannedWord[]> {
+  const { data, error } = await supabase
+    .from("community_banned_words")
+    .select("id, word, created_at")
+    .order("word", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map(parseBannedWord);
+}
+
+export async function addBannedWord(word: string): Promise<void> {
+  const trimmed = word.trim();
+  if (!trimmed) return;
+  const { error } = await supabase
+    .from("community_banned_words")
+    .insert({ word: trimmed });
+  if (error) throw error;
+}
+
+export async function deleteBannedWord(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("community_banned_words")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export const AREAS = ["정문", "중문", "후문"] as const;

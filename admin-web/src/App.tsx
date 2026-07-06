@@ -3,10 +3,12 @@ import { ExportModal } from "./components/ExportModal";
 import { Layout } from "./components/Layout";
 import type { AdminTab } from "./components/Tabs";
 import { useAuth } from "./hooks/useAuth";
+import { useCommunity } from "./hooks/useCommunity";
 import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
 import { useMetrics } from "./hooks/useMetrics";
 import { useRestaurants } from "./hooks/useRestaurants";
+import { CommunityAdminPage } from "./pages/CommunityAdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
 import { GifticonsPage } from "./pages/GifticonsPage";
@@ -29,6 +31,7 @@ export default function App() {
   const restaurantsState = useRestaurants(enabled);
   const gifticonsState = useGifticons(enabled && tab === "gifticons");
   const feedbackState = useFeedback(enabled && tab === "feedback");
+  const communityState = useCommunity(enabled && tab === "community");
   const usersState = useUsers(enabled && tab === "users");
   const pushConfigState = usePushConfig(enabled && tab === "push");
 
@@ -38,10 +41,20 @@ export default function App() {
       restaurantsState.reload(),
       tab === "gifticons" ? gifticonsState.reload() : Promise.resolve(),
       tab === "feedback" ? feedbackState.reload() : Promise.resolve(),
+      tab === "community" ? communityState.reload() : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
     ]);
-  }, [metricsState, restaurantsState, gifticonsState, feedbackState, usersState, pushConfigState, tab]);
+  }, [
+    metricsState,
+    restaurantsState,
+    gifticonsState,
+    feedbackState,
+    communityState,
+    usersState,
+    pushConfigState,
+    tab,
+  ]);
 
   if (auth.loading) {
     return <div className="center-msg">불러오는 중…</div>;
@@ -111,6 +124,24 @@ export default function App() {
       );
     }
 
+    if (tab === "community") {
+      return (
+        <CommunityAdminPage
+          reports={communityState.reports}
+          posts={communityState.posts}
+          bannedWords={communityState.bannedWords}
+          loading={communityState.loading}
+          error={communityState.error}
+          onHidePost={communityState.hidePost}
+          onRemovePost={communityState.removePost}
+          onHideComment={communityState.hideComment}
+          onRemoveComment={communityState.removeComment}
+          onAddWord={communityState.addWord}
+          onRemoveWord={communityState.removeWord}
+        />
+      );
+    }
+
     if (tab === "users") {
       return (
         <UsersPage
@@ -151,6 +182,7 @@ export default function App() {
           setTab(next);
           if (next === "gifticons") gifticonsState.reload();
           if (next === "feedback") feedbackState.reload();
+          if (next === "community") communityState.reload();
           if (next === "users") usersState.reload();
           if (next === "push") pushConfigState.reload();
         }}

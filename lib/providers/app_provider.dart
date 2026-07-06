@@ -12,6 +12,7 @@ import '../constants/email_auth.dart';
 import '../utils/nickname_generator.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/community_repository.dart';
 import '../data/profile_repository.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
@@ -31,6 +32,7 @@ import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
 import '../utils/gifticon_csv_parser.dart';
+import '../utils/profanity_filter.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
@@ -83,6 +85,21 @@ class AppProvider extends ChangeNotifier {
     _coachMarkSeenCache = true;
     SharedPreferences.getInstance()
         .then((prefs) => prefs.setBool(_kCoachMarkSeen, true));
+  }
+
+  bool? _communityGuidelineSeenCache;
+
+  Future<bool> shouldShowCommunityGuideline() async {
+    if (_communityGuidelineSeenCache != null) return !_communityGuidelineSeenCache!;
+    final prefs = await SharedPreferences.getInstance();
+    _communityGuidelineSeenCache = prefs.getBool(_kCommunityGuidelineSeen) ?? false;
+    return !_communityGuidelineSeenCache!;
+  }
+
+  void completeCommunityGuideline() {
+    _communityGuidelineSeenCache = true;
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_kCommunityGuidelineSeen, true));
   }
 
   void clearSignupCompleteMessage() {
@@ -148,7 +165,7 @@ class AppProvider extends ChangeNotifier {
   /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
   int get homeTabIndex => hasOwnerTab ? 1 : 0;
 
-  int get myTabIndex => hasOwnerTab ? 3 : 2;
+  int get myTabIndex => hasOwnerTab ? 4 : 3;
 
   bool get hasPendingAppLink => _pendingAppLink != null;
 
@@ -219,6 +236,7 @@ class AppProvider extends ChangeNotifier {
   static const _kPendingLegalTermsUsers = 'cl_pending_legal_terms_users';
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
   static const _kCoachMarkSeen = 'cl_coach_mark_seen';
+  static const _kCommunityGuidelineSeen = 'cl_community_guideline_seen';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';
@@ -357,6 +375,7 @@ class AppProvider extends ChangeNotifier {
 
     _restaurants = [];
     unawaited(_loadRestaurantsFromSupabase());
+    unawaited(_loadBannedWords());
 
     final bookmarksJson = prefs.getString(_kBookmarks);
     if (bookmarksJson != null) {
@@ -1119,7 +1138,7 @@ class AppProvider extends ChangeNotifier {
     await p.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
     if (hadOwnerTab && !hasOwnerTab) {
       _mainTabIndex =
-          _mainTabIndex > 0 ? (_mainTabIndex - 1).clamp(0, 2) : 0;
+          _mainTabIndex > 0 ? (_mainTabIndex - 1).clamp(0, 3) : 0;
     }
   }
 
@@ -1276,7 +1295,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setMainTabIndex(int index) {
-    final max = hasOwnerTab ? 3 : 2;
+    final max = hasOwnerTab ? 4 : 3;
     final next = index.clamp(0, max);
     if (_mainTabIndex == next) return;
     _mainTabIndex = next;
@@ -1301,9 +1320,8 @@ class AppProvider extends ChangeNotifier {
 
   /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.
   Future<void> _refreshForMainTab(int index) async {
-    final myIndex = hasOwnerTab ? 3 : 2;
     try {
-      if (index == myIndex) {
+      if (index == myTabIndex) {
         await fetchMyReward();
         return;
       }
@@ -2315,6 +2333,16 @@ class AppProvider extends ChangeNotifier {
       return r.copyWith(status: '영업안함', updated: 0);
     }
     return r;
+  }
+
+  Future<void> _loadBannedWords() async {
+    if (!SupabaseService.isReady) return;
+    try {
+      final words = await CommunityRepository().fetchBannedWords();
+      setBannedWords(words);
+    } catch (e) {
+      debugPrint('[Community] fetchBannedWords failed: $e');
+    }
   }
 
   // ── 리워드 ──

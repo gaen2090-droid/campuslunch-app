@@ -4,6 +4,7 @@ import '../models/coach_mark_step.dart';
 import '../providers/app_provider.dart';
 import '../widgets/coach_mark_overlay.dart';
 import '../constants/app_links.dart';
+import 'community_screen.dart';
 import 'coupon_box_screen.dart';
 import 'detail_screen.dart';
 import 'home_screen.dart';
@@ -23,6 +24,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool _mapMounted = false;
+  bool _communityMounted = false;
   bool _showCoachMark = false;
   bool _handlingAppLink = false;
 
@@ -121,16 +123,21 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
     final hasOwner = provider.hasOwnerTab;
-    final index = provider.mainTabIndex.clamp(0, hasOwner ? 3 : 2);
+    final index = provider.mainTabIndex.clamp(0, hasOwner ? 4 : 3);
     final mapIndex = hasOwner ? 2 : 1;
+    final communityIndex = hasOwner ? 3 : 2;
 
     if (index == mapIndex) {
       _mapMounted = true;
+    }
+    if (index == communityIndex) {
+      _communityMounted = true;
     }
 
     final nonMapTabs = <Widget>[
       if (hasOwner) const OwnerScreen(),
       const HomeScreen(),
+      if (_communityMounted) const CommunityScreen() else const SizedBox.shrink(),
       const MyScreen(),
     ];
     final nonMapIndex =
@@ -235,6 +242,11 @@ class _BottomNav extends StatelessWidget {
               label: '지도',
             ),
             _NavItem(
+              icon: Icons.forum_outlined,
+              activeIcon: Icons.forum,
+              label: '커뮤니티',
+            ),
+            _NavItem(
               icon: Icons.account_circle_outlined,
               activeIcon: Icons.account_circle_outlined,
               label: 'MY',
@@ -250,6 +262,11 @@ class _BottomNav extends StatelessWidget {
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
               label: '지도',
+            ),
+            _NavItem(
+              icon: Icons.forum_outlined,
+              activeIcon: Icons.forum,
+              label: '커뮤니티',
             ),
             _NavItem(
               icon: Icons.account_circle_outlined,

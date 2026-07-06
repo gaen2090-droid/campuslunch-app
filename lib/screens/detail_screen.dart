@@ -83,6 +83,10 @@ class _DetailScreenState extends State<DetailScreen> {
     final isBookmarked = provider.bookmarks.contains(r.id);
     final statusColor = _statusColor(r.status);
     final safeTop = MediaQuery.of(context).padding.top;
+    final ownerPriorityActive = r.hasCrowdUpdate &&
+        r.crowdBaseSource == 'owner' &&
+        r.updatedAt != null &&
+        DateTime.now().difference(r.updatedAt!) < const Duration(minutes: 5);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -242,6 +246,8 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
 
             BusinessHoursSection(hours: r.hours),
+
+            if (ownerPriorityActive) const _OwnerPriorityWindowCard(),
 
             if (_ownerSeatUpdate != null &&
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
@@ -422,6 +428,48 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _navigate(Restaurant r) {
     openInAppDirections(context, r);
+  }
+}
+
+class _OwnerPriorityWindowCard extends StatelessWidget {
+  const _OwnerPriorityWindowCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F8F0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFBFE0B0)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(Icons.chat_bubble_outline,
+                  size: 18, color: Color(0xFF5E8C4A)),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                '사장님의 제보가 있는 경우 5분간 혼잡도 상태를 유지해요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF4C9C2A),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
