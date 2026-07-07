@@ -171,37 +171,41 @@ class _MainScreenState extends State<MainScreen> {
         if (_showCoachMark && index != mapIndex)
           Material(
             type: MaterialType.transparency,
-            child: CoachMarkOverlay(
-            steps: [
-              CoachMarkStep(
-                targetKeys: [HomeScreen.filterRowKey],
-                title: '원하는 조건으로 걸러봐요',
-                subtitle: '내가 원하는 조건의 매장을 찾을 수 있어요',
-              ),
-              CoachMarkStep(
-                targetKeys: [HomeScreen.availableBadgeKey],
-                title: '혼잡도를 한눈에 확인',
-                subtitle: '바로 입장 가능한 매장을 확인해보세요',
-              ),
-              // 추천 배너(Hero) 제외, 화면에 실제로 존재하는 첫 카드를 섹션 순서대로 후보에 넣는다.
-              // 대상이 스크롤 뷰포트 밖이어도 CoachMarkOverlay가 자동 스크롤 후 가리킨다.
-              CoachMarkStep(
-                targetKeys: [
-                  HomeScreen.firstAvailableCardKey,
-                  HomeScreen.firstSlightlyBusyCardKey,
-                  HomeScreen.stampCardKey,
-                  HomeScreen.firstBusyCardKey,
-                ],
-                title: '제보하고 스탬프 적립',
-                subtitle: '카드를 눌러 제보하면 스탬프를 받아요. 모으면 커피 쿠폰으로 교환해요',
-              ),
-              CoachMarkStep(
-                targetKeys: [mapNavIconKey],
-                title: '지도로도 볼 수 있어요',
-                subtitle: '내 주변 매장을 지도에서 한눈에',
-              ),
-            ],
-            onFinish: _finishCoachMark,
+            child: Stack(
+              children: [
+                CoachMarkOverlay(
+                  steps: [
+                    CoachMarkStep(
+                      targetKeys: [HomeScreen.filterRowKey],
+                      title: '원하는 조건으로 걸러봐요',
+                      subtitle: '내가 원하는 조건의 매장을 찾을 수 있어요',
+                    ),
+                    CoachMarkStep(
+                      targetKeys: [HomeScreen.availableBadgeKey],
+                      title: '혼잡도를 한눈에 확인',
+                      subtitle: '바로 입장 가능한 매장을 확인해보세요',
+                    ),
+                    // 추천 배너(Hero) 제외, 화면에 실제로 존재하는 첫 카드를 섹션 순서대로 후보에 넣는다.
+                    // 대상이 스크롤 뷰포트 밖이어도 CoachMarkOverlay가 자동 스크롤 후 가리킨다.
+                    CoachMarkStep(
+                      targetKeys: [
+                        HomeScreen.firstAvailableCardKey,
+                        HomeScreen.firstSlightlyBusyCardKey,
+                        HomeScreen.stampCardKey,
+                        HomeScreen.firstBusyCardKey,
+                      ],
+                      title: '제보하고 스탬프 적립',
+                      subtitle: '카드를 눌러 제보하면 스탬프를 받아요. 모으면 커피 쿠폰으로 교환해요',
+                    ),
+                    CoachMarkStep(
+                      targetKeys: [mapNavIconKey],
+                      title: '지도로도 볼 수 있어요',
+                      subtitle: '내 주변 매장을 지도에서 한눈에',
+                    ),
+                  ],
+                  onFinish: _finishCoachMark,
+                ),
+              ],
             ),
           ),
       ],

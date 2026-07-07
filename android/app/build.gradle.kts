@@ -86,6 +86,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // release 앱과 별도로 설치되도록 (덮어쓰기 방지)
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // key.properties 가 있으면 릴리스 키로, 없으면 debug 키로 서명한다.
             // (팀원이 keystore 없이도 디버그 빌드를 돌릴 수 있도록)
