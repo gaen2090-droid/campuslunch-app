@@ -300,6 +300,9 @@ class AppProvider extends ChangeNotifier {
       _queuedIncomingUri = null;
       if (queued != null) handleIncomingUri(queued);
     });
+    // 파이프라인이 유휴 상태면 post-frame 콜백이 예약만 되고 실행되지 않을 수 있어
+    // (스플래시가 끝나지 않는 버그의 원인) 프레임을 명시적으로 요청해 즉시 flush한다.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// App Link 수신. 미로그인·앱 메인 전(stage≠app)이면 무시 → 초기 화면 플로우 유지.
