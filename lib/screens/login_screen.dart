@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/email_auth.dart';
 import '../providers/app_provider.dart';
+import '../widgets/keyboard_safe.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -113,10 +114,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           SafeArea(
-            child: SingleChildScrollView(
+            child: KeyboardDismissScroll(
               padding: const EdgeInsets.fromLTRB(28, 36, 28, 36),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,18 +501,13 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          behavior: HitTestBehavior.translucent,
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: EdgeInsets.fromLTRB(28, 40, 28, 36 + bottomInset),
-            child: Column(
+        child: KeyboardDismissScroll(
+          padding: const EdgeInsets.fromLTRB(28, 40, 28, 36),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
@@ -731,7 +728,6 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 }

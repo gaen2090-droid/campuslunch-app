@@ -331,7 +331,9 @@ class _MyScreenState extends State<MyScreen> {
                             20,
                             20,
                             20,
-                            MediaQuery.of(context).padding.bottom + 24),
+                            MediaQuery.of(context).padding.bottom +
+                                MediaQuery.of(context).viewInsets.bottom +
+                                24),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,

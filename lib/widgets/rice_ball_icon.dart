@@ -46,6 +46,40 @@ class RiceBallIcon extends StatelessWidget {
   }
 }
 
+/// 스플래시·런처와 동일한 앱 아이콘 (UI용 logo.png 와 별도)
+class AppLauncherIcon extends StatelessWidget {
+  final double size;
+
+  const AppLauncherIcon({super.key, this.size = 72});
+
+  static const assetPath = 'assets/icon/app_icon_source.png';
+
+  @override
+  Widget build(BuildContext context) {
+    final cachePx = (size * MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(48, 512);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.22),
+      child: Image.asset(
+        assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.rice_bowl_outlined,
+          size: size,
+          color: const Color(0xFF5E8C4A),
+        ),
+      ),
+    );
+  }
+}
+
 /// 스탬프 적립 화면 전용 — 브랜드 로고 교체와 무관하게 기존 주먹밥 캐릭터 유지.
 class StampRiceBallIcon extends StatelessWidget {
   final double size;

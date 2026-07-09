@@ -150,8 +150,9 @@ cd android && ./gradlew :app:signingReport
 #### iOS `apple-app-site-association`
 
 - `appID`: `{TeamID}.com.campuslunch.app` (현재 `WQRY89A2Z3.com.campuslunch.app`)
-- `ios/Runner/Runner.entitlements` 에 `applinks:campuslunch.shop` 설정됨
-- Xcode → **Signing & Capabilities** → **Associated Domains** 에 동일 항목 있는지 확인
+- **Release** 빌드: `ios/Runner/Runner.entitlements` (Associated Domains)
+- **Debug / Profile** (`flutter run`): `RunnerDebug.entitlements` — Personal Team 실기 개발용(Universal Links 없음)
+- Xcode → **Signing & Capabilities** → **Associated Domains** (Release·유료 계정)
 
 ### ④ 앱 빌드
 

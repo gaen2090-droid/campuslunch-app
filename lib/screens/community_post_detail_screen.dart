@@ -236,6 +236,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF9FAFB),
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           backgroundColor: const Color(0xFFF9FAFB),
           elevation: 0,
@@ -277,12 +278,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                children: [
                   Row(
                     children: [
                       Text(
@@ -388,50 +386,53 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                           comment: c,
                           onDelete: c.isOwner ? () => _deleteComment(c) : null,
                         )),
-                ],
+          ],
+        ),
+        bottomNavigationBar: Material(
+          color: Colors.white,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
               ),
-            ),
-            SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _commentCtrl,
-                        decoration: InputDecoration(
-                          hintText: '댓글을 입력해주세요',
-                          filled: true,
-                          fillColor: const Color(0xFFF9FAFB),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentCtrl,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) {
+                        if (!_submittingComment) _submitComment();
+                      },
+                      decoration: InputDecoration(
+                        hintText: '댓글을 입력해주세요',
+                        filled: true,
+                        fillColor: const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _submittingComment ? null : _submitComment,
-                      icon: _submittingComment
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
-                            )
-                          : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _submittingComment ? null : _submitComment,
+                    icon: _submittingComment
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
+                          )
+                        : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
