@@ -701,7 +701,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           context, MaterialPageRoute(builder: (_) => RestaurantListScreen(mode: mode, mainTab: _mainTab)));
 
     final hasAvailable = recommended != null || availableCards.isNotEmpty;
-    final top5Available = availableCards.take(availableStale ? (recommended != null ? 0 : 1) : 10).toList();
+    final top5Available = availableCards.take(availableStale
+        ? (recommended != null ? 0 : 1)
+        : (recommended != null ? 9 : 10)).toList();
     final top5SlightlyBusy = slightlyBusyList.take(slightlyBusyStale ? 1 : 5).toList();
     final stampCards = stampList.take(5).toList();
     final busyCards = busyList.take(busyStale ? 1 : 5).toList();
