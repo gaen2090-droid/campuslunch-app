@@ -702,7 +702,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     final hasAvailable = recommended != null || availableCards.isNotEmpty;
     final top5Available = availableCards.take(availableStale ? (recommended != null ? 0 : 1) : 10).toList();
-    final top5SlightlyBusy = slightlyBusyList.take(slightlyBusyStale ? 1 : 10).toList();
+    final top5SlightlyBusy = slightlyBusyList.take(slightlyBusyStale ? 1 : 5).toList();
     final stampCards = stampList.take(5).toList();
     final busyCards = busyList.take(busyStale ? 1 : 5).toList();
 
