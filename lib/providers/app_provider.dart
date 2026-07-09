@@ -102,6 +102,25 @@ class AppProvider extends ChangeNotifier {
         .then((prefs) => prefs.setBool(_kCommunityGuidelineSeen, true));
   }
 
+  DateTime? _communityNotificationLastSeenAtCache;
+
+  Future<DateTime?> communityNotificationLastSeenAt() async {
+    if (_communityNotificationLastSeenAtCache != null) {
+      return _communityNotificationLastSeenAtCache;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final iso = prefs.getString(_kCommunityNotificationLastSeenAt);
+    _communityNotificationLastSeenAtCache = iso != null ? DateTime.tryParse(iso) : null;
+    return _communityNotificationLastSeenAtCache;
+  }
+
+  void markCommunityNotificationsSeen() {
+    final now = DateTime.now();
+    _communityNotificationLastSeenAtCache = now;
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(_kCommunityNotificationLastSeenAt, now.toIso8601String()));
+  }
+
   void clearSignupCompleteMessage() {
     if (!_showSignupCompleteMessage) return;
     _showSignupCompleteMessage = false;
@@ -237,6 +256,7 @@ class AppProvider extends ChangeNotifier {
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
   static const _kCoachMarkSeen = 'cl_coach_mark_seen';
   static const _kCommunityGuidelineSeen = 'cl_community_guideline_seen';
+  static const _kCommunityNotificationLastSeenAt = 'cl_community_notification_last_seen_at';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';

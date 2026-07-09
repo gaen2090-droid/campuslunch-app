@@ -41,6 +41,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   String? _collectionsError;
 
   CommunityNotice? _notice;
+  bool _hasUnreadNotification = false;
 
   @override
   void initState() {
@@ -49,6 +50,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     _loadFeed();
     _loadCollections();
     _maybeShowGuideline();
+    _checkUnreadNotifications();
   }
 
   Future<void> _loadNotice() async {
@@ -58,6 +60,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
       setState(() => _notice = notice);
     } catch (_) {
       // 공지 로드 실패는 무시 (핵심 기능 아님)
+    }
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    try {
+      final provider = context.read<AppProvider>();
+      final notifications = await _repo.fetchCommentNotifications();
+      if (!mounted || notifications.isEmpty) return;
+      final lastSeenAt = await provider.communityNotificationLastSeenAt();
+      final latest = notifications.first.createdAt;
+      final hasUnread = lastSeenAt == null || latest.isAfter(lastSeenAt);
+      if (!mounted) return;
+      setState(() => _hasUnreadNotification = hasUnread);
+    } catch (_) {
+      // 알림 확인 실패는 무시 (핵심 기능 아님)
     }
   }
 
@@ -216,11 +233,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  void _openNotifications() {
-    Navigator.push(
+  Future<void> _openNotifications() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CommunityNotificationsScreen()),
     );
+    if (!mounted) return;
+    context.read<AppProvider>().markCommunityNotificationsSeen();
+    setState(() => _hasUnreadNotification = false);
   }
 
   @override
@@ -266,9 +286,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: _openNotifications,
-                  icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A)),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: _openNotifications,
+                      icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A)),
+                    ),
+                    if (_hasUnreadNotification)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 PopupMenuButton<MyActivityMode>(
                   icon: const Icon(Icons.menu, color: Color(0xFF5E8C4A)),

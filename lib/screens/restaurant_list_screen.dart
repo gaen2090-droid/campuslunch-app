@@ -14,7 +14,6 @@ import 'home_screen.dart'
         NeedsReportCard,
         HomeFilterIconButton,
         HomeFilterSheet,
-        HomeCafeFilterChip,
         HomeFilterChip,
         SimpleFilterSheet;
 import 'detail_screen.dart';
@@ -24,8 +23,9 @@ enum RestaurantListMode { available, slightlyBusy, stamp, busy, closed }
 
 class RestaurantListScreen extends StatefulWidget {
   final RestaurantListMode mode;
+  final int mainTab; // 0: 식당, 1: 카페
 
-  const RestaurantListScreen({super.key, required this.mode});
+  const RestaurantListScreen({super.key, required this.mode, this.mainTab = 0});
 
   @override
   State<RestaurantListScreen> createState() => _RestaurantListScreenState();
@@ -36,8 +36,9 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   String _sortBy = '최신순';
   Set<String> _regions = {'전체'};
   Set<String> _cuisines = {'전체'};
+  bool _bookmarkOnly = false;
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
-  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식'];
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
 
@@ -69,10 +70,13 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   bool _isAll(Set<String> s) => s.contains(_allLabel) && s.length == 1;
 
   List<Restaurant> _applyFilter(List<Restaurant> all) {
+    final bookmarks = context.read<AppProvider>().bookmarks;
     return all.where((r) {
+      final tabOk = widget.mainTab == 1 ? r.category == '카페' : r.category != '카페';
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
-      return regionOk && cuisineOk;
+      final bookmarkOk = !_bookmarkOnly || bookmarks.contains(r.id);
+      return tabOk && regionOk && cuisineOk && bookmarkOk;
     }).toList();
   }
 
@@ -316,6 +320,40 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             onTap: () => _openFilterSheet(locationMode),
                           ),
                           const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => _bookmarkOnly = !_bookmarkOnly);
+                              _saveFilter();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: _bookmarkOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: _bookmarkOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '즐겨찾기',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Icon(
+                                    _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                    size: 14,
+                                    color: const Color(0xFF111827),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           if (hasFilter) ...[
                             GestureDetector(
                               onTap: () {
@@ -397,20 +435,6 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                               onApply: (v) { setState(() => _cuisines = v); _saveFilter(); },
                               onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          HomeCafeFilterChip(
-                            active: _cuisines.length == 1 && _cuisines.contains('카페'),
-                            onTap: () {
-                              setState(() {
-                                if (_cuisines.length == 1 && _cuisines.contains('카페')) {
-                                  _cuisines = {_allLabel};
-                                } else {
-                                  _cuisines = {'카페'};
-                                }
-                              });
-                              _saveFilter();
-                            },
                           ),
                         ],
                       ),

@@ -8,7 +8,6 @@ import 'home_screen.dart'
     show
         HomeFilterIconButton,
         HomeFilterSheet,
-        HomeCafeFilterChip,
         HomeFilterChip,
         SimpleFilterSheet;
 import 'detail_screen.dart';
@@ -33,7 +32,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
 
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
-  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식'];
 
   @override
   void didChangeDependencies() {
@@ -193,7 +192,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    '저장한 매장',
+                    '즐겨찾기한 매장',
                     style: TextStyle(
                       fontFamily: 'OkDanDan',
                       fontSize: 24,
@@ -315,20 +314,6 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    HomeCafeFilterChip(
-                      active: _cuisines.length == 1 && _cuisines.contains('카페'),
-                      onTap: () {
-                        setState(() {
-                          if (_cuisines.length == 1 && _cuisines.contains('카페')) {
-                            _cuisines = {_allLabel};
-                          } else {
-                            _cuisines = {'카페'};
-                          }
-                        });
-                        _saveFilter();
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -344,7 +329,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                     ? bookmarks.isEmpty
                         ? const Center(
                             child: Text(
-                              '저장한 매장이 없어요',
+                              '즐겨찾기한 매장이 없어요',
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

@@ -81,7 +81,11 @@ AvailableSection buildAvailableSection(
       };
 
   final relaxedRecent = available
-      .where((r) => r.status == '여유로움' && r.hasCrowdUpdate && r.updated <= 10)
+      .where((r) =>
+          r.status == '여유로움' &&
+          r.hasCrowdUpdate &&
+          r.updatedAt != null &&
+          DateTime.now().difference(r.updatedAt!).inMinutes <= 10)
       .toList()
     ..sort(recSort(useAlgorithmRanking));
 

@@ -67,7 +67,9 @@ class _ConsentChecklistState extends State<ConsentChecklist> {
           ),
         ],
       ),
-      child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _ConsentRow(
@@ -135,6 +137,7 @@ class _ConsentChecklistState extends State<ConsentChecklist> {
             );
           }),
         ],
+        ),
       ),
     );
   }

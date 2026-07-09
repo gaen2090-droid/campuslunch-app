@@ -11,7 +11,6 @@ import '../utils/business_hours.dart';
 import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
-import 'bookmark_list_screen.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 import 'restaurant_list_screen.dart';
@@ -42,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _cuisines = {'전체'};
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
+  int _mainTab = 0; // 0: 식당, 1: 카페
+  bool _bookmarkOnly = false;
   String? _lastBannerImpressionId;
   final _searchCtrl = TextEditingController();
   final _crowdInfoOverlay = OverlayPortalController();
@@ -54,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _stampInfoLink = LayerLink();
 
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
-  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식'];
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
   bool _filterLoaded = false;
@@ -86,10 +87,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Restaurant> _filter(List<Restaurant> all) {
+    final bookmarks = context.read<AppProvider>().bookmarks;
     return all.where((r) {
+      final tabOk = _mainTab == 1 ? r.category == '카페' : r.category != '카페';
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
-      return regionOk && cuisineOk;
+      final bookmarkOk = !_bookmarkOnly || bookmarks.contains(r.id);
+      return tabOk && regionOk && cuisineOk && bookmarkOk;
     }).toList();
   }
 
@@ -238,6 +242,35 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     });
   }
 
+  Widget _mainTabButton(String label, int index) {
+    final active = _mainTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _mainTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                width: active ? 2 : 1,
+              ),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -247,6 +280,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final searchResults = _search(all, _searchCtrl.text);
 
     bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
+    int minutesSince(Restaurant r) =>
+        r.updatedAt != null ? DateTime.now().difference(r.updatedAt!).inMinutes : r.updated;
 
     final recommended = buildAvailableSection(filtered, provider.useAlgorithmRanking).recommended;
 
@@ -256,7 +291,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     // 바로 입장 가능해요 = 여유로움만 (약간혼잡은 "빈자리 조금 있어요"로 분리)
     final availableListRecent = _sortSection(
-      filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
+      filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate && minutesSince(r) <= _sectionMaxMinutes).toList(),
     );
     final availableListAll = _sortSection(
       filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate).toList(),
@@ -265,7 +300,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final availableList = availableStale ? availableListAll : availableListRecent;
 
     // 배너용: 10분 이내만
-    final recentAvailable = availableListRecent.where((r) => r.updated <= 10).toList();
+    final recentAvailable = availableListRecent.where((r) => minutesSince(r) <= 10).toList();
     // 섹션 카드용: 추천 배너 제외
     final availableCards = recommended == null
         ? availableList
@@ -276,7 +311,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         : recentAvailable.where((r) => r.id != recommended.id).toList();
 
     final slightlyBusyListRecent = _sortSection(
-      filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
+      filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && minutesSince(r) <= _sectionMaxMinutes).toList(),
     );
     final slightlyBusyListAll = _sortSection(
       filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate).toList(),
@@ -294,7 +329,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       });
 
     final busyListRecent = _sortSection(
-      filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate && r.updated <= _sectionMaxMinutes).toList(),
+      filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate && minutesSince(r) <= _sectionMaxMinutes).toList(),
       isBusy: true,
     );
     final busyListAll = _sortSection(
@@ -304,7 +339,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final busyStale = busyListRecent.isEmpty && busyListAll.isNotEmpty;
     final busyList = busyStale ? busyListAll : busyListRecent;
     final closedList = all
-        .where((r) => r.status == '영업안함')
+        .where((r) =>
+            r.status == '영업안함' &&
+            (_mainTab == 1 ? r.category == '카페' : r.category != '카페') &&
+            (!_bookmarkOnly || provider.bookmarks.contains(r.id)))
         .toList();
 
     final countClosed = closedList.length;
@@ -324,13 +362,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               // 검색 바
               Row(
                 children: [
-                  if (!_searchActive)
-                    Container(
-                      width: 40,
-                      height: 40,
-                      margin: const EdgeInsets.only(right: 12),
-                      child: const RiceBallIcon(size: 40),
-                    ),
                   Expanded(
                     child: Container(
                       height: 40,
@@ -388,31 +419,19 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF6B7280))),
                     ),
-                  ] else ...[
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
-                      ),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.bookmark_rounded,
-                              size: 20, color: Color(0xFF5E8C4A)),
-                        ),
-                      ),
-                    ),
                   ],
                 ],
               ),
 
               if (!_searchActive) ...[
+                const SizedBox(height: 12),
+                // 식당/카페 세부 탭
+                Row(
+                  children: [
+                    _mainTabButton('식당', 0),
+                    _mainTabButton('카페', 1),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 // 필터 칩
                 SingleChildScrollView(
@@ -429,6 +448,40 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           setState(() => _openDropdown = null);
                           _openFilterSheet();
                         },
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _bookmarkOnly = !_bookmarkOnly);
+                          _saveFilter();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: _bookmarkOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: _bookmarkOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '즐겨찾기',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                              ),
+                              const SizedBox(width: 3),
+                              Icon(
+                                _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                size: 14,
+                                color: const Color(0xFF111827),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       if (_sortBy != '최신순' ||
@@ -517,20 +570,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
                           isActive: !_isAll(_cuisines),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      HomeCafeFilterChip(
-                        active: _cuisines.length == 1 && _cuisines.contains('카페'),
-                        onTap: () {
-                          setState(() {
-                            if (_cuisines.length == 1 && _cuisines.contains('카페')) {
-                              _cuisines = {_allLabel};
-                            } else {
-                              _cuisines = {'카페'};
-                            }
-                          });
-                          _saveFilter();
-                        },
                       ),
                     ],
                   ),
@@ -659,13 +698,13 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     required int countClosed,
   }) {
     void goTo(RestaurantListMode mode) => Navigator.push(
-          context, MaterialPageRoute(builder: (_) => RestaurantListScreen(mode: mode)));
+          context, MaterialPageRoute(builder: (_) => RestaurantListScreen(mode: mode, mainTab: _mainTab)));
 
     final hasAvailable = recommended != null || availableCards.isNotEmpty;
     final top5Available = availableCards.take(availableStale ? (recommended != null ? 0 : 1) : 10).toList();
     final top5SlightlyBusy = slightlyBusyList.take(slightlyBusyStale ? 1 : 10).toList();
     final stampCards = stampList.take(5).toList();
-    final busyCards = busyList.take(5).toList();
+    final busyCards = busyList.take(busyStale ? 1 : 5).toList();
 
     const emptyMsg = '제보된 매장이 없어요. 제보하고 스탬프를 받아보세요!';
 
@@ -1485,7 +1524,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
   static const _allLabel = '전체';
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
   static const _regionOpts = [_allLabel, '정문', '중문', '후문'];
-  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식', '카페'];
+  static const _cuisineOpts = [_allLabel, '한식', '중식', '일식', '양식', '아시아', '분식'];
 
   late String _sortBy;
   late Set<String> _regions;

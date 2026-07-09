@@ -202,7 +202,7 @@ class _MyScreenState extends State<MyScreen> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            '저장한 매장',
+                            '즐겨찾기한 매장',
                             style: TextStyle(
                                 fontFamily: 'OkDanDan',
                                 fontSize: 19,
