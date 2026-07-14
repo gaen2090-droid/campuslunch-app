@@ -1,88 +1,48 @@
 ﻿import 'package:flutter/material.dart';
-import '../widgets/rice_ball_icon.dart';
 
-class SplashScreen extends StatefulWidget {
+import '../constants/brand_assets.dart';
+
+/// 첫 화면 — 네이티브 런치와 동일한 풀스크린 합성 이미지 (흰 배경)
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // 다음 화면 전환 전에 로고 디코딩을 끝냄
-      precacheImage(
-        ResizeImage(
-          const AssetImage(RiceBallIcon.assetPath),
-          width: 120,
-          height: 120,
-        ),
-        context,
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _SplashLogo(),
-            SizedBox(height: 20),
-            Text(
-              '캠퍼스런치',
-              style: TextStyle(
-                fontFamily: 'OkDanDan',
-                fontSize: 30,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF5E8C4A),
-                letterSpacing: -1.0,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '지금 어디가 여유로울까?',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF9CA3AF),
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: _SplashFullImage(),
     );
   }
 }
 
-class _SplashLogo extends StatelessWidget {
-  const _SplashLogo();
+class _SplashFullImage extends StatelessWidget {
+  const _SplashFullImage();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 72,
-      height: 72,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.all(Radius.circular(22)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFFC8E6BA),
-            blurRadius: 28,
-            offset: Offset(0, 10),
-          ),
-        ],
+    return Image.asset(
+      BrandAssets.splashScreenFull,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      alignment: Alignment.center,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => const _SplashFallback(),
+    );
+  }
+}
+
+class _SplashFallback extends StatelessWidget {
+  const _SplashFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Image.asset(
+        BrandAssets.splashBrand,
+        fit: BoxFit.contain,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: const RiceBallIcon(size: 72),
     );
   }
 }

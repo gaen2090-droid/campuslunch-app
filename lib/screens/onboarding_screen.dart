@@ -69,6 +69,11 @@ class OnboardingScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                   // 로고
                   Row(
                     children: [
@@ -186,8 +191,10 @@ class OnboardingScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-
-                  const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   // 시작 버튼
                   GestureDetector(

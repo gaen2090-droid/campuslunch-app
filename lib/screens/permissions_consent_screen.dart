@@ -148,12 +148,17 @@ class _LocationBlockedView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            children: [
-              const Spacer(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
               Container(
                 width: 80,
                 height: 80,
@@ -187,7 +192,7 @@ class _LocationBlockedView extends StatelessWidget {
                   height: 1.65,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 40),
               GestureDetector(
                 onTap: loading ? null : onOpenSettings,
                 child: Container(
@@ -240,8 +245,11 @@ class _LocationBlockedView extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

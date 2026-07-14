@@ -51,6 +51,8 @@ Future<void> main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
 
+  await preloadSplashResources();
+
   // ChangeNotifierProvider의 create는 위젯 빌드 시점까지 지연 실행되므로,
   // runApp 직후 곧바로 appProvider를 참조하려면 runApp 이전에 만들어둬야 한다.
   final appProvider = AppProvider()..init();

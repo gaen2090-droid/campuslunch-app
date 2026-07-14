@@ -289,6 +289,7 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<AuthState>? _authSub;
   /// 스플래시·init() 중 notifyListeners 억제 (AnimatedSwitcher 크래시 방지)
   bool _bootstrapping = true;
+  DateTime? _splashStartedAt;
   Uri? _queuedIncomingUri;
   AppLinkTarget? _pendingAppLink;
   int? _pendingRestaurantLinkNo;
@@ -387,7 +388,7 @@ class AppProvider extends ChangeNotifier {
     ///    - 회원가입 직후 → legal_terms_consent → app
   Future<void> init() async {
     _bootstrapping = true;
-    final splashStarted = DateTime.now();
+    _splashStartedAt = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
@@ -417,16 +418,15 @@ class AppProvider extends ChangeNotifier {
           final prefsLoggedIn = prefs.getBool(_kLogin) ?? false;
           if (prefsLoggedIn) {
             await _restoreSessionFromPrefs(prefs);
-            _stage = await _resolveStageAfterSplash(prefs);
             if (hasOwnerTab) _mainTabIndex = 0;
+            await _leaveSplash(await _resolveStageAfterSplash(prefs));
           } else {
-            await _onSupabaseSignedIn(user);
+            await _onSupabaseSignedIn(user, updateStage: false, notify: false);
+            await _leaveSplash(await _resolveStageAfterSplash(prefs));
           }
-          await waitMinSplashDuration(splashStarted);
           if (_hasPermissionsConsent(prefs)) {
             unawaited(triggerDeferredStartup());
           }
-          _finishBootstrap();
           _bindAuthListener();
           if (prefsLoggedIn) {
             unawaited(_onSupabaseSignedIn(user, updateStage: false, notify: false));
@@ -439,9 +439,7 @@ class AppProvider extends ChangeNotifier {
       final sessionExp = prefs.getInt(_kSessionExp) ?? 0;
       if (loggedIn && DateTime.now().millisecondsSinceEpoch > sessionExp) {
         await _clearSession(prefs);
-        await waitMinSplashDuration(splashStarted);
-        _stage = 'login';
-        _finishBootstrap();
+        await _leaveSplash('login');
         if (SupabaseService.isReady) _bindAuthListener();
         return;
       }
@@ -453,26 +451,30 @@ class AppProvider extends ChangeNotifier {
           unawaited(_syncOwnerRestaurantIdsFromDb(prefs));
         }
         unawaited(fetchMyReward());
-        await waitMinSplashDuration(splashStarted);
-        _stage = await _resolveStageAfterSplash(prefs);
         if (hasOwnerTab) _mainTabIndex = 0;
+        await _leaveSplash(await _resolveStageAfterSplash(prefs));
       } else {
-        await waitMinSplashDuration(splashStarted);
-        _stage = await _resolveStageAfterSplash(prefs);
+        await _leaveSplash(await _resolveStageAfterSplash(prefs));
       }
 
       if (_hasPermissionsConsent(prefs)) {
         unawaited(triggerDeferredStartup());
       }
 
-      _finishBootstrap();
-      if (SupabaseService.isReady) _bindAuthListener();
+      _bindAuthListener();
     } catch (e, st) {
       debugPrint('[AppProvider] init failed: $e\n$st');
-      _stage = 'login';
-      _finishBootstrap();
+      await _leaveSplash('login');
       if (SupabaseService.isReady) _bindAuthListener();
     }
+  }
+
+  /// 스플래시 UI(stage=splash)를 최소 시간 유지한 뒤 다음 화면으로 전환
+  Future<void> _leaveSplash(String nextStage) async {
+    final started = _splashStartedAt ?? DateTime.now();
+    await waitMinSplashDuration(started);
+    _stage = nextStage;
+    _finishBootstrap();
   }
 
   Future<void> _restoreSessionFromPrefs(SharedPreferences prefs) async {

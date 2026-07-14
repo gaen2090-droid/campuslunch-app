@@ -37,7 +37,9 @@ class _RestaurantPickerSheetState extends State<RestaurantPickerSheet> {
         ? all
         : all.where((r) => r.name.toLowerCase().contains(query)).toList();
 
-    return Container(
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
       height: MediaQuery.of(context).size.height * 0.75,
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -129,6 +131,7 @@ class _RestaurantPickerSheetState extends State<RestaurantPickerSheet> {
           ),
         ],
       ),
+    ),
     );
   }
 }

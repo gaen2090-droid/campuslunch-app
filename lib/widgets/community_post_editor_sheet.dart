@@ -156,10 +156,12 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
         padding: EdgeInsets.fromLTRB(
           20, 20, 20, MediaQuery.of(context).padding.bottom + 20,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 40,
@@ -282,6 +284,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
