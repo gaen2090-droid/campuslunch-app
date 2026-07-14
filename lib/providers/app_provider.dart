@@ -14,6 +14,7 @@ import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/community_repository.dart';
 import '../data/profile_repository.dart';
+import '../data/push_config_repository.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
 import '../models/crowd_report.dart';
@@ -21,12 +22,12 @@ import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../models/reward.dart';
-import '../data/push_config_repository.dart';
 import '../data/reward_repository.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
 import '../services/device_permission_service.dart';
+import '../services/fcm_push_service.dart';
 import '../services/push_notification_service.dart';
 import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
@@ -168,6 +169,7 @@ class AppProvider extends ChangeNotifier {
   bool _notificationEnabled = false;
   bool _lunchPushEnabled = true;
   bool _dinnerPushEnabled = true;
+  bool _communityCommentsPushEnabled = true;
   bool _useAlgorithmRanking = true;
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
@@ -184,7 +186,18 @@ class AppProvider extends ChangeNotifier {
   /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
   int get homeTabIndex => hasOwnerTab ? 1 : 0;
 
+  int get communityTabIndex => hasOwnerTab ? 3 : 2;
+
   int get myTabIndex => hasOwnerTab ? 4 : 3;
+
+  String? _pendingCommunityPostId;
+  String? get pendingCommunityPostId => _pendingCommunityPostId;
+
+  String? consumePendingCommunityPostId() {
+    final id = _pendingCommunityPostId;
+    _pendingCommunityPostId = null;
+    return id;
+  }
 
   bool get hasPendingAppLink => _pendingAppLink != null;
 
@@ -192,6 +205,7 @@ class AppProvider extends ChangeNotifier {
   bool get notificationEnabled => _notificationEnabled;
   bool get lunchPushEnabled => _lunchPushEnabled;
   bool get dinnerPushEnabled => _dinnerPushEnabled;
+  bool get communityCommentsPushEnabled => _communityCommentsPushEnabled;
   bool get useAlgorithmRanking => _useAlgorithmRanking;
   int get ownerInfluence => _ownerInfluence;
   int get mainTabIndex => _mainTabIndex;
@@ -262,6 +276,7 @@ class AppProvider extends ChangeNotifier {
   static const _kPush = 'cl_push_enabled';
   static const _kLunchPush = 'cl_push_lunch';
   static const _kDinnerPush = 'cl_push_dinner';
+  static const _kCommunityCommentsPush = 'cl_push_community_comments';
   static const _kSessionExp = 'cl_session_exp';
   static const _kUserRole = 'cl_user_role';
   static const _kOwnerIds = 'cl_owner_restaurant_ids';
@@ -493,6 +508,8 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = prefs.getBool(_kPush) ?? false;
     _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
     _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
+    _communityCommentsPushEnabled =
+        prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
   }
 
   // ── 로그인 ──
@@ -947,6 +964,8 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = prefs.getBool(_kPush) ?? false;
     _lunchPushEnabled = prefs.getBool(_kLunchPush) ?? _notificationEnabled;
     _dinnerPushEnabled = prefs.getBool(_kDinnerPush) ?? _notificationEnabled;
+    _communityCommentsPushEnabled =
+        prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
 
     final userId = supabaseUserId.isNotEmpty
         ? supabaseUserId
@@ -972,6 +991,12 @@ class AppProvider extends ChangeNotifier {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     final authProvider = prefs.getString(_kAuthProvider) ?? '';
+
+    try {
+      await FcmPushService.instance.unregisterToken();
+    } catch (e, st) {
+      debugPrint('[FCM] logout unregister failed: $e\n$st');
+    }
 
     if (authProvider == 'kakao') {
       await KakaoAuthService.logoutKakao();
@@ -1262,12 +1287,15 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = enabled;
     _lunchPushEnabled = enabled;
     _dinnerPushEnabled = enabled;
+    _communityCommentsPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kDinnerPush, enabled);
+    await prefs.setBool(_kCommunityCommentsPush, enabled);
     try {
       if (enabled) {
         await PushNotificationService.instance.requestPermission();
+        await FcmPushService.instance.requestPermissionAndRegister();
       }
       await _syncPushNotifications();
     } catch (e, st) {
@@ -1283,11 +1311,14 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = enabled;
     _lunchPushEnabled = enabled;
     _dinnerPushEnabled = enabled;
+    _communityCommentsPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kDinnerPush, enabled);
+    await prefs.setBool(_kCommunityCommentsPush, enabled);
     if (enabled) {
       await PushNotificationService.instance.requestPermission();
+      await FcmPushService.instance.requestPermissionAndRegister();
     }
     await _syncPushNotifications();
     notifyListeners();
@@ -1296,11 +1327,13 @@ class AppProvider extends ChangeNotifier {
   Future<void> setLunchPush(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     _lunchPushEnabled = enabled;
-    _notificationEnabled = _lunchPushEnabled || _dinnerPushEnabled;
+    _notificationEnabled =
+        _lunchPushEnabled || _dinnerPushEnabled || _communityCommentsPushEnabled;
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
       await PushNotificationService.instance.requestPermission();
+      await FcmPushService.instance.requestPermissionAndRegister();
     }
     await _syncPushNotifications();
     notifyListeners();
@@ -1309,11 +1342,28 @@ class AppProvider extends ChangeNotifier {
   Future<void> setDinnerPush(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     _dinnerPushEnabled = enabled;
-    _notificationEnabled = _lunchPushEnabled || _dinnerPushEnabled;
+    _notificationEnabled =
+        _lunchPushEnabled || _dinnerPushEnabled || _communityCommentsPushEnabled;
     await prefs.setBool(_kDinnerPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
       await PushNotificationService.instance.requestPermission();
+      await FcmPushService.instance.requestPermissionAndRegister();
+    }
+    await _syncPushNotifications();
+    notifyListeners();
+  }
+
+  Future<void> setCommunityCommentsPush(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    _communityCommentsPushEnabled = enabled;
+    _notificationEnabled =
+        _lunchPushEnabled || _dinnerPushEnabled || _communityCommentsPushEnabled;
+    await prefs.setBool(_kCommunityCommentsPush, enabled);
+    await prefs.setBool(_kPush, _notificationEnabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+      await FcmPushService.instance.requestPermissionAndRegister();
     }
     await _syncPushNotifications();
     notifyListeners();
@@ -1343,6 +1393,33 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  void openCommunityFromPush([String? postId]) {
+    debugPrint('[AppProvider] openCommunityFromPush postId=$postId');
+    _mainTabIndex = communityTabIndex;
+    if (postId != null && postId.isNotEmpty) {
+      _pendingCommunityPostId = postId;
+    }
+    notifyListeners();
+  }
+
+  void handleRemotePushData(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    if (type == 'config_refresh') {
+      unawaited(refreshPushSchedulesFromRemote());
+      return;
+    }
+    if (type == 'community_comment' || type == 'community_like') {
+      openCommunityFromPush(data['post_id'] as String?);
+      return;
+    }
+    openHomeFromPush(data['restaurant_id'] as String?);
+  }
+
+  /// 어드민이 설정을 바꿨을 때 data-only FCM → 로컬 스케줄 재동기화
+  Future<void> refreshPushSchedulesFromRemote() async {
+    await _syncPushNotifications();
+  }
+
   /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.
   Future<void> _refreshForMainTab(int index) async {
     try {
@@ -1359,32 +1436,49 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// 푸시 알림 예약은 부가 기능이라 실패/지연이 화면 갱신·전환을 막으면 안 됨.
-  /// 그래서 내부에서 예외를 모두 흡수한다 (호출부는 await만 하면 됨).
+  /// FCM 토큰·선호 동기화 + (옵션) 로컬 피크 예약
   Future<void> _syncPushNotifications() async {
     if (kIsWeb) return;
     try {
       final lunchOn = _notificationEnabled && _lunchPushEnabled;
       final dinnerOn = _notificationEnabled && _dinnerPushEnabled;
-      final recommended =
-          pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking);
+      final communityOn =
+          _notificationEnabled && _communityCommentsPushEnabled;
+
       final pushConfig = await _pushConfigRepo.fetchConfig();
 
-      await PushNotificationService.instance.syncDeliveredAnalytics(
-        lunchEnabled: lunchOn,
-        dinnerEnabled: dinnerOn,
-        restaurantId: recommended?.id,
-        config: pushConfig,
+      if (!_hasSupabaseSession) {
+        await PushNotificationService.instance.cancelAllSchedules();
+        return;
+      }
+
+      await FcmPushService.instance.syncPrefs(
+        peakLunch: lunchOn,
+        peakDinner: dinnerOn,
+        communityComments: communityOn,
       );
-      await PushNotificationService.instance.refreshSchedules(
-        lunchEnabled: lunchOn,
-        dinnerEnabled: dinnerOn,
-        restaurants: _restaurants,
-        useAlgorithmRanking: _useAlgorithmRanking,
-        config: pushConfig,
-      );
-      if (kDebugMode) {
-        await PushNotificationService.instance.logPendingNotifications();
+
+      if (lunchOn || dinnerOn || communityOn) {
+        await FcmPushService.instance.registerToken();
+      }
+
+      if (pushConfig.peakLocalScheduleEnabled) {
+        await PushNotificationService.instance.syncDeliveredAnalytics(
+          lunchEnabled: lunchOn,
+          dinnerEnabled: dinnerOn,
+          restaurantId:
+              pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking)?.id,
+          config: pushConfig,
+        );
+        await PushNotificationService.instance.refreshSchedules(
+          lunchEnabled: lunchOn,
+          dinnerEnabled: dinnerOn,
+          restaurants: _restaurants,
+          useAlgorithmRanking: _useAlgorithmRanking,
+          config: pushConfig,
+        );
+      } else {
+        await PushNotificationService.instance.cancelAllSchedules();
       }
     } catch (e, st) {
       debugPrint('[Push] _syncPushNotifications failed: $e\n$st');
@@ -1697,6 +1791,9 @@ class AppProvider extends ChangeNotifier {
     try {
       pushGranted =
           await PushNotificationService.instance.requestPermission();
+      if (pushGranted) {
+        await FcmPushService.instance.requestPermissionAndRegister();
+      }
       debugPrint('[Permissions] notification granted=$pushGranted');
     } catch (e, st) {
       debugPrint('[Permissions] push: $e\n$st');
@@ -1706,12 +1803,14 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = pushGranted;
     _lunchPushEnabled = pushGranted;
     _dinnerPushEnabled = pushGranted;
+    _communityCommentsPushEnabled = pushGranted;
 
     await prefs.setBool(_kPermissionsConsentSeen, true);
     await prefs.setBool(_kLocation, true);
     await prefs.setBool(_kPush, pushGranted);
     await prefs.setBool(_kLunchPush, pushGranted);
     await prefs.setBool(_kDinnerPush, pushGranted);
+    await prefs.setBool(_kCommunityCommentsPush, pushGranted);
 
     if (_hasSupabaseSession && pushGranted) {
       unawaited(_syncPushNotifications());

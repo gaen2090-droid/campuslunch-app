@@ -7,7 +7,7 @@ OS 상태바에 푸시 알림이 뜨도록 한다. 마이페이지 → 설정 �
 
 ## 현재 상태 (조사 결과)
 - 인앱 알림은 실시간 알림 레코드가 아니라 **조회 시점에 JOIN해서 계산**하는 구조
-  (`community_comment_notifications()` RPC, `supabase/community_notifications.sql`).
+  (`community_inbox_notifications()` RPC — 댓글+좋아요, `supabase/community_push_v2.sql`).
   댓글이 insert되는 순간 아무 훅도 없음 — 이번에 신규로 붙여야 함.
 - 글 단위 "알림 구독"은 이미 있음: `community_post_subscriptions` 테이블(post_id, user_id),
   `lib/screens/community_post_detail_screen.dart`의 종 아이콘 버튼으로 on/off.
@@ -154,3 +154,24 @@ OS 상태바에 푸시 알림이 뜨도록 한다. 마이페이지 → 설정 �
 ## 비용 메모
 FCM 발송 자체는 무료(트래픽 무관). 트리거 역할을 하는 Supabase Edge Function 호출 횟수만 무료 티어
 한도(월 약 50만 회)가 있음 — 현재 캠퍼스 앱 규모에서는 사실상 문제 되지 않음.
+
+---
+
+## 구현 반영 메모 (develop 병합 · 2026-07-14)
+
+기획과 실제 구현을 합친 결과:
+
+| 기획 항목 | 구현 |
+|-----------|------|
+| `device_tokens` | `user_push_tokens` + 뷰 `device_tokens` 별칭 (`admin_push_control.sql`) |
+| `community_comment_push_enabled` | `user_notification_prefs.community_comments` + `users.community_comment_push_enabled` 동기 트리거 |
+| 커뮤니티 댓글 FCM | `send-community-push` + INSERT 웹훅/트리거 |
+| 피크 알림 | **기본: 서버 FCM** (`send-peak-push` cron). 앱 종료 시에도 최신 매장 반영 |
+| 로컬 zonedSchedule | 어드민 **「피크 로컬 예약」** ON일 때만 (`peak_local_schedule_enabled`) |
+| config_refresh data-only | `send-config-refresh` + 어드민 「설정 전파」버튼. 포그라운드에서 로컬 스케줄 재동기화 |
+| 설정 UI | 앱 `push_notification_settings_screen` (점심/저녁/커뮤니티) + **어드민 푸시 탭 전체 통제** |
+| 지도 클러스터링 | 파트너 커밋 그대로 유지 (`marker_clustering` 등) |
+
+배포 SQL 순서: `fcm_push.sql` → `admin_push_control.sql`  
+가이드: `docs/FCM_PUSH_SETUP.md`
+

@@ -351,9 +351,12 @@ def build(pdf: GuidePDF) -> None:
 
     pdf.section("5.5 푸시·북마크·홈", 2)
     pdf.code(
-        "[푸시] PushNotificationService — 로컬 알림 KST 평일 12:00/18:00\n"
-        "  MyScreen 설정 -> setLunchPush/setDinnerPush\n"
-        "  record_push_event -> push_analytics\n"
+        "[푸시] FCM 원격 푸시 (앱 종료 시에도 수신)\n"
+        "  FcmPushService — 토큰 upsert + 포그라운드 로컬 표시\n"
+        "  Edge: send-peak-push (cron), send-community-push (댓글)\n"
+        "  테이블: user_push_tokens, user_notification_prefs, peak_push_sent_log\n"
+        "  SQL: fcm_push.sql / 배포: docs/FCM_PUSH_SETUP.md\n"
+        "  어드민 PushSettingsPage -> push_notification_config\n"
         "\n"
         "[북마크] toggleBookmark -> SharedPreferences + Auth metadata\n"
         "  BookmarkListScreen, HomeScreen 북마크 필터\n"
@@ -405,6 +408,7 @@ def build(pdf: GuidePDF) -> None:
         "9.  crowd_status.sql          헬퍼 + submit_crowd_report\n"
         "10. crowd_status_v2_compute.sql  v2 계산 + 트리거\n"
         "11. push_analytics.sql\n"
+        "12. fcm_push.sql (토큰·선호·피크/커뮤니티 FCM RPC)\n"
         "12. owner_seat_updates.sql    입장 인원\n"
         "13. rewards.sql               스탬프·기프티콘 (submit_crowd_report 재정의)\n"
         "\n"

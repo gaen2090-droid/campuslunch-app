@@ -87,7 +87,7 @@
 
 각 제공사의 개인정보 처리는 해당 사업자의 정책을 따릅니다.
 
-> **Firebase:** 현재 캠퍼스런치 앱은 Firebase Analytics·FCM을 **사용하지 않습니다.** 푸시는 기기 내 로컬 알림으로 동작합니다.
+> **Firebase:** 앱 종료 상태에서도 피크·커뮤니티 알림을 보내기 위해 **Firebase Cloud Messaging(FCM)** 을 사용합니다. FCM 기기 토큰은 Supabase에 저장되며 로그아웃·탈퇴 시 삭제됩니다. Firebase Analytics는 사용하지 않습니다.
 
 ---
 

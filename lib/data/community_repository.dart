@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/collection.dart';
 import '../models/community_comment.dart';
-import '../models/community_comment_notification.dart';
+import '../models/community_inbox_notification.dart';
 import '../models/community_notice.dart';
 import '../models/community_post.dart';
 import '../services/supabase_service.dart';
@@ -230,10 +230,10 @@ class CommunityRepository {
     }
   }
 
-  Future<List<CommunityCommentNotification>> fetchCommentNotifications() async {
-    final rows = await _client.rpc('community_comment_notifications');
+  Future<List<CommunityInboxNotification>> fetchInboxNotifications() async {
+    final rows = await _client.rpc('community_inbox_notifications');
     return (rows as List<dynamic>)
-        .map((e) => CommunityCommentNotification.fromMap(e as Map<String, dynamic>))
+        .map((e) => CommunityInboxNotification.fromMap(e as Map<String, dynamic>))
         .toList();
   }
 

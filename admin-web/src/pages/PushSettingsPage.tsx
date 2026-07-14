@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { updatePushNotificationConfig } from "../lib/adminApi";
+import {
+  fetchPushOpsSnapshot,
+  invokePushEdge,
+  updatePushNotificationConfig,
+} from "../lib/adminApi";
 import {
   DEFAULT_PUSH_CONFIG,
+  EMPTY_PUSH_OPS,
   formatTime,
+  previewCommunityTemplate,
   previewTitle,
   type PushNotificationConfig,
+  type PushOpsSnapshot,
 } from "../types/pushConfig";
 
 interface Props {
@@ -16,13 +23,31 @@ interface Props {
 
 export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   const [form, setForm] = useState<PushNotificationConfig>(DEFAULT_PUSH_CONFIG);
+  const [ops, setOps] = useState<PushOpsSnapshot>(EMPTY_PUSH_OPS);
+  const [opsLoading, setOpsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (config) setForm(config);
   }, [config]);
+
+  async function reloadOps() {
+    setOpsLoading(true);
+    try {
+      setOps(await fetchPushOpsSnapshot());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setOpsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void reloadOps();
+  }, []);
 
   function patch(partial: Partial<PushNotificationConfig>) {
     setForm((prev) => ({ ...prev, ...partial }));
@@ -36,12 +61,35 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     try {
       const saved = await updatePushNotificationConfig(form);
       setForm(saved);
-      setSuccess("저장했어요. 앱을 연 사용자에게 다음 동기화 시 반영됩니다.");
+      setSuccess("저장했어요. 앱은 다음 실행·설정 전파 시 반영됩니다.");
       onReload();
+      await reloadOps();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runAction(
+    action: "peak_lunch" | "peak_dinner" | "config_refresh",
+    label: string,
+  ) {
+    setActionBusy(action);
+    setFormError(null);
+    setSuccess(null);
+    try {
+      const result = await invokePushEdge(action);
+      setSuccess(`${label} 완료: ${JSON.stringify(result)}`);
+      await reloadOps();
+    } catch (err) {
+      setFormError(
+        err instanceof Error
+          ? `${label} 실패: ${err.message}`
+          : `${label} 실패: ${String(err)}`,
+      );
+    } finally {
+      setActionBusy(null);
     }
   }
 
@@ -51,29 +99,21 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
         <div>
           <h2>푸시 알림 설정</h2>
           <p className="muted sm">
-            로컬 예약 알림의 발송 시각·문구를 DB에 저장합니다.
+            피크는 로컬 예약이 기본 · 커뮤니티는 인박스와 같은 이벤트를 FCM으로
+            보냅니다.
           </p>
         </div>
       </div>
 
       <div className="info-panel warn">
-        <strong>동작 방식 · 제한</strong>
+        <strong>플레이스홀더</strong>
         <ul>
           <li>
-            앱은 <strong>로컬 알림</strong>(flutter_local_notifications)만 사용합니다.
-            FCM/APNs 원격 푸시가 아닙니다.
+            피크: <code>{"{gate}"}</code> (필수)
           </li>
           <li>
-            설정 변경 후 사용자가 <strong>앱을 실행</strong>해야 새 시간·문구로
-            재예약됩니다.
-          </li>
-          <li>
-            추천 매장은 앱의 여유로움/약간혼잡 알고리즘으로 정해집니다. 문구의{" "}
-            <code>{"{gate}"}</code> 는 매장 구역(정문·중문 등)으로 치환됩니다.
-          </li>
-          <li>
-            앱을 오래 열지 않은 사용자·앱 삭제 사용자에게는 알림을 보낼 수
-            없습니다.
+            커뮤니티: <code>{"{nickname}"}</code>{" "}
+            <code>{"{content}"}</code> <code>{"{post_preview}"}</code>
           </li>
         </ul>
       </div>
@@ -82,128 +122,337 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       {formError && <div className="alert">{formError}</div>}
       {success && <div className="alert success">{success}</div>}
 
+      <div className="panel push-ops">
+        <div className="panel-head">
+          <h3>운영 현황</h3>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={opsLoading}
+            onClick={() => void reloadOps()}
+          >
+            {opsLoading ? "갱신 중…" : "새로고침"}
+          </button>
+        </div>
+        <div className="push-ops-grid">
+          <div className="push-ops-card">
+            <span className="muted sm">FCM 토큰</span>
+            <strong>{ops.tokenCount}</strong>
+            <span className="muted sm">유저 {ops.uniqueUsersWithToken}명</span>
+          </div>
+          <div className="push-ops-card">
+            <span className="muted sm">점심 ON</span>
+            <strong>{ops.peakLunchOn}</strong>
+          </div>
+          <div className="push-ops-card">
+            <span className="muted sm">저녁 ON</span>
+            <strong>{ops.peakDinnerOn}</strong>
+          </div>
+          <div className="push-ops-card">
+            <span className="muted sm">커뮤니티 ON</span>
+            <strong>{ops.communityOn}</strong>
+          </div>
+        </div>
+        {ops.lastPeakSent.length > 0 && (
+          <div className="push-ops-log">
+            <p className="muted sm">최근 피크 FCM 발송 로그</p>
+            <ul>
+              {ops.lastPeakSent.map((row) => (
+                <li key={`${row.sentDate}-${row.slot}-${row.createdAt}`}>
+                  {row.sentDate} · {row.slot} ·{" "}
+                  {row.createdAt
+                    ? new Date(row.createdAt).toLocaleString("ko-KR")
+                    : "-"}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="push-ops-actions">
+          <button
+            type="button"
+            className="btn"
+            disabled={actionBusy != null || !form.peakFcmEnabled}
+            onClick={() => void runAction("peak_lunch", "점심 테스트 발송")}
+          >
+            {actionBusy === "peak_lunch" ? "발송 중…" : "점심 테스트 FCM"}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={actionBusy != null || !form.peakFcmEnabled}
+            onClick={() => void runAction("peak_dinner", "저녁 테스트 발송")}
+          >
+            {actionBusy === "peak_dinner" ? "발송 중…" : "저녁 테스트 FCM"}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={actionBusy != null}
+            onClick={() => void runAction("config_refresh", "설정 전파")}
+          >
+            {actionBusy === "config_refresh"
+              ? "전파 중…"
+              : "설정 전파 (로컬 재예약)"}
+          </button>
+        </div>
+      </div>
+
       {loading && !config ? (
         <p className="muted center">불러오는 중…</p>
       ) : (
-        <form className="panel form-grid push-form" onSubmit={(e) => void submit(e)}>
-          <h3 className="form-section-title">발송 시각 (KST)</h3>
-
-          <label className="field">
-            <span className="field-label">점심</span>
-            <div className="time-row">
-              <input
-                type="number"
-                min={0}
-                max={23}
-                value={form.lunchHour}
-                onChange={(e) =>
-                  patch({ lunchHour: Number.parseInt(e.target.value, 10) || 0 })
-                }
-              />
-              <span>:</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={form.lunchMinute}
-                onChange={(e) =>
-                  patch({
-                    lunchMinute: Number.parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
+        <form
+          className="panel push-form"
+          onSubmit={(e) => void submit(e)}
+        >
+          <section className="push-section">
+            <div className="push-section-head">
+              <h3>1. 피크 추천 알림</h3>
+              <p className="muted sm">
+                로컬 예약이 기본입니다. 시각·문구는 서버에서 앱으로 내려갑니다.
+              </p>
             </div>
-          </label>
 
-          <label className="field">
-            <span className="field-label">저녁</span>
-            <div className="time-row">
-              <input
-                type="number"
-                min={0}
-                max={23}
-                value={form.dinnerHour}
-                onChange={(e) =>
-                  patch({ dinnerHour: Number.parseInt(e.target.value, 10) || 0 })
-                }
-              />
-              <span>:</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={form.dinnerMinute}
-                onChange={(e) =>
-                  patch({
-                    dinnerMinute: Number.parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
+            <div className="toggle-stack">
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={form.peakLocalScheduleEnabled}
+                  onChange={(e) =>
+                    patch({ peakLocalScheduleEnabled: e.target.checked })
+                  }
+                />
+                <span>
+                  <strong>로컬 예약</strong>
+                  <span className="toggle-desc">
+                    기기 zonedSchedule · 기본 ON
+                  </span>
+                </span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={form.peakFcmEnabled}
+                  onChange={(e) => patch({ peakFcmEnabled: e.target.checked })}
+                />
+                <span>
+                  <strong>서버 FCM</strong>
+                  <span className="toggle-desc">
+                    앱 종료 시에도 발송 · cron 필요 · 선택
+                  </span>
+                </span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={form.weekdaysOnly}
+                  onChange={(e) => patch({ weekdaysOnly: e.target.checked })}
+                />
+                <span>
+                  <strong>평일만</strong>
+                  <span className="toggle-desc">월~금만 발송</span>
+                </span>
+              </label>
             </div>
-          </label>
 
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={form.weekdaysOnly}
-              onChange={(e) => patch({ weekdaysOnly: e.target.checked })}
-            />
-            <span>평일만 발송 (월~금)</span>
-          </label>
+            <div className="push-section-grid">
+              <label className="field">
+                <span className="field-label">점심 (KST)</span>
+                <div className="time-row">
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={form.lunchHour}
+                    onChange={(e) =>
+                      patch({
+                        lunchHour: Number.parseInt(e.target.value, 10) || 0,
+                      })
+                    }
+                  />
+                  <span>:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={form.lunchMinute}
+                    onChange={(e) =>
+                      patch({
+                        lunchMinute: Number.parseInt(e.target.value, 10) || 0,
+                      })
+                    }
+                  />
+                </div>
+              </label>
 
-          <label className="field">
-            <span className="field-label">미리 예약 일수</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={form.scheduleDaysAhead}
-              onChange={(e) =>
-                patch({
-                  scheduleDaysAhead:
-                    Number.parseInt(e.target.value, 10) ||
-                    DEFAULT_PUSH_CONFIG.scheduleDaysAhead,
-                })
-              }
-            />
-          </label>
+              <label className="field">
+                <span className="field-label">저녁 (KST)</span>
+                <div className="time-row">
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={form.dinnerHour}
+                    onChange={(e) =>
+                      patch({
+                        dinnerHour: Number.parseInt(e.target.value, 10) || 0,
+                      })
+                    }
+                  />
+                  <span>:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={form.dinnerMinute}
+                    onChange={(e) =>
+                      patch({
+                        dinnerMinute: Number.parseInt(e.target.value, 10) || 0,
+                      })
+                    }
+                  />
+                </div>
+              </label>
 
-          <h3 className="form-section-title">알림 문구</h3>
+              <label className="field">
+                <span className="field-label">로컬 미리 예약 일수</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={form.scheduleDaysAhead}
+                  onChange={(e) =>
+                    patch({
+                      scheduleDaysAhead:
+                        Number.parseInt(e.target.value, 10) ||
+                        DEFAULT_PUSH_CONFIG.scheduleDaysAhead,
+                    })
+                  }
+                />
+              </label>
 
-          <label className="field full">
-            <span className="field-label">제목 템플릿</span>
-            <input
-              type="text"
-              value={form.titleTemplate}
-              onChange={(e) => patch({ titleTemplate: e.target.value })}
-              placeholder="{gate}에서 대기 없이 식사할 수 있어요"
-            />
-            <span className="muted sm">
-              미리보기: {previewTitle(form.titleTemplate)}
-            </span>
-          </label>
+              <label className="field full">
+                <span className="field-label">
+                  제목 · <code>{"{gate}"}</code> 필수
+                </span>
+                <input
+                  type="text"
+                  value={form.titleTemplate}
+                  onChange={(e) => patch({ titleTemplate: e.target.value })}
+                  placeholder="{gate}에서 대기 없이 식사할 수 있어요"
+                />
+              </label>
 
-          <label className="field full">
-            <span className="field-label">본문</span>
-            <textarea
-              rows={3}
-              value={form.bodyTemplate}
-              onChange={(e) => patch({ bodyTemplate: e.target.value })}
-            />
-          </label>
+              <label className="field full">
+                <span className="field-label">본문</span>
+                <textarea
+                  rows={3}
+                  value={form.bodyTemplate}
+                  onChange={(e) => patch({ bodyTemplate: e.target.value })}
+                />
+              </label>
 
-          <div className="push-preview panel inset">
-            <p className="muted sm">미리보기</p>
-            <strong>{previewTitle(form.titleTemplate)}</strong>
-            <p className="push-preview-body">{form.bodyTemplate}</p>
-            <p className="muted sm">
-              점심 {formatTime(form.lunchHour, form.lunchMinute)} · 저녁{" "}
-              {formatTime(form.dinnerHour, form.dinnerMinute)}
-              {form.weekdaysOnly ? " · 평일" : " · 매일"}
-            </p>
-          </div>
+              <div className="push-preview inset">
+                <p className="muted sm">미리보기</p>
+                <strong>{previewTitle(form.titleTemplate)}</strong>
+                <p className="push-preview-body">{form.bodyTemplate}</p>
+                <p className="muted sm">
+                  점심 {formatTime(form.lunchHour, form.lunchMinute)} · 저녁{" "}
+                  {formatTime(form.dinnerHour, form.dinnerMinute)}
+                  {form.weekdaysOnly ? " · 평일" : " · 매일"}
+                  {form.peakLocalScheduleEnabled ? " · 로컬" : " · 로컬꺼짐"}
+                  {form.peakFcmEnabled ? " · FCM" : ""}
+                </p>
+              </div>
+            </div>
+          </section>
 
-          <div className="form-actions full">
+          <section className="push-section">
+            <div className="push-section-head">
+              <h3>2. 커뮤니티 푸시</h3>
+              <p className="muted sm">
+                인박스와 동일 이벤트(댓글·좋아요). FCM 문구만 여기서 수정합니다.
+              </p>
+            </div>
+
+            <div className="toggle-stack">
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={form.communityFcmEnabled}
+                  onChange={(e) =>
+                    patch({ communityFcmEnabled: e.target.checked })
+                  }
+                />
+                <span>
+                  <strong>커뮤니티 서버 FCM</strong>
+                  <span className="toggle-desc">
+                    내 글 댓/좋아요 · 알림 켠 글 댓
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="push-section-grid">
+              <label className="field full">
+                <span className="field-label">댓글 제목</span>
+                <input
+                  type="text"
+                  value={form.communityCommentTitleTemplate}
+                  onChange={(e) =>
+                    patch({ communityCommentTitleTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityCommentTitleTemplate)}
+                </span>
+              </label>
+
+              <label className="field full">
+                <span className="field-label">댓글 본문</span>
+                <textarea
+                  rows={2}
+                  value={form.communityCommentBodyTemplate}
+                  onChange={(e) =>
+                    patch({ communityCommentBodyTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityCommentBodyTemplate)}
+                </span>
+              </label>
+
+              <label className="field full">
+                <span className="field-label">좋아요 제목</span>
+                <input
+                  type="text"
+                  value={form.communityLikeTitleTemplate}
+                  onChange={(e) =>
+                    patch({ communityLikeTitleTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityLikeTitleTemplate)}
+                </span>
+              </label>
+
+              <label className="field full">
+                <span className="field-label">좋아요 본문</span>
+                <textarea
+                  rows={2}
+                  value={form.communityLikeBodyTemplate}
+                  onChange={(e) =>
+                    patch({ communityLikeBodyTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityLikeBodyTemplate)}
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <div className="form-actions">
             <button type="submit" className="btn primary" disabled={saving}>
               {saving ? "저장 중…" : "설정 저장"}
             </button>
@@ -215,11 +464,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
           </div>
         </form>
       )}
-
-      <p className="muted sm center">
-        SQL 미적용 시 오류 → <code>supabase/push_notification_config.sql</code>{" "}
-        실행
-      </p>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/// Supabase `push_notification_config` (로컬 푸시 스케줄·문구)
+/// Supabase `push_notification_config` (피크 로컬 기본 + 커뮤니티 FCM 문구)
 class PushNotificationConfig {
   const PushNotificationConfig({
     this.lunchHour = 12,
@@ -6,9 +6,13 @@ class PushNotificationConfig {
     this.dinnerHour = 18,
     this.dinnerMinute = 0,
     this.titleTemplate = '{gate}에서 대기 없이 식사할 수 있어요',
-    this.bodyTemplate = '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
+    this.bodyTemplate =
+        '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
     this.weekdaysOnly = true,
     this.scheduleDaysAhead = 14,
+    this.peakFcmEnabled = false,
+    this.communityFcmEnabled = true,
+    this.peakLocalScheduleEnabled = true,
   });
 
   final int lunchHour;
@@ -19,6 +23,11 @@ class PushNotificationConfig {
   final String bodyTemplate;
   final bool weekdaysOnly;
   final int scheduleDaysAhead;
+  final bool peakFcmEnabled;
+  final bool communityFcmEnabled;
+
+  /// 로컬 zonedSchedule (기본 ON). 서버 문구·시각 사용.
+  final bool peakLocalScheduleEnabled;
 
   static const defaults = PushNotificationConfig();
 
@@ -51,6 +60,13 @@ class PushNotificationConfig {
       scheduleDaysAhead: readInt(
         json['schedule_days_ahead'],
         defaults.scheduleDaysAhead,
+      ),
+      peakFcmEnabled: readBool(json['peak_fcm_enabled'], defaults.peakFcmEnabled),
+      communityFcmEnabled:
+          readBool(json['community_fcm_enabled'], defaults.communityFcmEnabled),
+      peakLocalScheduleEnabled: readBool(
+        json['peak_local_schedule_enabled'],
+        defaults.peakLocalScheduleEnabled,
       ),
     );
   }

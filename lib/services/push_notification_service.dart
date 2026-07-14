@@ -107,6 +107,8 @@ class PushNotificationService {
     if (!_initialized) return;
     await _plugin.cancelAll();
 
+    // 어드민 peak_local_schedule_enabled=false 이면 로컬 예약 안 함 (서버 FCM만)
+    if (!config.peakLocalScheduleEnabled) return;
     if (!lunchEnabled && !dinnerEnabled) return;
 
     final recommended = pickRecommendedRestaurant(
@@ -167,6 +169,58 @@ class PushNotificationService {
       }
     }
   }
+
+  Future<void> cancelAllSchedules() async {
+    if (!_initialized) return;
+    await _plugin.cancelAll();
+  }
+
+  Future<void> _scheduleSlot({
+    required PeakPushSlot slot,
+    required tz.TZDateTime at,
+    required Restaurant restaurant,
+    PushNotificationConfig config = PushNotificationConfig.defaults,
+  }) async {
+    final gate = gateLabelFromRestaurant(restaurant);
+    final id = _notificationId(slot, at);
+    final payload = jsonEncode({
+      'type': 'peak',
+      'slot': slot.name,
+      'restaurant_id': restaurant.id,
+      'gate': gate,
+    });
+
+    await _plugin.zonedSchedule(
+      id,
+      config.formatTitle(gate),
+      config.bodyTemplate,
+      at,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
+  int _notificationId(PeakPushSlot slot, tz.TZDateTime at) =>
+      (slot == PeakPushSlot.lunch ? 100000 : 200000) +
+      at.year * 10000 +
+      at.month * 100 +
+      at.day;
 
   Future<void> syncDeliveredAnalytics({
     required bool lunchEnabled,
@@ -231,52 +285,6 @@ class PushNotificationService {
     );
     await prefs.setBool(prefKey, true);
   }
-
-  Future<void> _scheduleSlot({
-    required PeakPushSlot slot,
-    required tz.TZDateTime at,
-    required Restaurant restaurant,
-    PushNotificationConfig config = PushNotificationConfig.defaults,
-  }) async {
-    final gate = gateLabelFromRestaurant(restaurant);
-    final id = _notificationId(slot, at);
-    final payload = jsonEncode({
-      'slot': slot.name,
-      'restaurant_id': restaurant.id,
-      'gate': gate,
-    });
-
-    await _plugin.zonedSchedule(
-      id,
-      config.formatTitle(gate),
-      config.bodyTemplate,
-      at,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
-  }
-
-  int _notificationId(PeakPushSlot slot, tz.TZDateTime at) =>
-      (slot == PeakPushSlot.lunch ? 100000 : 200000) +
-      at.year * 10000 +
-      at.month * 100 +
-      at.day;
 
   bool _isWeekday(tz.TZDateTime date) =>
       date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
@@ -372,9 +380,10 @@ void _handlePushResponse(NotificationResponse response, {required bool navigate}
   );
   final payload = response.payload;
   String? restaurantId;
+  Map<String, dynamic>? map;
   if (payload != null && payload.isNotEmpty) {
     try {
-      final map = jsonDecode(payload) as Map<String, dynamic>;
+      map = jsonDecode(payload) as Map<String, dynamic>;
       restaurantId = map['restaurant_id'] as String?;
       final slot = map['slot'] as String? ?? 'lunch';
       AnalyticsRepository().recordPushClick(
@@ -385,12 +394,18 @@ void _handlePushResponse(NotificationResponse response, {required bool navigate}
       debugPrint('[Push] payload parse failed: $e');
     }
   }
-  if (navigate) {
-    PushNotificationService.instance.onOpenHome?.call(restaurantId);
+  if (!navigate) return;
+  if (map != null && map['type'] != null) {
+    onLocalNotificationPayload?.call(map);
+    return;
   }
+  PushNotificationService.instance.onOpenHome?.call(restaurantId);
 }
 
 bool isWeekdayKst(DateTime date) {
   final local = date.toLocal();
   return local.weekday >= DateTime.monday && local.weekday <= DateTime.friday;
 }
+
+/// 포그라운드 FCM → 로컬 표시 후 탭 시 데이터 페이로드 전달
+void Function(Map<String, dynamic> data)? onLocalNotificationPayload;

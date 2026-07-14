@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/community_repository.dart';
-import '../models/community_comment_notification.dart';
+import '../models/community_inbox_notification.dart';
 import '../utils/time_ago.dart';
 import 'community_post_detail_screen.dart';
 
@@ -9,12 +9,14 @@ class CommunityNotificationsScreen extends StatefulWidget {
   const CommunityNotificationsScreen({super.key});
 
   @override
-  State<CommunityNotificationsScreen> createState() => _CommunityNotificationsScreenState();
+  State<CommunityNotificationsScreen> createState() =>
+      _CommunityNotificationsScreenState();
 }
 
-class _CommunityNotificationsScreenState extends State<CommunityNotificationsScreen> {
+class _CommunityNotificationsScreenState
+    extends State<CommunityNotificationsScreen> {
   final _repo = CommunityRepository();
-  List<CommunityCommentNotification> _notifications = [];
+  List<CommunityInboxNotification> _notifications = [];
   bool _loading = true;
   String? _error;
 
@@ -30,7 +32,7 @@ class _CommunityNotificationsScreenState extends State<CommunityNotificationsScr
       _error = null;
     });
     try {
-      final list = await _repo.fetchCommentNotifications();
+      final list = await _repo.fetchInboxNotifications();
       if (!mounted) return;
       setState(() {
         _notifications = list;
@@ -45,7 +47,7 @@ class _CommunityNotificationsScreenState extends State<CommunityNotificationsScr
     }
   }
 
-  Future<void> _openPost(CommunityCommentNotification n) async {
+  Future<void> _openPost(CommunityInboxNotification n) async {
     final post = await _repo.fetchPostById(n.postId);
     if (!mounted) return;
     if (post == null) {
@@ -126,10 +128,16 @@ class _CommunityNotificationsScreenState extends State<CommunityNotificationsScr
             TextSpan(
               children: [
                 TextSpan(
-                  text: n.commenterNickname,
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                  text: n.actorNickname,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
                 ),
-                const TextSpan(text: '님이 댓글을 남겼어요', style: TextStyle(color: Color(0xFF111827))),
+                TextSpan(
+                  text: n.headlineSuffix,
+                  style: const TextStyle(color: Color(0xFF111827)),
+                ),
               ],
             ),
             style: const TextStyle(fontSize: 14),
@@ -137,7 +145,7 @@ class _CommunityNotificationsScreenState extends State<CommunityNotificationsScr
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              n.commentContent,
+              n.bodyText,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),

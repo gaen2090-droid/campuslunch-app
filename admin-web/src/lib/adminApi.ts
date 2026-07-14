@@ -10,7 +10,10 @@ import { parseAdminUser, type AdminUser } from "../types/user";
 import {
   DEFAULT_PUSH_CONFIG,
   parsePushConfig,
+  parsePushOpsSnapshot,
+  EMPTY_PUSH_OPS,
   type PushNotificationConfig,
+  type PushOpsSnapshot,
 } from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
 import {
@@ -643,6 +646,13 @@ export async function updatePushNotificationConfig(
       p_body_template: config.bodyTemplate,
       p_weekdays_only: config.weekdaysOnly,
       p_schedule_days_ahead: config.scheduleDaysAhead,
+      p_peak_fcm_enabled: config.peakFcmEnabled,
+      p_community_fcm_enabled: config.communityFcmEnabled,
+      p_peak_local_schedule_enabled: config.peakLocalScheduleEnabled,
+      p_community_comment_title_template: config.communityCommentTitleTemplate,
+      p_community_comment_body_template: config.communityCommentBodyTemplate,
+      p_community_like_title_template: config.communityLikeTitleTemplate,
+      p_community_like_body_template: config.communityLikeBodyTemplate,
     },
   );
   if (error) throw error;
@@ -650,6 +660,33 @@ export async function updatePushNotificationConfig(
     throw new Error("설정 저장 응답이 올바르지 않아요.");
   }
   return parsePushConfig(data as Record<string, unknown>);
+}
+
+export async function fetchPushOpsSnapshot(): Promise<PushOpsSnapshot> {
+  const { data, error } = await supabase.rpc("admin_push_ops_snapshot");
+  if (error) throw error;
+  if (!data || typeof data !== "object") return EMPTY_PUSH_OPS;
+  return parsePushOpsSnapshot(data as Record<string, unknown>);
+}
+
+/** Edge Function 호출 (로그인한 어드민 JWT). 배포·시크릿 필요. */
+export async function invokePushEdge(
+  action: "peak_lunch" | "peak_dinner" | "config_refresh",
+): Promise<unknown> {
+  if (action === "config_refresh") {
+    const { data, error } = await supabase.functions.invoke(
+      "send-config-refresh",
+      { body: {} },
+    );
+    if (error) throw error;
+    return data;
+  }
+  const force = action === "peak_lunch" ? "lunch" : "dinner";
+  const { data, error } = await supabase.functions.invoke("send-peak-push", {
+    body: { force },
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchCommunityReports(): Promise<CommunityReport[]> {
