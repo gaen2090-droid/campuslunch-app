@@ -13,6 +13,7 @@ import '../widgets/collection_section.dart';
 import '../widgets/community_guideline_sheet.dart';
 import '../widgets/community_post_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
+import '../widgets/community_rules_summary.dart';
 import 'collection_detail_screen.dart';
 import 'community_my_activity_screen.dart';
 import 'community_notifications_screen.dart';
@@ -43,6 +44,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   CommunityNotice? _notice;
   bool _hasUnreadNotification = false;
+  bool _openingPendingPush = false;
 
   @override
   void initState() {
@@ -52,6 +54,26 @@ class _CommunityScreenState extends State<CommunityScreen> {
     _loadCollections();
     _maybeShowGuideline();
     _checkUnreadNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openPendingPushPost();
+    });
+  }
+
+  Future<void> _openPendingPushPost() async {
+    if (_openingPendingPush) return;
+    final provider = context.read<AppProvider>();
+    final postId = provider.consumePendingCommunityPostId();
+    if (postId == null || postId.isEmpty) return;
+    _openingPendingPush = true;
+    try {
+      final post = await _repo.fetchPostById(postId);
+      if (!mounted || post == null) return;
+      await _openDetail(post);
+    } catch (e) {
+      debugPrint('[Community] open pending push post failed: $e');
+    } finally {
+      _openingPendingPush = false;
+    }
   }
 
   Future<void> _loadNotice() async {
@@ -67,7 +89,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _checkUnreadNotifications() async {
     try {
       final provider = context.read<AppProvider>();
-      final notifications = await _repo.fetchCommentNotifications();
+      final notifications = await _repo.fetchInboxNotifications();
       if (!mounted || notifications.isEmpty) return;
       final lastSeenAt = await provider.communityNotificationLastSeenAt();
       final latest = notifications.first.createdAt;
@@ -246,6 +268,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pendingId =
+        context.select<AppProvider, String?>((p) => p.pendingCommunityPostId);
+    if (pendingId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openPendingPushPost();
+      });
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       floatingActionButton: _segment == 0
@@ -325,9 +354,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       builder: (_) => CommunityMyActivityScreen(mode: mode),
                     ),
                   ),
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: MyActivityMode.myPosts, child: Text('내가 쓴 글')),
-                    PopupMenuItem(value: MyActivityMode.commentedPosts, child: Text('댓글 단 글')),
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(value: MyActivityMode.myPosts, child: Text('내가 쓴 글')),
+                    const PopupMenuItem(value: MyActivityMode.commentedPosts, child: Text('댓글 단 글')),
+                    PopupMenuItem(
+                      onTap: () {
+                        Future.microtask(
+                          () => CommunityRulesSummary.openFullPolicy(context),
+                        );
+                      },
+                      child: const Text('커뮤니티 이용규칙'),
+                    ),
                   ],
                 ),
               ],

@@ -1,13 +1,16 @@
 ﻿import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'config/env.dart';
+import 'firebase_options.dart';
 import 'providers/app_provider.dart';
 import 'services/app_link_service.dart';
+import 'services/fcm_push_service.dart';
 import 'services/google_auth_service.dart';
 import 'services/kakao_auth_service.dart';
 import 'services/kakao_map_bootstrap.dart';
@@ -33,6 +36,16 @@ Future<void> main() async {
     debugPrint('[Env] .env load failed, using native_keys.json fallback: $e');
   }
   await Env.loadReleaseConfig();
+
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e, st) {
+      debugPrint('[Firebase] initialize failed: $e\n$st');
+    }
+  }
 
   if (Env.isSupabaseConfigured) {
     try {
@@ -74,9 +87,17 @@ Future<void> _deferredStartup(AppProvider provider) async {
   unawaited(GoogleAuthService.initialize());
   unawaited(KakaoMapBootstrap.ensureInitialized());
   try {
+    onLocalNotificationPayload = provider.handleRemotePushData;
     await PushNotificationService.instance.initialize(
-      onOpenHome: (_) => provider.openHomeFromPush(),
+      onOpenHome: (id) => provider.openHomeFromPush(id),
     );
+    await FcmPushService.instance.initialize(
+      onMessageOpened: provider.handleRemotePushData,
+      onConfigRefresh: () => provider.refreshPushSchedulesFromRemote(),
+    );
+    if (provider.notificationEnabled && provider.hasSupabaseSession) {
+      unawaited(FcmPushService.instance.registerToken());
+    }
   } catch (e, st) {
     debugPrint('[Push] deferred init failed: $e\n$st');
   }

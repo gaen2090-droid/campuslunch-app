@@ -15,6 +15,8 @@ begin
   end if;
 
   delete from public.bookmarks where user_id = uid;
+  delete from public.user_push_tokens where user_id = uid;
+  delete from public.user_notification_prefs where user_id = uid;
   delete from public.notification_settings where user_id = uid;
   delete from public.user_devices where user_id = uid;
   delete from public.crowd_reports where user_id = uid;

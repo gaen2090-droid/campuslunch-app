@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/community_repository.dart';
 import '../models/community_post.dart';
 import '../utils/profanity_filter.dart';
+import 'community_rules_summary.dart';
 import 'restaurant_picker_sheet.dart';
 
 typedef _SelectedRestaurant = ({String id, String name});
@@ -144,147 +145,182 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.editing != null;
+    final screenH = MediaQuery.of(context).size.height;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    final sheetH = screenH * 0.92;
+    const headerH = 72.0;
+    const footerH = 132.0;
+    final bodyH = sheetH - headerH - footerH - bottomSafe;
+    final writingH = bodyH * 0.75;
+
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
+        height: sheetH,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).padding.bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
-                  borderRadius: BorderRadius.circular(3),
-                ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
-            Text(
-              isEditing ? '글 수정하기' : '글쓰기',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _contentCtrl,
-              maxLines: 5,
-              maxLength: 1000,
-              onChanged: (_) {
-                if (_validationError != null) setState(() => _validationError = null);
-              },
-              decoration: InputDecoration(
-                hintText: '커뮤니티 이용 정책을 지켜 자유롭게 이야기해주세요.',
-                filled: true,
-                fillColor: const Color(0xFFF9FAFB),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            if (_validationError != null) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
                 child: Text(
-                  _validationError!,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFEF4444), fontWeight: FontWeight.w600),
+                  isEditing ? '글 수정하기' : '글쓰기',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF111827),
+                  ),
                 ),
               ),
-            ],
-            if (_totalImageCount > 0) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 72,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0; i < _existingImageUrls.length; i++)
-                      _ImageThumb(
-                        imageProvider: NetworkImage(_existingImageUrls[i]),
-                        onRemove: () => _removeExistingImage(i),
+                    SizedBox(
+                      height: writingH,
+                      child: TextField(
+                        controller: _contentCtrl,
+                        expands: true,
+                        maxLines: null,
+                        maxLength: 1000,
+                        textAlignVertical: TextAlignVertical.top,
+                        onChanged: (_) {
+                          if (_validationError != null) {
+                            setState(() => _validationError = null);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          hintText: '커뮤니티 이용 정책을 지켜 자유롭게 이야기해주세요.',
+                          counterText: '',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
                       ),
-                    for (var i = 0; i < _newImages.length; i++)
-                      _ImageThumb(
-                        imageProvider: MemoryImage(_newImages[i].bytes),
-                        onRemove: () => _removeNewImage(i),
+                    ),
+                    if (_validationError != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _validationError!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFEF4444),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
+                    ],
+                    if (_totalImageCount > 0) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 72,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            for (var i = 0; i < _existingImageUrls.length; i++)
+                              _ImageThumb(
+                                imageProvider: NetworkImage(_existingImageUrls[i]),
+                                onRemove: () => _removeExistingImage(i),
+                              ),
+                            for (var i = 0; i < _newImages.length; i++)
+                              _ImageThumb(
+                                imageProvider: MemoryImage(_newImages[i].bytes),
+                                onRemove: () => _removeNewImage(i),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    const CommunityRulesSummary(),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _totalImageCount >= _maxImages ? null : _pickImages,
-                  icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text('사진 ($_totalImageCount/$_maxImages)'),
-                ),
-                const SizedBox(width: 8),
-                if (_selectedRestaurant != null)
-                  Expanded(
-                    child: Chip(
-                      label: Text(
-                        _selectedRestaurant!.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onDeleted: () => setState(() => _selectedRestaurant = null),
-                    ),
-                  )
-                else
-                  OutlinedButton.icon(
-                    onPressed: _pickRestaurant,
-                    icon: const Icon(Icons.storefront_outlined, size: 18),
-                    label: const Text('관련 매장'),
-                  ),
-              ],
             ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _submit,
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          isEditing ? '수정 완료' : '게시하기',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, bottomSafe + 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _totalImageCount >= _maxImages ? null : _pickImages,
+                        icon: const Icon(Icons.image_outlined, size: 18),
+                        label: Text('사진 ($_totalImageCount/$_maxImages)'),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_selectedRestaurant != null)
+                        Expanded(
+                          child: Chip(
+                            label: Text(
+                              _selectedRestaurant!.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onDeleted: () => setState(() => _selectedRestaurant = null),
                           ),
+                        )
+                      else
+                        OutlinedButton.icon(
+                          onPressed: _pickRestaurant,
+                          icon: const Icon(Icons.storefront_outlined, size: 18),
+                          label: const Text('관련 매장'),
                         ),
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: _submit,
+                    child: Container(
+                      height: 52,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9ECA8B),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: _submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(
+                                isEditing ? '수정 완료' : '게시하기',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
         ),
       ),
     );

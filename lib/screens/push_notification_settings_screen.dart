@@ -12,7 +12,9 @@ class PushNotificationSettingsScreen extends StatefulWidget {
 
 class _PushNotificationSettingsScreenState
     extends State<PushNotificationSettingsScreen> {
-  bool _lunchPush = false;
+  late bool _lunchPush;
+  late bool _dinnerPush;
+  late bool _communityPush;
   bool _initialized = false;
 
   @override
@@ -22,7 +24,30 @@ class _PushNotificationSettingsScreenState
       _initialized = true;
       final provider = context.read<AppProvider>();
       _lunchPush = provider.lunchPushEnabled;
+      _dinnerPush = provider.dinnerPushEnabled;
+      _communityPush = provider.communityCommentsPushEnabled;
     }
+  }
+
+  Future<void> _snack(String message) async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
+        ),
+      ),
+      backgroundColor: const Color(0xFF9ECA8B),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      duration: const Duration(milliseconds: 1600),
+      elevation: 0,
+    ));
   }
 
   @override
@@ -63,28 +88,37 @@ class _PushNotificationSettingsScreenState
             children: [
               _ToggleRow(
                 title: '점심 피크 추천 알림',
-                desc: '점심 피크 시간대에 추천 매장 정보를 보내드려요.',
+                desc: '점심 피크 시간에 여유 매장 추천을 서버에서 보내드려요.',
                 enabled: _lunchPush,
                 onToggle: () async {
                   final next = !_lunchPush;
                   setState(() => _lunchPush = next);
                   await context.read<AppProvider>().setLunchPush(next);
-                  if (!context.mounted) return;
-                  if (next) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text(
-                        '평일 12:00에 알림을 보내드릴게요!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                      ),
-                      backgroundColor: const Color(0xFF9ECA8B),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                      duration: const Duration(milliseconds: 1600),
-                      elevation: 0,
-                    ));
-                  }
+                  if (next) await _snack('점심 피크 알림을 켰어요.');
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              _ToggleRow(
+                title: '저녁 피크 추천 알림',
+                desc: '저녁 피크 시간에 여유 매장 추천을 서버에서 보내드려요.',
+                enabled: _dinnerPush,
+                onToggle: () async {
+                  final next = !_dinnerPush;
+                  setState(() => _dinnerPush = next);
+                  await context.read<AppProvider>().setDinnerPush(next);
+                  if (next) await _snack('저녁 피크 알림을 켰어요.');
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              _ToggleRow(
+                title: '커뮤니티 댓글 알림',
+                desc: '내 글·구독한 글에 댓글이 달리면 앱이 꺼져 있어도 알려드려요.',
+                enabled: _communityPush,
+                onToggle: () async {
+                  final next = !_communityPush;
+                  setState(() => _communityPush = next);
+                  await context.read<AppProvider>().setCommunityCommentsPush(next);
+                  if (next) await _snack('커뮤니티 댓글 알림을 켰어요.');
                 },
               ),
             ],
@@ -118,45 +152,31 @@ class _ToggleRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827))),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(desc,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        height: 1.4)),
+                Text(
+                  desc,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF6B7280),
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          GestureDetector(
-            onTap: onToggle,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 56,
-              height: 32,
-              decoration: BoxDecoration(
-                color:
-                    enabled ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                alignment:
-                    enabled ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  margin: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle),
-                ),
-              ),
-            ),
+          const SizedBox(width: 12),
+          Switch.adaptive(
+            value: enabled,
+            activeColor: const Color(0xFF5E8C4A),
+            onChanged: (_) => onToggle(),
           ),
         ],
       ),

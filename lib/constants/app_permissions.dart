@@ -46,10 +46,9 @@ abstract final class AppPermissions {
           subtitle: '이벤트 및 혜택 정보를 받아보실 수 있어요.',
           documentBody:
               '알림 권한은 선택 동의 항목입니다.\n\n'
-              '평일 점심(12:00)·저녁(18:00)에 여유로운 매장을 안내하는 '
-              '로컬 추천 알림을 보내드립니다. Firebase Analytics·FCM은 '
-              '사용하지 않으며, flutter_local_notifications 기반의 '
-              '기기 내 로컬 알림입니다.\n\n'
+              '평일 점심·저녁 피크 추천 알림과 커뮤니티 댓글 알림을 '
+              'Firebase Cloud Messaging(FCM)으로 보내드립니다. '
+              '앱이 꺼져 있어도 서버에서 발송할 수 있습니다.\n\n'
               '동의하지 않아도 앱의 다른 기능은 동일하게 이용할 수 있으며, '
               '설정 화면에서 언제든지 알림 수신 여부를 변경할 수 있습니다.',
         ),

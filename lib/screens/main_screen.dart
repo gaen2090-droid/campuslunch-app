@@ -122,6 +122,13 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) _handlePendingAppLink();
       });
     }
+    if (provider.pendingCommunityPostId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final p = context.read<AppProvider>();
+        p.setMainTabIndex(p.communityTabIndex);
+      });
+    }
     final hasOwner = provider.hasOwnerTab;
     final index = provider.mainTabIndex.clamp(0, hasOwner ? 4 : 3);
     final mapIndex = hasOwner ? 2 : 1;
