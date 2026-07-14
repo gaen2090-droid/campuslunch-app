@@ -1416,7 +1416,8 @@ class AppProvider extends ChangeNotifier {
         }
         double? lat;
         double? lng;
-        if (source == 'user' && !kDebugMode) {
+        // 위치 제한은 사장님 제보에도 동일하게 적용 (5분 쿨다운만 사장님 예외).
+        if (!kDebugMode) {
           final pos = await _currentPosition();
           if (pos == null) {
             return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';

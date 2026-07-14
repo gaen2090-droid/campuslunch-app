@@ -14,10 +14,15 @@ class CommunityRepository {
 
   final SupabaseClient _client;
 
-  Future<List<CommunityPost>> fetchFeed({DateTime? before, int limit = 20}) async {
+  Future<List<CommunityPost>> fetchFeed({
+    DateTime? before,
+    int limit = 20,
+    String? query,
+  }) async {
     final rows = await _client.rpc('community_feed', params: {
       'p_limit': limit,
       'p_before': before?.toIso8601String(),
+      'p_query': (query == null || query.trim().isEmpty) ? null : query.trim(),
     });
     return (rows as List<dynamic>)
         .map((e) => CommunityPost.fromMap(e as Map<String, dynamic>))
@@ -89,18 +94,39 @@ class CommunityRepository {
     await _client.from('community_posts').delete().eq('id', postId);
   }
 
-  Future<void> addComment(String postId, String content) async {
+  Future<void> addComment(
+    String postId,
+    String content, {
+    String? parentCommentId,
+  }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('NOT_AUTHENTICATED');
-    await _client.from('community_comments').insert({
-      'post_id': postId,
-      'user_id': uid,
-      'content': content,
+    await _client.rpc('add_community_comment', params: {
+      'p_post_id': postId,
+      'p_content': content,
+      'p_parent_comment_id': parentCommentId,
     });
   }
 
   Future<void> deleteComment(String commentId) async {
     await _client.from('community_comments').delete().eq('id', commentId);
+  }
+
+  Future<void> toggleCommentLike(String commentId, bool currentlyLiked) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('NOT_AUTHENTICATED');
+    if (currentlyLiked) {
+      await _client
+          .from('community_comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', uid);
+    } else {
+      await _client.from('community_comment_likes').insert({
+        'comment_id': commentId,
+        'user_id': uid,
+      });
+    }
   }
 
   Future<void> toggleLike(String postId, bool currentlyLiked) async {

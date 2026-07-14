@@ -8,8 +8,10 @@ import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/recent_history_store.dart';
 import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
+import '../widgets/recent_history_row.dart';
 import '../widgets/report_sheet.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
@@ -41,6 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _cuisines = {'전체'};
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
+  String _submittedQuery = '';
+  static const _historyStore = RecentHistoryStore('home');
+  List<RecentHistoryEntry> _history = [];
   int _mainTab = 0; // 0: 식당, 1: 카페
   bool _bookmarkOnly = false;
   String? _lastBannerImpressionId;
@@ -59,6 +64,39 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
   bool _filterLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final history = await _historyStore.load();
+    if (!mounted) return;
+    setState(() => _history = history);
+  }
+
+  Future<void> _submitSearch(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    setState(() => _submittedQuery = trimmed);
+    final updated = await _historyStore.addSearch(trimmed, _history);
+    if (!mounted) return;
+    setState(() => _history = updated);
+  }
+
+  Future<void> _recordViewedRestaurant(Restaurant r) async {
+    final updated = await _historyStore.addRestaurant(r.id, r.name, _history);
+    if (!mounted) return;
+    setState(() => _history = updated);
+  }
+
+  Future<void> _removeHistoryEntry(RecentHistoryEntry entry) async {
+    final updated = await _historyStore.remove(entry, _history);
+    if (!mounted) return;
+    setState(() => _history = updated);
+  }
 
   @override
   void didChangeDependencies() {
@@ -277,7 +315,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final locationMode = provider.locationMode;
     final all = provider.restaurants;
     final filtered = _filter(all);
-    final searchResults = _search(all, _searchCtrl.text);
+    final searchResults = _search(all, _submittedQuery);
+    final byId = {for (final r in all) r.id: r};
 
     bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
     int minutesSince(Restaurant r) =>
@@ -372,13 +411,24 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       child: Row(
                         children: [
                           const SizedBox(width: 12),
-                          const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                          GestureDetector(
+                            onTap: () => _submitSearch(_searchCtrl.text),
+                            child: const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
                               controller: _searchCtrl,
                               onTap: () => setState(() => _searchActive = true),
-                              onChanged: (_) => setState(() {}),
+                              onChanged: (v) {
+                                if (v.trim().isEmpty) {
+                                  setState(() => _submittedQuery = '');
+                                } else {
+                                  setState(() {});
+                                }
+                              },
+                              onSubmitted: _submitSearch,
+                              textInputAction: TextInputAction.search,
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -394,7 +444,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           ),
                           if (_searchCtrl.text.isNotEmpty)
                             GestureDetector(
-                              onTap: () => setState(() => _searchCtrl.clear()),
+                              onTap: () => setState(() {
+                                _searchCtrl.clear();
+                                _submittedQuery = '';
+                              }),
                               child: const Padding(
                                 padding: EdgeInsets.only(right: 10),
                                 child: Icon(Icons.close,
@@ -411,6 +464,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       onTap: () => setState(() {
                         _searchActive = false;
                         _searchCtrl.clear();
+                        _submittedQuery = '';
                         _openDropdown = null;
                       }),
                       child: const Text('취소',
@@ -582,7 +636,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         // ── 콘텐츠 ──
         Expanded(
           child: _searchActive
-              ? _buildSearch(searchResults)
+              ? _buildSearch(searchResults, byId)
               : _buildHome(
                   recommended: recommended,
                   recentCards: recentCards,
@@ -605,15 +659,72 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     );
   }
 
-  Widget _buildSearch(List<Restaurant> results) {
-    final q = _searchCtrl.text.trim();
-    if (q.isEmpty) {
+  Widget _buildRecentHistory(Map<String, Restaurant> byId) {
+    if (_history.isEmpty) {
       return const Center(
-        child: Text('검색어를 입력해주세요.',
+        child: Text('최근 검색 내역이 없어요.',
             style: TextStyle(
                 fontFamily: 'OkDanDan',
                 fontSize: 14, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w700)),
       );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '최근',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  await _historyStore.clear();
+                  if (!mounted) return;
+                  setState(() => _history = []);
+                },
+                child: const Text('전체삭제',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            itemCount: _history.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            itemBuilder: (_, i) {
+              final entry = _history[i];
+              return RecentHistoryRow(
+                entry: entry,
+                onTap: () {
+                  if (entry.type == RecentHistoryType.search) {
+                    _searchCtrl.value = TextEditingValue(
+                      text: entry.label,
+                      selection: TextSelection.collapsed(offset: entry.label.length),
+                    );
+                    _submitSearch(entry.label);
+                  } else {
+                    final restaurant = byId[entry.restaurantId];
+                    if (restaurant != null) _openDetail(restaurant);
+                  }
+                },
+                onRemove: () => _removeHistoryEntry(entry),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearch(List<Restaurant> results, Map<String, Restaurant> byId) {
+    if (_submittedQuery.isEmpty) {
+      return _buildRecentHistory(byId);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,7 +784,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (_, i) => RestaurantCard(
                   restaurant: results[i],
-                  onTap: () => _openDetail(results[i]),
+                  onTap: () {
+                    _recordViewedRestaurant(results[i]);
+                    _openDetail(results[i]);
+                  },
                 ),
               ),
             ),

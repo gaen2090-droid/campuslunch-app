@@ -20,12 +20,16 @@ class MapPinPainter extends CustomPainter {
     this.showInnerDot = true,
   });
 
+  /// 스탬프 마커(원 반지름 ≈ 캔버스 폭의 0.42배, 48px 캔버스 기준)와 대가리 크기를
+  /// 맞추기 위해 0.38보다 작게 잡음(72px 캔버스 기준 ≈ 20px 반지름).
+  static const double headRadiusRatio = 0.28;
+
   static Path pinPath(Size size) {
     final w = size.width;
     final h = size.height;
     final cx = w / 2;
     final tipY = h - 0.5;
-    final headRadius = w * 0.38;
+    final headRadius = w * headRadiusRatio;
     final headCy = headRadius + w * 0.07;
 
     return Path()
@@ -57,7 +61,7 @@ class MapPinPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final path = pinPath(size);
     final w = size.width;
-    final headRadius = w * 0.38;
+    final headRadius = w * headRadiusRatio;
     final headCy = headRadius + w * 0.07;
     final cx = w / 2;
 

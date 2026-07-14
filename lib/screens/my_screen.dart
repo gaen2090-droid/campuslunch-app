@@ -1,11 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
+import '../widgets/feedback_sheet.dart';
+import '../widgets/my_page_section_row.dart';
+import '../widgets/owner_verify_sheet.dart';
+import '../widgets/rice_ball_icon.dart';
 import 'bookmark_list_screen.dart';
+import 'coupon_box_screen.dart';
+import 'legal_policy_placeholder_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/rice_ball_icon.dart';
 
 class MyScreen extends StatefulWidget {
   const MyScreen({super.key});
@@ -16,6 +21,7 @@ class MyScreen extends StatefulWidget {
 
 class _MyScreenState extends State<MyScreen> {
   bool _showEditSheet = false;
+  bool _showOwnerVerify = false;
   String _editNickname = '';
   final _nicknameCtrl = TextEditingController();
 
@@ -56,21 +62,18 @@ class _MyScreenState extends State<MyScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final bookmarkCount =
-        provider.restaurants.where((r) => provider.bookmarks.contains(r.id)).length;
     final hasOwner = provider.hasOwnerTab;
 
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-              20, MediaQuery.of(context).padding.top + 8, 20, 100),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8, bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── 페이지 타이틀 ──
               Padding(
-                padding: const EdgeInsets.only(bottom: 20, top: 8),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Row(
                   children: [
                     const Expanded(
@@ -105,22 +108,12 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              // ── 프로필 카드 ──
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withAlpha(8),
-                        blurRadius: 8,
-                        offset: const Offset(0, 1))
-                  ],
-                ),
+              // ══ 섹션 1: 프로필 + 오늘의 스탬프 + 바로가기 3버튼 ══
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
+                    // ── 프로필 ──
                     Row(
                       children: [
                         Container(
@@ -158,155 +151,190 @@ class _MyScreenState extends State<MyScreen> {
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // ── 오늘의 스탬프 (초록 키컬러 카드) ──
+                    _RewardCard(
+                      reward: provider.reward,
+                      loadFailed: provider.rewardLoadFailed,
+                      onRetry: () => provider.fetchMyReward(),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── 즐겨찾기 / 스탬프북 / 내 쿠폰함 ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.bookmark,
+                            label: '즐겨찾기',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.stars_rounded,
+                            label: '스탬프북',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RewardScreen()),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.card_giftcard_rounded,
+                            label: '내 쿠폰함',
+                            showDot: provider.hasUnseenCoupon,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              const MyPageSectionDivider(),
 
-              // ── 내 스탬프 ──
-              _RewardCard(
-                reward: provider.reward,
-                loadFailed: provider.rewardLoadFailed,
-                onRetry: () => provider.fetchMyReward(),
+              // ══ 섹션 2: 쿠폰/이벤트 ══
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const MyPageSectionTitle('쿠폰/이벤트'),
+                    MyPageSectionRow(
+                      label: '친구 초대하고 함께 스탬프 받기',
+                      icon: const Icon(Icons.card_giftcard_outlined,
+                          size: 20, color: Color(0xFF5E8C4A)),
+                      showBottomBorder: false,
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('곧 만나요! 준비 중인 기능이에요.')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 16),
+              const MyPageSectionDivider(),
 
-              // ── 저장한 매장 ──
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
+              // ══ 섹션 3: 고객지원 ══
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const MyPageSectionTitle('고객지원'),
+                    MyPageSectionRow(
+                      label: '캠퍼스런치 사용 가이드',
+                      icon: const Icon(Icons.help_rounded, size: 20, color: Color(0xFF5E8C4A)),
+                      onTap: () => launchUrl(
+                        Uri.parse(
+                            'https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                    ),
+                    MyPageSectionRow(
+                      label: '개선 제안',
+                      icon: const Icon(Icons.lightbulb_outline,
+                          size: 20, color: Color(0xFF5E8C4A)),
+                      onTap: () => showFeedbackSheet(context),
+                    ),
+                    MyPageSectionRow(
+                      label: '약관 및 정책',
+                      icon: const Icon(Icons.description_outlined,
+                          size: 20, color: Color(0xFF5E8C4A)),
+                      showBottomBorder: false,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const LegalPolicyPlaceholderScreen()),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withAlpha(8),
-                          blurRadius: 8,
-                          offset: const Offset(0, 1))
+              ),
+
+              // ══ 섹션 4: 비즈니스 ══
+              if (!hasOwner) const MyPageSectionDivider(),
+
+              if (!hasOwner)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const MyPageSectionTitle('비즈니스'),
+                      MyPageSectionRow(
+                        label: '내 가게 등록',
+                        icon: const Icon(Icons.storefront_outlined,
+                            size: 20, color: Color(0xFF5E8C4A)),
+                        showBottomBorder: false,
+                        onTap: () => setState(() => _showOwnerVerify = true),
+                      ),
                     ],
                   ),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.bookmark,
-                            size: 16,
-                            color: Color(0xFF5E8C4A)),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            '즐겨찾기한 매장',
-                            style: TextStyle(
-                                fontFamily: 'OkDanDan',
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827)),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$bookmarkCount',
-                            style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF5E8C4A)),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right,
-                            size: 16, color: Color(0xFFD1D5DB)),
-                      ],
-                    ),
-                  ),
                 ),
-              ),
 
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () => launchUrl(
-                  Uri.parse('https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withAlpha(8),
-                          blurRadius: 8,
-                          offset: const Offset(0, 1))
-                    ],
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.help_rounded,
-                            size: 16,
-                            color: Color(0xFF5E8C4A)),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '캠퍼스런치 사용 가이드',
-                            style: TextStyle(
-                                fontFamily: 'OkDanDan',
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827)),
-                          ),
-                        ),
-                        Icon(Icons.chevron_right,
-                            size: 16, color: Color(0xFFD1D5DB)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              if (hasOwner) const MyPageSectionDivider(),
 
-              // ── 사장님 ──
-              if (hasOwner) ...[
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => provider.setMainTabIndex(0),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F8F0),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFBFE0B0)),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '내 매장 혼잡도 관리',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF5E8C4A),
+              // ── 사장님(오너) 전용 배너 ──
+              if (hasOwner)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: GestureDetector(
+                    onTap: () => provider.setMainTabIndex(0),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F8F0),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFBFE0B0)),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          '내 매장 혼잡도 관리',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF5E8C4A),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
+
+              if (hasOwner) const SizedBox(height: 20),
             ],
           ),
         ),
+
+        // ── 사장님 인증 시트 ──
+        if (_showOwnerVerify)
+          Positioned.fill(
+            child: OwnerVerifySheet(
+              onClose: () => setState(() => _showOwnerVerify = false),
+              onSuccess: (_) {
+                setState(() => _showOwnerVerify = false);
+              },
+            ),
+          ),
 
         // ── 닉네임 수정 시트 ──
         if (_showEditSheet)
@@ -478,7 +506,67 @@ class _MyScreenState extends State<MyScreen> {
       ],
     );
   }
+}
 
+/// 즐겨찾기 / 스탬프북 / 내 쿠폰함 바로가기 버튼 (세로 아이콘 + 라벨, 우상단 배지)
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool showDot;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.showDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 22, color: const Color(0xFF5E8C4A)),
+                if (showDot)
+                  Positioned(
+                    right: -4,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _RewardCard extends StatelessWidget {
@@ -494,9 +582,7 @@ class _RewardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = reward.totalStamps as int;
     final today = reward.todayStamps as int;
-    final remaining = (20 - total).clamp(0, 20);
 
     return GestureDetector(
       onTap: () {
@@ -511,18 +597,9 @@ class _RewardCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: total >= 20 ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 8,
-              offset: const Offset(0, 1),
-            ),
-          ],
+          color: const Color(0xFFF3F8F0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFBFE0B0)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -531,7 +608,15 @@ class _RewardCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.stars_rounded, size: 16, color: Color(0xFF5E8C4A)),
+                  Container(
+                    width: 19,
+                    height: 19,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF5E8C4A),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.star_rounded, size: 15, color: Colors.white),
+                  ),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -560,7 +645,7 @@ class _RewardCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFFD1D5DB)),
+                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFF111827)),
                 ],
               ),
               if (loadFailed) ...[
@@ -570,7 +655,7 @@ class _RewardCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFEF4444),
+                    color: Color(0xFF111827),
                   ),
                 ),
               ],
@@ -587,18 +672,14 @@ class _RewardCard extends StatelessWidget {
                         width: cellSize,
                         height: cellSize,
                         decoration: BoxDecoration(
-                          color: filled ? const Color(0xFFE8F5E1) : const Color(0xFFF9FAFB),
+                          color: filled ? Colors.white : const Color(0xFFE5E7EB),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: filled ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
-                            width: 1.5,
-                          ),
                         ),
                         child: Center(
                           child: filled
                               ? StampRiceBallIcon(size: cellSize * 0.55)
                               : Opacity(
-                                  opacity: 0.35,
+                                  opacity: 0.45,
                                   child: StampRiceBallIcon(size: cellSize * 0.55),
                                 ),
                         ),
@@ -607,17 +688,6 @@ class _RewardCard extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 10),
-              Text(
-                remaining > 0
-                    ? '아메리카노 쿠폰까지 $remaining개 남았어요'
-                    : '커피 쿠폰을 받을 수 있어요!',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
             ],
           ),
         ),
@@ -625,4 +695,3 @@ class _RewardCard extends StatelessWidget {
     );
   }
 }
-

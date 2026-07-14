@@ -173,21 +173,8 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withAlpha(8), blurRadius: 8)
-                      ],
-                    ),
-                    child: const Icon(Icons.chevron_left,
-                        size: 20, color: Color(0xFF374151)),
-                  ),
+                  child: const Icon(Icons.chevron_left,
+                      size: 24, color: Color(0xFF374151)),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(

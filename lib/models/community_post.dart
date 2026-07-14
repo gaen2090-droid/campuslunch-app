@@ -11,6 +11,7 @@ class CommunityPost {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool isOwner;
+  final bool isAuthorOwner;
 
   const CommunityPost({
     required this.id,
@@ -25,6 +26,7 @@ class CommunityPost {
     required this.createdAt,
     this.updatedAt,
     required this.isOwner,
+    this.isAuthorOwner = false,
   });
 
   factory CommunityPost.fromMap(Map<String, dynamic> map) {
@@ -45,6 +47,7 @@ class CommunityPost {
           ? DateTime.parse(map['updated_at'] as String)
           : null,
       isOwner: map['is_owner'] as bool? ?? false,
+      isAuthorOwner: map['is_author_owner'] as bool? ?? false,
     );
   }
 
@@ -65,6 +68,7 @@ class CommunityPost {
       createdAt: createdAt,
       updatedAt: updatedAt,
       isOwner: isOwner,
+      isAuthorOwner: isAuthorOwner,
     );
   }
 }

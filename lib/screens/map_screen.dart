@@ -8,12 +8,12 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
-import '../widgets/restaurant_card.dart';
 import '../widgets/restaurant_kakao_map.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 import 'home_screen.dart' show SimpleFilterSheet;
 import 'location_permission_screen.dart';
+import 'map_search_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -34,8 +34,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
-  bool _searchActive = false;
-  final _searchCtrl = TextEditingController();
+  bool _bookmarkOnly = false;
 
   static const _cuisineOpts = [
     _allLabel,
@@ -64,7 +63,6 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   @override
   void dispose() {
     appRouteObserver.unsubscribe(this);
-    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -124,6 +122,15 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     );
   }
 
+  void _openStampCriteriaSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _StampCriteriaSheet(),
+    );
+  }
+
   void _toggleFilter(Set<String> target, String value) {
     if (value == _allLabel) {
       target
@@ -140,22 +147,20 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     if (target.isEmpty) target.add(_allLabel);
   }
 
-  bool _isJeongmunOnly() =>
-      _regions.length == 1 && _regions.contains('정문');
+  bool _isSingleRegion() => _regions.length == 1 && !_regions.contains(_allLabel);
 
-  List<Restaurant> _filter(List<Restaurant> all) {
+  List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     return all.where((r) {
-      final q = _searchCtrl.text.trim().toLowerCase();
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk =
           _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
-      final searchOk = q.isEmpty || '${r.name} ${r.area} ${r.category}'.toLowerCase().contains(q);
       final reportOk = switch (_reportFilter) {
         '제보있음' => r.status != '영업안함' && r.hasCrowdUpdate,
         '제보없음' => r.status != '영업안함' && !r.hasCrowdUpdate,
         _ => true,
       };
-      return regionOk && cuisineOk && searchOk && reportOk;
+      final bookmarkOk = !_bookmarkOnly || bookmarks.contains(r.id);
+      return regionOk && cuisineOk && reportOk && bookmarkOk;
     }).toList();
   }
 
@@ -163,7 +168,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final all = provider.restaurants;
-    final filtered = _filter(all);
+    final filtered = _filter(all, provider.bookmarks);
     final jeongmunRestaurants = all.where((r) => r.area == '정문').toList();
     final hasNeedsReportRestaurant =
         all.any((r) => r.status != '영업안함' && !r.hasCrowdUpdate);
@@ -174,7 +179,6 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     }
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
-    final q = _searchCtrl.text.trim();
 
     return Stack(
       children: [
@@ -189,7 +193,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             showMyLocationMarker: provider.locationMode,
             myLocationEnabled: provider.locationMode,
             cameraFitToken: _cameraFitToken,
-            cameraFitProfile: _isJeongmunOnly()
+            cameraFitProfile: _isSingleRegion()
                 ? CameraFitProfile.tight
                 : CameraFitProfile.balanced,
             initialFocusRestaurants: jeongmunRestaurants,
@@ -206,72 +210,75 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 검색바 (pill)
-                Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onTap: () => setState(() => _searchActive = true),
-                          onChanged: (_) => setState(() {}),
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1F2937)),
-                          decoration: const InputDecoration(
-                            hintText: '매장명, 위치, 음식종류 검색',
-                            hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      if (_searchCtrl.text.isNotEmpty)
-                        GestureDetector(
-                          onTap: () => setState(() => _searchCtrl.clear()),
-                          child: const Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
-                          ),
-                        ),
-                      if (_searchActive) ...[
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () => setState(() {
-                            _searchActive = false;
-                            _searchCtrl.clear();
-                          }),
-                          child: const Text('취소',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF6B7280))),
+                // 검색바 (pill) — 탭하면 검색 전용 화면으로 이동
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await Navigator.push<Restaurant>(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MapSearchScreen()),
+                    );
+                    if (picked == null || !mounted) return;
+                    setState(() => _selected = picked);
+                  },
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                        SizedBox(width: 8),
+                        Text(
+                          '매장명, 위치, 음식종류 검색',
+                          style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
 
-                if (!_searchActive) ...[
+                if (true) ...[
                   const SizedBox(height: 8),
                   // 필터 칩 행
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        ...['정문', '중문', '후문'].map((area) => Padding(
+                        _MapFilterChip(
+                          label: '카페',
+                          active: _cuisines.length == 1 && _cuisines.contains('카페'),
+                          open: false,
+                          showArrow: false,
+                          trailingIcon: (_cuisines.length == 1 && _cuisines.contains('카페'))
+                              ? Icons.local_cafe_rounded
+                              : Icons.local_cafe_outlined,
+                          onTap: () {
+                            final isActive =
+                                _cuisines.length == 1 && _cuisines.contains('카페');
+                            setState(() {
+                              _cuisines = isActive ? {_allLabel} : {'카페'};
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _MapFilterChip(
+                          label: '즐겨찾기',
+                          active: _bookmarkOnly,
+                          open: false,
+                          showArrow: false,
+                          trailingIcon: _bookmarkOnly
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
+                          onTap: () => setState(() => _bookmarkOnly = !_bookmarkOnly),
+                        ),
+                        const SizedBox(width: 8),
+                        ...['정문', '후문'].map((area) => Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: _MapFilterChip(
                             label: area,
@@ -303,103 +310,28 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                             onReset: () => setState(() { _cuisines = {_allLabel}; }),
                           ),
                         ),
-                        if (hasNeedsReportRestaurant) ...[
-                          const SizedBox(width: 8),
-                          _MapFilterChip(
-                            label: '스탬프 2개',
-                            active: _reportFilter == '제보없음',
-                            open: false,
-                            showArrow: false,
-                            onTap: () => setState(() {
-                              _reportFilter = _reportFilter == '제보없음' ? _allLabel : '제보없음';
-                            }),
-                            leadingIcon: Icons.stars_rounded,
-                            labelFontFamily: 'OkDanDan',
-                            labelFontSize: 14,
-                            verticalPadding: 6,
-                          ),
-                        ],
                       ],
                     ),
                   ),
 
 
-                  // 범례 (필터 펼침 시 아래로 밀림)
-                  if (!_searchActive) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _CrowdLegend(),
-                    ),
-                  ],
+                  // 범례
+                  const SizedBox(height: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _StampCriteriaBadge(onTap: _openStampCriteriaSheet),
+                      const SizedBox(height: 8),
+                      const _CrowdLegend(),
+                    ],
+                  ),
                 ],
               ],
             ),
           ),
         ),
 
-        // ── 검색 결과 오버레이 ──
-        if (_searchActive && q.isNotEmpty)
-          Positioned(
-            top: safeTop + 68,
-            left: 0, right: 0, bottom: 0,
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('검색 결과',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827))),
-                        Text('${filtered.length}곳',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFD1D5DB))),
-                      ],
-                    ),
-                  ),
-                  if (filtered.isEmpty)
-                    Expanded(
-                      child: const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Text('검색 결과가 없어요.',
-                              style: TextStyle(
-                                  fontFamily: 'OkDanDan',
-                                  fontSize: 14,
-                                  color: Color(0xFF9CA3AF),
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (_, i) => RestaurantCard(
-                          restaurant: filtered[i],
-                          onTap: () => _openDetail(filtered[i]),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-        if (!_searchActive &&
-            provider.restaurantsLoadFailed &&
-            !provider.restaurantsLoading)
+        if (provider.restaurantsLoadFailed && !provider.restaurantsLoading)
           Positioned(
             top: safeTop + 64,
             left: 16,
@@ -452,8 +384,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
           ),
 
         // ── 새로고침 / 내 위치 버튼 ──
-        if (!_searchActive)
-          Positioned(
+        Positioned(
             right: 16,
             bottom: _selected != null ? safeBottom + 264 : safeBottom + 112,
             child: GestureDetector(
@@ -485,8 +416,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
           ),
 
         // ── 내 위치 버튼 ──
-        if (!_searchActive)
-          Positioned(
+        Positioned(
             right: 16,
             bottom: _selected != null ? safeBottom + 200 : safeBottom + 48,
             child: GestureDetector(
@@ -540,6 +470,171 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── 스탬프 지급 기준 배지 ──
+class _StampCriteriaBadge extends StatelessWidget {
+  final VoidCallback onTap;
+  const _StampCriteriaBadge({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(230),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 0)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CustomPaint(painter: StarPinPainter()),
+            ),
+            const SizedBox(width: 4),
+            const Text('스탬프 지급 기준',
+                style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF374151))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StampCriteriaSheet extends StatelessWidget {
+  const _StampCriteriaSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20, 24, 20, MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '스탬프 지급 기준',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const _StampCriteriaLine('혼잡도를 제보하면 스탬프를 1개 받아요.'),
+            const _StampCriteriaMarkerLine(),
+            const _StampCriteriaLine('단, 하루 최대 3개의 스탬프를 획득할 수 있어요.'),
+            const _StampCriteriaLine('획득한 스탬프는 마이페이지에서 확인할 수 있어요.'),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9ECA8B),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Text(
+                    '확인했어요',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StampCriteriaLine extends StatelessWidget {
+  final String text;
+  const _StampCriteriaLine(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('· ', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "스탬프 마커" 텍스트 대신 실제 별 마커 아이콘을 문장 안에 인라인으로 넣는 안내 줄.
+class _StampCriteriaMarkerLine extends StatelessWidget {
+  const _StampCriteriaMarkerLine();
+
+  @override
+  Widget build(BuildContext context) {
+    const textStyle = TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('· ', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: textStyle,
+                children: [
+                  const WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 2),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CustomPaint(painter: StarPinPainter()),
+                      ),
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' 마커는 최초 제보가 필요한 매장이에요. '
+                        '제보하면 스탬프를 2개 받을 수 있어요.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -744,6 +839,8 @@ class _MapFilterChip extends StatelessWidget {
   final Color? activeText;
   /// 라벨 앞에 표시할 아이콘 (선택)
   final IconData? leadingIcon;
+  /// 라벨 뒤에 표시할 아이콘 (선택, leadingIcon과 동시 사용 가능)
+  final IconData? trailingIcon;
   final String? labelFontFamily;
   final double labelFontSize;
   final double verticalPadding;
@@ -759,6 +856,7 @@ class _MapFilterChip extends StatelessWidget {
     this.activeBg,
     this.activeText,
     this.leadingIcon,
+    this.trailingIcon,
     this.labelFontFamily,
     this.labelFontSize = 12,
     this.verticalPadding = 8,
@@ -800,6 +898,14 @@ class _MapFilterChip extends StatelessWidget {
                     fontSize: labelFontSize,
                     fontWeight: FontWeight.w900,
                     color: textColor)),
+            if (trailingIcon != null) ...[
+              const SizedBox(width: 3),
+              Icon(
+                trailingIcon,
+                size: 14,
+                color: textColor,
+              ),
+            ],
             if (showArrow) ...[
               const SizedBox(width: 4),
               Icon(

@@ -12,6 +12,7 @@ import '../services/kakao_map_bootstrap.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
+import '../utils/marker_overlap.dart';
 
 /// DB 매장 마커 + 혼잡도 색상 (카카오맵 SDK)
 class RestaurantKakaoMap extends StatefulWidget {
@@ -58,6 +59,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     with WidgetsBindingObserver {
   KakaoMapController? _controller;
   StreamSubscription? _labelSub;
+  StreamSubscription? _cameraMoveEndSub;
   bool _mapLayerReady = false;
   String? _mapError;
   final Set<String> _markerIds = {};
@@ -65,6 +67,17 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   int _syncGeneration = 0;
   String _lastFitKey = '';
   int _lastFitToken = -1;
+
+  /// 마커 아이콘 반경(px) — 겹침 판정 기준. 두 마커 중심 간 거리가 이 값의 2배(지름)보다
+  /// 가까우면 겹친 것으로 본다. 마커가 실제로 서로 포개질 때만 하나를 숨기도록 작게 잡음
+  /// (과도하게 크면 아이콘끼리 안 겹쳐도 숨겨져서 축소 시 마커가 너무 많이 사라짐).
+  static const double _markerIconRadiusPixels = 10;
+  /// 매장명 라벨 겹침 판정 반경(px). 이 반경 안에 이미 라벨이 표시된 마커가 있으면
+  /// 텍스트를 비우고 아이콘만 표시 — "일부 매장명만 뜨는" 카카오맵 라벨 겹침 방지와
+  /// 동일한 방식. 마커 판정(_markerIconRadiusPixels)보다만 살짝 크게 잡아, 충분히
+  /// 확대해서 마커끼리 떨어지면 라벨도 전부 뜨도록 함(너무 크면 확대해도 라벨이 계속 숨음).
+  static const double _labelOverlapRadiusPixels = 20;
+  int? _lastZoomLevel;
 
   static final _campus = LatLng(
     latitude: Campus.centerLat,
@@ -164,6 +177,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _labelSub?.cancel();
+    _cameraMoveEndSub?.cancel();
     final viewId = _controller?.viewId;
     if (viewId != null) {
       KakaoMarkerLayer.release(viewId);
@@ -216,6 +230,20 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         }
       }
     });
+
+    _cameraMoveEndSub?.cancel();
+    _cameraMoveEndSub = controller.onCameraMoveEndStream.listen((_) {
+      unawaited(_onCameraMoveEnd());
+    });
+  }
+
+  Future<void> _onCameraMoveEnd() async {
+    final controller = _controller;
+    if (controller == null || !_mapLayerReady) return;
+    final zoom = await controller.getZoomLevel();
+    if (zoom == null || zoom == _lastZoomLevel) return;
+    _lastZoomLevel = zoom;
+    unawaited(_syncMarkers());
   }
 
   Future<void> _onMapCreated(KakaoMapController controller) async {
@@ -277,9 +305,49 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       if (gen != _syncGeneration) return;
       _markerIds.clear();
 
+      final located = widget.restaurants.where((r) => r.hasMapLocation).toList();
+      final zoom = _lastZoomLevel ?? await controller.getZoomLevel() ?? 21;
+      _lastZoomLevel = zoom;
+
+      // 겹치는 마커 중 하나만 남김 — 선택된 매장 최우선, 그 다음 혼잡도(여유로움>약간혼잡>그외)
+      // 우선, 그 외엔 목록 순서(안정적) 유지.
+      final selectedId = widget.selected?.id;
+      final candidates = <OverlapCandidate>[];
+      for (var i = 0; i < located.length; i++) {
+        final r = located[i];
+        final statusRank = switch (r.status) {
+          '여유로움' => 2,
+          '약간혼잡' => 1,
+          _ => 0,
+        };
+        final basePriority = statusRank * located.length + (located.length - i);
+        final priority =
+            r.id == selectedId ? basePriority + 3 * located.length : basePriority;
+        candidates.add(OverlapCandidate(
+          id: r.id,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          priority: priority,
+        ));
+      }
+      final visibleIds = MarkerOverlap.resolveVisibleIds(
+        candidates: candidates,
+        zoomLevel: zoom,
+        iconRadiusPixels: _markerIconRadiusPixels,
+      ).toSet();
+
+      // 라벨(매장명)은 화면상 서로 겹치지 않는 것만 표시 — 매장 수와 무관하게 항상 동작.
+      final visibleCandidates =
+          candidates.where((c) => visibleIds.contains(c.id)).toList();
+      final labeledIds = MarkerOverlap.resolveVisibleIds(
+        candidates: visibleCandidates,
+        zoomLevel: zoom,
+        iconRadiusPixels: _labelOverlapRadiusPixels,
+      ).toSet();
+
       final markerBatch = <MarkerOption>[];
-      for (final r in widget.restaurants) {
-        if (!r.hasMapLocation) continue;
+      for (final r in located) {
+        if (!visibleIds.contains(r.id)) continue;
         if (gen != _syncGeneration) return;
 
         final isSelected = widget.selected?.id == r.id;
@@ -298,7 +366,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
             styleId: styleId,
             rank: isSelected ? 2 : 1,
-            text: r.name,
+            text: labeledIds.contains(r.id) ? r.name : null,
           ),
         );
         _markerIds.add(r.id);

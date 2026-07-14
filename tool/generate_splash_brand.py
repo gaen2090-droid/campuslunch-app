@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """스플래시 이미지 생성 — iOS/Android/Flutter 공통.
 
+⚠️ 2026-07-14부터 이 스크립트는 더 이상 사용하지 않음 — 디자이너가 직접 만든
+   새 스플래시 디자인(초록 배경 + "CAM LUN" 로고, D:\\캠런\\로고_최종\\splash.png)으로
+   assets/images/splash_screen_full.png 및 iOS/Android 네이티브 런치 이미지를
+   교체했음. 이 스크립트를 실행하면 새 디자인이 옛 텍스트 로고로 덮어써지니
+   실행하지 말 것 — 필요 시 디자이너에게 새 원본을 받아 수동으로 교체할 것.
+
   python3 tool/generate_splash_brand.py
 
 산출물:
@@ -134,7 +140,10 @@ def main() -> None:
     brand.save(OUT_BRAND)
     print(f"Wrote {OUT_BRAND} ({brand.size[0]}x{brand.size[1]})")
 
-    full = render_full_screen(scale=1)
+    # Flutter는 Image.asset을 논리 픽셀이 아니라 실제 픽셀로 그대로 그리므로,
+    # scale=1(393x852)은 고해상도 기기에서 BoxFit.cover 확대 시 텍스트/아이콘이
+    # 흐려진다. iOS/Android 네이티브 런치 이미지와 동일하게 3x로 저장한다.
+    full = render_full_screen(scale=3)
     full.save(OUT_FULL)
     print(f"Wrote {OUT_FULL} ({full.size[0]}x{full.size[1]})")
 

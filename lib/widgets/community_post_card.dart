@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/community_post.dart';
 import '../utils/time_ago.dart';
+import 'owner_badge.dart';
 
 class CommunityPostCard extends StatelessWidget {
   final CommunityPost post;
@@ -45,6 +46,10 @@ class CommunityPostCard extends StatelessWidget {
                             post.nickname,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
                           ),
+                          if (post.isAuthorOwner) ...[
+                            const SizedBox(width: 4),
+                            const OwnerBadge(),
+                          ],
                           const SizedBox(width: 6),
                           Text(
                             timeAgo(post.createdAt),

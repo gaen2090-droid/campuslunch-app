@@ -10,6 +10,7 @@ import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/community_post_editor_sheet.dart';
+import '../widgets/owner_badge.dart';
 import 'detail_screen.dart';
 
 class CommunityPostDetailScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class CommunityPostDetailScreen extends StatefulWidget {
 class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   final _repo = CommunityRepository();
   final _commentCtrl = TextEditingController();
+  final _commentFocusNode = FocusNode();
   late CommunityPost _post;
   List<CommunityComment> _comments = [];
   bool _loadingComments = true;
@@ -32,6 +34,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   bool _deleted = false;
   bool _subscribed = false;
   bool _subscribedLoaded = false;
+  CommunityComment? _replyTarget;
 
   @override
   void initState() {
@@ -69,6 +72,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   @override
   void dispose() {
     _commentCtrl.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -124,9 +128,14 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     }
     setState(() => _submittingComment = true);
     try {
-      await _repo.addComment(_post.id, content);
+      await _repo.addComment(
+        _post.id,
+        content,
+        parentCommentId: _replyTarget?.id,
+      );
       _commentCtrl.clear();
       _changed = true;
+      setState(() => _replyTarget = null);
       await _loadComments();
     } catch (_) {
       if (!mounted) return;
@@ -149,6 +158,97 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
         const SnackBar(content: Text('댓글 삭제에 실패했어요.')),
       );
     }
+  }
+
+  Future<void> _reportComment(CommunityComment comment) async {
+    try {
+      await _repo.report(commentId: comment.id, reason: '사용자 신고');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('신고가 접수되었어요.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('신고 접수에 실패했어요.')),
+      );
+    }
+  }
+
+  Future<void> _toggleCommentLike(CommunityComment comment) async {
+    if (comment.isOwner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내가 쓴 댓글은 공감할 수 없어요.')),
+      );
+      return;
+    }
+    final uid = SupabaseService.client.auth.currentUser?.id;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),
+      );
+      return;
+    }
+    final index = _comments.indexWhere((c) => c.id == comment.id);
+    if (index == -1) return;
+    final wasLiked = comment.likedByMe;
+    setState(() {
+      _comments[index] = comment.copyWith(
+        likedByMe: !wasLiked,
+        likeCount: comment.likeCount + (wasLiked ? -1 : 1),
+      );
+    });
+    try {
+      await _repo.toggleCommentLike(comment.id, wasLiked);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _comments[index] = comment);
+    }
+  }
+
+  void _startReply(CommunityComment comment) {
+    setState(() => _replyTarget = comment);
+    FocusScope.of(context).requestFocus(_commentFocusNode);
+  }
+
+  void _cancelReply() {
+    setState(() => _replyTarget = null);
+  }
+
+  List<Widget> _buildCommentTree() {
+    final topLevel = _comments.where((c) => c.parentCommentId == null).toList();
+    final repliesByParent = <String, List<CommunityComment>>{};
+    for (final c in _comments) {
+      final parentId = c.parentCommentId;
+      if (parentId != null) {
+        repliesByParent.putIfAbsent(parentId, () => []).add(c);
+      }
+    }
+
+    final widgets = <Widget>[];
+    for (final parent in topLevel) {
+      widgets.add(_CommentTile(
+        comment: parent,
+        onDelete: parent.isOwner ? () => _deleteComment(parent) : null,
+        onReport: parent.isOwner ? null : () => _reportComment(parent),
+        onLike: () => _toggleCommentLike(parent),
+        onReply: () => _startReply(parent),
+      ));
+      final replies = repliesByParent[parent.id] ?? const [];
+      for (final reply in replies) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(left: 32),
+          child: _CommentTile(
+            comment: reply,
+            onDelete: reply.isOwner ? () => _deleteComment(reply) : null,
+            onReport: reply.isOwner ? null : () => _reportComment(reply),
+            onLike: () => _toggleCommentLike(reply),
+            onReply: () => _startReply(parent),
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   Future<void> _editPost() async {
@@ -287,6 +387,10 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                         _post.nickname,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
                       ),
+                      if (_post.isAuthorOwner) ...[
+                        const SizedBox(width: 4),
+                        const OwnerBadge(),
+                      ],
                       const SizedBox(width: 6),
                       Text(
                         timeAgo(_post.createdAt),
@@ -382,10 +486,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                       ),
                     )
                   else
-                    ..._comments.map((c) => _CommentTile(
-                          comment: c,
-                          onDelete: c.isOwner ? () => _deleteComment(c) : null,
-                        )),
+                    ..._buildCommentTree(),
           ],
         ),
         bottomNavigationBar: Material(
@@ -397,37 +498,64 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentCtrl,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) {
-                        if (!_submittingComment) _submitComment();
-                      },
-                      decoration: InputDecoration(
-                        hintText: '댓글을 입력해주세요',
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
+                  if (_replyTarget != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${_replyTarget!.nickname}님에게 답글 남기는 중',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _cancelReply,
+                            child: const Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _submittingComment ? null : _submitComment,
-                    icon: _submittingComment
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
-                          )
-                        : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentCtrl,
+                          focusNode: _commentFocusNode,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) {
+                            if (!_submittingComment) _submitComment();
+                          },
+                          decoration: InputDecoration(
+                            hintText: _replyTarget != null ? '답글을 입력해주세요' : '댓글을 입력해주세요',
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _submittingComment ? null : _submitComment,
+                        icon: _submittingComment
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
+                              )
+                            : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -442,8 +570,17 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
 class _CommentTile extends StatelessWidget {
   final CommunityComment comment;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
+  final VoidCallback onLike;
+  final VoidCallback onReply;
 
-  const _CommentTile({required this.comment, this.onDelete});
+  const _CommentTile({
+    required this.comment,
+    required this.onLike,
+    required this.onReply,
+    this.onDelete,
+    this.onReport,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +599,10 @@ class _CommentTile extends StatelessWidget {
                       comment.nickname,
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
                     ),
+                    if (comment.isAuthorOwner) ...[
+                      const SizedBox(width: 4),
+                      const OwnerBadge(),
+                    ],
                     const SizedBox(width: 6),
                     Text(
                       timeAgo(comment.createdAt),
@@ -474,16 +615,49 @@ class _CommentTile extends StatelessWidget {
                   comment.content,
                   style: const TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4),
                 ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: onReply,
+                      child: const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFF9CA3AF)),
+                    ),
+                    const SizedBox(width: 14),
+                    GestureDetector(
+                      onTap: onLike,
+                      child: Row(
+                        children: [
+                          Icon(
+                            comment.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
+                            size: 16,
+                            color: comment.likedByMe ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                          ),
+                          if (comment.likeCount > 0) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '${comment.likeCount}',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          if (onDelete != null)
-            GestureDetector(
-              onTap: onDelete,
-              child: const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
-              ),
+          if (onDelete != null || onReport != null)
+            PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.more_vert, size: 16, color: Color(0xFF9CA3AF)),
+              onSelected: (v) {
+                if (v == 'delete') onDelete?.call();
+                if (v == 'report') onReport?.call();
+              },
+              itemBuilder: (ctx) => onDelete != null
+                  ? const [PopupMenuItem(value: 'delete', child: Text('삭제'))]
+                  : const [PopupMenuItem(value: 'report', child: Text('신고'))],
             ),
         ],
       ),

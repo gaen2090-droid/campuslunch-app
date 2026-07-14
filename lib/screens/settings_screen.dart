@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
-import '../widgets/owner_verify_sheet.dart';
-import '../widgets/feedback_sheet.dart';
 import 'push_notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,15 +12,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _showOwnerVerify = false;
-
   void _confirmWithdraw(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('회원 탈퇴',
-            style: TextStyle(fontWeight: FontWeight.w900)),
+        title:
+            const Text('회원 탈퇴', style: TextStyle(fontWeight: FontWeight.w900)),
         content: const Text(
           '계정과 프로필이 삭제되며 복구할 수 없어요.\n'
           '카카오 로그인 계정은 카카오 연결도 해제됩니다.',
@@ -30,14 +26,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소',
-                style: TextStyle(color: Color(0xFF9CA3AF))),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF9CA3AF))),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final err =
-                  await context.read<AppProvider>().withdrawAccount();
+              final err = await context.read<AppProvider>().withdrawAccount();
               if (!context.mounted) return;
               if (err != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -70,170 +64,142 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final hasOwner = provider.hasOwnerTab;
     final email = SupabaseService.client.auth.currentUser?.email ?? '';
     final loginMethod = _loginMethodLabel();
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFFF9FAFB),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFFF9FAFB),
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text(
-              '설정',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
-                letterSpacing: -0.5,
-              ),
-            ),
-            centerTitle: false,
-          ),
-          body: ListView(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
-            children: [
-              if (email.isNotEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        '내 아이디',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        email,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (loginMethod.isNotEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        '연동된 서비스',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        loginMethod,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              _SettingsButton(
-                label: '푸시 알림 설정',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PushNotificationSettingsScreen()),
-                ),
-              ),
-              if (!hasOwner)
-                _SettingsButton(
-                  label: '사장님 인증',
-                  onTap: () => setState(() => _showOwnerVerify = true),
-                ),
-              _SettingsButton(
-                label: '피드백 보내기',
-                onTap: () => showFeedbackSheet(context),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  provider.logout();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '로그아웃',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: GestureDetector(
-                  onTap: () => _confirmWithdraw(context),
-                  child: const Text(
-                    '회원 탈퇴',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF9FAFB),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '설정',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
-
-        // ── 사장님 인증 시트 ──
-        if (_showOwnerVerify)
-          Positioned.fill(
-            child: OwnerVerifySheet(
-              onClose: () => setState(() => _showOwnerVerify = false),
-              onSuccess: (_) {
-                setState(() => _showOwnerVerify = false);
-                // provider가 이미 _mainTabIndex=0 + notifyListeners() 처리함
-                // pop은 다음 프레임에 실행해 rebuild와 충돌 방지
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                });
-              },
+        centerTitle: false,
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(
+            20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
+        children: [
+          if (email.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    '내 아이디',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (loginMethod.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    '연동된 서비스',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    loginMethod,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          _SettingsButton(
+            label: '푸시 알림 설정',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const PushNotificationSettingsScreen()),
             ),
           ),
-      ],
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              provider.logout();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Text(
+                  '로그아웃',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B7280)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: GestureDetector(
+              onTap: () => _confirmWithdraw(context),
+              child: const Text(
+                '회원 탈퇴',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -274,7 +240,8 @@ class _SettingsButton extends StatelessWidget {
               ),
             ),
             if (showArrow)
-              const Icon(Icons.chevron_right, size: 18, color: Color(0xFFD1D5DB)),
+              const Icon(Icons.chevron_right,
+                  size: 18, color: Color(0xFFD1D5DB)),
           ],
         ),
       ),

@@ -17,6 +17,7 @@ import 'collection_detail_screen.dart';
 import 'community_my_activity_screen.dart';
 import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
+import 'community_search_screen.dart';
 import 'detail_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -285,6 +286,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       letterSpacing: -0.8,
                     ),
                   ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CommunitySearchScreen()),
+                  ),
+                  icon: const Icon(Icons.search, color: Color(0xFF5E8C4A)),
                 ),
                 Stack(
                   clipBehavior: Clip.none,

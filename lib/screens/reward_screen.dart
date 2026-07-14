@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
-import 'coupon_box_screen.dart';
 import '../widgets/rice_ball_icon.dart';
 
 class RewardScreen extends StatefulWidget {
@@ -25,7 +24,6 @@ class _RewardScreenState extends State<RewardScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final reward = provider.reward;
-    final gifticons = provider.visibleMyGifticons;
     final total = reward.totalStamps;
     final today = reward.todayStamps;
     const target = 20;
@@ -111,75 +109,6 @@ class _RewardScreenState extends State<RewardScreen> {
               _SectionTitle('스탬프북'),
               const SizedBox(height: 12),
               _StampGrid(filled: total, target: target),
-              const SizedBox(height: 20),
-
-              // ── 쿠폰함 바로가기 ──
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFBEB),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Center(child: Text('🎁', style: TextStyle(fontSize: 26))),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  '쿠폰함',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
-                                ),
-                                if (provider.hasUnseenCoupon) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF5E8C4A),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Text(
-                                      'NEW',
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              gifticons.isEmpty ? '받은 쿠폰이 없어요' : '보유 쿠폰 ${gifticons.length}개',
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
