@@ -24,6 +24,7 @@ class MapMarkerIcons {
   static Uint8List? _closedBytes;
   static Uint8List? _noReportBytes;
   static final Map<int, Uint8List> _colorCache = {};
+  static final Map<int, Uint8List> _clusterBadgeCache = {};
   static List<MarkerStyleBundle>? _cachedBundles;
   static Future<List<MarkerStyleBundle>>? _bundlesInFlight;
   static bool _uiReady = false;
@@ -33,9 +34,74 @@ class MapMarkerIcons {
     _closedBytes = null;
     _noReportBytes = null;
     _colorCache.clear();
+    _clusterBadgeCache.clear();
     _cachedBundles = null;
     _bundlesInFlight = null;
     _uiReady = false;
+  }
+
+  /// 클러스터 styleId — 매장 총수가 적은(수십~백여 개) 캠퍼스 지도이므로 개수마다
+  /// 정확한 PNG를 캐시해도 스타일 등록 개수 부담이 없다. 999 초과는 "999+"로 통일.
+  static String clusterStyleId(int count) => 'cluster_${count > 999 ? 1000 : count}';
+
+  /// 클러스터 개수 배지 PNG — 정확한 count를 그대로 그린다.
+  static Future<Uint8List> clusterBadge(int count) async {
+    final key = count > 999 ? 1000 : count;
+    final cached = _clusterBadgeCache[key];
+    if (cached != null) return cached;
+
+    await _awaitFlutterUiReady();
+    final bytes = await _clusterBadgeBytesFromCanvas(count);
+    _clusterBadgeCache[key] = bytes;
+    return bytes;
+  }
+
+  static Future<Uint8List> _clusterBadgeBytesFromCanvas(int count) async {
+    const w = 64;
+    const h = 64;
+    const pixelRatio = 2;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio.toDouble());
+    ClusterBadgePainter(count: count).paint(
+      canvas,
+      Size(w.toDouble(), h.toDouble()),
+    );
+
+    final picture = recorder.endRecording();
+    final rw = w * pixelRatio;
+    final rh = h * pixelRatio;
+    final uiImage = await picture.toImage(rw, rh);
+    final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+    uiImage.dispose();
+
+    if (byteData == null) {
+      throw StateError('Failed to render cluster badge bytes');
+    }
+
+    final hiRes = img.Image.fromBytes(
+      width: rw,
+      height: rh,
+      bytes: byteData.buffer,
+      bytesOffset: byteData.offsetInBytes,
+      numChannels: 4,
+      order: img.ChannelOrder.rgba,
+    );
+    final image = img.copyResize(
+      hiRes,
+      width: w,
+      height: h,
+      interpolation: img.Interpolation.linear,
+    );
+    final png = Uint8List.fromList(img.encodePng(image));
+    if (!_isValidPng(png)) {
+      throw StateError('Generated PNG failed signature check');
+    }
+    if (img.decodeImage(png) == null) {
+      throw StateError('Generated PNG failed round-trip decode');
+    }
+    return png;
   }
 
   /// release APK에서 main() 직후 toImage()가 실패하는 경우 방지
@@ -72,8 +138,8 @@ class MapMarkerIcons {
   }
 
   static Future<Uint8List> _starMarkerBytesFromCanvas() async {
-    const w = 64;
-    const h = 64;
+    const w = 48;
+    const h = 48;
     const pixelRatio = 2;
 
     final recorder = ui.PictureRecorder();

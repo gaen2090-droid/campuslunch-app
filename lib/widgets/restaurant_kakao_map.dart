@@ -12,6 +12,7 @@ import '../services/kakao_map_bootstrap.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
+import '../utils/marker_clustering.dart';
 
 /// DB 매장 마커 + 혼잡도 색상 (카카오맵 SDK)
 class RestaurantKakaoMap extends StatefulWidget {
@@ -58,6 +59,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     with WidgetsBindingObserver {
   KakaoMapController? _controller;
   StreamSubscription? _labelSub;
+  StreamSubscription? _cameraMoveEndSub;
   bool _mapLayerReady = false;
   String? _mapError;
   final Set<String> _markerIds = {};
@@ -65,6 +67,12 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   int _syncGeneration = 0;
   String _lastFitKey = '';
   int _lastFitToken = -1;
+
+  /// 카카오 Vector Map SDK zoomLevel: 레벨↑=확대. 이 값 미만이면 클러스터링.
+  static const int _individualZoomThreshold = 15;
+  static const double _clusterCellPixelRadius = 70;
+  int? _lastZoomLevel;
+  List<ClusterGroup> _lastClusters = const [];
 
   static final _campus = LatLng(
     latitude: Campus.centerLat,
@@ -164,6 +172,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _labelSub?.cancel();
+    _cameraMoveEndSub?.cancel();
     final viewId = _controller?.viewId;
     if (viewId != null) {
       KakaoMarkerLayer.release(viewId);
@@ -209,6 +218,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     _labelSub = controller.onLabelClickedStream.listen((event) {
       final id = event.labelId;
       if (id == 'pick' || id == 'my_location') return;
+      if (id.startsWith('cluster_')) {
+        _onClusterTapped(id);
+        return;
+      }
       for (final r in widget.restaurants) {
         if (r.id == id) {
           widget.onSelect(r);
@@ -216,6 +229,58 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         }
       }
     });
+
+    _cameraMoveEndSub?.cancel();
+    _cameraMoveEndSub = controller.onCameraMoveEndStream.listen((_) {
+      unawaited(_onCameraMoveEnd());
+    });
+  }
+
+  Future<void> _onCameraMoveEnd() async {
+    final controller = _controller;
+    if (controller == null || !_mapLayerReady) return;
+    final zoom = await controller.getZoomLevel();
+    if (zoom == null) return;
+    final wasIndividual = (_lastZoomLevel ?? zoom) >= _individualZoomThreshold;
+    final isIndividual = zoom >= _individualZoomThreshold;
+    _lastZoomLevel = zoom;
+    // 줌 버킷(개별 vs 클러스터)이 바뀔 때만 재동기화 — 같은 버킷 안 팬 이동은 재계산 생략.
+    if (wasIndividual != isIndividual) {
+      unawaited(_syncMarkers());
+    }
+  }
+
+  Future<void> _onClusterTapped(String clusterMarkerId) async {
+    final controller = _controller;
+    if (controller == null) return;
+    final group = _lastClusters
+        .cast<ClusterGroup?>()
+        .firstWhere(
+          (g) => _clusterMarkerId(g!) == clusterMarkerId,
+          orElse: () => null,
+        );
+    if (group == null) return;
+
+    final points = widget.restaurants
+        .where((r) => group.ids.contains(r.id))
+        .map((r) => LatLng(latitude: r.latitude, longitude: r.longitude))
+        .toList();
+    if (points.isEmpty) return;
+
+    final currentZoom = _lastZoomLevel ?? await controller.getZoomLevel() ?? 14;
+    await MapCameraFit.moveToFitLatLngs(
+      controller,
+      points,
+      animate: true,
+      minZoom: math.min(currentZoom + 2, _individualZoomThreshold),
+      viewportSize: _mapViewportSize(),
+      viewportPadding: _mapViewportPadding(),
+    );
+  }
+
+  String _clusterMarkerId(ClusterGroup group) {
+    final ids = List<String>.from(group.ids)..sort();
+    return 'cluster_${ids.join('_')}';
   }
 
   Future<void> _onMapCreated(KakaoMapController controller) async {
@@ -277,32 +342,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       if (gen != _syncGeneration) return;
       _markerIds.clear();
 
-      final markerBatch = <MarkerOption>[];
-      for (final r in widget.restaurants) {
-        if (!r.hasMapLocation) continue;
-        if (gen != _syncGeneration) return;
+      final located = widget.restaurants.where((r) => r.hasMapLocation).toList();
+      final zoom = _lastZoomLevel ?? await controller.getZoomLevel() ?? 21;
+      _lastZoomLevel = zoom;
+      final showIndividual = zoom >= _individualZoomThreshold;
 
-        final isSelected = widget.selected?.id == r.id;
-        final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
-        final desiredStyleId = r.status == '영업안함'
-            ? MapMarkerIcons.styleIdForStatus('영업안함')
-            : noReport
-                ? 'pin_no_report'
-                : MapMarkerIcons.styleIdForStatus(r.status);
-        final styleId =
-            KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
-
-        markerBatch.add(
-          MarkerOption(
-            id: r.id,
-            latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
-            styleId: styleId,
-            rank: isSelected ? 2 : 1,
-            text: r.name,
-          ),
-        );
-        _markerIds.add(r.id);
-      }
+      final markerBatch = showIndividual
+          ? _buildIndividualMarkerBatch(controller, located)
+          : await _buildClusteredMarkerBatch(controller, located, zoom);
 
       for (var i = 0; i < markerBatch.length; i += 25) {
         if (gen != _syncGeneration) return;
@@ -379,6 +426,94 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     } catch (e, st) {
       debugPrint('[RestaurantKakaoMap] marker sync failed: $e\n$st');
     }
+  }
+
+  List<MarkerOption> _buildIndividualMarkerBatch(
+    KakaoMapController controller,
+    List<Restaurant> located,
+  ) {
+    _lastClusters = const [];
+    final batch = <MarkerOption>[];
+    for (final r in located) {
+      final isSelected = widget.selected?.id == r.id;
+      final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+      final desiredStyleId = r.status == '영업안함'
+          ? MapMarkerIcons.styleIdForStatus('영업안함')
+          : noReport
+              ? 'pin_no_report'
+              : MapMarkerIcons.styleIdForStatus(r.status);
+      final styleId = KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
+
+      batch.add(
+        MarkerOption(
+          id: r.id,
+          latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
+          styleId: styleId,
+          rank: isSelected ? 2 : 1,
+          text: r.name,
+        ),
+      );
+      _markerIds.add(r.id);
+    }
+    return batch;
+  }
+
+  Future<List<MarkerOption>> _buildClusteredMarkerBatch(
+    KakaoMapController controller,
+    List<Restaurant> located,
+    int zoom,
+  ) async {
+    final selectedId = widget.selected?.id;
+    final clusters = MarkerClustering.cluster(
+      points: located
+          .map((r) => ClusterInput(id: r.id, latitude: r.latitude, longitude: r.longitude))
+          .toList(),
+      zoomLevel: zoom,
+      cellPixelRadius: _clusterCellPixelRadius,
+      alwaysIndividual: selectedId == null ? const {} : {selectedId},
+    );
+    _lastClusters = clusters;
+
+    final byId = {for (final r in located) r.id: r};
+    final batch = <MarkerOption>[];
+    for (final group in clusters) {
+      if (group.isSingle) {
+        final r = byId[group.ids.first];
+        if (r == null) continue;
+        final isSelected = widget.selected?.id == r.id;
+        final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+        final desiredStyleId = r.status == '영업안함'
+            ? MapMarkerIcons.styleIdForStatus('영업안함')
+            : noReport
+                ? 'pin_no_report'
+                : MapMarkerIcons.styleIdForStatus(r.status);
+        final styleId = KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
+        batch.add(
+          MarkerOption(
+            id: r.id,
+            latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
+            styleId: styleId,
+            rank: isSelected ? 2 : 1,
+            text: r.name,
+          ),
+        );
+        _markerIds.add(r.id);
+        continue;
+      }
+
+      final markerId = _clusterMarkerId(group);
+      final styleId = await KakaoMarkerLayer.ensureClusterStyle(controller, group.count);
+      batch.add(
+        MarkerOption(
+          id: markerId,
+          latLng: LatLng(latitude: group.latitude, longitude: group.longitude),
+          styleId: styleId,
+          rank: 1,
+        ),
+      );
+      _markerIds.add(markerId);
+    }
+    return batch;
   }
 
   Future<void> _moveToUserLocation() async {

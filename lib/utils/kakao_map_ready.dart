@@ -128,6 +128,36 @@ class KakaoMarkerLayer {
 
   static String? styleIdOrNull(KakaoMapController controller, String styleId) =>
       isStyleRegistered(controller, styleId) ? styleId : null;
+
+  /// 클러스터 개수 배지 스타일을 필요 시점에 등록 (매장 목록에 따라 등장하는 count가 가변적).
+  static Future<String?> ensureClusterStyle(
+    KakaoMapController controller,
+    int count,
+  ) async {
+    final viewId = controller.viewId;
+    final styleId = MapMarkerIcons.clusterStyleId(count);
+    final registered = _registeredStyleIdsByViewId.putIfAbsent(viewId, () => {});
+    if (registered.contains(styleId)) return styleId;
+
+    try {
+      final bytes = await MapMarkerIcons.clusterBadge(count);
+      await controller.registerMarkerStyles(
+        styles: [
+          MarkerStyle(
+            styleId: styleId,
+            perLevels: [
+              MarkerPerLevelStyle.fromBytes(bytes: bytes, level: 1),
+            ],
+          ),
+        ],
+      );
+      registered.add(styleId);
+      return styleId;
+    } catch (e, st) {
+      debugPrint('[KakaoMarkerLayer] cluster style $styleId failed: $e\n$st');
+      return null;
+    }
+  }
 }
 
 Future<void> ensureKakaoMarkerLayer(KakaoMapController controller) =>
