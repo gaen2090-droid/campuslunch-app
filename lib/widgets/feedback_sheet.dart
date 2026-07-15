@@ -10,11 +10,8 @@ const _categories = [
 ];
 
 Future<void> showFeedbackSheet(BuildContext context) {
-  return showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => const _FeedbackSheet(),
+  return Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const _FeedbackSheet()),
   );
 }
 
@@ -86,15 +83,27 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
+        title: const Text(
+          '피드백 보내기',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF111827),
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           20,
           16,
@@ -102,29 +111,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           MediaQuery.of(context).padding.bottom + 20,
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const Text(
-              '피드백 보내기',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
-              ),
-            ),
-            const SizedBox(height: 16),
             const Text(
               '카테고리',
               style: TextStyle(

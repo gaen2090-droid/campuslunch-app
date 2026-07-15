@@ -13,6 +13,9 @@ class CollectionSection extends StatelessWidget {
   final void Function(RestaurantCollection, List<CollectionItem>) onSeeAll;
   final void Function(RestaurantCollection) onTapComments;
   final VoidCallback onTapLike;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onReport;
 
   const CollectionSection({
     super.key,
@@ -23,6 +26,9 @@ class CollectionSection extends StatelessWidget {
     required this.onSeeAll,
     required this.onTapComments,
     required this.onTapLike,
+    this.onEdit,
+    this.onDelete,
+    this.onReport,
   });
 
   @override
@@ -83,6 +89,23 @@ class CollectionSection extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!collection.isCurated)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF9CA3AF)),
+                    onSelected: (v) {
+                      if (v == 'edit') onEdit?.call();
+                      if (v == 'delete') onDelete?.call();
+                      if (v == 'report') onReport?.call();
+                    },
+                    itemBuilder: (ctx) => collection.isOwner
+                        ? const [
+                            PopupMenuItem(value: 'edit', child: Text('수정')),
+                            PopupMenuItem(value: 'delete', child: Text('삭제')),
+                          ]
+                        : const [
+                            PopupMenuItem(value: 'report', child: Text('신고')),
+                          ],
+                  ),
                 GestureDetector(
                   onTap: () => onSeeAll(collection, items),
                   child: const Padding(
@@ -100,6 +123,23 @@ class CollectionSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: cards,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Text(
+                  '작성자',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF6B7280)),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  collection.authorNickname ?? '',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),

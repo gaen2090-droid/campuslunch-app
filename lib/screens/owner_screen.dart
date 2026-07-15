@@ -16,7 +16,6 @@ class OwnerScreen extends StatefulWidget {
 class _OwnerScreenState extends State<OwnerScreen> {
   String? _selectedId;
   String? _toast;
-  bool _showAddSheet = false;
   final _seatCtrl = TextEditingController();
   bool _seatSubmitting = false;
   bool _statusSubmitting = false;
@@ -191,7 +190,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: () => setState(() => _showAddSheet = true),
+                  onTap: () => OwnerVerifyScreen.show(context),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -217,15 +216,6 @@ class _OwnerScreenState extends State<OwnerScreen> {
           ),
         ),
       ),
-          if (_showAddSheet)
-            Positioned.fill(
-              child: OwnerVerifySheet(
-                onClose: () => setState(() => _showAddSheet = false),
-                onSuccess: (_) {
-                  setState(() => _showAddSheet = false);
-                },
-              ),
-            ),
         ],
       );
     }
@@ -605,7 +595,10 @@ class _OwnerScreenState extends State<OwnerScreen> {
                   child: Column(
                     children: [
                       GestureDetector(
-                        onTap: () => setState(() => _showAddSheet = true),
+                        onTap: () async {
+                          final success = await OwnerVerifyScreen.show(context);
+                          if (success == true) _showToast('매장이 추가됐어요');
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
@@ -794,17 +787,6 @@ class _OwnerScreenState extends State<OwnerScreen> {
               ),
             ),
 
-          // Verify sheet overlay
-          if (_showAddSheet)
-            Positioned.fill(
-              child: OwnerVerifySheet(
-                onClose: () => setState(() => _showAddSheet = false),
-                onSuccess: (restaurantId) {
-                  setState(() => _showAddSheet = false);
-                  _showToast('매장이 추가됐어요');
-                },
-              ),
-            ),
         ],
       ),
     );

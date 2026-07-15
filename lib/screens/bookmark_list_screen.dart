@@ -97,6 +97,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
     required bool multiSelect,
     required void Function(Set<String>) onApply,
     required VoidCallback onReset,
+    required bool isActive,
   }) {
     final locationMode = context.read<AppProvider>().locationMode;
     showModalBottomSheet(
@@ -108,7 +109,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
         items: items,
         selected: selected,
         multiSelect: multiSelect,
-        isActive: false,
+        isActive: isActive,
         locationMode: locationMode,
         onApply: onApply,
         onReset: onReset,
@@ -156,10 +157,6 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
     final list = _filter(provider.restaurants, bookmarks);
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
-
-    final hasFilter = _sortBy != '최신순' ||
-        (!_isAll(_regions) && _regions.isNotEmpty) ||
-        (!_isAll(_cuisines) && _cuisines.isNotEmpty);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -215,11 +212,15 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                 child: Row(
                   children: [
                     HomeFilterIconButton(
-                      active: hasFilter,
+                      active: _sortBy != '최신순' ||
+                          (!_isAll(_regions) && _regions.isNotEmpty) ||
+                          (!_isAll(_cuisines) && _cuisines.isNotEmpty),
                       onTap: () => _openFilterSheet(locationMode),
                     ),
                     const SizedBox(width: 8),
-                    if (hasFilter) ...[
+                    if (_sortBy != '최신순' ||
+                        (!_isAll(_regions) && _regions.isNotEmpty) ||
+                        (!_isAll(_cuisines) && _cuisines.isNotEmpty)) ...[
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -263,6 +264,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         multiSelect: false,
                         onApply: (v) { setState(() => _sortBy = v.first); _saveFilter(); },
                         onReset: () { setState(() => _sortBy = '최신순'); _saveFilter(); },
+                        isActive: _sortBy != '최신순',
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -281,6 +283,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         multiSelect: true,
                         onApply: (v) { setState(() => _regions = v); _saveFilter(); },
                         onReset: () { setState(() => _regions = {_allLabel}); _saveFilter(); },
+                        isActive: !_isAll(_regions),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -299,6 +302,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         multiSelect: true,
                         onApply: (v) { setState(() => _cuisines = v); _saveFilter(); },
                         onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
+                        isActive: !_isAll(_cuisines),
                       ),
                     ),
                   ],

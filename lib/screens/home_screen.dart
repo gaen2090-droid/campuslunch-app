@@ -939,7 +939,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '바로 입장 가능해요',
                   dotColor: const Color(0xFF4C9C2A),
                   onMore: () => goTo(RestaurantListMode.available),
-                  subText: availableStale ? '최근 제보가 없어요' : null,
+                  subText: availableStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -952,8 +952,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             onDismiss: _crowdInfoOverlay.hide,
                           ),
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: _crowdInfoOverlay.toggle,
-                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            ),
                           ),
                         ),
                       ),
@@ -1003,7 +1007,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '빈자리 조금 있어요',
                   dotColor: const Color(0xFFF59E0B),
                   onMore: () => goTo(RestaurantListMode.slightlyBusy),
-                  subText: slightlyBusyStale ? '최근 제보가 없어요' : null,
+                  subText: slightlyBusyStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1016,8 +1020,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             onDismiss: _crowdInfoOverlay2.hide,
                           ),
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: _crowdInfoOverlay2.toggle,
-                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            ),
                           ),
                         ),
                       ),
@@ -1068,8 +1076,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               onDismiss: _stampInfoOverlay.hide,
                             ),
                             child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: _stampInfoOverlay.toggle,
-                              child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                              child: const Padding(
+                                padding: EdgeInsets.all(6),
+                                child: Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                              ),
                             ),
                           ),
                         ),
@@ -1103,7 +1115,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '붐비고 있어요',
                   dotColor: const Color(0xFFEF4444),
                   onMore: () => goTo(RestaurantListMode.busy),
-                  subText: busyStale ? '최근 제보가 없어요' : null,
+                  subText: busyStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1116,8 +1128,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             onDismiss: _crowdInfoOverlay3.hide,
                           ),
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: _crowdInfoOverlay3.toggle,
-                            child: const Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+                            ),
                           ),
                         ),
                       ),
@@ -2166,7 +2182,12 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                   : !(_selected.length == 1 && _selected.contains(_allLabel)))
                 GestureDetector(
                   onTap: () {
-                    setState(() => _selected = {widget.multiSelect ? _allLabel : widget.items.first});
+                    if (!widget.multiSelect) {
+                      widget.onReset();
+                      Navigator.pop(context);
+                      return;
+                    }
+                    setState(() => _selected = {_allLabel});
                   },
                   child: const Text('초기화',
                       style: TextStyle(

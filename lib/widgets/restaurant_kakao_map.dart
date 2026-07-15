@@ -202,12 +202,14 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         widget.showMyLocationMarker != oldWidget.showMyLocationMarker) {
       unawaited(_syncMarkers());
     }
-    if (_shouldRefitCamera(oldWidget)) {
+    final selectedChanged = widget.selected?.id != oldWidget.selected?.id &&
+        widget.selected != null;
+    // 매장 선택으로 인한 카메라 이동이 전체 fit(예: restaurants 리스트 변경)과
+    // 동시에 트리거되면 두 카메라 애니메이션이 서로 덮어쓰므로, 선택 포커스를 우선한다.
+    if (selectedChanged) {
+      unawaited(_focusRestaurant(widget.selected!));
+    } else if (_shouldRefitCamera(oldWidget)) {
       unawaited(fitToRestaurants());
-    }
-    if (widget.selected?.id != oldWidget.selected?.id &&
-        widget.selected != null) {
-      _focusRestaurant(widget.selected!);
     }
     if (widget.restaurants != oldWidget.restaurants ||
         widget.selected?.id != oldWidget.selected?.id ||
@@ -307,6 +309,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     final gen = ++_syncGeneration;
     final showMyLocation =
         widget.showMyLocationMarker && widget.myLocationEnabled;
+    final sw = Stopwatch()..start();
 
     try {
       final toRemove = _markerIds.toList(growable: false);
@@ -320,13 +323,15 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
           }
         }
       }
+      debugPrint('[Perf] removeMarkers took ${sw.elapsedMilliseconds}ms (count=${toRemove.length})');
       if (gen != _syncGeneration) return;
       _markerIds.clear();
 
       final located = widget.restaurants.where((r) => r.hasMapLocation).toList();
-      final zoom = _lastZoomLevel ?? await controller.getZoomLevel() ?? 21;
+      final zoom = await controller.getZoomLevel() ?? _lastZoomLevel ?? 21;
       _lastZoomLevel = zoom;
 
+      final swOverlap = Stopwatch()..start();
       // 겹치는 마커 중 하나만 남김 — 선택된 매장 최우선, 그 다음 혼잡도(여유로움>약간혼잡>그외)
       // 우선, 그 외엔 목록 순서(안정적) 유지.
       final selectedId = widget.selected?.id;
@@ -362,6 +367,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         zoomLevel: zoom,
         iconRadiusPixels: _labelOverlapRadiusPixels,
       ).toSet();
+      debugPrint('[Perf] overlap compute took ${swOverlap.elapsedMilliseconds}ms (n=${located.length}, zoom=$zoom, visible=${visibleIds.length})');
 
       final markerBatch = <MarkerOption>[];
       for (final r in located) {
@@ -495,7 +501,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     await MapCameraFit.moveToFitLatLngs(
       controller,
       [LatLng(latitude: r.latitude, longitude: r.longitude)],
+      profile: CameraFitProfile.tight,
       animate: true,
+      viewportSize: _mapViewportSize(),
+      viewportPadding: CameraFitOptions.forProfile(CameraFitProfile.tight).viewportPadding,
     );
   }
 

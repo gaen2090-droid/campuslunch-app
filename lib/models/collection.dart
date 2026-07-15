@@ -6,6 +6,9 @@ class RestaurantCollection {
   final int likeCount;
   final bool likedByMe;
   final int commentCount;
+  final String? authorNickname;
+  final bool isOwner;
+  final DateTime createdAt;
 
   const RestaurantCollection({
     required this.id,
@@ -15,7 +18,13 @@ class RestaurantCollection {
     this.likeCount = 0,
     this.likedByMe = false,
     this.commentCount = 0,
+    this.authorNickname,
+    this.isOwner = false,
+    required this.createdAt,
   });
+
+  /// 관리자 큐레이션(작성자 없음)인지 여부
+  bool get isCurated => authorNickname == null;
 
   factory RestaurantCollection.fromMap(Map<String, dynamic> map) {
     return RestaurantCollection(
@@ -26,6 +35,11 @@ class RestaurantCollection {
       likeCount: map['like_count'] as int? ?? 0,
       likedByMe: map['liked_by_me'] as bool? ?? false,
       commentCount: map['comment_count'] as int? ?? 0,
+      authorNickname: map['author_nickname'] as String?,
+      isOwner: map['is_owner'] as bool? ?? false,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 
@@ -38,6 +52,9 @@ class RestaurantCollection {
       likeCount: likeCount ?? this.likeCount,
       likedByMe: likedByMe ?? this.likedByMe,
       commentCount: commentCount ?? this.commentCount,
+      authorNickname: authorNickname,
+      isOwner: isOwner,
+      createdAt: createdAt,
     );
   }
 }

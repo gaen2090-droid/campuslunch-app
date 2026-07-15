@@ -22,7 +22,6 @@ class MyScreen extends StatefulWidget {
 
 class _MyScreenState extends State<MyScreen> {
   bool _showEditSheet = false;
-  bool _showOwnerVerify = false;
   String _editNickname = '';
   final _nicknameCtrl = TextEditingController();
 
@@ -240,7 +239,7 @@ class _MyScreenState extends State<MyScreen> {
                   children: [
                     const MyPageSectionTitle('고객지원'),
                     MyPageSectionRow(
-                      label: '캠퍼스런치 사용 가이드',
+                      label: '캠퍼스런치 이용 가이드',
                       icon: const Icon(Icons.help_rounded, size: 20, color: Color(0xFF5E8C4A)),
                       onTap: () => launchUrl(
                         Uri.parse(
@@ -284,7 +283,7 @@ class _MyScreenState extends State<MyScreen> {
                         icon: const Icon(Icons.storefront_outlined,
                             size: 20, color: Color(0xFF5E8C4A)),
                         showBottomBorder: false,
-                        onTap: () => setState(() => _showOwnerVerify = true),
+                        onTap: () => OwnerVerifyScreen.show(context),
                       ),
                     ],
                   ),
@@ -325,16 +324,6 @@ class _MyScreenState extends State<MyScreen> {
           ),
         ),
 
-        // ── 사장님 인증 시트 ──
-        if (_showOwnerVerify)
-          Positioned.fill(
-            child: OwnerVerifySheet(
-              onClose: () => setState(() => _showOwnerVerify = false),
-              onSuccess: (_) {
-                setState(() => _showOwnerVerify = false);
-              },
-            ),
-          ),
 
         // ── 닉네임 수정 시트 ──
         if (_showEditSheet)

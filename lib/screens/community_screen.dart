@@ -15,11 +15,13 @@ import '../widgets/community_post_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/community_rules_summary.dart';
 import 'collection_detail_screen.dart';
+import 'create_collection_screen.dart';
 import 'community_my_activity_screen.dart';
 import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
 import 'community_search_screen.dart';
 import 'detail_screen.dart';
+import 'home_screen.dart' show HomeFilterChip, SimpleFilterSheet;
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -41,6 +43,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   final Map<String, List<CollectionItem>> _collectionItems = {};
   bool _collectionsLoading = true;
   String? _collectionsError;
+  bool _savedCollectionsOnly = false;
+  String _collectionSortBy = '인기순';
+  static const _collectionSortOpts = ['인기순', '최신순'];
 
   CommunityNotice? _notice;
   bool _hasUnreadNotification = false;
@@ -283,7 +288,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
               backgroundColor: const Color(0xFF5E8C4A),
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
-          : null,
+          : FloatingActionButton(
+              onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateCollectionScreen()),
+                );
+                if (created == true) _loadCollections();
+              },
+              backgroundColor: const Color(0xFF5E8C4A),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -382,8 +397,74 @@ class _CommunityScreenState extends State<CommunityScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _segmentControl(),
           ),
+          if (_segment == 1) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _collectionFilterBar(),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _collectionFilterBar() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _savedCollectionsOnly = !_savedCollectionsOnly),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '저장한 컬렉션',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: _savedCollectionsOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  _savedCollectionsOnly ? Icons.favorite : Icons.favorite_border,
+                  size: 14,
+                  color: const Color(0xFF111827),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        HomeFilterChip(
+          label: _collectionSortBy,
+          active: _collectionSortBy != '인기순',
+          open: false,
+          onTap: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => SimpleFilterSheet(
+              title: '정렬',
+              items: _collectionSortOpts,
+              selected: {_collectionSortBy},
+              multiSelect: false,
+              isActive: _collectionSortBy != '인기순',
+              locationMode: true,
+              onApply: (v) => setState(() => _collectionSortBy = v.first),
+              onReset: () => setState(() => _collectionSortBy = '인기순'),
+              onRequestLocation: () {},
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -496,11 +577,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
       );
     }
     final restaurants = context.watch<AppProvider>().restaurants;
+
+    var visibleCollections = _savedCollectionsOnly
+        ? _collections.where((c) => c.likedByMe).toList()
+        : List<RestaurantCollection>.from(_collections);
+    visibleCollections.sort((a, b) {
+      if (_collectionSortBy == '최신순') return b.createdAt.compareTo(a.createdAt);
+      final likeDiff = b.likeCount.compareTo(a.likeCount);
+      if (likeDiff != 0) return likeDiff;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    if (visibleCollections.isEmpty) {
+      return ListView(
+        children: [
+          _header(),
+          const SizedBox(height: 120),
+          const Center(
+            child: Text(
+              '저장한 컬렉션이 없어요.',
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+            ),
+          ),
+        ],
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 96),
       children: [
         _header(),
-        for (final collection in _collections)
+        for (final collection in visibleCollections)
           CollectionSection(
             collection: collection,
             items: _collectionItems[collection.id] ?? const [],
@@ -525,9 +632,81 @@ class _CommunityScreenState extends State<CommunityScreen> {
               if (mounted) _loadCollections();
             },
             onTapLike: () => _toggleCollectionLike(collection),
+            onEdit: () => _editCollection(collection, restaurants),
+            onDelete: () => _deleteCollection(collection),
+            onReport: () => _reportCollection(collection),
           ),
       ],
     );
+  }
+
+  Future<void> _editCollection(
+    RestaurantCollection collection,
+    List<Restaurant> restaurants,
+  ) async {
+    final items = _collectionItems[collection.id] ?? const [];
+    final byId = {for (final r in restaurants) r.id: r};
+    final initialSelected = [
+      for (final item in items)
+        if (byId[item.restaurantId] != null) byId[item.restaurantId]!,
+    ];
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateCollectionScreen(
+          editing: collection,
+          initialSelected: initialSelected,
+        ),
+      ),
+    );
+    if (updated == true) _loadCollections();
+  }
+
+  Future<void> _deleteCollection(RestaurantCollection collection) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('컬렉션 삭제', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('삭제한 컬렉션은 복구할 수 없어요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF9CA3AF))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('삭제', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _repo.deleteCollection(collection.id);
+      if (!mounted) return;
+      _loadCollections();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제에 실패했어요.')),
+      );
+    }
+  }
+
+  Future<void> _reportCollection(RestaurantCollection collection) async {
+    try {
+      await _repo.reportCollection(collection.id, reason: '사용자 신고');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('신고가 접수되었어요.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('신고 접수에 실패했어요.')),
+      );
+    }
   }
 
   Widget _buildBody() {

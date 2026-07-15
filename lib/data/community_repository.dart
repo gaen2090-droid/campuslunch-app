@@ -184,6 +184,44 @@ class CommunityRepository {
         .toList();
   }
 
+  Future<String> createUserCollection({
+    required String title,
+    String? subtitle,
+    required List<String> restaurantIds,
+  }) async {
+    final id = await _client.rpc('create_user_collection', params: {
+      'p_title': title,
+      'p_subtitle': subtitle,
+      'p_restaurant_ids': restaurantIds,
+    });
+    return id as String;
+  }
+
+  Future<void> updateUserCollection({
+    required String collectionId,
+    required String title,
+    String? subtitle,
+    required List<String> restaurantIds,
+  }) async {
+    await _client.rpc('update_user_collection', params: {
+      'p_collection_id': collectionId,
+      'p_title': title,
+      'p_subtitle': subtitle,
+      'p_restaurant_ids': restaurantIds,
+    });
+  }
+
+  Future<void> reportCollection(String collectionId, {String? reason}) async {
+    await _client.rpc('report_collection', params: {
+      'p_collection_id': collectionId,
+      'p_reason': reason,
+    });
+  }
+
+  Future<void> deleteCollection(String collectionId) async {
+    await _client.from('collections').delete().eq('id', collectionId);
+  }
+
   Future<void> toggleCollectionLike(String collectionId, bool currentlyLiked) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('NOT_AUTHENTICATED');
