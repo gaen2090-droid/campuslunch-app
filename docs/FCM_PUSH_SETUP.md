@@ -10,6 +10,7 @@ Supabase Dashboard → SQL Editor **순서대로**:
 1. `supabase/fcm_push.sql`
 2. `supabase/admin_push_control.sql` (전역 ON/OFF · 운영 스냅샷 · device_tokens 뷰)
 3. `supabase/community_push_v2.sql` (커뮤니티 문구 템플릿 · 좋아요 인박스/FCM · 피크 로컬 기본)
+4. `supabase/community_moderation_push.sql` (어드민 삭제 안내 FCM 토큰 조회)
 
 ## 2. Firebase 서비스 계정
 

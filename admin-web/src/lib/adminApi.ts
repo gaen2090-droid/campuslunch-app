@@ -717,8 +717,20 @@ export async function setCommunityPostHidden(
 }
 
 export async function deleteCommunityPost(id: string): Promise<void> {
+  const { data: row, error: fetchErr } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+
   const { error } = await supabase.from("community_posts").delete().eq("id", id);
   if (error) throw error;
+
+  const userId = row?.user_id as string | undefined;
+  if (userId) {
+    await notifyModerationDelete({ kind: "post", userId });
+  }
 }
 
 export async function setCommunityCommentHidden(
@@ -733,8 +745,39 @@ export async function setCommunityCommentHidden(
 }
 
 export async function deleteCommunityComment(id: string): Promise<void> {
+  const { data: row, error: fetchErr } = await supabase
+    .from("community_comments")
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+
   const { error } = await supabase.from("community_comments").delete().eq("id", id);
   if (error) throw error;
+
+  const userId = row?.user_id as string | undefined;
+  if (userId) {
+    await notifyModerationDelete({ kind: "comment", userId });
+  }
+}
+
+/** 운영 삭제 안내 FCM (실패해도 삭제는 유지) */
+async function notifyModerationDelete(params: {
+  kind: "post" | "comment";
+  userId: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke("send-community-push", {
+      body: {
+        event: "moderation_delete",
+        kind: params.kind,
+        user_id: params.userId,
+      },
+    });
+    if (error) console.error("[notifyModerationDelete]", error);
+  } catch (err) {
+    console.error("[notifyModerationDelete]", err);
+  }
 }
 
 export async function fetchBannedWords(): Promise<BannedWord[]> {

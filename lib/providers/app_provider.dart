@@ -1424,7 +1424,9 @@ class AppProvider extends ChangeNotifier {
       unawaited(refreshPushSchedulesFromRemote());
       return;
     }
-    if (type == 'community_comment' || type == 'community_like') {
+    if (type == 'community_comment' ||
+        type == 'community_like' ||
+        type == 'community_moderation') {
       openCommunityFromPush(data['post_id'] as String?);
       return;
     }
