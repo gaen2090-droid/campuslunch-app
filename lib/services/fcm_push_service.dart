@@ -114,6 +114,24 @@ class FcmPushService {
   Future<void> registerToken() async {
     if (kIsWeb || !_firebaseReady) return;
     try {
+      // iOS: APNs 기기 토큰이 오기 전에 getToken() 하면 apns-token-not-set
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apns;
+        for (var i = 0; i < 10; i++) {
+          apns = await _messaging.getAPNSToken();
+          if (apns != null && apns.isNotEmpty) break;
+          await Future<void>.delayed(Duration(milliseconds: 400 * (i + 1)));
+        }
+        if (apns == null || apns.isEmpty) {
+          debugPrint(
+            '[FCM] APNS token still missing after wait. '
+            'Check: Push Notifications capability, aps-environment entitlement, '
+            'Firebase APNs key, paid Apple Developer account.',
+          );
+          return;
+        }
+      }
+
       final token = await _messaging.getToken();
       if (token == null || token.isEmpty) {
         debugPrint('[FCM] getToken returned null');
