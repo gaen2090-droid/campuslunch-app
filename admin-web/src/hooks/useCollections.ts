@@ -81,8 +81,8 @@ export function useCollections(enabled: boolean) {
   );
 
   const removeCollection = useCallback(
-    async (id: string) => {
-      await deleteCollection(id);
+    async (id: string, reason: string) => {
+      await deleteCollection(id, reason);
       await reload();
     },
     [reload],

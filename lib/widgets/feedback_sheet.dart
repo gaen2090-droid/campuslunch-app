@@ -96,9 +96,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         title: const Text(
           '피드백 보내기',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: false,
@@ -178,14 +180,14 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF9ECA8B),
                   foregroundColor: const Color(0xFF111827),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 0,
                 ),

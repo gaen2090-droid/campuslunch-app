@@ -184,6 +184,11 @@ class CommunityRepository {
         .toList();
   }
 
+  Future<int> myCrowdReportCount() async {
+    final result = await _client.rpc('my_crowd_report_count');
+    return (result as num?)?.toInt() ?? 0;
+  }
+
   Future<String> createUserCollection({
     required String title,
     String? subtitle,
@@ -251,6 +256,13 @@ class CommunityRepository {
     return CommunityNotice.fromMap(list.first as Map<String, dynamic>);
   }
 
+  Future<List<CommunityPost>> fetchPinnedPosts() async {
+    final rows = await _client.rpc('community_pinned_posts');
+    return (rows as List<dynamic>)
+        .map((e) => CommunityPost.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<CommunityPost>> fetchMyPosts() async {
     final rows = await _client.rpc('community_my_posts');
     return (rows as List<dynamic>)
@@ -299,6 +311,21 @@ class CommunityRepository {
     return (rows as List<dynamic>)
         .map((e) => CommunityInboxNotification.fromMap(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<bool> hasUnreadInboxNotifications() async {
+    final result = await _client.rpc('community_inbox_has_unread');
+    return result as bool? ?? false;
+  }
+
+  Future<void> markInboxNotificationRead(String eventId) async {
+    await _client.rpc('mark_community_inbox_read', params: {
+      'p_event_id': eventId,
+    });
+  }
+
+  Future<void> markInboxSeen() async {
+    await _client.rpc('mark_community_inbox_seen');
   }
 
   Future<CommunityPost?> fetchPostById(String postId) async {

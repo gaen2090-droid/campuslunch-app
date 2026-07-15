@@ -392,23 +392,24 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         // ── 헤더 ──
         Container(
           color: Colors.white,
-          padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20, 12),
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 12, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 검색 바
+              // 검색 바 (지도 탭 검색란과 크기 통일: height 44, radius 22)
               Row(
                 children: [
                   Expanded(
                     child: Container(
-                      height: 40,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           GestureDetector(
                             onTap: () => _submitSearch(_searchCtrl.text),
                             child: const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
@@ -428,9 +429,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               decoration: const InputDecoration(
                                 hintText: '매장명, 위치, 음식종류 검색',
                                 hintStyle: TextStyle(
-                                    fontSize: 14, color: Color(0xFF9CA3AF)),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF9CA3AF)),
                                 border: InputBorder.none,
-                                isDense: true,
+                                isCollapsed: true,
+                                contentPadding: EdgeInsets.zero,
                               ),
                             ),
                           ),
@@ -469,19 +473,22 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
               if (!_searchActive) ...[
                 const SizedBox(height: 12),
-                // 식당/카페 세부 탭
-                Row(
-                  children: [
-                    _mainTabButton('식당', 0),
-                    _mainTabButton('카페', 1),
-                  ],
+                // 식당/카페 세부 탭 (검색바 좌우 여백을 16으로 낮춘 만큼 4px 보정)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      _mainTabButton('식당', 0),
+                      _mainTabButton('카페', 1),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // 필터 칩
                 SingleChildScrollView(
                   key: HomeScreen.filterRowKey,
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                   child: Row(
                     children: [
                       HomeFilterIconButton(

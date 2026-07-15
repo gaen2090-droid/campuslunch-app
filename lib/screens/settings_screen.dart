@@ -77,10 +77,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '설정',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
             letterSpacing: -0.5,

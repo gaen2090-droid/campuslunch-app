@@ -625,6 +625,18 @@ export async function purgeAdminUser(email: string): Promise<string> {
   return String(result.message ?? "삭제 완료");
 }
 
+export async function purgeAdminUserById(userId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("admin_purge_user_by_id", {
+    p_user_id: userId,
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  if (result.ok !== true) {
+    throw new Error(String(result.message ?? "삭제에 실패했어요."));
+  }
+  return String(result.message ?? "삭제 완료");
+}
+
 export async function fetchPushNotificationConfig(): Promise<PushNotificationConfig> {
   const { data, error } = await supabase.rpc("get_push_notification_config");
   if (error) throw error;
@@ -651,8 +663,6 @@ export async function updatePushNotificationConfig(
       p_peak_local_schedule_enabled: config.peakLocalScheduleEnabled,
       p_community_comment_title_template: config.communityCommentTitleTemplate,
       p_community_comment_body_template: config.communityCommentBodyTemplate,
-      p_community_like_title_template: config.communityLikeTitleTemplate,
-      p_community_like_body_template: config.communityLikeBodyTemplate,
     },
   );
   if (error) throw error;
@@ -696,13 +706,39 @@ export async function fetchCommunityReports(): Promise<CommunityReport[]> {
   return data.map((row) => parseCommunityReport(row as Record<string, unknown>));
 }
 
-export async function fetchCommunityPosts(): Promise<CommunityPostAdmin[]> {
+export async function fetchCommunityPosts(query?: string): Promise<CommunityPostAdmin[]> {
   const { data, error } = await supabase.rpc("admin_list_community_posts", {
     p_limit: 50,
+    p_query: query?.trim() || null,
   });
   if (error) throw error;
   if (!Array.isArray(data)) return [];
   return data.map((row) => parseCommunityPostAdmin(row as Record<string, unknown>));
+}
+
+export async function setCommunityPostPinned(
+  id: string,
+  pinned: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_post_pinned", {
+    p_post_id: id,
+    p_pinned: pinned,
+  });
+  if (error) throw error;
+}
+
+export async function fetchPinnedPosts(): Promise<CommunityPostAdmin[]> {
+  const { data, error } = await supabase.rpc("admin_list_pinned_posts");
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseCommunityPostAdmin(row as Record<string, unknown>));
+}
+
+export async function reorderPinnedPosts(orderedIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc("admin_reorder_pinned_posts", {
+    p_post_ids: orderedIds,
+  });
+  if (error) throw error;
 }
 
 export async function setCommunityPostHidden(
@@ -716,8 +752,11 @@ export async function setCommunityPostHidden(
   if (error) throw error;
 }
 
-export async function deleteCommunityPost(id: string): Promise<void> {
-  const { error } = await supabase.from("community_posts").delete().eq("id", id);
+export async function deleteCommunityPost(id: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_community_post", {
+    p_post_id: id,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 
@@ -732,8 +771,11 @@ export async function setCommunityCommentHidden(
   if (error) throw error;
 }
 
-export async function deleteCommunityComment(id: string): Promise<void> {
-  const { error } = await supabase.from("community_comments").delete().eq("id", id);
+export async function deleteCommunityComment(id: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_community_comment", {
+    p_comment_id: id,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 
@@ -812,13 +854,10 @@ export async function deleteCommunityNotice(id: string): Promise<void> {
 }
 
 export async function fetchAdminCollections(): Promise<RestaurantCollection[]> {
-  const { data, error } = await supabase
-    .from("collections")
-    .select("id, title, subtitle, sort_order, is_published, created_at")
-    .order("sort_order", { ascending: true });
+  const { data, error } = await supabase.rpc("admin_list_collections");
   if (error) throw error;
-  if (!data) return [];
-  return (data as Record<string, unknown>[]).map(parseRestaurantCollection);
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseRestaurantCollection(row as Record<string, unknown>));
 }
 
 export async function createCollection(params: {
@@ -860,8 +899,11 @@ export async function setCollectionPublished(
   if (error) throw error;
 }
 
-export async function deleteCollection(id: string): Promise<void> {
-  const { error } = await supabase.from("collections").delete().eq("id", id);
+export async function deleteCollection(id: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_collection", {
+    p_collection_id: id,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 

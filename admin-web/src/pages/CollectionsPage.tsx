@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DeleteReasonModal } from "../components/DeleteReasonModal";
 import type { AdminRestaurant } from "../types/restaurant";
 import type {
   CollectionCommentAdmin,
@@ -23,7 +24,7 @@ interface Props {
     params: { title: string; subtitle: string; sortOrder: number },
   ) => Promise<void>;
   onTogglePublished: (id: string, published: boolean) => Promise<void>;
-  onRemoveCollection: (id: string) => Promise<void>;
+  onRemoveCollection: (id: string, reason: string) => Promise<void>;
   onAddItem: (params: {
     collectionId: string;
     restaurantId: string;
@@ -82,6 +83,7 @@ export function CollectionsPage({
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   async function submitNewCollection() {
     const title = newTitle.trim();
@@ -147,16 +149,7 @@ export function CollectionsPage({
               busy={busyId === c.id}
               onEdit={(params) => onEditCollection(c.id, params)}
               onTogglePublished={(published) => onTogglePublished(c.id, published)}
-              onRemove={async () => {
-                setBusyId(c.id);
-                try {
-                  await onRemoveCollection(c.id);
-                } catch (e) {
-                  setActionError(e instanceof Error ? e.message : String(e));
-                } finally {
-                  setBusyId(null);
-                }
-              }}
+              onRemove={() => setDeleteTargetId(c.id)}
               onAddItem={(params) => onAddItem({ collectionId: c.id, ...params })}
               onRemoveItem={onRemoveItem}
               onReorderItems={onReorderItems}
@@ -207,6 +200,24 @@ export function CollectionsPage({
           ))}
         </ul>
       )}
+
+      {deleteTargetId && (
+        <DeleteReasonModal
+          title="컬렉션 삭제"
+          onCancel={() => setDeleteTargetId(null)}
+          onConfirm={async (reason) => {
+            setBusyId(deleteTargetId);
+            try {
+              await onRemoveCollection(deleteTargetId, reason);
+              setDeleteTargetId(null);
+            } catch (e) {
+              setActionError(e instanceof Error ? e.message : String(e));
+            } finally {
+              setBusyId(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -229,7 +240,7 @@ function CollectionCard({
   busy: boolean;
   onEdit: (params: { title: string; subtitle: string; sortOrder: number }) => Promise<void>;
   onTogglePublished: (published: boolean) => Promise<void>;
-  onRemove: () => Promise<void>;
+  onRemove: () => void;
   onAddItem: (params: { restaurantId: string; note: string; sortOrder: number }) => Promise<void>;
   onRemoveItem: (id: string) => Promise<void>;
   onReorderItems: (orderedIds: string[]) => Promise<void>;
@@ -322,6 +333,11 @@ function CollectionCard({
           {collection.isPublished ? "게시됨" : "비게시"}
         </span>
         <span className="muted sm">매장 {items.length}개</span>
+        {collection.userId ? (
+          <span className="badge">유저 작성 · {collection.authorNickname ?? "알 수 없음"}</span>
+        ) : (
+          <span className="muted sm">관리자 큐레이션</span>
+        )}
       </div>
 
       {localError && <div className="alert">{localError}</div>}

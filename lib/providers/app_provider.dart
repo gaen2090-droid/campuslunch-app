@@ -112,25 +112,6 @@ class AppProvider extends ChangeNotifier {
         .then((prefs) => prefs.setBool(_kCommunityGuidelineSeen, true));
   }
 
-  DateTime? _communityNotificationLastSeenAtCache;
-
-  Future<DateTime?> communityNotificationLastSeenAt() async {
-    if (_communityNotificationLastSeenAtCache != null) {
-      return _communityNotificationLastSeenAtCache;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final iso = prefs.getString(_kCommunityNotificationLastSeenAt);
-    _communityNotificationLastSeenAtCache = iso != null ? DateTime.tryParse(iso) : null;
-    return _communityNotificationLastSeenAtCache;
-  }
-
-  void markCommunityNotificationsSeen() {
-    final now = DateTime.now();
-    _communityNotificationLastSeenAtCache = now;
-    SharedPreferences.getInstance()
-        .then((prefs) => prefs.setString(_kCommunityNotificationLastSeenAt, now.toIso8601String()));
-  }
-
   void clearSignupCompleteMessage() {
     if (!_showSignupCompleteMessage) return;
     _showSignupCompleteMessage = false;
@@ -279,7 +260,6 @@ class AppProvider extends ChangeNotifier {
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
   static const _kCoachMarkSeen = 'cl_coach_mark_seen';
   static const _kCommunityGuidelineSeen = 'cl_community_guideline_seen';
-  static const _kCommunityNotificationLastSeenAt = 'cl_community_notification_last_seen_at';
   static const _kLogin = 'cl_logged_in';
   static const _kNickname = 'cl_nickname';
   static const _kPush = 'cl_push_enabled';
@@ -1424,7 +1404,7 @@ class AppProvider extends ChangeNotifier {
       unawaited(refreshPushSchedulesFromRemote());
       return;
     }
-    if (type == 'community_comment' || type == 'community_like') {
+    if (type == 'community_comment') {
       openCommunityFromPush(data['post_id'] as String?);
       return;
     }
@@ -1527,31 +1507,36 @@ class AppProvider extends ChangeNotifier {
         double? lat;
         double? lng;
         // 위치 제한은 사장님 제보에도 동일하게 적용 (5분 쿨다운만 사장님 예외).
-        // 좌표 자체는 디버그 빌드에서도 항상 채워 보낸다 — 서버(submit_crowd_report)가
-        // null 좌표를 무조건 거부하므로, 디버그 편의는 "50m 검증만" 건너뛴다.
-        final pos = await _currentPosition();
-        if (pos == null) {
-          if (!kDebugMode) {
+        // 서버(submit_crowd_report)는 클라이언트의 디버그 여부를 알 수 없어
+        // 항상 50m 거리 검증을 하므로, 디버그 빌드에서는 실제 GPS 대신 매장
+        // 좌표를 그대로 보내 서버측 거리 계산이 0m로 항상 통과하게 만든다.
+        if (kDebugMode) {
+          final restaurant = _restaurants.firstWhere(
+            (r) => r.id == restaurantId,
+            orElse: () => _restaurants.first,
+          );
+          lat = restaurant.latitude;
+          lng = restaurant.longitude;
+        } else {
+          final pos = await _currentPosition();
+          if (pos == null) {
             return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
           }
-        } else {
           lat = pos.latitude;
           lng = pos.longitude;
 
-          if (!kDebugMode) {
-            final restaurant = _restaurants.firstWhere(
-              (r) => r.id == restaurantId,
-              orElse: () => _restaurants.first,
+          final restaurant = _restaurants.firstWhere(
+            (r) => r.id == restaurantId,
+            orElse: () => _restaurants.first,
+          );
+          if (restaurant.latitude.abs() > 0.0001 &&
+              restaurant.longitude.abs() > 0.0001) {
+            final dist = Geolocator.distanceBetween(
+              pos.latitude, pos.longitude,
+              restaurant.latitude, restaurant.longitude,
             );
-            if (restaurant.latitude.abs() > 0.0001 &&
-                restaurant.longitude.abs() > 0.0001) {
-              final dist = Geolocator.distanceBetween(
-                pos.latitude, pos.longitude,
-                restaurant.latitude, restaurant.longitude,
-              );
-              if (dist > 50) {
-                return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
-              }
+            if (dist > 50) {
+              return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
             }
           }
         }
@@ -1967,7 +1952,6 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     if (_hasSupabaseSession) {
-      await _syncMetadata({'nickname': trimmed});
       final user = SupabaseService.client.auth.currentUser;
       if (user != null) {
         try {
@@ -1982,10 +1966,17 @@ class AppProvider extends ChangeNotifier {
           if (e.code == '23505') {
             return '이미 사용 중인 닉네임이에요.';
           }
+          if (e.message.contains('30일')) {
+            return e.message;
+          }
           debugPrint('[Profile] updateNickname: ${e.message}');
           return '닉네임 저장에 실패했어요.';
         }
       }
+      // DB 반영(위의 30일 제한 검사)이 성공한 뒤에만 auth 메타데이터를 맞춘다 —
+      // 순서가 바뀌면 제한에 걸려도 메타데이터만 새 닉네임으로 남아 다음 로그인 시
+      // upsert가 DB와 메타데이터 간 불일치로 트리거를 다시 건드릴 수 있다.
+      await _syncMetadata({'nickname': trimmed});
     }
 
     _nickname = trimmed;

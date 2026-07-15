@@ -67,7 +67,8 @@ class _MyScreenState extends State<MyScreen> {
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16, bottom: 100),
+          padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 16, bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -91,7 +92,8 @@ class _MyScreenState extends State<MyScreen> {
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsScreen()),
                       ),
                       child: Container(
                         width: 40,
@@ -122,12 +124,15 @@ class _MyScreenState extends State<MyScreen> {
                           decoration: const BoxDecoration(
                               color: Color(0xFFF3F4F6), shape: BoxShape.circle),
                           child: const Center(
-                              child: Icon(Icons.person, size: 22, color: Color(0xFF9CA3AF))),
+                              child: Icon(Icons.person,
+                                  size: 22, color: Color(0xFF9CA3AF))),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            provider.nickname.isEmpty ? '앙대 학생' : provider.nickname,
+                            provider.nickname.isEmpty
+                                ? '앙대 학생'
+                                : provider.nickname,
                             style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
@@ -164,42 +169,48 @@ class _MyScreenState extends State<MyScreen> {
                     const SizedBox(height: 16),
 
                     // ── 즐겨찾기 / 스탬프북 / 내 쿠폰함 ──
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.bookmark,
-                            label: '즐겨찾기',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _QuickAction(
+                              icon: Icons.bookmark,
+                              label: '즐겨찾기',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const BookmarkListScreen()),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.stars_rounded,
-                            label: '스탬프북',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const RewardScreen()),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _QuickAction(
+                              icon: Icons.stars_rounded,
+                              label: '스탬프북',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const RewardScreen()),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.card_giftcard_rounded,
-                            label: '내 쿠폰함',
-                            showDot: provider.hasUnseenCoupon,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const CouponBoxScreen()),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _QuickAction(
+                              icon: Icons.card_giftcard_rounded,
+                              label: '내 쿠폰함',
+                              showDot: provider.hasUnseenCoupon,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const CouponBoxScreen()),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -222,7 +233,8 @@ class _MyScreenState extends State<MyScreen> {
                       showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ReferralInviteScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const ReferralInviteScreen()),
                       ),
                     ),
                   ],
@@ -240,7 +252,8 @@ class _MyScreenState extends State<MyScreen> {
                     const MyPageSectionTitle('고객지원'),
                     MyPageSectionRow(
                       label: '캠퍼스런치 이용 가이드',
-                      icon: const Icon(Icons.help_rounded, size: 20, color: Color(0xFF5E8C4A)),
+                      icon: const Icon(Icons.help_rounded,
+                          size: 20, color: Color(0xFF5E8C4A)),
                       onTap: () => launchUrl(
                         Uri.parse(
                             'https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
@@ -261,7 +274,8 @@ class _MyScreenState extends State<MyScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const LegalPolicyPlaceholderScreen()),
+                            builder: (_) =>
+                                const LegalPolicyPlaceholderScreen()),
                       ),
                     ),
                   ],
@@ -323,7 +337,6 @@ class _MyScreenState extends State<MyScreen> {
             ],
           ),
         ),
-
 
         // ── 닉네임 수정 시트 ──
         if (_showEditSheet)
@@ -390,12 +403,16 @@ class _MyScreenState extends State<MyScreen> {
                                       controller: _nicknameCtrl,
                                       onChanged: (v) {
                                         if (v.length > 20) {
-                                          _nicknameCtrl.value = TextEditingValue(
+                                          _nicknameCtrl.value =
+                                              TextEditingValue(
                                             text: v.substring(0, 20),
-                                            selection: const TextSelection.collapsed(offset: 20),
+                                            selection:
+                                                const TextSelection.collapsed(
+                                                    offset: 20),
                                           );
                                         }
-                                        setState(() => _editNickname = _nicknameCtrl.text);
+                                        setState(() =>
+                                            _editNickname = _nicknameCtrl.text);
                                       },
                                       onSubmitted: (_) => _saveNickname(),
                                       style: const TextStyle(
@@ -422,6 +439,27 @@ class _MyScreenState extends State<MyScreen> {
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: '※ 닉네임을 설정하면 ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '30일간 변경할 수 없습니다.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 16),
                             Row(
                               children: [
@@ -434,8 +472,7 @@ class _MyScreenState extends State<MyScreen> {
                                           vertical: 14),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
-                                        borderRadius:
-                                            BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: const Center(
                                         child: Text(
@@ -456,8 +493,9 @@ class _MyScreenState extends State<MyScreen> {
                                         ? null
                                         : _saveNickname,
                                     child: AnimatedOpacity(
-                                      opacity:
-                                          _editNickname.trim().isEmpty ? 0.3 : 1.0,
+                                      opacity: _editNickname.trim().isEmpty
+                                          ? 0.3
+                                          : 1.0,
                                       duration:
                                           const Duration(milliseconds: 150),
                                       child: Container(
@@ -604,7 +642,8 @@ class _RewardCard extends StatelessWidget {
                       color: Color(0xFF5E8C4A),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.star_rounded, size: 15, color: Colors.white),
+                    child: const Icon(Icons.star_rounded,
+                        size: 15, color: Colors.white),
                   ),
                   const SizedBox(width: 8),
                   const Expanded(
@@ -619,7 +658,8 @@ class _RewardCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F5E1),
                       borderRadius: BorderRadius.circular(20),
@@ -634,7 +674,8 @@ class _RewardCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFF111827)),
+                  const Icon(Icons.chevron_right,
+                      size: 16, color: Color(0xFF111827)),
                 ],
               ),
               if (loadFailed) ...[
@@ -652,28 +693,34 @@ class _RewardCard extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   const gap = 10.0;
-                  final cellSize = (constraints.maxWidth - gap * 2) / 3;
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(3, (i) {
-                      final filled = i < today.clamp(0, 3);
-                      return Container(
-                        width: cellSize,
-                        height: cellSize,
-                        decoration: BoxDecoration(
-                          color: filled ? Colors.white : const Color(0xFFE5E7EB),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: filled
-                              ? StampRiceBallIcon(size: cellSize * 0.55)
-                              : Opacity(
-                                  opacity: 0.45,
-                                  child: StampRiceBallIcon(size: cellSize * 0.55),
-                                ),
-                        ),
-                      );
-                    }),
+                  final cellSize = (constraints.maxWidth - gap * 2) / 3 * 0.85;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(3, (i) {
+                        final filled = i < today.clamp(0, 3);
+                        return Container(
+                          width: cellSize,
+                          height: cellSize,
+                          decoration: BoxDecoration(
+                            color: filled
+                                ? const Color(0xFFB2D7A3)
+                                : const Color(0xFFE5E7EB),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: filled
+                                ? StampRiceBallIcon(size: cellSize * 0.55)
+                                : Opacity(
+                                    opacity: 0.45,
+                                    child: StampRiceBallIcon(
+                                        size: cellSize * 0.55),
+                                  ),
+                          ),
+                        );
+                      }),
+                    ),
                   );
                 },
               ),

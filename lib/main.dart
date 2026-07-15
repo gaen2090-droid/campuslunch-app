@@ -127,6 +127,18 @@ class CampusLunchApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        popupMenuTheme: const PopupMenuThemeData(
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
         textTheme: const TextTheme(
           displayLarge:  TextStyle(fontFamily: 'Pretendard', letterSpacing: -0.5),
           displayMedium: TextStyle(fontFamily: 'Pretendard', letterSpacing: -0.5),

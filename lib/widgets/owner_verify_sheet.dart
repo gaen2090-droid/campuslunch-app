@@ -60,9 +60,11 @@ class _OwnerVerifyScreenState extends State<OwnerVerifyScreen> {
         title: const Text(
           '사장님 인증',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: false,

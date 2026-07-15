@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DeleteReasonModal } from "../components/DeleteReasonModal";
 import type {
   BannedWord,
   CommunityNoticeAdmin,
@@ -9,14 +10,19 @@ import type {
 interface Props {
   reports: CommunityReport[];
   posts: CommunityPostAdmin[];
+  pinnedPosts: CommunityPostAdmin[];
   bannedWords: BannedWord[];
   notices: CommunityNoticeAdmin[];
   loading: boolean;
   error: string | null;
+  postQuery: string;
+  onSearchPosts: (query: string) => Promise<void>;
   onHidePost: (id: string, hidden: boolean) => Promise<void>;
-  onRemovePost: (id: string) => Promise<void>;
+  onRemovePost: (id: string, reason: string) => Promise<void>;
+  onSetPostPinned: (id: string, pinned: boolean) => Promise<void>;
+  onReorderPinned: (orderedIds: string[]) => Promise<void>;
   onHideComment: (id: string, hidden: boolean) => Promise<void>;
-  onRemoveComment: (id: string) => Promise<void>;
+  onRemoveComment: (id: string, reason: string) => Promise<void>;
   onAddWord: (word: string) => Promise<void>;
   onRemoveWord: (id: string) => Promise<void>;
   onAddNotice: (content: string) => Promise<void>;
@@ -38,12 +44,17 @@ function formatDate(d: Date): string {
 export function CommunityAdminPage({
   reports,
   posts,
+  pinnedPosts,
   bannedWords,
   notices,
   loading,
   error,
+  postQuery,
+  onSearchPosts,
   onHidePost,
   onRemovePost,
+  onSetPostPinned,
+  onReorderPinned,
   onHideComment,
   onRemoveComment,
   onAddWord,
@@ -59,6 +70,10 @@ export function CommunityAdminPage({
   const [wordBusy, setWordBusy] = useState(false);
   const [newNotice, setNewNotice] = useState("");
   const [noticeBusy, setNoticeBusy] = useState(false);
+  const [postQueryInput, setPostQueryInput] = useState(postQuery);
+  const [deleteTarget, setDeleteTarget] = useState<
+    { kind: "post" | "comment"; id: string } | null
+  >(null);
 
   async function submitWord() {
     const word = newWord.trim();
@@ -100,6 +115,15 @@ export function CommunityAdminPage({
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function confirmDelete(reason: string) {
+    if (!deleteTarget) return;
+    const { kind, id } = deleteTarget;
+    await run(id, () =>
+      kind === "post" ? onRemovePost(id, reason) : onRemoveComment(id, reason),
+    );
+    setDeleteTarget(null);
   }
 
   return (
@@ -188,9 +212,11 @@ export function CommunityAdminPage({
                   className="btn danger sm"
                   disabled={busyId === (r.commentId ?? r.postId ?? r.id)}
                   onClick={() =>
-                    r.commentId
-                      ? run(r.commentId!, () => onRemoveComment(r.commentId!))
-                      : run(r.postId!, () => onRemovePost(r.postId!))
+                    setDeleteTarget(
+                      r.commentId
+                        ? { kind: "comment", id: r.commentId! }
+                        : { kind: "post", id: r.postId! },
+                    )
                   }
                 >
                   삭제
@@ -202,7 +228,92 @@ export function CommunityAdminPage({
       )}
 
       <div className="panel-head" style={{ marginTop: 32 }}>
+        <h2>공지로 설정한 게시글</h2>
+      </div>
+      {pinnedPosts.length === 0 ? (
+        <p className="muted center">공지로 설정된 게시글이 없어요.</p>
+      ) : (
+        <ul className="feedback-list">
+          {pinnedPosts.map((p, i) => (
+            <li key={p.id} className="feedback-row">
+              <div className="feedback-row-head">
+                <span className="badge assigned">순서 {i + 1}</span>
+                <span className="badge">{p.nickname}</span>
+                <span className="muted sm">{formatDate(p.createdAt)}</span>
+              </div>
+              <p className="feedback-content">{p.content}</p>
+              <div className="row-actions">
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  disabled={busyId === p.id || i === 0}
+                  onClick={() => {
+                    const ids = pinnedPosts.map((x) => x.id);
+                    [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+                    run(p.id, () => onReorderPinned(ids));
+                  }}
+                >
+                  위로
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  disabled={busyId === p.id || i === pinnedPosts.length - 1}
+                  onClick={() => {
+                    const ids = pinnedPosts.map((x) => x.id);
+                    [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]];
+                    run(p.id, () => onReorderPinned(ids));
+                  }}
+                >
+                  아래로
+                </button>
+                <button
+                  type="button"
+                  className="btn danger sm"
+                  disabled={busyId === p.id}
+                  onClick={() => run(p.id, () => onSetPostPinned(p.id, false))}
+                >
+                  공지 해제
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="panel-head" style={{ marginTop: 32 }}>
         <h2>최근 게시글</h2>
+      </div>
+      <div className="field-group">
+        <input
+          className="search-input"
+          type="text"
+          placeholder="작성자 닉네임 또는 내용 검색"
+          value={postQueryInput}
+          onChange={(e) => setPostQueryInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSearchPosts(postQueryInput);
+          }}
+        />
+        <button
+          type="button"
+          className="btn sm"
+          onClick={() => onSearchPosts(postQueryInput)}
+        >
+          검색
+        </button>
+        {postQuery && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => {
+              setPostQueryInput("");
+              onSearchPosts("");
+            }}
+          >
+            초기화
+          </button>
+        )}
       </div>
       {posts.length === 0 ? (
         <p className="muted center">게시글이 없어요.</p>
@@ -213,6 +324,7 @@ export function CommunityAdminPage({
               <div className="feedback-row-head">
                 <span className="badge">{p.nickname}</span>
                 <span className="muted sm">{formatDate(p.createdAt)}</span>
+                {p.isPinned && <span className="badge assigned">공지</span>}
                 {p.isHidden && <span className="badge danger">숨김</span>}
               </div>
               <p className="feedback-content">{p.content}</p>
@@ -220,6 +332,14 @@ export function CommunityAdminPage({
                 좋아요 {p.likeCount} · 댓글 {p.commentCount}
               </p>
               <div className="row-actions">
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  disabled={busyId === p.id}
+                  onClick={() => run(p.id, () => onSetPostPinned(p.id, !p.isPinned))}
+                >
+                  {p.isPinned ? "공지 해제" : "공지로 설정"}
+                </button>
                 <button
                   type="button"
                   className="btn ghost sm"
@@ -232,7 +352,7 @@ export function CommunityAdminPage({
                   type="button"
                   className="btn danger sm"
                   disabled={busyId === p.id}
-                  onClick={() => run(p.id, () => onRemovePost(p.id))}
+                  onClick={() => setDeleteTarget({ kind: "post", id: p.id })}
                 >
                   삭제
                 </button>
@@ -283,6 +403,14 @@ export function CommunityAdminPage({
             </span>
           ))}
         </div>
+      )}
+
+      {deleteTarget && (
+        <DeleteReasonModal
+          title={deleteTarget.kind === "post" ? "게시글 삭제" : "댓글 삭제"}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
       )}
     </div>
   );

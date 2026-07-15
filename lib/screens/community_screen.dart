@@ -48,6 +48,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   static const _collectionSortOpts = ['인기순', '최신순'];
 
   CommunityNotice? _notice;
+  List<CommunityPost> _pinnedPosts = [];
   bool _hasUnreadNotification = false;
   bool _openingPendingPush = false;
 
@@ -55,6 +56,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _loadNotice();
+    _loadPinned();
     _loadFeed();
     _loadCollections();
     _maybeShowGuideline();
@@ -62,6 +64,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _openPendingPushPost();
     });
+  }
+
+  @override
+  void dispose() {
+    _pinnedPageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPinned() async {
+    try {
+      final pinned = await _repo.fetchPinnedPosts();
+      if (!mounted) return;
+      setState(() => _pinnedPosts = pinned);
+    } catch (_) {
+      // 핀 게시글 로드 실패는 무시 (핵심 기능 아님)
+    }
   }
 
   Future<void> _openPendingPushPost() async {
@@ -93,12 +111,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Future<void> _checkUnreadNotifications() async {
     try {
-      final provider = context.read<AppProvider>();
-      final notifications = await _repo.fetchInboxNotifications();
-      if (!mounted || notifications.isEmpty) return;
-      final lastSeenAt = await provider.communityNotificationLastSeenAt();
-      final latest = notifications.first.createdAt;
-      final hasUnread = lastSeenAt == null || latest.isAfter(lastSeenAt);
+      final hasUnread = await _repo.hasUnreadInboxNotifications();
       if (!mounted) return;
       setState(() => _hasUnreadNotification = hasUnread);
     } catch (_) {
@@ -238,7 +251,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context,
       MaterialPageRoute(builder: (_) => CommunityPostDetailScreen(post: post)),
     );
-    if (changed == true) _loadFeed();
+    if (changed == true) {
+      _loadFeed();
+      _loadPinned();
+    }
   }
 
   void _openRestaurant(String restaurantId) {
@@ -267,8 +283,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       MaterialPageRoute(builder: (_) => const CommunityNotificationsScreen()),
     );
     if (!mounted) return;
-    context.read<AppProvider>().markCommunityNotificationsSeen();
-    setState(() => _hasUnreadNotification = false);
+    await _checkUnreadNotifications();
   }
 
   @override
@@ -289,13 +304,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
           : FloatingActionButton(
-              onPressed: () async {
-                final created = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateCollectionScreen()),
-                );
-                if (created == true) _loadCollections();
-              },
+              onPressed: _openCreateCollection,
               backgroundColor: const Color(0xFF5E8C4A),
               child: const Icon(Icons.add, color: Colors.white),
             ),
@@ -385,13 +394,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ],
             ),
           ),
-          if (_notice != null) ...[
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _noticeBox(_notice!),
-            ),
-          ],
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -404,7 +406,82 @@ class _CommunityScreenState extends State<CommunityScreen> {
               child: _collectionFilterBar(),
             ),
           ],
+          if (_segment == 0 && _notice != null) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _noticeBox(_notice!),
+            ),
+          ],
+          if (_segment == 0 && _pinnedPosts.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _pinnedPostsRow(),
+          ],
         ],
+      ),
+    );
+  }
+
+  final PageController _pinnedPageController =
+      PageController(viewportFraction: 0.7, initialPage: 0);
+
+  Widget _pinnedPostsRow() {
+    return SizedBox(
+      height: 40,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF4C9C2A)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ClipRect(
+                child: PageView.builder(
+                  controller: _pinnedPageController,
+                  padEnds: false,
+                  itemCount: _pinnedPosts.length,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i == _pinnedPosts.length - 1 ? 0 : 8),
+                    child: _pinnedPostBanner(_pinnedPosts[i]),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pinnedPostBanner(CommunityPost post) {
+    return GestureDetector(
+      onTap: () => _openDetail(post),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F8F0),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFBFE0B0)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                post.content,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, size: 16, color: Color(0xFF9CA3AF)),
+          ],
+        ),
       ),
     );
   }
@@ -471,28 +548,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _noticeBox(CommunityNotice notice) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F8F0),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBFE0B0)),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.campaign, size: 18, color: Color(0xFF5E8C4A)),
+          const Text(
+            '안내',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFEF4444),
+              height: 1.3,
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               notice.content,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF4C9C2A),
-                height: 1.4,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF374151),
+                height: 1.3,
               ),
             ),
           ),
@@ -638,6 +719,42 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
       ],
     );
+  }
+
+  Future<void> _openCreateCollection() async {
+    int reportCount = 0;
+    try {
+      reportCount = await _repo.myCrowdReportCount();
+    } catch (_) {
+      // 조회 실패 시 서버 RPC의 검증으로 최종 방어 (아래 진입은 그대로 허용)
+    }
+    if (!mounted) return;
+    if (reportCount < 10) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('컬렉션 만들기', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: Text(
+            '누적 제보 10회 이상부터 컬렉션을 만들 수 있어요.\n(현재 $reportCount회)',
+            style: const TextStyle(height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateCollectionScreen()),
+    );
+    if (created == true) _loadCollections();
   }
 
   Future<void> _editCollection(

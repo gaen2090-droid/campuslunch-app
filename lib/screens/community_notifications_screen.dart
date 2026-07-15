@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/community_repository.dart';
@@ -24,6 +26,7 @@ class _CommunityNotificationsScreenState
   void initState() {
     super.initState();
     _load();
+    unawaited(_repo.markInboxSeen());
   }
 
   Future<void> _load() async {
@@ -48,7 +51,17 @@ class _CommunityNotificationsScreenState
   }
 
   Future<void> _openPost(CommunityInboxNotification n) async {
-    final post = await _repo.fetchPostById(n.postId);
+    if (!n.isRead) {
+      final index = _notifications.indexWhere((e) => e.eventId == n.eventId);
+      if (index != -1) {
+        setState(() {
+          _notifications[index] = _notifications[index].copyWith(isRead: true);
+        });
+      }
+      unawaited(_repo.markInboxNotificationRead(n.eventId));
+    }
+    if (n.isAdminNotice || n.postId == null) return;
+    final post = await _repo.fetchPostById(n.postId!);
     if (!mounted) return;
     if (post == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,39 +134,77 @@ class _CommunityNotificationsScreenState
       separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFE5E7EB)),
       itemBuilder: (context, i) {
         final n = _notifications[i];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          onTap: () => _openPost(n),
-          title: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: n.actorNickname,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
+        if (n.isAdminNotice) {
+          final contentText = n.adminContentText;
+          final reasonText = n.adminReasonText;
+          final subtitleLines = <String>[
+            if (contentText != null) contentText,
+            if (reasonText != null) reasonText,
+          ];
+          return Container(
+            color: const Color(0xFFFDF0F3),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              title: Text(
+                n.adminHeadline,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              subtitle: subtitleLines.isEmpty
+                  ? null
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        subtitleLines.join('\n'),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                      ),
+                    ),
+              trailing: Text(
+                timeAgo(n.createdAt),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+              ),
+            ),
+          );
+        }
+        return Container(
+          color: n.isRead ? Colors.white : const Color(0xFFEAF7E6),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            onTap: () => _openPost(n),
+            title: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: n.actorNickname,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                    ),
                   ),
-                ),
-                TextSpan(
-                  text: n.headlineSuffix,
-                  style: const TextStyle(color: Color(0xFF111827)),
-                ),
-              ],
+                  TextSpan(
+                    text: n.headlineSuffix,
+                    style: const TextStyle(color: Color(0xFF111827)),
+                  ),
+                ],
+              ),
+              style: const TextStyle(fontSize: 14),
             ),
-            style: const TextStyle(fontSize: 14),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              n.bodyText,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                n.bodyText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              ),
             ),
-          ),
-          trailing: Text(
-            timeAgo(n.createdAt),
-            style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            trailing: Text(
+              timeAgo(n.createdAt),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            ),
           ),
         );
       },

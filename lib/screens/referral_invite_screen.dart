@@ -37,25 +37,9 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
   }
 
   Future<void> _copyCode(String code) async {
+    // Android 13+/iOS는 클립보드 복사 시 시스템이 자체 토스트를 띄우므로
+    // 앱에서 별도 안내를 띄우면 중복된다.
     await Clipboard.setData(ClipboardData(text: code));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          '추천인 코드를 복사했어요.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
-          ),
-        ),
-        backgroundColor: const Color(0xFF9ECA8B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      ),
-    );
   }
 
   @override

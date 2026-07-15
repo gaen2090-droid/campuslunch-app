@@ -12,8 +12,6 @@ export interface PushNotificationConfig {
   peakLocalScheduleEnabled: boolean;
   communityCommentTitleTemplate: string;
   communityCommentBodyTemplate: string;
-  communityLikeTitleTemplate: string;
-  communityLikeBodyTemplate: string;
   updatedAt: Date | null;
 }
 
@@ -32,8 +30,6 @@ export const DEFAULT_PUSH_CONFIG: PushNotificationConfig = {
   peakLocalScheduleEnabled: true,
   communityCommentTitleTemplate: "{nickname}님이 댓글을 남겼어요",
   communityCommentBodyTemplate: "{content}",
-  communityLikeTitleTemplate: "{nickname}님이 좋아요를 눌렀어요",
-  communityLikeBodyTemplate: "{post_preview}",
   updatedAt: null,
 };
 
@@ -105,14 +101,6 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
     communityCommentBodyTemplate: readText(
       "community_comment_body_template",
       DEFAULT_PUSH_CONFIG.communityCommentBodyTemplate,
-    ),
-    communityLikeTitleTemplate: readText(
-      "community_like_title_template",
-      DEFAULT_PUSH_CONFIG.communityLikeTitleTemplate,
-    ),
-    communityLikeBodyTemplate: readText(
-      "community_like_body_template",
-      DEFAULT_PUSH_CONFIG.communityLikeBodyTemplate,
     ),
     updatedAt: raw.updated_at ? new Date(String(raw.updated_at)) : null,
   };

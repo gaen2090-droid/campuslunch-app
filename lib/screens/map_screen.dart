@@ -73,6 +73,11 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
 
   @override
   void didPopNext() {
+    // remount하지 않고 기존 지도를 살려 마커만 다시 그리는 방식으로 바꿨다가,
+    // 검색 화면에서 돌아올 때 네이티브 virtual display가 반복적으로 리사이즈되며
+    // 지도가 세로로 늘어났다 복구되는 새 증상이 생겼다(로그로 확인:
+    // onRenderViewResized 높이가 1499↔2201 사이를 계속 오르내림). 원인을 아직
+    // 못 잡아 검증된 이전 방식(무조건 remount)으로 되돌린다.
     _remountMap();
   }
 
@@ -230,13 +235,21 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                       ],
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
-                        SizedBox(width: 8),
-                        Text(
-                          '매장명, 위치, 음식종류 검색',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                        const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                        const SizedBox(width: 8),
+                        Transform.translate(
+                          offset: const Offset(0, -1),
+                          child: const Text(
+                            '매장명, 위치, 음식종류 검색',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF9CA3AF),
+                              height: 1.0,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -244,7 +257,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 ),
 
                 if (true) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   // 필터 칩 행
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,

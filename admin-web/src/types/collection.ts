@@ -5,6 +5,8 @@ export interface RestaurantCollection {
   sortOrder: number;
   isPublished: boolean;
   createdAt: Date;
+  userId: string | null;
+  authorNickname: string | null;
 }
 
 export interface CollectionItem {
@@ -26,6 +28,8 @@ export function parseRestaurantCollection(
     sortOrder: Number(raw.sort_order ?? 0) || 0,
     isPublished: Boolean(raw.is_published),
     createdAt: new Date(String(raw.created_at)),
+    userId: raw.user_id != null ? String(raw.user_id) : null,
+    authorNickname: raw.author_nickname != null ? String(raw.author_nickname) : null,
   };
 }
 

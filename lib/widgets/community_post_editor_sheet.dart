@@ -163,9 +163,11 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
         title: Text(
           isEditing ? '글 수정하기' : '글쓰기',
           style: const TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: false,

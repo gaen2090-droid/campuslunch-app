@@ -371,7 +371,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
             <div className="push-section-head">
               <h3>2. 커뮤니티 푸시</h3>
               <p className="muted sm">
-                인박스와 동일 이벤트(댓글·좋아요). FCM 문구만 여기서 수정합니다.
+                댓글 알림만 앱 푸시로 발송돼요. FCM 문구는 여기서 수정합니다.
               </p>
             </div>
 
@@ -387,7 +387,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 <span>
                   <strong>커뮤니티 서버 FCM</strong>
                   <span className="toggle-desc">
-                    내 글 댓/좋아요 · 알림 켠 글 댓
+                    내 글 댓글 · 알림 켠 글 댓글
                   </span>
                 </span>
               </label>
@@ -419,34 +419,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 />
                 <span className="field-hint">
                   {previewCommunityTemplate(form.communityCommentBodyTemplate)}
-                </span>
-              </label>
-
-              <label className="field full">
-                <span className="field-label">좋아요 제목</span>
-                <input
-                  type="text"
-                  value={form.communityLikeTitleTemplate}
-                  onChange={(e) =>
-                    patch({ communityLikeTitleTemplate: e.target.value })
-                  }
-                />
-                <span className="field-hint">
-                  {previewCommunityTemplate(form.communityLikeTitleTemplate)}
-                </span>
-              </label>
-
-              <label className="field full">
-                <span className="field-label">좋아요 본문</span>
-                <textarea
-                  rows={2}
-                  value={form.communityLikeBodyTemplate}
-                  onChange={(e) =>
-                    patch({ communityLikeBodyTemplate: e.target.value })
-                  }
-                />
-                <span className="field-hint">
-                  {previewCommunityTemplate(form.communityLikeBodyTemplate)}
                 </span>
               </label>
             </div>

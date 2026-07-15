@@ -138,8 +138,13 @@ export default function App() {
           notices={communityState.notices}
           loading={communityState.loading}
           error={communityState.error}
+          pinnedPosts={communityState.pinnedPosts}
+          postQuery={communityState.postQuery}
+          onSearchPosts={communityState.searchPosts}
           onHidePost={communityState.hidePost}
           onRemovePost={communityState.removePost}
+          onSetPostPinned={communityState.setPostPinned}
+          onReorderPinned={communityState.reorderPinned}
           onHideComment={communityState.hideComment}
           onRemoveComment={communityState.removeComment}
           onAddWord={communityState.addWord}

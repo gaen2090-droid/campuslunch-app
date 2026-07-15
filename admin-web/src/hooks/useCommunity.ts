@@ -10,9 +10,12 @@ import {
   fetchCommunityNotices,
   fetchCommunityPosts,
   fetchCommunityReports,
+  fetchPinnedPosts,
+  reorderPinnedPosts,
   setCommunityCommentHidden,
   setCommunityNoticeActive,
   setCommunityPostHidden,
+  setCommunityPostPinned,
   updateCommunityNotice,
 } from "../lib/adminApi";
 import type {
@@ -25,24 +28,28 @@ import type {
 export function useCommunity(enabled: boolean) {
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [posts, setPosts] = useState<CommunityPostAdmin[]>([]);
+  const [pinnedPosts, setPinnedPosts] = useState<CommunityPostAdmin[]>([]);
   const [bannedWords, setBannedWordsState] = useState<BannedWord[]>([]);
   const [notices, setNotices] = useState<CommunityNoticeAdmin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postQuery, setPostQuery] = useState("");
 
   const reload = useCallback(async () => {
     if (!enabled) return;
     setLoading(true);
     setError(null);
     try {
-      const [reportList, postList, wordList, noticeList] = await Promise.all([
+      const [reportList, postList, pinnedList, wordList, noticeList] = await Promise.all([
         fetchCommunityReports(),
-        fetchCommunityPosts(),
+        fetchCommunityPosts(postQuery),
+        fetchPinnedPosts(),
         fetchBannedWords(),
         fetchCommunityNotices(),
       ]);
       setReports(reportList);
       setPosts(postList);
+      setPinnedPosts(pinnedList);
       setBannedWordsState(wordList);
       setNotices(noticeList);
     } catch (e) {
@@ -50,11 +57,45 @@ export function useCommunity(enabled: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, postQuery]);
 
   useEffect(() => {
     if (enabled) void reload();
   }, [enabled, reload]);
+
+  const searchPosts = useCallback(async (query: string) => {
+    setPostQuery(query);
+    setLoading(true);
+    setError(null);
+    try {
+      setPosts(await fetchCommunityPosts(query));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const setPostPinned = useCallback(
+    async (id: string, pinned: boolean) => {
+      await setCommunityPostPinned(id, pinned);
+      await reload();
+    },
+    [reload],
+  );
+
+  const reorderPinned = useCallback(
+    async (orderedIds: string[]) => {
+      // 낙관적 업데이트 — 드래그 직후 순서가 바로 반영되도록
+      setPinnedPosts((prev) => {
+        const byId = new Map(prev.map((p) => [p.id, p]));
+        return orderedIds.map((id) => byId.get(id)).filter((p): p is CommunityPostAdmin => !!p);
+      });
+      await reorderPinnedPosts(orderedIds);
+      await reload();
+    },
+    [reload],
+  );
 
   const hidePost = useCallback(
     async (id: string, hidden: boolean) => {
@@ -65,8 +106,8 @@ export function useCommunity(enabled: boolean) {
   );
 
   const removePost = useCallback(
-    async (id: string) => {
-      await deleteCommunityPost(id);
+    async (id: string, reason: string) => {
+      await deleteCommunityPost(id, reason);
       await reload();
     },
     [reload],
@@ -81,8 +122,8 @@ export function useCommunity(enabled: boolean) {
   );
 
   const removeComment = useCallback(
-    async (id: string) => {
-      await deleteCommunityComment(id);
+    async (id: string, reason: string) => {
+      await deleteCommunityComment(id, reason);
       await reload();
     },
     [reload],
@@ -139,13 +180,18 @@ export function useCommunity(enabled: boolean) {
   return {
     reports,
     posts,
+    pinnedPosts,
     bannedWords,
     notices,
     loading,
     error,
+    postQuery,
     reload,
+    searchPosts,
     hidePost,
     removePost,
+    setPostPinned,
+    reorderPinned,
     hideComment,
     removeComment,
     addNotice,

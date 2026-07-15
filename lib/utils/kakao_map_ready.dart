@@ -76,44 +76,31 @@ class KakaoMarkerLayer {
       final registered = <String>{};
 
       for (final bundle in bundles) {
-        try {
-          await controller.registerMarkerStyles(
-            styles: [
-              MarkerStyle(
-                styleId: bundle.styleId,
-                perLevels: markerLevels
-                    .map(
-                      (level) => MarkerPerLevelStyle.fromBytes(
-                        bytes: bundle.bytes,
-                        level: level,
-                        textStyle: _markerTextStyle,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-          );
-          registered.add(bundle.styleId);
-        } catch (e, st) {
-          debugPrint(
-            '[KakaoMarkerLayer] style ${bundle.styleId} failed: $e\n$st',
-          );
-        }
+        await controller.registerMarkerStyles(
+          styles: [
+            MarkerStyle(
+              styleId: bundle.styleId,
+              perLevels: markerLevels
+                  .map(
+                    (level) => MarkerPerLevelStyle.fromBytes(
+                      bytes: bundle.bytes,
+                      level: level,
+                      textStyle: _markerTextStyle,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        );
+        registered.add(bundle.styleId);
       }
 
       _registeredStyleIdsByViewId[viewId] = registered;
-      if (registered.isNotEmpty) {
-        _stylesReadyByViewId[viewId] = true;
-        debugPrint(
-          '[KakaoMarkerLayer] styles registered viewId=$viewId '
-          '(${registered.length}/${bundles.length})',
-        );
-      } else {
-        debugPrint(
-          '[KakaoMarkerLayer] no styles registered viewId=$viewId '
-          '(${bundles.length} attempted)',
-        );
-      }
+      _stylesReadyByViewId[viewId] = true;
+      debugPrint(
+        '[KakaoMarkerLayer] styles registered viewId=$viewId '
+        '(${registered.length}/${bundles.length})',
+      );
     }
 
     if (_layerReadyViewIds.contains(viewId)) return;

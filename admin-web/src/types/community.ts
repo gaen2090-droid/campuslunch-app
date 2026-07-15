@@ -16,6 +16,8 @@ export interface CommunityPostAdmin {
   content: string;
   imageUrls: string[];
   isHidden: boolean;
+  isPinned: boolean;
+  pinOrder: number;
   likeCount: number;
   commentCount: number;
   createdAt: Date;
@@ -75,6 +77,8 @@ export function parseCommunityPostAdmin(raw: Record<string, unknown>): Community
     content: String(raw.content ?? ""),
     imageUrls: Array.isArray(raw.image_urls) ? raw.image_urls.map(String) : [],
     isHidden: Boolean(raw.is_hidden),
+    isPinned: Boolean(raw.is_pinned),
+    pinOrder: Number(raw.pin_order ?? 0) || 0,
     likeCount: Number(raw.like_count ?? 0) || 0,
     commentCount: Number(raw.comment_count ?? 0) || 0,
     createdAt: new Date(String(raw.created_at)),

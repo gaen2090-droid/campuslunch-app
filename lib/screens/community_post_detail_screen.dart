@@ -378,9 +378,12 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
             ),
           ],
         ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        body: Column(
           children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                children: [
                   Row(
                     children: [
                       Text(
@@ -487,9 +490,10 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                     )
                   else
                     ..._buildCommentTree(),
-          ],
-        ),
-        bottomNavigationBar: Material(
+                ],
+              ),
+            ),
+            Material(
           color: Colors.white,
           child: SafeArea(
             top: false,
@@ -561,6 +565,8 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
               ),
             ),
           ),
+            ),
+          ],
         ),
       ),
     );
@@ -619,11 +625,6 @@ class _CommentTile extends StatelessWidget {
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: onReply,
-                      child: const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFF9CA3AF)),
-                    ),
-                    const SizedBox(width: 14),
-                    GestureDetector(
                       onTap: onLike,
                       child: Row(
                         children: [
@@ -641,6 +642,11 @@ class _CommentTile extends StatelessWidget {
                           ],
                         ],
                       ),
+                    ),
+                    const SizedBox(width: 14),
+                    GestureDetector(
+                      onTap: onReply,
+                      child: const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFF9CA3AF)),
                     ),
                   ],
                 ),

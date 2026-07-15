@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Modal } from "../components/Modal";
-import { purgeAdminUser } from "../lib/adminApi";
+import { purgeAdminUserById } from "../lib/adminApi";
 import { roleLabel, type AdminUser } from "../types/user";
 
 interface Props {
@@ -40,15 +40,12 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
   }, [users, query]);
 
   async function confirmDelete() {
-    if (!deleteTarget?.email) {
-      setActionError("이메일이 없는 계정은 삭제할 수 없어요.");
-      return;
-    }
+    if (!deleteTarget) return;
     setDeleteBusy(true);
     setActionError(null);
     try {
-      const msg = await purgeAdminUser(deleteTarget.email);
-      setSuccess(`${deleteTarget.email} — ${msg}`);
+      const msg = await purgeAdminUserById(deleteTarget.id);
+      setSuccess(`${deleteTarget.email ?? deleteTarget.nickname} — ${msg}`);
       setDeleteTarget(null);
       onReload();
     } catch (err) {
@@ -120,7 +117,7 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
                   {u.provider && <span>{u.provider}</span>}
                 </div>
               </div>
-              {u.role !== "admin" && u.email && (
+              {u.role !== "admin" && (
                 <button
                   type="button"
                   className="btn danger sm"

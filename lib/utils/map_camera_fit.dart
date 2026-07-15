@@ -55,9 +55,11 @@ class CameraFitOptions {
 
 /// 지도 카메라를 좌표 목록에 맞추는 유틸 (Mercator bounds + 마커·라벨 여유)
 abstract final class MapCameraFit {
+  // autoElevation: 줌 변경 중 카메라 고도(tilt)를 자동 조정하는 옵션 — 지도
+  // 배경이 기울어지며 일그러지는 것처럼 보이는 원인이라 끈다.
   static const _animation = CameraAnimation(
     duration: 350,
-    autoElevation: true,
+    autoElevation: false,
     isConsecutive: false,
   );
 

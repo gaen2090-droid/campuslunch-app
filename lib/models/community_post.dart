@@ -12,6 +12,7 @@ class CommunityPost {
   final DateTime? updatedAt;
   final bool isOwner;
   final bool isAuthorOwner;
+  final bool isPinned;
 
   const CommunityPost({
     required this.id,
@@ -27,6 +28,7 @@ class CommunityPost {
     this.updatedAt,
     required this.isOwner,
     this.isAuthorOwner = false,
+    this.isPinned = false,
   });
 
   factory CommunityPost.fromMap(Map<String, dynamic> map) {
@@ -48,6 +50,7 @@ class CommunityPost {
           : null,
       isOwner: map['is_owner'] as bool? ?? false,
       isAuthorOwner: map['is_author_owner'] as bool? ?? false,
+      isPinned: map['is_pinned'] as bool? ?? false,
     );
   }
 
@@ -69,6 +72,7 @@ class CommunityPost {
       updatedAt: updatedAt,
       isOwner: isOwner,
       isAuthorOwner: isAuthorOwner,
+      isPinned: isPinned,
     );
   }
 }

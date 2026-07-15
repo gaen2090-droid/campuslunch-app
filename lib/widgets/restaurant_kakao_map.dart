@@ -63,6 +63,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   bool _mapLayerReady = false;
   String? _mapError;
   final Set<String> _markerIds = {};
+  // 마커 id → 마지막으로 그린 상태의 signature. sync마다 전체를 지우고 다시
+  // 그리면 native platform view에서 매번 화면이 깜빡이므로, 이전 상태와
+  // 비교해 실제로 바뀐 마커만 remove/add한다(변화 없으면 native 호출 자체가 없음).
+  final Map<String, String> _markerSignatures = {};
   Future<void>? _syncInFlight;
   bool _syncQueued = false;
   int _syncGeneration = 0;
@@ -79,6 +83,11 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   /// 확대해서 마커끼리 떨어지면 라벨도 전부 뜨도록 함(너무 크면 확대해도 라벨이 계속 숨음).
   static const double _labelOverlapRadiusPixels = 20;
   int? _lastZoomLevel;
+  LatLng? _cachedMyLocation;
+  bool _myLocationFetchInFlight = false;
+  Timer? _cameraMoveEndDebounce;
+  bool _cameraAnimating = false;
+  Timer? _cameraAnimatingFallback;
 
   static final _campus = LatLng(
     latitude: Campus.centerLat,
@@ -144,6 +153,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     _lastFitKey = _fitKeyFor(widget.restaurants);
     _lastFitToken = widget.cameraFitToken;
 
+    if (animate) _beginCameraAnimation();
     await MapCameraFit.moveToFitLatLngs(
       controller,
       points,
@@ -179,6 +189,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     WidgetsBinding.instance.removeObserver(this);
     _labelSub?.cancel();
     _cameraMoveEndSub?.cancel();
+    _cameraMoveEndDebounce?.cancel();
+    _cameraAnimatingFallback?.cancel();
     final viewId = _controller?.viewId;
     if (viewId != null) {
       KakaoMarkerLayer.release(viewId);
@@ -207,12 +219,16 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     // 매장 선택으로 인한 카메라 이동이 전체 fit(예: restaurants 리스트 변경)과
     // 동시에 트리거되면 두 카메라 애니메이션이 서로 덮어쓰므로, 선택 포커스를 우선한다.
     if (selectedChanged) {
+      // 카메라가 새로 선택된 매장으로 이동하는 동안엔 여기서 마커를 다시 그리지
+      // 않는다 — 애니메이션 종료 후 디바운스된 _onCameraMoveEnd가 최종 줌 기준으로
+      // 한 번만 다시 그린다(선택 강조 포함). 여기서 추가로 그리면 애니메이션
+      // 도중 지도가 흔들리는 것처럼 보인다.
       unawaited(_focusRestaurant(widget.selected!));
     } else if (_shouldRefitCamera(oldWidget)) {
       unawaited(fitToRestaurants());
     }
     if (widget.restaurants != oldWidget.restaurants ||
-        widget.selected?.id != oldWidget.selected?.id ||
+        (widget.selected?.id != oldWidget.selected?.id && !selectedChanged) ||
         widget.pickMarker != oldWidget.pickMarker) {
       unawaited(_syncMarkers());
     }
@@ -236,17 +252,40 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
     _cameraMoveEndSub?.cancel();
     _cameraMoveEndSub = controller.onCameraMoveEndStream.listen((_) {
-      unawaited(_onCameraMoveEnd());
+      // 카카오맵 SDK는 하나의 애니메이션 이동(moveCamera) 동안에도 중간 줌 단계마다
+      // onCameraMoveEnd를 여러 번 쏜다. 매번 마커를 다시 그리면 애니메이션 도중 지도가
+      // 계속 흔들리는 것처럼 보이므로, 짧은 시간 내 연속 이벤트는 마지막 것만 처리한다.
+      _cameraMoveEndDebounce?.cancel();
+      _cameraMoveEndDebounce = Timer(const Duration(milliseconds: 200), () {
+        unawaited(_onCameraMoveEnd());
+      });
     });
   }
 
   Future<void> _onCameraMoveEnd() async {
     final controller = _controller;
     if (controller == null || !_mapLayerReady) return;
+    final wasAnimating = _cameraAnimating;
+    _cameraAnimating = false;
+    _cameraAnimatingFallback?.cancel();
     final zoom = await controller.getZoomLevel();
-    if (zoom == null || zoom == _lastZoomLevel) return;
+    if (zoom == null) return;
+    // 앱이 발생시킨 애니메이션(예: 매장 포커스)이 끝난 직후엔 줌이 그대로여도
+    // 선택 강조 등 마커 상태를 최종 반영하기 위해 항상 한 번 다시 그린다.
+    if (zoom == _lastZoomLevel && !wasAnimating) return;
     _lastZoomLevel = zoom;
-    unawaited(_syncMarkers());
+    unawaited(_syncMarkers(force: true));
+  }
+
+  /// 앱이 발생시키는 카메라 애니메이션(포커스/전체 맞춤) 시작 전에 호출한다.
+  /// 애니메이션 도중엔 마커 sync를 억제해 중간 줌 단계마다 마커가 늘었다 줄었다
+  /// 하며 흔들리는 것처럼 보이는 현상을 막고, 애니메이션이 끝난 뒤 한 번만 그린다.
+  void _beginCameraAnimation() {
+    _cameraAnimating = true;
+    _cameraAnimatingFallback?.cancel();
+    _cameraAnimatingFallback = Timer(const Duration(milliseconds: 1500), () {
+      _cameraAnimating = false;
+    });
   }
 
   Future<void> _onMapCreated(KakaoMapController controller) async {
@@ -259,13 +298,24 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         _mapLayerReady = true;
 
         _attachLabelListener();
-        final fitKey = _fitKeyFor(widget.restaurants);
-        if (fitKey.isNotEmpty &&
-            (fitKey != _lastFitKey || widget.cameraFitToken != _lastFitToken)) {
+        final initialSelected = widget.selected;
+        if (initialSelected != null && initialSelected.hasMapLocation) {
+          // 검색 등으로 선택된 매장을 들고 지도가 (재)생성된 경우 — 전체 fit이 아니라
+          // 그 매장으로 바로 포커스한다. (didUpdateWidget의 selectedChanged 경로는
+          // 위젯이 새로 생성될 땐 타지 않으므로 여기서 별도 처리 필요)
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            unawaited(fitToRestaurants(animate: false));
+            unawaited(_focusRestaurant(initialSelected));
           });
+        } else {
+          final fitKey = _fitKeyFor(widget.restaurants);
+          if (fitKey.isNotEmpty &&
+              (fitKey != _lastFitKey || widget.cameraFitToken != _lastFitToken)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              unawaited(fitToRestaurants(animate: false));
+            });
+          }
         }
         await _syncMarkers();
         if (!mounted) return;
@@ -283,7 +333,13 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   /// 진행 중인 sync가 있으면 그 완료를 기다렸다가 "최신 상태로" 딱 한 번만 다시 그린다.
   /// (여러 번 연달아 호출돼도 매번 큐잉해서 순차 실행하지 않음 — 낡은 필터 상태가
   /// 화면에 오래 남는 현상 방지)
-  Future<void> _syncMarkers() {
+  ///
+  /// 앱이 발생시킨 카메라 애니메이션(포커스/전체 맞춤) 도중엔 기본적으로 sync를
+  /// 건너뛴다 — 중간 줌 단계마다 마커가 늘었다 줄었다 하며 흔들리는 것처럼 보이는
+  /// 현상 방지. 애니메이션 종료 시 _onCameraMoveEnd가 force: true로 마지막에
+  /// 한 번만 호출한다.
+  Future<void> _syncMarkers({bool force = false}) {
+    if (_cameraAnimating && !force) return Future.value();
     final prev = _syncInFlight;
     if (prev != null) {
       _syncQueued = true;
@@ -302,6 +358,9 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     _syncInFlight = null;
   }
 
+  static String _markerSignature(MarkerOption o) =>
+      '${o.latLng.latitude}|${o.latLng.longitude}|${o.styleId}|${o.rank}|${o.text}';
+
   Future<void> _syncMarkersImpl() async {
     final controller = _controller;
     if (controller == null || !_mapLayerReady) return;
@@ -309,24 +368,8 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     final gen = ++_syncGeneration;
     final showMyLocation =
         widget.showMyLocationMarker && widget.myLocationEnabled;
-    final sw = Stopwatch()..start();
 
     try {
-      final toRemove = _markerIds.toList(growable: false);
-      if (toRemove.isNotEmpty) {
-        try {
-          await controller.removeMarkers(ids: toRemove);
-        } catch (e) {
-          debugPrint('[RestaurantKakaoMap] removeMarkers batch failed: $e');
-          for (final id in toRemove) {
-            await removeMarkerQuietly(controller, id: id);
-          }
-        }
-      }
-      debugPrint('[Perf] removeMarkers took ${sw.elapsedMilliseconds}ms (count=${toRemove.length})');
-      if (gen != _syncGeneration) return;
-      _markerIds.clear();
-
       final located = widget.restaurants.where((r) => r.hasMapLocation).toList();
       final zoom = await controller.getZoomLevel() ?? _lastZoomLevel ?? 21;
       _lastZoomLevel = zoom;
@@ -367,9 +410,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         zoomLevel: zoom,
         iconRadiusPixels: _labelOverlapRadiusPixels,
       ).toSet();
-      debugPrint('[Perf] overlap compute took ${swOverlap.elapsedMilliseconds}ms (n=${located.length}, zoom=$zoom, visible=${visibleIds.length})');
+      debugPrint('[Perf] overlap compute took ${swOverlap.elapsedMilliseconds}ms (n=${located.length}, zoom=$zoom, visible=${visibleIds.length}, labeled=${labeledIds.length})');
 
-      final markerBatch = <MarkerOption>[];
+      // 목표 상태(이번 sync에서 그려야 할 매장 마커)를 먼저 전부 계산한다(native 호출 없음).
+      final desired = <String, MarkerOption>{};
       for (final r in located) {
         if (!visibleIds.contains(r.id)) continue;
         if (gen != _syncGeneration) return;
@@ -384,92 +428,181 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         final styleId =
             KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 
-        markerBatch.add(
-          MarkerOption(
-            id: r.id,
-            latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
-            styleId: styleId,
-            rank: isSelected ? 2 : 1,
-            text: labeledIds.contains(r.id) ? r.name : null,
-          ),
+        desired[r.id] = MarkerOption(
+          id: r.id,
+          latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
+          styleId: styleId,
+          rank: isSelected ? 2 : 1,
+          text: labeledIds.contains(r.id) ? r.name : null,
         );
-        _markerIds.add(r.id);
       }
 
-      for (var i = 0; i < markerBatch.length; i += 25) {
+      // 매장 마커(restaurant id 소유 항목)만 diff 대상으로 삼는다 — my_location/pick은
+      // 별도 관리라 여기서 건드리지 않는다.
+      final restaurantMarkerIds =
+          _markerIds.where((id) => id != 'my_location' && id != 'pick').toSet();
+
+      final toRemove = restaurantMarkerIds.difference(desired.keys.toSet());
+      final toAdd = <MarkerOption>[];
+      for (final entry in desired.entries) {
+        final prevSig = _markerSignatures[entry.key];
+        final nextSig = _markerSignature(entry.value);
+        if (prevSig != nextSig) {
+          toAdd.add(entry.value);
+        }
+      }
+
+      final sw = Stopwatch()..start();
+      if (toRemove.isNotEmpty) {
+        try {
+          await controller.removeMarkers(ids: toRemove.toList(growable: false));
+        } catch (e) {
+          debugPrint('[RestaurantKakaoMap] removeMarkers batch failed: $e');
+          for (final id in toRemove) {
+            await removeMarkerQuietly(controller, id: id);
+          }
+        }
+      }
+      debugPrint('[Perf] removeMarkers took ${sw.elapsedMilliseconds}ms (count=${toRemove.length})');
+      if (gen != _syncGeneration) return;
+      for (final id in toRemove) {
+        _markerIds.remove(id);
+        _markerSignatures.remove(id);
+      }
+
+      // 값이 바뀐 마커는 카카오 SDK에 update API가 없어 remove 후 다시 add해야 한다.
+      final changedExisting =
+          toAdd.map((o) => o.id).where(restaurantMarkerIds.contains).toList();
+      if (changedExisting.isNotEmpty) {
+        try {
+          await controller.removeMarkers(ids: changedExisting);
+        } catch (e) {
+          debugPrint('[RestaurantKakaoMap] removeMarkers(changed) failed: $e');
+        }
+      }
+
+      final swAdd = Stopwatch()..start();
+      for (var i = 0; i < toAdd.length; i += 25) {
         if (gen != _syncGeneration) return;
-        final chunk = markerBatch.sublist(
-          i,
-          math.min(i + 25, markerBatch.length),
-        );
+        final chunk = toAdd.sublist(i, math.min(i + 25, toAdd.length));
         try {
           await controller.addMarkers(markerOptions: chunk);
+          for (final option in chunk) {
+            _markerIds.add(option.id);
+            _markerSignatures[option.id] = _markerSignature(option);
+          }
         } catch (e, st) {
           debugPrint('[RestaurantKakaoMap] addMarkers batch failed: $e\n$st');
           for (final option in chunk) {
             if (gen != _syncGeneration) return;
             try {
               await controller.addMarker(markerOption: option);
+              _markerIds.add(option.id);
+              _markerSignatures[option.id] = _markerSignature(option);
             } catch (e2) {
               debugPrint(
                 '[RestaurantKakaoMap] marker ${option.id} skipped: $e2',
               );
               _markerIds.remove(option.id);
+              _markerSignatures.remove(option.id);
             }
           }
         }
       }
+      debugPrint('[Perf] addMarkers took ${swAdd.elapsedMilliseconds}ms (count=${toAdd.length}, skipped=${desired.length - toAdd.length})');
 
       if (showMyLocation) {
-        try {
-          final permission = await Geolocator.checkPermission();
-          if (permission == LocationPermission.always ||
-              permission == LocationPermission.whileInUse) {
-            final pos = await Geolocator.getCurrentPosition(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.medium,
-              ),
-            );
-            if (gen != _syncGeneration) return;
-            final myStyleId = KakaoMarkerLayer.styleIdOrNull(
-              controller,
-              'pin_my_location',
-            );
-            await controller.addMarker(
-              markerOption: MarkerOption(
-                id: 'my_location',
-                latLng: LatLng(
-                  latitude: pos.latitude,
-                  longitude: pos.longitude,
-                ),
-                styleId: myStyleId,
-                rank: 3,
-                text: '내 위치',
-              ),
-            );
-            _markerIds.add('my_location');
+        // 캐시된 좌표가 있으면 GPS 재조회 없이 즉시 그린다 — 매 sync(줌/필터 변경)마다
+        // GPS fix를 새로 기다리면 그 사이 마커가 지워진 채로 남아 "사라졌다 나타남"처럼
+        // 보이는 현상이 생김. 최신 위치는 별도로 백그라운드에서만 갱신한다.
+        final cached = _cachedMyLocation;
+        if (cached != null) {
+          final myStyleId = KakaoMarkerLayer.styleIdOrNull(controller, 'pin_my_location');
+          final myOption = MarkerOption(
+            id: 'my_location',
+            latLng: cached,
+            styleId: myStyleId,
+            rank: 3,
+            text: '내 위치',
+          );
+          final myNextSig = _markerSignature(myOption);
+          if (_markerSignatures['my_location'] != myNextSig) {
+            try {
+              if (_markerIds.contains('my_location')) {
+                await removeMarkerQuietly(controller, id: 'my_location');
+              }
+              await controller.addMarker(markerOption: myOption);
+              _markerIds.add('my_location');
+              _markerSignatures['my_location'] = myNextSig;
+            } catch (e) {
+              debugPrint('[RestaurantKakaoMap] my location marker failed: $e');
+            }
           }
-        } catch (e) {
-          debugPrint('[RestaurantKakaoMap] my location marker failed: $e');
         }
+        unawaited(_refreshMyLocationCache());
+      } else if (_markerIds.contains('my_location')) {
+        await removeMarkerQuietly(controller, id: 'my_location');
+        _markerIds.remove('my_location');
+        _markerSignatures.remove('my_location');
       }
 
       final pick = widget.pickMarker;
       if (pick != null && gen == _syncGeneration) {
         final pickStyleId =
             KakaoMarkerLayer.styleIdOrNull(controller, 'pin_no_report');
-        await controller.addMarker(
-          markerOption: MarkerOption(
-            id: 'pick',
-            latLng: LatLng(latitude: pick.lat, longitude: pick.lng),
-            styleId: pickStyleId,
-            rank: 3,
-          ),
+        final pickOption = MarkerOption(
+          id: 'pick',
+          latLng: LatLng(latitude: pick.lat, longitude: pick.lng),
+          styleId: pickStyleId,
+          rank: 3,
         );
-        _markerIds.add('pick');
+        final pickNextSig = _markerSignature(pickOption);
+        if (_markerSignatures['pick'] != pickNextSig) {
+          if (_markerIds.contains('pick')) {
+            await removeMarkerQuietly(controller, id: 'pick');
+          }
+          await controller.addMarker(markerOption: pickOption);
+          _markerIds.add('pick');
+          _markerSignatures['pick'] = pickNextSig;
+        }
+      } else if (_markerIds.contains('pick')) {
+        await removeMarkerQuietly(controller, id: 'pick');
+        _markerIds.remove('pick');
+        _markerSignatures.remove('pick');
       }
     } catch (e, st) {
       debugPrint('[RestaurantKakaoMap] marker sync failed: $e\n$st');
+    }
+  }
+
+  /// 내 위치를 백그라운드에서 갱신 — GPS fix가 오면 캐시를 업데이트하고,
+  /// 좌표가 바뀐 경우에만 마커를 다시 그린다(체감상 자연스럽게 위치만 이동).
+  Future<void> _refreshMyLocationCache() async {
+    if (_myLocationFetchInFlight) return;
+    _myLocationFetchInFlight = true;
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      if (!mounted) return;
+      final next = LatLng(latitude: pos.latitude, longitude: pos.longitude);
+      final prev = _cachedMyLocation;
+      final moved = prev == null ||
+          (prev.latitude - next.latitude).abs() > 1e-6 ||
+          (prev.longitude - next.longitude).abs() > 1e-6;
+      _cachedMyLocation = next;
+      if (moved) {
+        unawaited(_syncMarkers());
+      }
+    } catch (e) {
+      debugPrint('[RestaurantKakaoMap] my location refresh failed: $e');
+    } finally {
+      _myLocationFetchInFlight = false;
     }
   }
 
@@ -498,11 +631,15 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   Future<void> _focusRestaurant(Restaurant r) async {
     final controller = _controller;
     if (!r.hasMapLocation || controller == null) return;
+    // 카카오맵 SDK가 확대 애니메이션(zoom 단계 이동)을 렌더링하는 과정에서
+    // 버벅거림이 발생해 즉시 이동으로 변경 — 앱 코드로 SDK의 애니메이션 자체를
+    // 매끄럽게 만들 수는 없어서, 애니메이션 없이 바로 목표 위치로 이동한다.
+    _beginCameraAnimation();
     await MapCameraFit.moveToFitLatLngs(
       controller,
       [LatLng(latitude: r.latitude, longitude: r.longitude)],
       profile: CameraFitProfile.tight,
-      animate: true,
+      animate: false,
       viewportSize: _mapViewportSize(),
       viewportPadding: CameraFitOptions.forProfile(CameraFitProfile.tight).viewportPadding,
     );
