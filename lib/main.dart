@@ -25,6 +25,7 @@ import 'screens/main_screen.dart';
 import 'screens/location_permission_screen.dart';
 import 'screens/notification_permission_screen.dart';
 import 'screens/usage_guide_screen.dart';
+import 'screens/referral_code_screen.dart';
 import 'navigation/app_route_observer.dart';
 import 'utils/app_startup.dart';
 
@@ -179,6 +180,8 @@ class _RootState extends State<_Root> {
       'notification_permission' =>
         const NotificationPermissionScreen(key: ValueKey('notification')),
       'usage_guide' => const UsageGuideScreen(key: ValueKey('usage_guide')),
+      'referral_code' =>
+        const ReferralCodeScreen(key: ValueKey('referral_code')),
       'app' => const MainScreen(key: ValueKey('app')),
       _ => const MainScreen(key: ValueKey('app')),
     };

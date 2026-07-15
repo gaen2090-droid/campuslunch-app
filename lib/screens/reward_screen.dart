@@ -17,6 +17,7 @@ class _RewardScreenState extends State<RewardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppProvider>().fetchMyReward();
+      context.read<AppProvider>().fetchMyReferralHistory();
     });
   }
 
@@ -45,7 +46,7 @@ class _RewardScreenState extends State<RewardScreen> {
             fontFamily: 'OkDanDan',
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF5E8C4A),
+            color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),
         ),
@@ -109,6 +110,21 @@ class _RewardScreenState extends State<RewardScreen> {
               _SectionTitle('스탬프북'),
               const SizedBox(height: 12),
               _StampGrid(filled: total, target: target),
+
+              if (provider.cycleReferredEventCount > 0) ...[
+                const SizedBox(height: 12),
+                _ReferralHistoryCard(
+                  text: '추천인 코드를 입력해서 스탬프 3개를 받았어요',
+                  count: provider.cycleReferredEventCount,
+                ),
+              ],
+              if (provider.cycleReferrerEventCount > 0) ...[
+                const SizedBox(height: 12),
+                _ReferralHistoryCard(
+                  text: '친구가 회원가입해서 스탬프 3개를 받았어요',
+                  count: provider.cycleReferrerEventCount,
+                ),
+              ],
             ],
           ),
         ),
@@ -219,6 +235,64 @@ class _StampSummaryCard extends StatelessWidget {
           const Text(
             '하루 최대 999개의 스탬프를 획득할 수 있어요. (테스트)',
             style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReferralHistoryCard extends StatelessWidget {
+  final String text;
+  final int count;
+  const _ReferralHistoryCard({required this.text, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F8F0),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBFE0B0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: Color(0xFF5E8C4A),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.people_alt_rounded, size: 17, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                if (count > 1) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '총 $count건',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),

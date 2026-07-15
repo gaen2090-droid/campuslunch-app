@@ -138,7 +138,7 @@ class MapMarkerIcons {
 
   static Future<Uint8List> _pinMarkerBytesFromCanvas(Color color) async {
     const w = 72;
-    const h = 88;
+    const h = 66;
     const pixelRatio = 2;
 
     final recorder = ui.PictureRecorder();
@@ -187,7 +187,7 @@ class MapMarkerIcons {
   /// Canvas 렌더 실패 시 image 패키지로 단순 핀 생성 (네이티브 등록용)
   static Uint8List _fallbackPinPng(Color color) {
     const w = 72;
-    const h = 88;
+    const h = 66;
     final image = img.Image(width: w, height: h, numChannels: 4);
     final c = img.ColorRgba8(
       (color.r * 255).round().clamp(0, 255),
@@ -196,8 +196,8 @@ class MapMarkerIcons {
       255,
     );
     final cx = w ~/ 2;
-    final headR = 22;
-    final headCy = 28;
+    final headR = 20;
+    final headCy = 25;
     img.fillCircle(image, x: cx, y: headCy, radius: headR + 2, color: img.ColorRgba8(255, 255, 255, 255));
     img.fillCircle(image, x: cx, y: headCy, radius: headR, color: c);
     img.fillCircle(image, x: cx, y: headCy, radius: 8, color: img.ColorRgba8(255, 255, 255, 230));

@@ -9,6 +9,7 @@ import '../widgets/rice_ball_icon.dart';
 import 'bookmark_list_screen.dart';
 import 'coupon_box_screen.dart';
 import 'legal_policy_placeholder_screen.dart';
+import 'referral_invite_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
 
@@ -67,7 +68,7 @@ class _MyScreenState extends State<MyScreen> {
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8, bottom: 100),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16, bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -220,11 +221,10 @@ class _MyScreenState extends State<MyScreen> {
                       icon: const Icon(Icons.card_giftcard_outlined,
                           size: 20, color: Color(0xFF5E8C4A)),
                       showBottomBorder: false,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('곧 만나요! 준비 중인 기능이에요.')),
-                        );
-                      },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReferralInviteScreen()),
+                      ),
                     ),
                   ],
                 ),

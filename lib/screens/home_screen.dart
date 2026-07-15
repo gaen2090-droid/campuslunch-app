@@ -43,7 +43,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _cuisines = {'전체'};
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
-  String _submittedQuery = '';
   static const _historyStore = RecentHistoryStore('home');
   List<RecentHistoryEntry> _history = [];
   int _mainTab = 0; // 0: 식당, 1: 카페
@@ -80,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _submitSearch(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
-    setState(() => _submittedQuery = trimmed);
     final updated = await _historyStore.addSearch(trimmed, _history);
     if (!mounted) return;
     setState(() => _history = updated);
@@ -315,7 +313,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final locationMode = provider.locationMode;
     final all = provider.restaurants;
     final filtered = _filter(all);
-    final searchResults = _search(all, _submittedQuery);
+    final searchResults = _search(all, _searchCtrl.text);
     final byId = {for (final r in all) r.id: r};
 
     bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
@@ -420,13 +418,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             child: TextField(
                               controller: _searchCtrl,
                               onTap: () => setState(() => _searchActive = true),
-                              onChanged: (v) {
-                                if (v.trim().isEmpty) {
-                                  setState(() => _submittedQuery = '');
-                                } else {
-                                  setState(() {});
-                                }
-                              },
+                              onChanged: (_) => setState(() {}),
                               onSubmitted: _submitSearch,
                               textInputAction: TextInputAction.search,
                               style: const TextStyle(
@@ -446,7 +438,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                             GestureDetector(
                               onTap: () => setState(() {
                                 _searchCtrl.clear();
-                                _submittedQuery = '';
                               }),
                               child: const Padding(
                                 padding: EdgeInsets.only(right: 10),
@@ -464,7 +455,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       onTap: () => setState(() {
                         _searchActive = false;
                         _searchCtrl.clear();
-                        _submittedQuery = '';
                         _openDropdown = null;
                       }),
                       child: const Text('취소',
@@ -723,7 +713,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
   }
 
   Widget _buildSearch(List<Restaurant> results, Map<String, Restaurant> byId) {
-    if (_submittedQuery.isEmpty) {
+    if (_searchCtrl.text.trim().isEmpty) {
       return _buildRecentHistory(byId);
     }
     return Column(

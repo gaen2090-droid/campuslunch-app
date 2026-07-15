@@ -13,7 +13,6 @@ class PushNotificationSettingsScreen extends StatefulWidget {
 class _PushNotificationSettingsScreenState
     extends State<PushNotificationSettingsScreen> {
   late bool _lunchPush;
-  late bool _dinnerPush;
   late bool _communityPush;
   bool _initialized = false;
 
@@ -24,7 +23,6 @@ class _PushNotificationSettingsScreenState
       _initialized = true;
       final provider = context.read<AppProvider>();
       _lunchPush = provider.lunchPushEnabled;
-      _dinnerPush = provider.dinnerPushEnabled;
       _communityPush = provider.communityCommentsPushEnabled;
     }
   }
@@ -61,10 +59,12 @@ class _PushNotificationSettingsScreenState
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '푸시 알림 설정',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
@@ -74,55 +74,32 @@ class _PushNotificationSettingsScreenState
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 1)),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Column(
-            children: [
-              _ToggleRow(
-                title: '점심 피크 추천 알림',
-                desc: '점심 피크 시간에 여유 매장 추천을 서버에서 보내드려요.',
-                enabled: _lunchPush,
-                onToggle: () async {
-                  final next = !_lunchPush;
-                  setState(() => _lunchPush = next);
-                  await context.read<AppProvider>().setLunchPush(next);
-                  if (next) await _snack('점심 피크 알림을 켰어요.');
-                },
-              ),
-              const Divider(height: 1, color: Color(0xFFE5E7EB)),
-              _ToggleRow(
-                title: '저녁 피크 추천 알림',
-                desc: '저녁 피크 시간에 여유 매장 추천을 서버에서 보내드려요.',
-                enabled: _dinnerPush,
-                onToggle: () async {
-                  final next = !_dinnerPush;
-                  setState(() => _dinnerPush = next);
-                  await context.read<AppProvider>().setDinnerPush(next);
-                  if (next) await _snack('저녁 피크 알림을 켰어요.');
-                },
-              ),
-              const Divider(height: 1, color: Color(0xFFE5E7EB)),
-              _ToggleRow(
-                title: '커뮤니티 댓글 알림',
-                desc: '글 상단의 알림 버튼을 켜두면, 댓글이 달렸을 때 알려드려요.',
-                enabled: _communityPush,
-                onToggle: () async {
-                  final next = !_communityPush;
-                  setState(() => _communityPush = next);
-                  await context.read<AppProvider>().setCommunityCommentsPush(next);
-                  if (next) await _snack('커뮤니티 댓글 알림을 켰어요.');
-                },
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            _ToggleRow(
+              title: '점심 피크 추천 알림',
+              desc: '점심 피크 시간에 여유로운 매장을 알려드려요.',
+              enabled: _lunchPush,
+              onToggle: () async {
+                final next = !_lunchPush;
+                setState(() => _lunchPush = next);
+                await context.read<AppProvider>().setLunchPush(next);
+                if (next) await _snack('점심 피크 알림을 켰어요.');
+              },
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            _ToggleRow(
+              title: '커뮤니티 댓글 알림',
+              desc: '글 상단의 알림 버튼을 켜두면, 댓글이 달렸을 때 알려드려요.',
+              enabled: _communityPush,
+              onToggle: () async {
+                final next = !_communityPush;
+                setState(() => _communityPush = next);
+                await context.read<AppProvider>().setCommunityCommentsPush(next);
+                if (next) await _snack('커뮤니티 댓글 알림을 켰어요.');
+              },
+            ),
+          ],
         ),
       ),
     );

@@ -173,10 +173,10 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.chevron_left,
-                      size: 24, color: Color(0xFF374151)),
+                  child: const Icon(Icons.arrow_back_ios_new,
+                      size: 18, color: Color(0xFF111827)),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 19),
                 const Expanded(
                   child: Text(
                     '즐겨찾기한 매장',
@@ -185,7 +185,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                     ),
                   ),
                 ),

@@ -49,15 +49,18 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: Text(
           widget.title,
           style: const TextStyle(
-            fontSize: 16,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
       ),

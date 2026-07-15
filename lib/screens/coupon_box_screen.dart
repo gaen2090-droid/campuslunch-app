@@ -74,9 +74,9 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
           '내 쿠폰함',
           style: TextStyle(
             fontFamily: 'OkDanDan',
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF5E8C4A),
+            color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),
         ),

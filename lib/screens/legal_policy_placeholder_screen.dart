@@ -15,12 +15,15 @@ class LegalPolicyPlaceholderScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '약관 및 정책',
           style: TextStyle(
-            fontSize: 18,
+            fontFamily: 'OkDanDan',
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: false,

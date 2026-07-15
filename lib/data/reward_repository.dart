@@ -21,6 +21,59 @@ class RewardRepository {
     }
   }
 
+  /// 반환: (status, message) — status: ok | invalid_code | self_referral | already_used | referrer_daily_limit | error
+  Future<(String, String?)> applyReferralCode(String code) async {
+    try {
+      final raw = await _client.rpc(
+        'apply_referral_code',
+        params: {'p_code': code},
+      );
+      if (raw is! Map) return ('error', '잠시 후 다시 시도해주세요.');
+      final status = raw['status'] as String? ?? 'error';
+      return (status, null);
+    } catch (e) {
+      debugPrint('[Reward] applyReferralCode failed: $e');
+      return ('error', '잠시 후 다시 시도해주세요.');
+    }
+  }
+
+  /// 반환: (my_referral_code, 이번 사이클 referrer 건수, 이번 사이클 referred 건수,
+  ///        누적 referrer 건수, 누적 referred 건수)
+  Future<(String, int, int, int, int)> fetchMyReferralHistory() async {
+    try {
+      final raw = await _client.rpc('get_my_referral_history');
+      if (raw is! Map) return ('', 0, 0, 0, 0);
+      final code = raw['my_referral_code'] as String? ?? '';
+      final events = raw['events'] as List? ?? const [];
+      var cycleReferrerCount = 0;
+      var cycleReferredCount = 0;
+      var totalReferrerCount = 0;
+      var totalReferredCount = 0;
+      for (final e in events) {
+        if (e is! Map) continue;
+        final isReferrer = e['role'] == 'referrer';
+        final inCycle = e['in_current_cycle'] == true;
+        if (isReferrer) {
+          totalReferrerCount++;
+          if (inCycle) cycleReferrerCount++;
+        } else {
+          totalReferredCount++;
+          if (inCycle) cycleReferredCount++;
+        }
+      }
+      return (
+        code,
+        cycleReferrerCount,
+        cycleReferredCount,
+        totalReferrerCount,
+        totalReferredCount,
+      );
+    } catch (e) {
+      debugPrint('[Reward] fetchMyReferralHistory failed: $e');
+      return ('', 0, 0, 0, 0);
+    }
+  }
+
   Future<List<Gifticon>> fetchMyGifticons() async {
     try {
       final uid = _client.auth.currentUser?.id;

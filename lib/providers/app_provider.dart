@@ -53,20 +53,29 @@ class AppProvider extends ChangeNotifier {
   String get userRole => _userRole;
   List<String> get ownerRestaurantIds => _ownerRestaurantIds;
 
-  /// 이메일 링크 인증 직후 메인 화면에서 1회 표시
+  /// 약관 동의 + 추천인 코드 입력까지 끝나고 메인 화면에서 1회 표시
   bool _showSignupCompleteMessage = false;
   bool get showSignupCompleteMessage => _showSignupCompleteMessage;
+
+  /// OTP 인증은 끝났지만 아직 약관 동의/추천인 코드 단계가 남아있어
+  /// 축하 메시지 표시를 미뤄둔 상태
+  bool _pendingSignupCompleteMessage = false;
 
   /// 일반('app') 진입 직전 거치는 단계. 최초 로그인 때만 사용법 가이드를 보여준다.
   Future<String> _postAppStage(SharedPreferences prefs) async {
     final seen = prefs.getBool(_kUsageGuideSeen) ?? false;
-    return seen ? 'app' : 'usage_guide';
+    if (!seen) return 'usage_guide';
+
+    final userId = _sessionUserId(prefs);
+    if (isReferralPromptPending(prefs, userId)) return 'referral_code';
+
+    return 'app';
   }
 
-  void completeUsageGuide() {
-    SharedPreferences.getInstance()
-        .then((prefs) => prefs.setBool(_kUsageGuideSeen, true));
-    _stage = 'app';
+  Future<void> completeUsageGuide() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kUsageGuideSeen, true);
+    _stage = await _postAppStage(prefs);
     if (hasOwnerTab) _mainTabIndex = 0;
     notifyListeners();
   }
@@ -291,6 +300,7 @@ class AppProvider extends ChangeNotifier {
   static const _kPendingSignupNickname = 'cl_pending_signup_nickname';
   static const _kAuthProvider = 'cl_auth_provider';
   static const _kHiddenGifticons = 'cl_hidden_gifticon_ids';
+  static const _kReferralPromptPendingUsers = 'cl_referral_prompt_pending_users';
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -864,7 +874,9 @@ class AppProvider extends ChangeNotifier {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
-      _showSignupCompleteMessage = true;
+      // 약관 동의 + 추천인 코드 입력까지 끝나고 홈 진입 직전(_finishReferralPrompt)에
+      // 축하 메시지를 띄우도록 미룬다 — 여기서 바로 세팅하면 동의 화면 진입 전에 뜸.
+      _pendingSignupCompleteMessage = true;
       await prefs.remove(_kAwaitingEmailConfirm);
     }
 
@@ -911,6 +923,10 @@ class AppProvider extends ChangeNotifier {
         meta?['auth_provider'] as String? ??
         user.appMetadata['provider'] as String? ??
         'email';
+
+    if (isNewSignup) {
+      await _markReferralPromptPending(prefs, user.id);
+    }
 
     await _saveSession(
       prefs,
@@ -1511,26 +1527,31 @@ class AppProvider extends ChangeNotifier {
         double? lat;
         double? lng;
         // 위치 제한은 사장님 제보에도 동일하게 적용 (5분 쿨다운만 사장님 예외).
-        if (!kDebugMode) {
-          final pos = await _currentPosition();
-          if (pos == null) {
+        // 좌표 자체는 디버그 빌드에서도 항상 채워 보낸다 — 서버(submit_crowd_report)가
+        // null 좌표를 무조건 거부하므로, 디버그 편의는 "50m 검증만" 건너뛴다.
+        final pos = await _currentPosition();
+        if (pos == null) {
+          if (!kDebugMode) {
             return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
           }
+        } else {
           lat = pos.latitude;
           lng = pos.longitude;
 
-          final restaurant = _restaurants.firstWhere(
-            (r) => r.id == restaurantId,
-            orElse: () => _restaurants.first,
-          );
-          if (restaurant.latitude.abs() > 0.0001 &&
-              restaurant.longitude.abs() > 0.0001) {
-            final dist = Geolocator.distanceBetween(
-              pos.latitude, pos.longitude,
-              restaurant.latitude, restaurant.longitude,
+          if (!kDebugMode) {
+            final restaurant = _restaurants.firstWhere(
+              (r) => r.id == restaurantId,
+              orElse: () => _restaurants.first,
             );
-            if (dist > 50) {
-              return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
+            if (restaurant.latitude.abs() > 0.0001 &&
+                restaurant.longitude.abs() > 0.0001) {
+              final dist = Geolocator.distanceBetween(
+                pos.latitude, pos.longitude,
+                restaurant.latitude, restaurant.longitude,
+              );
+              if (dist > 50) {
+                return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
+              }
             }
           }
         }
@@ -1711,6 +1732,39 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  bool isReferralPromptPending(SharedPreferences prefs, String userId) {
+    if (userId.isEmpty) return false;
+    final pending = prefs.getStringList(_kReferralPromptPendingUsers) ?? [];
+    return pending.contains(userId);
+  }
+
+  Future<void> _markReferralPromptPending(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final pending = List<String>.from(
+      prefs.getStringList(_kReferralPromptPendingUsers) ?? const [],
+    );
+    if (!pending.contains(userId)) {
+      pending.add(userId);
+      await prefs.setStringList(_kReferralPromptPendingUsers, pending);
+    }
+  }
+
+  Future<void> _clearReferralPromptPending(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final pending = List<String>.from(
+      prefs.getStringList(_kReferralPromptPendingUsers) ?? const [],
+    );
+    if (pending.remove(userId)) {
+      await prefs.setStringList(_kReferralPromptPendingUsers, pending);
+    }
+  }
+
   bool _isLikelyNewAccount(User user) {
     final created = DateTime.tryParse(user.createdAt);
     if (created == null) return false;
@@ -1756,6 +1810,10 @@ class AppProvider extends ChangeNotifier {
     required String userId,
     required bool needsLegalTerms,
   }) async {
+    debugPrint('[Stage] _resolveStageForSession userId=$userId needsLegalTerms=$needsLegalTerms '
+        'hasPermissionsConsent=${_hasPermissionsConsent(prefs)} '
+        'hasLegalTermsConsent=${_hasLegalTermsConsent(prefs, userId)} '
+        'isPendingLegalTerms=${_isPendingLegalTerms(prefs, userId)}');
     if (!_hasPermissionsConsent(prefs)) return 'onboarding';
     if (needsLegalTerms &&
         userId.isNotEmpty &&
@@ -1843,7 +1901,7 @@ class AppProvider extends ChangeNotifier {
     }
     await _clearPendingLegalTerms(prefs, userId);
 
-    _stage = 'app';
+    _stage = await _postAppStage(prefs);
     if (hasOwnerTab) _mainTabIndex = 0;
     notifyListeners();
   }
@@ -2472,6 +2530,36 @@ class AppProvider extends ChangeNotifier {
 
   // ── 리워드 ──
 
+  String _myReferralCode = '';
+  int _cycleReferrerEventCount = 0;
+  int _cycleReferredEventCount = 0;
+  int _totalReferrerEventCount = 0;
+  int _totalReferredEventCount = 0;
+  String get myReferralCode => _myReferralCode;
+  /// 이번 스탬프북 사이클(마지막 쿠폰 발급 이후) 동안의 건수 — 스탬프북 화면용
+  int get cycleReferrerEventCount => _cycleReferrerEventCount;
+  int get cycleReferredEventCount => _cycleReferredEventCount;
+  /// 누적 건수 — 친구 초대 페이지용
+  int get totalReferrerEventCount => _totalReferrerEventCount;
+  int get totalReferredEventCount => _totalReferredEventCount;
+
+  Future<void> fetchMyReferralHistory() async {
+    final repo = _rewardRepo;
+    if (repo == null) return;
+    try {
+      final (code, cycleReferrer, cycleReferred, totalReferrer, totalReferred) =
+          await repo.fetchMyReferralHistory();
+      _myReferralCode = code;
+      _cycleReferrerEventCount = cycleReferrer;
+      _cycleReferredEventCount = cycleReferred;
+      _totalReferrerEventCount = totalReferrer;
+      _totalReferredEventCount = totalReferred;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Reward] fetchMyReferralHistory failed: $e');
+    }
+  }
+
   Future<void> fetchMyReward() async {
     final repo = _rewardRepo;
     if (repo == null) return;
@@ -2494,6 +2582,51 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  /// 반환: null이면 성공(또는 건너뛰기), non-null이면 사용자에게 보여줄 에러 메시지
+  Future<String?> submitReferralCode(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) {
+      await _finishReferralPrompt();
+      return null;
+    }
+
+    final repo = _rewardRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+
+    final (status, message) = await repo.applyReferralCode(trimmed);
+    switch (status) {
+      case 'ok':
+        await fetchMyReward();
+        await _finishReferralPrompt();
+        return null;
+      case 'invalid_code':
+        return '존재하지 않는 추천인 코드예요.';
+      case 'self_referral':
+        return '본인 코드는 입력할 수 없어요.';
+      case 'already_used':
+        return '이미 추천인 코드를 등록했어요.';
+      case 'referrer_daily_limit':
+        return '이 추천인 코드는 오늘 이미 사용됐어요.\n내일 다시 시도해주세요.';
+      default:
+        return message ?? '잠시 후 다시 시도해주세요.';
+    }
+  }
+
+  Future<void> skipReferralPrompt() => _finishReferralPrompt();
+
+  Future<void> _finishReferralPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = _sessionUserId(prefs);
+    await _clearReferralPromptPending(prefs, userId);
+    if (_pendingSignupCompleteMessage) {
+      _pendingSignupCompleteMessage = false;
+      _showSignupCompleteMessage = true;
+    }
+    _stage = 'app';
+    if (hasOwnerTab) _mainTabIndex = 0;
+    notifyListeners();
+  }
 
   Future<String?> markGifticonUsed(String gifticonId) async {
     final repo = _rewardRepo;

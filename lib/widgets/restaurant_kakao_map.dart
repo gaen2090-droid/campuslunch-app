@@ -64,6 +64,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   String? _mapError;
   final Set<String> _markerIds = {};
   Future<void>? _syncInFlight;
+  bool _syncQueued = false;
   int _syncGeneration = 0;
   String _lastFitKey = '';
   int _lastFitToken = -1;
@@ -277,16 +278,26 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     }
   }
 
+  /// 진행 중인 sync가 있으면 그 완료를 기다렸다가 "최신 상태로" 딱 한 번만 다시 그린다.
+  /// (여러 번 연달아 호출돼도 매번 큐잉해서 순차 실행하지 않음 — 낡은 필터 상태가
+  /// 화면에 오래 남는 현상 방지)
   Future<void> _syncMarkers() {
     final prev = _syncInFlight;
     if (prev != null) {
-      return prev.then((_) => _syncMarkers());
+      _syncQueued = true;
+      return prev;
     }
-    final task = _syncMarkersImpl();
+    final task = _runSyncLoop();
     _syncInFlight = task;
-    return task.whenComplete(() {
-      if (identical(_syncInFlight, task)) _syncInFlight = null;
-    });
+    return task;
+  }
+
+  Future<void> _runSyncLoop() async {
+    do {
+      _syncQueued = false;
+      await _syncMarkersImpl();
+    } while (_syncQueued);
+    _syncInFlight = null;
   }
 
   Future<void> _syncMarkersImpl() async {
@@ -299,8 +310,15 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
     try {
       final toRemove = _markerIds.toList(growable: false);
-      for (final id in toRemove) {
-        await removeMarkerQuietly(controller, id: id);
+      if (toRemove.isNotEmpty) {
+        try {
+          await controller.removeMarkers(ids: toRemove);
+        } catch (e) {
+          debugPrint('[RestaurantKakaoMap] removeMarkers batch failed: $e');
+          for (final id in toRemove) {
+            await removeMarkerQuietly(controller, id: id);
+          }
+        }
       }
       if (gen != _syncGeneration) return;
       _markerIds.clear();

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// 카카오맵 기본 POI 핀과 비슷한 실루엣 (둥근 머리 + 짧은 꼬리 + 중앙 하이라이트)
 class MapPinPainter extends CustomPainter {
-  static const aspectRatio = 44 / 36;
+  static const aspectRatio = 66 / 72;
 
   final Color fillColor;
   final double borderWidth;
