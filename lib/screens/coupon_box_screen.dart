@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
+import '../services/supabase_service.dart';
 import '../widgets/load_error_view.dart';
 import 'gifticon_detail_screen.dart';
 
@@ -26,11 +27,6 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
       if (!mounted) return;
       await provider.markCouponBoxSeen();
     });
-  }
-
-  bool _isExpired(Gifticon g) {
-    if (g.expiresAt == null) return false;
-    return g.expiresAt!.isBefore(DateTime.now());
   }
 
   void _openDetail(Gifticon g) {
@@ -61,10 +57,8 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final gifticons = provider.visibleMyGifticons;
-    final usable = gifticons
-        .where((g) => g.status == 'assigned' && !_isExpired(g))
-        .toList();
+    final gifticons =
+        provider.visibleMyGifticons.where((g) => g.status == 'assigned').toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F0),
@@ -77,7 +71,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
         ),
         titleSpacing: 0,
         title: const Text(
-          '쿠폰함',
+          '내 쿠폰함',
           style: TextStyle(
             fontFamily: 'OkDanDan',
             fontSize: 20,
@@ -138,60 +132,46 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                   ),
                 ],
               )
-            : ListView(
+            : GridView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
-                  20,
+                  16,
                   12,
-                  20,
+                  16,
                   MediaQuery.of(context).padding.bottom + 32,
                 ),
-                children: [
-                  if (_editMode)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        '삭제할 쿠폰을 선택하세요.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ),
-                  if (usable.isNotEmpty) ...[
-                    ...usable.map(
-                      (g) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _GifticonCard(
-                          gifticon: g,
-                          expired: false,
-                          editMode: _editMode,
-                          removing: _removingIds.contains(g.id),
-                          onView: () => _openDetail(g),
-                          onRemove: () => _removeGifticon(g),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.78,
+                ),
+                itemCount: gifticons.length,
+                itemBuilder: (context, i) {
+                  final g = gifticons[i];
+                  return _GifticonTile(
+                    gifticon: g,
+                    editMode: _editMode,
+                    removing: _removingIds.contains(g.id),
+                    onView: () => _openDetail(g),
+                    onRemove: () => _removeGifticon(g),
+                  );
+                },
               ),
       ),
     );
   }
 }
 
-class _GifticonCard extends StatelessWidget {
+class _GifticonTile extends StatefulWidget {
   final Gifticon gifticon;
-  final bool expired;
   final bool editMode;
   final bool removing;
   final VoidCallback onView;
   final VoidCallback onRemove;
 
-  const _GifticonCard({
+  const _GifticonTile({
     required this.gifticon,
-    required this.expired,
     required this.editMode,
     required this.removing,
     required this.onView,
@@ -199,14 +179,42 @@ class _GifticonCard extends StatelessWidget {
   });
 
   @override
+  State<_GifticonTile> createState() => _GifticonTileState();
+}
+
+class _GifticonTileState extends State<_GifticonTile> {
+  String? _thumbUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveThumb();
+  }
+
+  Future<void> _resolveThumb() async {
+    final raw = widget.gifticon.imageUrl;
+    if (raw.isEmpty) return;
+    if (!raw.startsWith('http') && SupabaseService.isReady) {
+      try {
+        final url = await SupabaseService.client.storage
+            .from('gifticons')
+            .createSignedUrl(raw, 3600);
+        if (mounted) setState(() => _thumbUrl = url);
+        return;
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _thumbUrl = raw);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: expired ? 0.5 : 1.0,
+    final g = widget.gifticon;
+    return GestureDetector(
+      onTap: widget.editMode ? widget.onRemove : widget.onView,
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
@@ -216,91 +224,80 @@ class _GifticonCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (editMode) ...[
-              GestureDetector(
-                onTap: removing ? null : onRemove,
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: removing
-                      ? const Padding(
-                          padding: EdgeInsets.all(6),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFEF4444),
-                          ),
-                        )
-                      : const Icon(Icons.remove, size: 18, color: Color(0xFFEF4444)),
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Center(child: Text('🎁', style: TextStyle(fontSize: 24))),
-            ),
-            const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(
-                    gifticon.productName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
-                    ),
+                  Container(
+                    color: const Color(0xFFFFFBEB),
+                    child: _thumbUrl != null && _thumbUrl!.isNotEmpty
+                        ? Image.network(
+                            _thumbUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
+                          )
+                        : const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
                   ),
-                  const SizedBox(height: 4),
-                  if (gifticon.expiresLabel.isNotEmpty)
-                    Text(
-                      expired
-                          ? '유효기간 만료 (${gifticon.expiresLabel})'
-                          : '유효기간 ${gifticon.expiresLabel}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: expired
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF9CA3AF),
+                  if (widget.editMode)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: widget.removing
+                            ? const Padding(
+                                padding: EdgeInsets.all(5),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFEF4444),
+                                ),
+                              )
+                            : const Icon(Icons.remove, size: 16, color: Color(0xFFEF4444)),
                       ),
                     ),
                 ],
               ),
             ),
-            if (!editMode) ...[
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: expired ? null : onView,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F8F0),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFBFE0B0)),
-                  ),
-                  child: const Text(
-                    '쿠폰 보기',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF5E8C4A),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    g.brand,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF9CA3AF),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    g.productName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),

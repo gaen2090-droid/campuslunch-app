@@ -112,7 +112,7 @@ class _PushNotificationSettingsScreenState
               const Divider(height: 1, color: Color(0xFFE5E7EB)),
               _ToggleRow(
                 title: '커뮤니티 댓글 알림',
-                desc: '내 글·구독한 글에 댓글이 달리면 앱이 꺼져 있어도 알려드려요.',
+                desc: '글 상단의 알림 버튼을 켜두면, 댓글이 달렸을 때 알려드려요.',
                 enabled: _communityPush,
                 onToggle: () async {
                   final next = !_communityPush;

@@ -93,7 +93,6 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final g = widget.gifticon;
-    final expired = g.expiresAt != null && g.expiresAt!.isBefore(DateTime.now());
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F0),
@@ -159,19 +158,6 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                 height: 1.3,
               ),
             ),
-            if (g.expiresLabel.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                expired
-                    ? '유효기간 만료 (${g.expiresLabel})'
-                    : '유효기간 ${g.expiresLabel}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: expired ? const Color(0xFFEF4444) : const Color(0xFF6B7280),
-                ),
-              ),
-            ],
             const SizedBox(height: 24),
             ClipRRect(
               borderRadius: BorderRadius.circular(20),

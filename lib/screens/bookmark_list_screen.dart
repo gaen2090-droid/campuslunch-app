@@ -182,9 +182,9 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                     '즐겨찾기한 매장',
                     style: TextStyle(
                       fontFamily: 'OkDanDan',
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -0.8,
+                      letterSpacing: -0.5,
                       color: Color(0xFF5E8C4A),
                     ),
                   ),
