@@ -173,14 +173,14 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                   child: const Icon(Icons.arrow_back_ios_new,
                       size: 18, color: Color(0xFF111827)),
                 ),
-                const SizedBox(width: 19),
+                const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
                     '즐겨찾기한 매장',
                     style: TextStyle(
-                      fontFamily: 'OkDanDan',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Pretendard',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.5,
                       color: Color(0xFF111827),
                     ),

@@ -230,14 +230,18 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: Text(
           r.name,
           style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
+            letterSpacing: -0.5,
           ),
         ),
+        centerTitle: false,
       ),
       body: Column(
         children: [

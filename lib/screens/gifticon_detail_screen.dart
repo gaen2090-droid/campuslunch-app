@@ -103,12 +103,14 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
           onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
         title: const Text(
           '쿠폰 보기',
           style: TextStyle(
+            fontFamily: 'Pretendard',
             fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF5E8C4A),
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),
         ),

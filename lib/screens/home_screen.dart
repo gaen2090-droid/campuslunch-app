@@ -388,11 +388,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       fit: StackFit.expand,
       children: [
         Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
         // ── 헤더 ──
         Container(
           color: Colors.white,
-          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 12, 16, 12),
+          padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -473,24 +474,27 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
               if (!_searchActive) ...[
                 const SizedBox(height: 12),
-                // 식당/카페 세부 탭 (검색바 좌우 여백을 16으로 낮춘 만큼 4px 보정)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    children: [
-                      _mainTabButton('식당', 0),
-                      _mainTabButton('카페', 1),
-                    ],
-                  ),
+                // 식당/카페 세부 탭 (헤더 Container가 이미 좌우 20 패딩이므로 추가 보정 없음)
+                Row(
+                  children: [
+                    _mainTabButton('식당', 0),
+                    _mainTabButton('카페', 1),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                // 필터 칩
-                SingleChildScrollView(
-                  key: HomeScreen.filterRowKey,
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  child: Row(
-                    children: [
+              ],
+            ],
+          ),
+        ),
+
+        if (!_searchActive)
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 12),
+            child: SingleChildScrollView(
+              key: HomeScreen.filterRowKey,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
                       HomeFilterIconButton(
                         active: _sortBy != '최신순' ||
                             (!_isAll(_regions) && _regions.isNotEmpty) ||
@@ -622,13 +626,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           isActive: !_isAll(_cuisines),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
 
         // ── 콘텐츠 ──
         Expanded(
@@ -661,7 +662,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       return const Center(
         child: Text('최근 검색 내역이 없어요.',
             style: TextStyle(
-                fontFamily: 'OkDanDan',
+                fontFamily: 'Pretendard',
                 fontSize: 14, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w700)),
       );
     }
@@ -760,7 +761,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 80),
                       child: Text('검색 결과가 없어요.',
                           style: TextStyle(
-                              fontFamily: 'OkDanDan',
+                              fontFamily: 'Pretendard',
                               fontSize: 14,
                               color: Color(0xFF9CA3AF),
                               fontWeight: FontWeight.w700)),
@@ -858,7 +859,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                     const SizedBox(width: 8),
                     Text(title,
                         style: const TextStyle(
-                            fontFamily: 'OkDanDan',
+                            fontFamily: 'Pretendard',
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF111827))),

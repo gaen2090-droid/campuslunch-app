@@ -325,16 +325,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
                 const Expanded(
                   child: Text(
                     '커뮤니티',
                     style: TextStyle(
-                      fontFamily: 'OkDanDan',
-                      fontSize: 31,
-                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Pretendard',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                       color: Color(0xFF5E8C4A),
                       letterSpacing: -0.8,
                     ),
@@ -345,14 +345,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     context,
                     MaterialPageRoute(builder: (_) => const CommunitySearchScreen()),
                   ),
-                  icon: const Icon(Icons.search, color: Color(0xFF5E8C4A)),
+                  icon: const Icon(Icons.search, color: Color(0xFF5E8C4A), size: 24),
                 ),
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
                       onPressed: _openNotifications,
-                      icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A)),
+                      icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A), size: 24),
                     ),
                     if (_hasUnreadNotification)
                       Positioned(
@@ -370,7 +370,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ],
                 ),
                 PopupMenuButton<MyActivityMode>(
-                  icon: const Icon(Icons.menu, color: Color(0xFF5E8C4A)),
+                  icon: const Icon(Icons.menu, color: Color(0xFF5E8C4A), size: 24),
                   offset: const Offset(0, 44),
                   onSelected: (mode) => Navigator.push(
                     context,
@@ -396,20 +396,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
           const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _segmentControl(),
           ),
           if (_segment == 1) ...[
             const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _collectionFilterBar(),
             ),
           ],
           if (_segment == 0 && _notice != null) ...[
             const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _noticeBox(_notice!),
             ),
           ],
@@ -429,7 +429,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return SizedBox(
       height: 40,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           children: [
             const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF4C9C2A)),
@@ -893,7 +893,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           }
           final post = _posts[postIndex];
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: CommunityPostCard(
               post: post,
               onTap: () => _openDetail(post),

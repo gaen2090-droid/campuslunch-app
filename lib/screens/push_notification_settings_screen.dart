@@ -63,9 +63,9 @@ class _PushNotificationSettingsScreenState
         title: const Text(
           '푸시 알림 설정',
           style: TextStyle(
-            fontFamily: 'OkDanDan',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),

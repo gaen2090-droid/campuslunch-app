@@ -347,7 +347,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
           titleSpacing: 0,
           title: const Text(
             '게시글',
-            style: TextStyle(fontFamily: 'OkDanDan', fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF111827), letterSpacing: -0.5),
+            style: TextStyle(fontFamily: 'Pretendard', fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827), letterSpacing: -0.5),
           ),
           centerTitle: false,
           actions: [

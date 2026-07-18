@@ -96,7 +96,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         title: const Text(
           '피드백 보내기',
           style: TextStyle(
-            fontFamily: 'OkDanDan',
+            fontFamily: 'Pretendard',
             fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Color(0xFF111827),

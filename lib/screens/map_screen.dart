@@ -30,6 +30,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   bool _isRefreshing = false;
   int _cameraFitToken = 0;
   RestaurantKakaoMapState? _mapState;
+  bool _showSearchOverlay = false;
   static const _allLabel = '전체';
   String _reportFilter = _allLabel; // '전체' | '제보있음' | '제보없음'
   Set<String> _regions = {_allLabel};
@@ -210,57 +211,57 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
         Positioned(
           top: 0, left: 0, right: 0,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, safeTop + 12, 16, 0),
+            padding: EdgeInsets.fromLTRB(0, safeTop + 12, 0, 0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 검색바 (pill) — 탭하면 검색 전용 화면으로 이동
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await Navigator.push<Restaurant>(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MapSearchScreen()),
-                    );
-                    if (picked == null || !mounted) return;
-                    setState(() => _selected = picked);
-                  },
-                  child: Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
-                        const SizedBox(width: 8),
-                        Transform.translate(
-                          offset: const Offset(0, -1),
-                          child: const Text(
-                            '매장명, 위치, 음식종류 검색',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF9CA3AF),
-                              height: 1.0,
+                // 검색바 (pill) — 탭하면 검색 오버레이 표시 (별도 라우트 push 아님:
+                // push하면 뒤로 돌아올 때 didPopNext가 걸려 네이티브 지도 뷰가
+                // 파괴·재생성되면서 검은 화면/버벅임이 생긴다)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _showSearchOverlay = true),
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                          const SizedBox(width: 8),
+                          Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: const Text(
+                              '매장명, 위치, 음식종류 검색',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF9CA3AF),
+                                height: 1.0,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
 
                 if (true) ...[
                   const SizedBox(height: 12),
-                  // 필터 칩 행
+                  // 필터 칩 행 — 좌우 여백(20) 밖으로도 스크롤되도록 전체 폭으로
+                  // 넓히고, 시작/끝 위치만 padding으로 맞춘다.
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
                         _MapFilterChip(
@@ -330,13 +331,16 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
 
                   // 범례
                   const SizedBox(height: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _StampCriteriaBadge(onTap: _openStampCriteriaSheet),
-                      const SizedBox(height: 8),
-                      const _CrowdLegend(),
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _StampCriteriaBadge(onTap: _openStampCriteriaSheet),
+                        const SizedBox(height: 8),
+                        const _CrowdLegend(),
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -480,6 +484,20 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
               onDismiss: () => setState(() => _selected = null),
               onDirections: () => _launchDirections(_selected!),
               safeBottom: safeBottom,
+            ),
+          ),
+
+        // ── 검색 오버레이 ──
+        if (_showSearchOverlay)
+          Positioned.fill(
+            child: MapSearchScreen(
+              onClose: () => setState(() => _showSearchOverlay = false),
+              onSelectRestaurant: (r) {
+                setState(() {
+                  _showSearchOverlay = false;
+                  _selected = r;
+                });
+              },
             ),
           ),
       ],

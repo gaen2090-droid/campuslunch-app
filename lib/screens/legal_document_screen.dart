@@ -56,9 +56,9 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         title: Text(
           widget.title,
           style: const TextStyle(
-            fontFamily: 'OkDanDan',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),

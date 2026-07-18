@@ -128,9 +128,9 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
         title: Text(
           _isEditing ? '컬렉션 수정' : '컬렉션 만들기',
           style: const TextStyle(
-            fontFamily: 'OkDanDan',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),

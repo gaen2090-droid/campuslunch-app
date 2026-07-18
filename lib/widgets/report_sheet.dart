@@ -92,7 +92,7 @@ class ReportSheet extends StatelessWidget {
                               Text(
                                 o.label,
                                 style: TextStyle(
-                                  fontFamily: 'OkDanDan',
+                                  fontFamily: 'Pretendard',
                                   fontSize: 19,
                                   fontWeight: FontWeight.w900,
                                   color: o.textColor,

@@ -81,30 +81,22 @@ class _MyScreenState extends State<MyScreen> {
                       child: Text(
                         '마이페이지',
                         style: TextStyle(
-                          fontFamily: 'OkDanDan',
-                          fontSize: 31,
-                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Pretendard',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
                           color: Color(0xFF5E8C4A),
                           letterSpacing: -0.8,
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.push(
+                    IconButton(
+                      onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (_) => const SettingsScreen()),
                       ),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.settings_outlined,
-                            size: 20, color: Color(0xFF5E8C4A)),
-                      ),
+                      icon: const Icon(Icons.settings_outlined,
+                          size: 24, color: Color(0xFF5E8C4A)),
                     ),
                   ],
                 ),
@@ -116,45 +108,45 @@ class _MyScreenState extends State<MyScreen> {
                 child: Column(
                   children: [
                     // ── 프로필 ──
-                    Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: const BoxDecoration(
-                              color: Color(0xFFF3F4F6), shape: BoxShape.circle),
-                          child: const Center(
-                              child: Icon(Icons.person,
-                                  size: 22, color: Color(0xFF9CA3AF))),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            provider.nickname.isEmpty
-                                ? '앙대 학생'
-                                : provider.nickname,
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _openEdit(provider.nickname),
-                          child: Container(
-                            width: 32,
-                            height: 32,
+                    GestureDetector(
+                      onTap: () => _openEdit(provider.nickname),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFF3F4F6),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.edit_outlined,
-                                size: 14, color: Color(0xFF6B7280)),
+                                color: Color(0xFFF3F4F6), shape: BoxShape.circle),
+                            child: const Center(
+                                child: Icon(Icons.person,
+                                    size: 22, color: Color(0xFF9CA3AF))),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              provider.nickname.isEmpty
+                                  ? '앙대 학생'
+                                  : provider.nickname,
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF111827)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Text('닉네임 수정',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF6B7280))),
+                          const SizedBox(width: 5),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 9, color: Color(0xFF6B7280)),
+                          const SizedBox(width: 8),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 16),
@@ -636,22 +628,22 @@ class _RewardCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 19,
-                    height: 19,
+                    width: 16,
+                    height: 16,
                     decoration: const BoxDecoration(
                       color: Color(0xFF5E8C4A),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.star_rounded,
-                        size: 15, color: Colors.white),
+                        size: 12, color: Colors.white),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
                       '오늘의 스탬프',
                       style: TextStyle(
-                        fontFamily: 'OkDanDan',
-                        fontSize: 19,
+                        fontFamily: 'Pretendard',
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF111827),
                       ),
@@ -673,9 +665,6 @@ class _RewardCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right,
-                      size: 16, color: Color(0xFF111827)),
                 ],
               ),
               if (loadFailed) ...[

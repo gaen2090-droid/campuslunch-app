@@ -284,7 +284,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           Text(
                             '혼잡도 제보하기',
                             style: TextStyle(
-                              fontFamily: 'OkDanDan',
+                              fontFamily: 'Pretendard',
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF111827),
@@ -315,7 +315,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           Text(
                             '길찾기',
                             style: TextStyle(
-                              fontFamily: 'OkDanDan',
+                              fontFamily: 'Pretendard',
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF5E8C4A),

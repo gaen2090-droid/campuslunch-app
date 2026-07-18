@@ -286,7 +286,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          child: const Icon(Icons.arrow_back_ios_new,
                               size: 18, color: Color(0xFF111827)),
                         ),
                         const SizedBox(width: 12),
@@ -300,9 +300,10 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             const SizedBox(width: 8),
                             Text(_title,
                                 style: TextStyle(
-                                    fontFamily: 'OkDanDan',
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.5,
                                     color: _titleColor)),
                           ],
                         ),

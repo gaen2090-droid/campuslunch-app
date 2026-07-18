@@ -7,10 +7,21 @@ import '../utils/recent_history_store.dart';
 import '../widgets/recent_history_row.dart';
 import '../widgets/restaurant_card.dart';
 
-/// 지도 화면 검색 — 별도 페이지. 타이핑만으로도 결과가 즉시 뜨지만, 최근 목록에는
+/// 지도 화면 검색 — 지도 위 오버레이로 표시된다(별도 라우트 push 금지).
+/// 검색 화면 진입/이탈 시 라우트 전환(didPopNext)이 발생하면 네이티브 카카오맵
+/// virtual display가 파괴·재생성되며 검은 화면/리사이즈/버벅임이 생기므로, 지도
+/// 화면을 마운트한 채로 그 위에 이 위젯을 겹쳐 보여주는 방식으로 바꿨다.
+/// 타이핑만으로도 결과가 즉시 뜨지만, 최근 목록에는
 /// "검색 제출(아이콘/엔터)"과 "매장 열람"만 시간순으로 함께 기록된다.
 class MapSearchScreen extends StatefulWidget {
-  const MapSearchScreen({super.key});
+  final VoidCallback onClose;
+  final ValueChanged<Restaurant> onSelectRestaurant;
+
+  const MapSearchScreen({
+    super.key,
+    required this.onClose,
+    required this.onSelectRestaurant,
+  });
 
   @override
   State<MapSearchScreen> createState() => _MapSearchScreenState();
@@ -56,7 +67,7 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
     final updated = await _historyStore.addRestaurant(r.id, r.name, _history);
     if (!mounted) return;
     setState(() => _history = updated);
-    Navigator.pop(context, r);
+    widget.onSelectRestaurant(r);
   }
 
   Future<void> _removeHistoryEntry(RecentHistoryEntry entry) async {
@@ -85,14 +96,20 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
     final results = _search(all, _searchCtrl.text);
     final byId = {for (final r in all) r.id: r};
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _searchBar(),
-            Expanded(child: _body(results, byId)),
-          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onClose();
+      },
+      child: Container(
+        color: Colors.white,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _searchBar(),
+              Expanded(child: _body(results, byId)),
+            ],
+          ),
         ),
       ),
     );
@@ -149,7 +166,7 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
           ),
           const SizedBox(width: 12),
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: widget.onClose,
             child: const Text('취소',
                 style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF6B7280))),

@@ -73,9 +73,9 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
         title: const Text(
           '내 쿠폰함',
           style: TextStyle(
-            fontFamily: 'OkDanDan',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),
@@ -121,7 +121,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
                         Text(
                           '아직 받은 쿠폰이 없어요.',
                           style: TextStyle(
-                            fontFamily: 'OkDanDan',
+                            fontFamily: 'Pretendard',
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF9CA3AF),
