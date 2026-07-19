@@ -74,7 +74,10 @@ class _MyScreenState extends State<MyScreen> {
             children: [
               // ── 페이지 타이틀 ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                // IconButton의 접근성 최소 탭 영역(48x48)은 그대로 두고, 그
+                // 내장 여백만큼 우측 마진을 줄여 시각적으로 화면 끝(커뮤니티
+                // 헤더 아이콘과 동일 위치)에 가깝게 붙인다.
+                padding: const EdgeInsets.fromLTRB(20, 0, 14, 20),
                 child: Row(
                   children: [
                     const Expanded(
@@ -109,8 +112,11 @@ class _MyScreenState extends State<MyScreen> {
                   children: [
                     // ── 프로필 ──
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => _openEdit(provider.nickname),
-                      child: Row(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
@@ -146,10 +152,11 @@ class _MyScreenState extends State<MyScreen> {
                               size: 9, color: Color(0xFF6B7280)),
                           const SizedBox(width: 8),
                         ],
+                        ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // ── 오늘의 스탬프 (초록 키컬러 카드) ──
                     _RewardCard(
@@ -158,7 +165,7 @@ class _MyScreenState extends State<MyScreen> {
                       onRetry: () => provider.fetchMyReward(),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // ── 즐겨찾기 / 스탬프북 / 내 쿠폰함 ──
                     Padding(

@@ -142,10 +142,12 @@ abstract final class MapCameraFit {
     );
 
     if (target.length == 1) {
+      // 매장 하나 포커스 시 기본 확대 정도 — 기존 17은 다소 축소되어 보인다는
+      // 피드백으로 tight 프로필의 maxZoom(19)까지 확대하도록 올림.
       await _moveCenterAndZoom(
         controller,
         target.first,
-        math.min(17, zoomMax).clamp(minZoom, zoomMax),
+        math.min(19, zoomMax).clamp(minZoom, zoomMax),
         animate: animate,
       );
       return;

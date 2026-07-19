@@ -156,6 +156,13 @@ class _MainScreenState extends State<MainScreen> {
       children: [
         Scaffold(
           backgroundColor: Colors.white,
+          // 지도 탭 안 검색창 키보드가 뜨고 닫힐 때, 이 바깥쪽 Scaffold가
+          // body 크기를 먼저 줄여버려서(중첩 Scaffold라 지도 화면 안쪽에 걸어둔
+          // resizeToAvoidBottomInset:false는 이미 늦음) 그 안의 지도
+          // PlatformView까지 리사이즈되는 버그가 있었다. 지도 탭일 때만 이
+          // 바깥 Scaffold의 키보드 회피를 꺼서 body(지도) 크기를 고정한다 —
+          // 다른 탭(홈 검색창 등)은 기존처럼 키보드 회피 유지.
+          resizeToAvoidBottomInset: index != mapIndex,
           body: Stack(
             fit: StackFit.expand,
             children: [

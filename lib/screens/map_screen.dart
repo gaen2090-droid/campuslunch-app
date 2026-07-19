@@ -23,7 +23,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> with RouteAware {
-  int _mapEpoch = 0;
   ModalRoute<void>? _route;
   Restaurant? _selected;
   bool _isLocated = false;
@@ -67,19 +66,17 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     super.dispose();
   }
 
-  void _remountMap() {
-    if (!mounted) return;
-    setState(() => _mapEpoch++);
-  }
-
   @override
   void didPopNext() {
-    // remount하지 않고 기존 지도를 살려 마커만 다시 그리는 방식으로 바꿨다가,
-    // 검색 화면에서 돌아올 때 네이티브 virtual display가 반복적으로 리사이즈되며
-    // 지도가 세로로 늘어났다 복구되는 새 증상이 생겼다(로그로 확인:
-    // onRenderViewResized 높이가 1499↔2201 사이를 계속 오르내림). 원인을 아직
-    // 못 잡아 검증된 이전 방식(무조건 remount)으로 되돌린다.
-    _remountMap();
+    // 검색은 이제 별도 라우트가 아니라 지도 위 오버레이라 didPopNext를 타지
+    // 않는다 — 여기서 remount하던 대상은 실제로는 필터 바텀시트(음식종류 등)나
+    // 상세화면에서 돌아올 때다. 매번 지도를 통째로 remount하면, 리마운트가
+    // 끝나기 전(_mapLayerReady == false)에 다른 필터를 연달아 조작할 경우
+    // didUpdateWidget의 카메라 재조정이 씹혀 "정문/후문 선택 후 음식종류
+    // 선택하면 반영 안 됨" 버그가 생긴다. remount 없이 마커만 다시 그린다
+    // (당시 remount로 되돌렸던 리사이즈 저더는 MainScreen/MapScreen의
+    // resizeToAvoidBottomInset 수정으로 별도 해결됨).
+    _mapState?.refreshAfterReturn();
   }
 
   void _openDetail(Restaurant r) {
@@ -186,12 +183,21 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
 
-    return Stack(
+    // 검색 오버레이의 TextField가 포커스를 얻거나 잃을 때(오버레이 열림/취소,
+    // 매장 선택으로 오버레이가 닫힘) 키보드가 나타났다 사라지면서 이 화면의
+    // body 크기가 바뀌면, 그 위에 Positioned.fill로 깔린 네이티브 카카오맵
+    // PlatformView(virtual display)까지 리사이즈되어 지도가 늘었다 줄었다
+    // 하는 버벅임이 생긴다(로그로 확인: displayId=254 handleResized
+    // 2201→2021). 지도 탭 전용 Scaffold로 body 크기를 키보드와 무관하게
+    // 고정해 막는다 — MainScreen의 공유 Scaffold를 바꾸면 다른 탭(홈 검색창
+    // 등)의 키보드 회피까지 깨지므로 여기서만 적용한다.
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: Stack(
       children: [
         // ── 지도 (풀스크린) ──
         Positioned.fill(
           child: RestaurantKakaoMap(
-            key: ValueKey('kakao_map_$_mapEpoch'),
             restaurants: filtered,
             selected: _selected,
             onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
@@ -259,8 +265,13 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                   const SizedBox(height: 12),
                   // 필터 칩 행 — 좌우 여백(20) 밖으로도 스크롤되도록 전체 폭으로
                   // 넓히고, 시작/끝 위치만 padding으로 맞춘다.
+                  // clipBehavior: none — 기본값(hardEdge)은 스크롤 뷰포트 위아래를
+                  // 딱 잘라내는데, 그 경계가 각 칩의 둥근 그림자(blurRadius 18)를
+                  // 수평으로 잘라 사각형 띠처럼 보이게 만든다. 검색바(스크롤뷰 밖)는
+                  // 이 클리핑이 없어 정상적으로 둥글게 퍼져 보였던 것과 대조됨.
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
@@ -291,8 +302,43 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               : Icons.bookmark_border_rounded,
                           onTap: () => setState(() => _bookmarkOnly = !_bookmarkOnly),
                         ),
+                        if (!_isAllFilter(_cuisines) ||
+                            !_isAllFilter(_regions) ||
+                            _bookmarkOnly) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _cuisines = {_allLabel};
+                                _regions = {_allLabel};
+                                _bookmarkOnly = false;
+                              });
+                              _bumpCameraFit();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.refresh_rounded, size: 12, color: Color(0xFF374151)),
+                                  SizedBox(width: 4),
+                                  Text('초기화',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF374151))),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 8),
-                        ...['정문', '후문'].map((area) => Padding(
+                        ...['정문', '중문', '후문'].map((area) => Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: _MapFilterChip(
                             label: area,
@@ -501,6 +547,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             ),
           ),
       ],
+      ),
     );
   }
 }
@@ -535,6 +582,8 @@ class _StampCriteriaBadge extends StatelessWidget {
             const Text('스탬프 지급 기준',
                 style: TextStyle(
                     fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF374151))),
+            const SizedBox(width: 2),
+            const Icon(Icons.chevron_right, size: 12, color: Color(0xFF9CA3AF)),
           ],
         ),
       ),

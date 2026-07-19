@@ -104,11 +104,18 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
       child: Container(
         color: Colors.white,
         child: SafeArea(
-          child: Column(
-            children: [
-              _searchBar(),
-              Expanded(child: _body(results, byId)),
-            ],
+          // 지도 탭 Scaffold가 resizeToAvoidBottomInset: false라 body 크기가
+          // 키보드와 무관하게 고정된다(지도 PlatformView 리사이즈 방지 목적)
+          // — 이 오버레이는 그 안에 얹히므로 키보드에 가려지는 만큼을 직접
+          // 패딩으로 보정해야 한다.
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Column(
+              children: [
+                _searchBar(),
+                Expanded(child: _body(results, byId)),
+              ],
+            ),
           ),
         ),
       ),

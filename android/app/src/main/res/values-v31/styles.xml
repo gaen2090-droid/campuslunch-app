@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+(갤럭시 등): 시스템 스플래시에 ic_launcher 스쿼클이 뜨지 않게 투명 아이콘.
-         실제 화면은 windowBackground(launch_background) 풀스크린 이미지. -->
+    <!-- Android 12+(갤럭시 등) 시스템 스플래시는 OS가 강제로 먼저 그리는 화면이라
+         완전히 생략할 수 없다. 정사각형(각진) launcher PNG를 그대로 쓰면 각지게
+         떠서 실제 화면(launch_background)과 이질감이 크므로, adaptive icon
+         (@mipmap/ic_launcher, mipmap-anydpi-v26 정의)을 지정해 시스템이 자동으로
+         둥근 마스크를 씌우게 한다 — 실제 홈 화면 아이콘과 동일한 모양. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_empty</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
     </style>
 </resources>

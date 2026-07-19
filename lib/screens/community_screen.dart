@@ -325,7 +325,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            // 아이콘 버튼들의 접근성 최소 탭 영역(48x48)은 그대로 두고, 그
+            // 내장 여백만큼 우측 마진을 줄여 시각적으로 화면 끝에 더 가깝게
+            // 붙인다(좌측은 기존 20 유지, 마이페이지 톱니바퀴와 동일 값).
+            padding: const EdgeInsets.fromLTRB(20, 0, 14, 0),
             child: Row(
               children: [
                 const Expanded(
@@ -426,29 +429,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
       PageController(viewportFraction: 0.7, initialPage: 0);
 
   Widget _pinnedPostsRow() {
+    // 홈 필터칩 행과 동일하게 — 좌측 여백만 안쪽 padding으로 주고, 스와이프
+    // 시 배너가 우측 여백과 무관하게 화면 끝까지 침범하도록 아이콘+PageView
+    // 전체를 화면 폭 그대로 두고 좌측에만 패딩을 준다.
     return SizedBox(
       height: 40,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          children: [
-            const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF4C9C2A)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: ClipRect(
-                child: PageView.builder(
-                  controller: _pinnedPageController,
-                  padEnds: false,
-                  itemCount: _pinnedPosts.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: EdgeInsets.only(right: i == _pinnedPosts.length - 1 ? 0 : 8),
-                    child: _pinnedPostBanner(_pinnedPosts[i]),
+      child: Row(
+        children: [
+          const SizedBox(width: 20),
+          const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF4C9C2A)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ClipRect(
+              child: PageView.builder(
+                controller: _pinnedPageController,
+                padEnds: false,
+                itemCount: _pinnedPosts.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: EdgeInsets.only(
+                    right: i == _pinnedPosts.length - 1 ? 20 : 8,
                   ),
+                  child: _pinnedPostBanner(_pinnedPosts[i]),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

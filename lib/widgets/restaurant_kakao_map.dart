@@ -628,18 +628,41 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     } catch (_) {}
   }
 
+  /// 선택한 매장 카드(하단 260px)가 떠도 가려지지 않고 이미 보이는 위치에
+  /// 마커가 있으면 true. 이미 충분히 확대해서 보고 있는데 매장을 탭했을 때도
+  /// 매번 tight 프로필(고정 줌 17)로 재조정되며 화면이 줄어드는 것처럼
+  /// 보이는 현상을 막기 위해, 이동 전에 먼저 확인한다.
+  Future<bool> _isRestaurantVisibleAboveCard(Restaurant r) async {
+    final controller = _controller;
+    if (controller == null) return false;
+    final point = await controller.toScreenPoint(
+      position: LatLng(latitude: r.latitude, longitude: r.longitude),
+    );
+    if (point == null || !mounted) return false;
+
+    final mq = MediaQuery.sizeOf(context);
+    final topSafe = MediaQuery.paddingOf(context).top + 150;
+    const bottomSafe = 260.0;
+    const margin = 24.0; // 마커/라벨 크기 여유
+    return point.dx >= margin &&
+        point.dx <= mq.width - margin &&
+        point.dy >= topSafe + margin &&
+        point.dy <= mq.height - bottomSafe - margin;
+  }
+
   Future<void> _focusRestaurant(Restaurant r) async {
     final controller = _controller;
     if (!r.hasMapLocation || controller == null) return;
-    // 카카오맵 SDK가 확대 애니메이션(zoom 단계 이동)을 렌더링하는 과정에서
-    // 버벅거림이 발생해 즉시 이동으로 변경 — 앱 코드로 SDK의 애니메이션 자체를
-    // 매끄럽게 만들 수는 없어서, 애니메이션 없이 바로 목표 위치로 이동한다.
+    if (await _isRestaurantVisibleAboveCard(r)) return;
+    // 애니메이션 없이 즉시 이동시키면 카메라가 순간이동하듯 뚝뚝 끊겨 보여서,
+    // autoElevation을 끈 짧은 애니메이션(MapCameraFit._animation, 350ms)으로
+    // 부드럽게 이동하도록 되돌린다.
     _beginCameraAnimation();
     await MapCameraFit.moveToFitLatLngs(
       controller,
       [LatLng(latitude: r.latitude, longitude: r.longitude)],
       profile: CameraFitProfile.tight,
-      animate: false,
+      animate: true,
       viewportSize: _mapViewportSize(),
       viewportPadding: CameraFitOptions.forProfile(CameraFitProfile.tight).viewportPadding,
     );

@@ -488,7 +488,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
         if (!_searchActive)
           Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 12),
+            padding: const EdgeInsets.only(bottom: 12),
             child: SingleChildScrollView(
               key: HomeScreen.filterRowKey,
               scrollDirection: Axis.horizontal,
@@ -841,9 +841,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       required VoidCallback onMore,
       Widget? trailing,
       String? subText,
+      double topPadding = 20,
     }) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        padding: EdgeInsets.fromLTRB(20, topPadding, 20, 10),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -947,6 +948,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '바로 입장 가능해요',
                   dotColor: const Color(0xFF4C9C2A),
                   onMore: () => goTo(RestaurantListMode.available),
+                  // 필터줄 바로 아래 첫 섹션이라 다른 섹션(top 20 유지)보다
+                  // 위쪽 간격만 절반 수준으로 축소 — 필터줄/리스트 자체 패딩과
+                  // 합쳐져 과하게 넓어 보인다는 피드백 반영.
+                  topPadding: 10,
                   subText: availableStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
