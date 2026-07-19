@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+(갤럭시 등): 시스템 스플래시에 ic_launcher 스쿼클이 뜨지 않게 투명 아이콘.
-         실제 화면은 windowBackground(launch_background) 풀스크린 이미지. -->
+    <!-- Android 12+(갤럭시 등) 시스템 스플래시는 OS가 강제로 먼저 그리는 화면이라
+         완전히 생략할 수 없다. splash_brand_logo(브랜드 워드마크 전용 에셋,
+         ic_launcher 앱 아이콘과는 무관)를 배경색과 함께 지정해 시스템 스플래시
+         자체가 우리 브랜드 스플래시처럼 자연스럽게 이어지도록 한다. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_empty</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/splash_brand_logo</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
 </resources>

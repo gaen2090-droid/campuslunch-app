@@ -841,7 +841,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       required VoidCallback onMore,
       Widget? trailing,
       String? subText,
-      double topPadding = 20,
+      // 더보기 버튼(margin top:4, 버튼 바깥쪽) 다음에 오는 섹션 헤더 기준값.
+      // 필터줄→첫 섹션 간격(26px: 필터줄 bottom12+리스트 top4+본값10)과
+      // 더보기→다음 섹션 간격(더보기 margin과 무관, 본값 그대로)이
+      // 동일해지도록 26으로 맞춤.
+      double topPadding = 26,
     }) {
       return Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding, 20, 10),
