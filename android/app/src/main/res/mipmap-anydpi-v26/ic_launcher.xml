@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <!-- foreground가 @mipmap/ic_launcher(이 XML 파일 자신의 이름)를 참조하면
-         순환 참조가 되어 시스템이 해석하지 못하고 기본 안드로이드 로봇
-         아이콘으로 fallback한다 — 실제 홈 화면/스플래시에 파란 그리드+로봇이
-         뜬 원인. 별도 이름(ic_launcher_foreground)의 PNG로 분리해 참조한다. -->
-    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-</adaptive-icon>
