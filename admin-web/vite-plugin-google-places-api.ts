@@ -11,7 +11,9 @@ export function googlePlacesApiPlugin(apiKey: string): Plugin {
 
         const parsed = new URL(rawUrl, "http://localhost");
         const endpoint = parsed.pathname.replace("/api/google/", "");
-        if (endpoint !== "textsearch" && endpoint !== "details") return next();
+        if (endpoint !== "textsearch" && endpoint !== "details" && endpoint !== "photo") {
+          return next();
+        }
 
         if (!apiKey) {
           res.statusCode = 500;
@@ -25,6 +27,20 @@ export function googlePlacesApiPlugin(apiKey: string): Plugin {
         params.set("key", apiKey);
 
         try {
+          if (endpoint === "photo") {
+            const upstream = await fetch(
+              `https://maps.googleapis.com/maps/api/place/photo?${params}`,
+            );
+            const arrayBuffer = await upstream.arrayBuffer();
+            res.statusCode = upstream.status;
+            res.setHeader(
+              "Content-Type",
+              upstream.headers.get("content-type") ?? "image/jpeg",
+            );
+            res.end(Buffer.from(arrayBuffer));
+            return;
+          }
+
           const upstream = await fetch(
             `https://maps.googleapis.com/maps/api/place/${endpoint}/json?${params}`,
           );

@@ -256,12 +256,11 @@ async function fetchGoogleEnrichment(placeId: string): Promise<{
   };
   if (data.status !== "OK" || !data.result) return null;
 
-  const key = googleKey();
   const bh = parseGoogleHours(data.result.opening_hours);
   let photoUrl: string | null = null;
   const ref = data.result.photos?.[0]?.photo_reference;
-  if (ref && key) {
-    photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${encodeURIComponent(ref)}&key=${encodeURIComponent(key)}`;
+  if (ref) {
+    photoUrl = `/api/google/photo?maxwidth=800&photo_reference=${encodeURIComponent(ref)}`;
   }
   return { photoUrl, ...bh };
 }

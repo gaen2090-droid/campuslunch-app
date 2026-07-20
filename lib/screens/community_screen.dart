@@ -15,7 +15,6 @@ import '../widgets/community_post_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/community_rules_summary.dart';
 import 'collection_detail_screen.dart';
-import 'create_collection_screen.dart';
 import 'community_my_activity_screen.dart';
 import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
@@ -76,7 +75,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     try {
       final pinned = await _repo.fetchPinnedPosts();
       if (!mounted) return;
-      setState(() => _pinnedPosts = pinned);
+      setState(() {
+        _pinnedPosts = pinned;
+        // 1개뿐이면 스와이프가 무의미하므로 폭 전체(1.0)를 채운다.
+        _pinnedPageController.dispose();
+        _pinnedPageController = PageController(
+          viewportFraction: pinned.length <= 1 ? 1.0 : 0.7,
+          initialPage: 0,
+        );
+      });
     } catch (_) {
       // 핀 게시글 로드 실패는 무시 (핵심 기능 아님)
     }
@@ -297,17 +304,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
+      // 맛집 컬렉션은 관리자 웹에서만 등록.
       floatingActionButton: _segment == 0
           ? FloatingActionButton(
               onPressed: () => _openEditor(),
               backgroundColor: const Color(0xFF5E8C4A),
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
-          : FloatingActionButton(
-              onPressed: _openCreateCollection,
-              backgroundColor: const Color(0xFF5E8C4A),
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
+          : null,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -425,7 +429,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  final PageController _pinnedPageController =
+  PageController _pinnedPageController =
       PageController(viewportFraction: 0.7, initialPage: 0);
 
   Widget _pinnedPostsRow() {
@@ -433,7 +437,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     // 시 배너가 우측 여백과 무관하게 화면 끝까지 침범하도록 아이콘+PageView
     // 전체를 화면 폭 그대로 두고 좌측에만 패딩을 준다.
     return SizedBox(
-      height: 40,
+      height: 36,
       child: Row(
         children: [
           const SizedBox(width: 20),
@@ -719,102 +723,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
               if (mounted) _loadCollections();
             },
             onTapLike: () => _toggleCollectionLike(collection),
-            onEdit: () => _editCollection(collection, restaurants),
-            onDelete: () => _deleteCollection(collection),
             onReport: () => _reportCollection(collection),
           ),
       ],
     );
-  }
-
-  Future<void> _openCreateCollection() async {
-    int reportCount = 0;
-    try {
-      reportCount = await _repo.myCrowdReportCount();
-    } catch (_) {
-      // 조회 실패 시 서버 RPC의 검증으로 최종 방어 (아래 진입은 그대로 허용)
-    }
-    if (!mounted) return;
-    if (reportCount < 10) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('컬렉션 만들기', style: TextStyle(fontWeight: FontWeight.w900)),
-          content: Text(
-            '누적 제보 10회 이상부터 컬렉션을 만들 수 있어요.\n(현재 $reportCount회)',
-            style: const TextStyle(height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    final created = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateCollectionScreen()),
-    );
-    if (created == true) _loadCollections();
-  }
-
-  Future<void> _editCollection(
-    RestaurantCollection collection,
-    List<Restaurant> restaurants,
-  ) async {
-    final items = _collectionItems[collection.id] ?? const [];
-    final byId = {for (final r in restaurants) r.id: r};
-    final initialSelected = [
-      for (final item in items)
-        if (byId[item.restaurantId] != null) byId[item.restaurantId]!,
-    ];
-    final updated = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CreateCollectionScreen(
-          editing: collection,
-          initialSelected: initialSelected,
-        ),
-      ),
-    );
-    if (updated == true) _loadCollections();
-  }
-
-  Future<void> _deleteCollection(RestaurantCollection collection) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('컬렉션 삭제', style: TextStyle(fontWeight: FontWeight.w900)),
-        content: const Text('삭제한 컬렉션은 복구할 수 없어요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: Color(0xFF9CA3AF))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-    try {
-      await _repo.deleteCollection(collection.id);
-      if (!mounted) return;
-      _loadCollections();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('삭제에 실패했어요.')),
-      );
-    }
   }
 
   Future<void> _reportCollection(RestaurantCollection collection) async {

@@ -135,11 +135,21 @@ class _StepView extends StatelessWidget {
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     const padding = 8.0;
-    final holeRect = Rect.fromLTRB(
+    const edgeMargin = 16.0;
+    final rawHoleRect = Rect.fromLTRB(
       rect.left - padding,
       rect.top - padding,
       rect.right + padding,
       rect.bottom + padding,
+    );
+    // 대상 위젯이 화면 폭을 넘어가도(가로 스크롤 등) 강조 테두리는 항상 화면 안에 보이도록 clamp
+    final clampedLeft = rawHoleRect.left.clamp(edgeMargin, screen.width - edgeMargin);
+    final clampedRight = rawHoleRect.right.clamp(edgeMargin, screen.width - edgeMargin);
+    final holeRect = Rect.fromLTRB(
+      clampedLeft,
+      rawHoleRect.top,
+      clampedRight > clampedLeft ? clampedRight : clampedLeft + edgeMargin,
+      rawHoleRect.bottom,
     );
 
     final showBelow = holeRect.bottom + 160 < screen.height;

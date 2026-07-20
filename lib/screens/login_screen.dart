@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     '편리한 이용을 위해\n로그인이 필요해요',
                     style: TextStyle(
                       fontSize: 28,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: Color(0xFF111827),
                       height: 1.25,
                       letterSpacing: -1.2,

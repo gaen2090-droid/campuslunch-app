@@ -95,15 +95,15 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                padding: const EdgeInsets.fromLTRB(24, 36, 24, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       AppPermissions.introTitle,
                       style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
                         color: Color(0xFF111827),
                         letterSpacing: -0.8,
                         height: 1.3,
@@ -295,15 +295,6 @@ class _BottomBar extends StatelessWidget {
                     ? const Color(0xFF9ECA8B)
                     : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: canConfirm
-                    ? const [
-                        BoxShadow(
-                          color: Color(0xFFC8E6BA),
-                          blurRadius: 20,
-                          offset: Offset(0, 6),
-                        ),
-                      ]
-                    : null,
               ),
               child: Center(
                 child: loading

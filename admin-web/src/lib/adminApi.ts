@@ -480,6 +480,40 @@ export async function uploadRestaurantImage(
   return data.publicUrl;
 }
 
+/**
+ * Google Place Photo(만료되는 photo_reference 링크)를 내려받아 Storage에 영구 저장.
+ * 실패 시 null — 호출부는 image_url을 빈 값으로 두고 계속 진행해야 한다.
+ */
+export async function persistGooglePhoto(photoUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(photoUrl);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : "jpg";
+    const bytes = new Uint8Array(await res.arrayBuffer());
+
+    const bucket = "restaurant-images";
+    const path = `restaurants/${Date.now()}.${ext}`;
+
+    try {
+      await supabase.storage.createBucket(bucket, { public: true });
+    } catch {
+      /* bucket may exist */
+    }
+
+    const { error } = await supabase.storage.from(bucket).upload(path, bytes, {
+      contentType,
+      upsert: true,
+    });
+    if (error) return null;
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
 async function resolveGifticonImageUrl(raw: string | null | undefined): Promise<string> {
   if (!raw) return "";
   if (raw.startsWith("http")) return raw;

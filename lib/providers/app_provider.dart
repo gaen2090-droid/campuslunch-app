@@ -1776,8 +1776,8 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<String> _resolveStageAfterSplash(SharedPreferences prefs) async {
-    // permissions 동의 전이면 시작하기 화면으로 (onboarding → permissions_consent 순서)
-    if (!_hasPermissionsConsent(prefs)) return 'onboarding';
+    // permissions 동의 전이면 시작하기 화면으로 (onboarding 화면 생략)
+    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
     if (_isLoggedIn) {
       final userId = _sessionUserId(prefs);
       if (_needsLegalTermsConsent(
@@ -1801,7 +1801,7 @@ class AppProvider extends ChangeNotifier {
         'hasPermissionsConsent=${_hasPermissionsConsent(prefs)} '
         'hasLegalTermsConsent=${_hasLegalTermsConsent(prefs, userId)} '
         'isPendingLegalTerms=${_isPendingLegalTerms(prefs, userId)}');
-    if (!_hasPermissionsConsent(prefs)) return 'onboarding';
+    if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
     if (needsLegalTerms &&
         userId.isNotEmpty &&
         _needsLegalTermsConsent(

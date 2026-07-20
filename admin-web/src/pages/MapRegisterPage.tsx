@@ -4,6 +4,7 @@ import {
   CATEGORIES,
   findRestaurantIdByKakaoPlaceId,
   insertRestaurant,
+  persistGooglePhoto,
 } from "../lib/adminApi";
 import {
   enrichPlaceDetails,
@@ -82,6 +83,9 @@ export function MapRegisterPage({ onReload }: Props) {
         setError("등록에 실패했어요. 이미 등록된 가게이거나 권한 문제일 수 있어요.");
         return;
       }
+      const imageUrl = selected.photoUrl
+        ? (await persistGooglePhoto(selected.photoUrl)) ?? ""
+        : "";
       const code = await insertRestaurant({
         name: selected.name,
         address: selected.address,
@@ -89,7 +93,7 @@ export function MapRegisterPage({ onReload }: Props) {
         longitude: selected.longitude,
         category,
         area,
-        image_url: selected.photoUrl ?? "",
+        image_url: imageUrl,
         hours: selected.hours,
         hours_display: selected.hoursDisplay,
         hours_periods: selected.hoursPeriods,

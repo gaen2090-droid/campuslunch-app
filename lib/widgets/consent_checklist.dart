@@ -54,91 +54,76 @@ class _ConsentChecklistState extends State<ConsentChecklist> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(17),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ConsentRow(
-            label: widget.agreeAllLabel,
-            checked: _allChecked,
-            emphasized: true,
-            onChanged: _setAll,
-          ),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          ...widget.items.map((item) {
-            final summary = widget.expandedSummaries?[item.id];
-            final expanded = _expanded.contains(item.id);
-            final canView = widget.onViewDocument != null;
-            return Column(
-              children: [
-                _ConsentRow(
-                  label: item.label,
-                  subtitle: item.subtitle,
-                  checked: widget.agreed[item.id] ?? false,
-                  required: item.required,
-                  onChanged: (v) => _setOne(item.id, v),
-                  trailing: canView
-                      ? IconButton(
-                          onPressed: () => widget.onViewDocument!(item.id),
-                          icon: const Icon(
-                            Icons.chevron_right,
-                            size: 20,
-                            color: Color(0xFF9CA3AF),
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        )
-                      : summary != null
-                          ? IconButton(
-                              icon: Icon(
-                                expanded
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                size: 20,
-                                color: const Color(0xFF9CA3AF),
-                              ),
-                              onPressed: () => setState(() {
-                                if (expanded) {
-                                  _expanded.remove(item.id);
-                                } else {
-                                  _expanded.add(item.id);
-                                }
-                              }),
-                            )
-                          : null,
-                ),
-                if (summary != null && expanded && !canView)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(48, 0, 16, 12),
-                    child: Text(
-                      summary,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF6B7280),
-                        height: 1.55,
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ConsentRow(
+          label: widget.agreeAllLabel,
+          checked: _allChecked,
+          emphasized: true,
+          onChanged: _setAll,
+        ),
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: Color(0xFFE5E7EB)),
+        const SizedBox(height: 4),
+        ...widget.items.map((item) {
+          final summary = widget.expandedSummaries?[item.id];
+          final expanded = _expanded.contains(item.id);
+          final canView = widget.onViewDocument != null;
+          return Column(
+            children: [
+              _ConsentRow(
+                label: item.label,
+                subtitle: item.subtitle,
+                checked: widget.agreed[item.id] ?? false,
+                required: item.required,
+                onChanged: (v) => _setOne(item.id, v),
+                trailing: canView
+                    ? IconButton(
+                        onPressed: () => widget.onViewDocument!(item.id),
+                        icon: const Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      )
+                    : summary != null
+                        ? IconButton(
+                            icon: Icon(
+                              expanded
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 20,
+                              color: const Color(0xFF9CA3AF),
+                            ),
+                            onPressed: () => setState(() {
+                              if (expanded) {
+                                _expanded.remove(item.id);
+                              } else {
+                                _expanded.add(item.id);
+                              }
+                            }),
+                          )
+                        : null,
+              ),
+              if (summary != null && expanded && !canView)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 16, 12),
+                  child: Text(
+                    summary,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6B7280),
+                      height: 1.55,
                     ),
                   ),
-              ],
-            );
-          }),
-        ],
-        ),
-      ),
+                ),
+            ],
+          );
+        }),
+      ],
     );
   }
 }
@@ -162,37 +147,38 @@ class _ConsentRow extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final Widget? trailing;
 
+  String get _labelWithRequired {
+    if (required == null) return label;
+    return '$label (${required! ? '필수' : '선택'})';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: emphasized ? const Color(0xFFF3F8F0) : Colors.transparent,
+      color: Colors.transparent,
       child: InkWell(
         onTap: () => onChanged(!checked),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: emphasized ? 14 : 12,
+            horizontal: 0,
+            vertical: emphasized ? 12 : 10,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _CheckBox(checked: checked, emphasized: emphasized),
-              const SizedBox(width: 10),
-              if (required != null) ...[
-                _RequiredBadge(required: required!),
-                const SizedBox(width: 6),
-              ],
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      label,
+                      _labelWithRequired,
                       style: TextStyle(
-                        fontSize: emphasized ? 14 : 13,
+                        fontSize: emphasized ? 15 : 14,
                         fontWeight:
-                            emphasized ? FontWeight.w900 : FontWeight.w700,
+                            emphasized ? FontWeight.w800 : FontWeight.w500,
                         color: const Color(0xFF111827),
                       ),
                     ),
@@ -201,7 +187,7 @@ class _ConsentRow extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w400,
                           color: Color(0xFF9CA3AF),
                         ),
@@ -219,31 +205,6 @@ class _ConsentRow extends StatelessWidget {
   }
 }
 
-class _RequiredBadge extends StatelessWidget {
-  const _RequiredBadge({required this.required});
-
-  final bool required;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: required ? const Color(0xFFDAFFCA) : const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        required ? '필수' : '선택',
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: required ? const Color(0xFF4C9C2A) : const Color(0xFF9CA3AF),
-        ),
-      ),
-    );
-  }
-}
-
 class _CheckBox extends StatelessWidget {
   const _CheckBox({required this.checked, this.emphasized = false});
 
@@ -254,14 +215,14 @@ class _CheckBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      width: emphasized ? 22 : 20,
-      height: emphasized ? 22 : 20,
+      width: emphasized ? 24 : 22,
+      height: emphasized ? 24 : 22,
       decoration: BoxDecoration(
         color: checked ? const Color(0xFF9ECA8B) : Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: checked ? const Color(0xFF9ECA8B) : const Color(0xFFD1D5DB),
-          width: emphasized ? 1.5 : 1,
+          width: 1.5,
         ),
       ),
       child: checked

@@ -5,21 +5,26 @@
 import 'dart:io';
 import 'package:image/image.dart' as img;
 
+// Android 12+ 시스템 스플래시 아이콘(배경 없음, windowSplashScreenIconBackgroundColor
+// transparent)은 288dp 캔버스에 192dp 원형 마스킹으로 렌더링된다
+// (https://developer.android.com/develop/ui/views/launch/splash-screen).
+// 기준 단위를 192dp로 잡았던 이전 버전은 캔버스(288dp)보다 작아
+// 시스템이 확대(upscale)하며 화질이 흐려졌음 — 288dp 기준으로 수정.
 const sizes = {
-  'mipmap-mdpi': 48,
-  'mipmap-hdpi': 72,
-  'mipmap-xhdpi': 96,
-  'mipmap-xxhdpi': 144,
-  'mipmap-xxxhdpi': 192,
+  'mipmap-mdpi': 288,
+  'mipmap-hdpi': 432,
+  'mipmap-xhdpi': 576,
+  'mipmap-xxhdpi': 864,
+  'mipmap-xxxhdpi': 1152,
 };
 
 void main() {
   const resDir = 'android/app/src/main/res';
-  final srcBytes = File('D:/캠런/로고_최종/systemsplash_logo.png').readAsBytesSync();
+  final srcBytes = File('D:/캠런/로고_최종/splashlogo_final.png').readAsBytesSync();
   final src = img.decodePng(srcBytes)!;
 
-  // 소스(1024x1024) 안에서 실제 로고 콘텐츠의 bounding box: x[7,1017] y[283,740]
-  const cropX = 7, cropY = 283, cropW = 1010, cropH = 457;
+  // 소스(1024x1024) 안에서 실제 로고 콘텐츠의 bounding box: x[3,1018] y[360,552]
+  const cropX = 3, cropY = 360, cropW = 1016, cropH = 193;
   final cropped = img.copyCrop(src, x: cropX, y: cropY, width: cropW, height: cropH);
 
   // 사용자가 준 예시 사진 기준 로고 폭 비율 ≈ 58.6% (화면 폭 대비).
