@@ -3,7 +3,10 @@
 // ic_launcher(홈 화면 앱 아이콘)와는 완전히 무관하며, 앱 아이콘에는
 // 어떤 영향도 주지 않는다.
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:image/image.dart' as img;
+
+double _sqrt(num x) => math.sqrt(x);
 
 // Android 12+ 시스템 스플래시 아이콘(배경 없음, windowSplashScreenIconBackgroundColor
 // transparent)은 288dp 캔버스에 192dp 원형 마스킹으로 렌더링된다
@@ -20,25 +23,43 @@ const sizes = {
 
 void main() {
   const resDir = 'android/app/src/main/res';
-  // 로고만 크롭된 고해상도 소스(2000x428) — 세로 해상도 부족으로 흐릿했던
-  // 이전 splashlogo_final.png(1024x1024 전체 캔버스에서 크롭, 세로 193px) 문제 해결.
-  final srcBytes = File('D:/캠런/로고_최종/splashlogo_big.png').readAsBytesSync();
+  // "CAM / LUN" 2행 배치 워드마크, 고해상도 원본(2003x1350). 정사각형에
+  // 가까운 비율이라 원형 마스크에 유리하고, 소스 자체가 커서(1945x1339)
+  // xxxhdpi 목표 폭(~580px)까지 다운스케일해도 디테일 손실이 거의 없음.
+  // 콘텐츠 bounding box: x[25,1969] y[6,1344].
+  final srcBytes = File('D:/캠런/로고_최종/splashlogo_big_final.png').readAsBytesSync();
   final src = img.decodePng(srcBytes)!;
 
-  // 소스(2000x428) 안에서 실제 로고 콘텐츠의 bounding box: x[7,1989] y[8,383]
-  const cropX = 7, cropY = 8, cropW = 1983, cropH = 376;
+  const cropX = 25, cropY = 6, cropW = 1945, cropH = 1339;
   final cropped = img.copyCrop(src, x: cropX, y: cropY, width: cropW, height: cropH);
 
-  // 192dp 원형 마스크 안전 영역(95% 여유) 기준 최대치로 확대.
-  const targetWidthRatio = 0.622;
+  // 워드마크 가로세로비가 매우 넓적(1983:194 ≈ 10.2:1)해서 단순 폭 비율이
+  // 아니라 "192dp 원에 내접하는 직사각형" 대각선 제약으로 최대 크기를 구한다.
+  // 마스크 지름 대비 192/288(288dp 캔버스 기준), 대각선 안전 여유 92%.
+  const maskDiameterRatio = 192 / 288;
+  const safeMargin = 0.92;
+  final aspect = cropW / cropH;
+  // diag^2 = w^2 + h^2, h = w/aspect → w = diag / sqrt(1 + 1/aspect^2)
+  final diagFactor = 1 / (1 + 1 / (aspect * aspect));
+  final widthFraction = (diagFactor > 0 ? _sqrt(diagFactor) : 0) * safeMargin;
 
   for (final entry in sizes.entries) {
     final dir = entry.key;
     final canvasSize = entry.value;
+    final maskDiameter = canvasSize * maskDiameterRatio;
 
-    final targetW = (canvasSize * targetWidthRatio).round();
+    final targetW = (maskDiameter * widthFraction).round();
     final targetH = (targetW * cropH / cropW).round();
-    final resizedLogo = img.copyResize(cropped, width: targetW, height: targetH);
+    // package:image의 copyResize 기본 보간은 Interpolation.nearest —
+    // 1983px→717px처럼 큰 폭으로 축소할 때 픽셀을 단순 샘플링해 건너뛰어
+    // 곡선 획 가장자리가 계단처럼 깨지는 원인이었음. 다운스케일에 적합한
+    // average(영역 평균)로 명시 지정해 앤티앨리어싱 적용.
+    final resizedLogo = img.copyResize(
+      cropped,
+      width: targetW,
+      height: targetH,
+      interpolation: img.Interpolation.average,
+    );
 
     final canvas = img.Image(width: canvasSize, height: canvasSize, numChannels: 4);
     img.fill(canvas, color: img.ColorRgba8(0, 0, 0, 0));
