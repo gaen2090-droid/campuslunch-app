@@ -97,8 +97,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           '피드백 보내기',
           style: TextStyle(
             fontFamily: 'Pretendard',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
             letterSpacing: -0.5,
           ),

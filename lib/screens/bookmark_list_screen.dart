@@ -155,53 +155,51 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
     final locationMode = provider.locationMode;
     final bookmarks = provider.bookmarks;
     final list = _filter(provider.restaurants, bookmarks);
-    final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: const Text(
+          '즐겨찾기한 매장',
+          style: TextStyle(
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          if (list.isNotEmpty || _editMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: GestureDetector(
+                onTap: _editMode ? _exitEdit : _enterEdit,
+                child: Text(
+                  _editMode ? '완료' : '편집',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 헤더
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, safeTop + 16, 20, 12),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back_ios_new,
-                      size: 18, color: Color(0xFF111827)),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    '즐겨찾기한 매장',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                ),
-                if (list.isNotEmpty || _editMode)
-                  GestureDetector(
-                    onTap: _editMode ? _exitEdit : _enterEdit,
-                    child: Text(
-                      _editMode ? '완료' : '편집',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
+          const SizedBox(height: 8),
           // 필터 (편집 모드 아닐 때)
           if (!_editMode)
             Padding(
