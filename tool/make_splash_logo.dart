@@ -20,16 +20,17 @@ const sizes = {
 
 void main() {
   const resDir = 'android/app/src/main/res';
-  final srcBytes = File('D:/캠런/로고_최종/splashlogo_final.png').readAsBytesSync();
+  // 로고만 크롭된 고해상도 소스(2000x428) — 세로 해상도 부족으로 흐릿했던
+  // 이전 splashlogo_final.png(1024x1024 전체 캔버스에서 크롭, 세로 193px) 문제 해결.
+  final srcBytes = File('D:/캠런/로고_최종/splashlogo_big.png').readAsBytesSync();
   final src = img.decodePng(srcBytes)!;
 
-  // 소스(1024x1024) 안에서 실제 로고 콘텐츠의 bounding box: x[3,1018] y[360,552]
-  const cropX = 3, cropY = 360, cropW = 1016, cropH = 193;
+  // 소스(2000x428) 안에서 실제 로고 콘텐츠의 bounding box: x[7,1989] y[8,383]
+  const cropX = 7, cropY = 8, cropW = 1983, cropH = 376;
   final cropped = img.copyCrop(src, x: cropX, y: cropY, width: cropW, height: cropH);
 
-  // 사용자가 준 예시 사진 기준 로고 폭 비율 ≈ 58.6% (화면 폭 대비).
-  // 정사각형 캔버스에서 동일 비율로 배치.
-  const targetWidthRatio = 0.586;
+  // 192dp 원형 마스크 안전 영역(95% 여유) 기준 최대치로 확대.
+  const targetWidthRatio = 0.622;
 
   for (final entry in sizes.entries) {
     final dir = entry.key;

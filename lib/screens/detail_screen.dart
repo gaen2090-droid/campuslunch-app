@@ -117,6 +117,28 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                     ),
 
+                  // 이미지 출처 (구글 지도 사진 사용 — 우측 하단, 가독성 위해 그림자 적용)
+                  if (_hasImage)
+                    const Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Text(
+                        '출처: Google Maps',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black54,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   // 플로팅 헤더 버튼
                   Positioned(
                     top: safeTop + 16,

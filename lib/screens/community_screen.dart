@@ -324,7 +324,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 16, 0, 20),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -421,7 +421,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
           ],
           if (_segment == 0 && _pinnedPosts.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _pinnedPostsRow(),
           ],
         ],
@@ -437,7 +437,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     // 시 배너가 우측 여백과 무관하게 화면 끝까지 침범하도록 아이콘+PageView
     // 전체를 화면 폭 그대로 두고 좌측에만 패딩을 준다.
     return SizedBox(
-      height: 36,
+      height: 32,
       child: Row(
         children: [
           const SizedBox(width: 20),
@@ -723,25 +723,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
               if (mounted) _loadCollections();
             },
             onTapLike: () => _toggleCollectionLike(collection),
-            onReport: () => _reportCollection(collection),
           ),
       ],
     );
-  }
-
-  Future<void> _reportCollection(RestaurantCollection collection) async {
-    try {
-      await _repo.reportCollection(collection.id, reason: '사용자 신고');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('신고가 접수되었어요.')),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('신고 접수에 실패했어요.')),
-      );
-    }
   }
 
   Widget _buildBody() {
