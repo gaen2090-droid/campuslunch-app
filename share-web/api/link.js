@@ -1,4 +1,4 @@
-// 앱 미설치 사용자용 App Link 폴백 (스토어 리다이렉트)
+// 앱 미설치 시 App Link 폴백 (스토어 URL이 있으면 리다이렉트)
 const STORE_URL_ANDROID = process.env.STORE_URL_ANDROID || '';
 const STORE_URL_IOS = process.env.STORE_URL_IOS || '';
 

@@ -8,6 +8,8 @@
           "/",
           "/home",
           "/coupons",
+          "/invite",
+          "/invite/*",
           "/r/*",
           "/restaurant/*"
         ]

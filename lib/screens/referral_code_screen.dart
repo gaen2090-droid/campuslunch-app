@@ -16,6 +16,17 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final code =
+          await context.read<AppProvider>().consumeReferralCodeFromInviteLink();
+      if (!mounted || code == null || code.isEmpty) return;
+      _controller.text = code;
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();

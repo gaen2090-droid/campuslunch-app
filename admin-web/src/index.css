@@ -1159,25 +1159,219 @@ code {
 
 .push-form {
   display: grid;
-  gap: 20px;
+  gap: 16px;
+}
+
+.push-page {
+  max-width: 920px;
+}
+
+.push-page-head {
+  margin-bottom: 10px;
+}
+
+.push-page-head p {
+  margin: 4px 0 0;
+}
+
+.push-page-head code {
+  font-size: 0.75em;
+}
+
+.push-ops.compact {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.push-ops-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.push-ops-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.8125rem;
+  color: #4b5563;
+}
+
+.push-ops-stats strong {
+  color: #111827;
+  font-size: 0.9375rem;
+  margin-left: 4px;
+}
+
+.push-ops-stats em {
+  font-style: normal;
+  color: #9ca3af;
+  margin-left: 2px;
+  font-size: 0.75rem;
+}
+
+.push-ops-log-inline {
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+.btn.sm {
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+}
+
+.peak-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peak-schedule-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.peak-schedule-card.off {
+  opacity: 0.55;
+  background: #f9fafb;
+}
+
+.peak-schedule-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.peak-schedule-label {
+  width: 88px;
+  min-width: 72px;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.peak-title,
+.peak-body {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
+.peak-body {
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.4;
+}
+
+.time-row.compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-row.compact input {
+  width: 52px;
+  padding: 6px 8px;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+}
+
+.peak-time-hint {
+  min-width: 42px;
+}
+
+.toggle-row-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chip-toggle:has(input:checked) {
+  border-color: #9eca8b;
+  background: #f3f8f0;
+  color: #3f6b32;
+}
+
+.chip-toggle input {
+  margin: 0;
+}
+
+.field.inline-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.field.inline-days span {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.field.inline-days input {
+  width: 64px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+}
+
+.community-fields {
+  display: grid;
+  gap: 10px;
 }
 
 .push-section {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   padding: 0;
 }
 
 .push-section-head {
   display: grid;
-  gap: 4px;
-  padding-bottom: 4px;
+  gap: 2px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.push-section-head.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .push-section-head h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
 .push-section-head p {
@@ -1250,6 +1444,14 @@ code {
   gap: 12px;
   flex-wrap: wrap;
   padding-top: 4px;
+}
+
+.sticky-save {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, transparent, #fff 28%);
+  padding: 12px 0 4px;
+  margin-top: 4px;
 }
 
 .push-preview.inset {
@@ -1325,8 +1527,7 @@ code {
 .push-ops-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
 }
 
 @media (max-width: 800px) {
@@ -1337,10 +1538,9 @@ code {
   .push-section-grid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 640px) {
-  .form-row {
-    grid-template-columns: 1fr;
+  .peak-schedule-label {
+    width: 100%;
+    flex: 1 1 100%;
   }
 }

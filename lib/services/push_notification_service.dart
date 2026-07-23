@@ -12,9 +12,7 @@ import '../models/restaurant.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/gate_label.dart';
 
-enum PeakPushSlot { lunch, dinner }
-
-/// 평일 12:00·18:00 KST 피크 추천 로컬 푸시
+/// 피크 추천 로컬 푸시 (admin peak_schedules 기준)
 class PushNotificationService {
   PushNotificationService._();
 
@@ -121,6 +119,7 @@ class PushNotificationService {
     var scheduled = 0;
     final maxDays = config.scheduleDaysAhead.clamp(1, 30);
     const maxNotifications = 20;
+    final slots = config.enabledSchedules;
 
     for (var dayOffset = 0;
         dayOffset < maxDays && scheduled < maxNotifications;
@@ -128,46 +127,35 @@ class PushNotificationService {
       final day = now.add(Duration(days: dayOffset));
       if (config.weekdaysOnly && !_isWeekday(day)) continue;
 
-      if (lunchEnabled) {
-        final at = tz.TZDateTime(
-          tz.local,
-          day.year,
-          day.month,
-          day.day,
-          config.lunchHour,
-          config.lunchMinute,
-        );
-        if (at.isAfter(now)) {
-          await _scheduleSlot(
-            slot: PeakPushSlot.lunch,
-            at: at,
-            restaurant: recommended,
-            config: config,
-          );
-          scheduled++;
-        }
-      }
+      for (var i = 0; i < slots.length && scheduled < maxNotifications; i++) {
+        final slot = slots[i];
+        if (!_userWantsSlot(slot.id, lunchEnabled, dinnerEnabled)) continue;
 
-      if (dinnerEnabled) {
         final at = tz.TZDateTime(
           tz.local,
           day.year,
           day.month,
           day.day,
-          config.dinnerHour,
-          config.dinnerMinute,
+          slot.hour,
+          slot.minute,
         );
-        if (at.isAfter(now)) {
-          await _scheduleSlot(
-            slot: PeakPushSlot.dinner,
-            at: at,
-            restaurant: recommended,
-            config: config,
-          );
-          scheduled++;
-        }
+        if (!at.isAfter(now)) continue;
+
+        await _scheduleSlot(
+          schedule: slot,
+          scheduleIndex: i,
+          at: at,
+          restaurant: recommended,
+        );
+        scheduled++;
       }
     }
+  }
+
+  bool _userWantsSlot(String id, bool lunchEnabled, bool dinnerEnabled) {
+    if (id == 'lunch') return lunchEnabled;
+    if (id == 'dinner') return dinnerEnabled;
+    return lunchEnabled || dinnerEnabled;
   }
 
   Future<void> cancelAllSchedules() async {
@@ -176,30 +164,30 @@ class PushNotificationService {
   }
 
   Future<void> _scheduleSlot({
-    required PeakPushSlot slot,
+    required PeakPushSchedule schedule,
+    required int scheduleIndex,
     required tz.TZDateTime at,
     required Restaurant restaurant,
-    PushNotificationConfig config = PushNotificationConfig.defaults,
   }) async {
     final gate = gateLabelFromRestaurant(restaurant);
-    final id = _notificationId(slot, at);
+    final id = _notificationId(scheduleIndex, at);
     final payload = jsonEncode({
       'type': 'peak',
-      'slot': slot.name,
+      'slot': schedule.id,
       'restaurant_id': restaurant.id,
       'gate': gate,
     });
 
     await _plugin.zonedSchedule(
       id,
-      config.formatTitle(gate),
-      config.bodyTemplate,
+      schedule.formatTitle(),
+      schedule.formatBody(),
       at,
       NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
-          channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
+          channelDescription: '피크 시간대 추천 매장 알림',
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -216,9 +204,9 @@ class PushNotificationService {
     );
   }
 
-  int _notificationId(PeakPushSlot slot, tz.TZDateTime at) =>
-      (slot == PeakPushSlot.lunch ? 100000 : 200000) +
-      at.year * 10000 +
+  int _notificationId(int scheduleIndex, tz.TZDateTime at) =>
+      (scheduleIndex + 1) * 100000 +
+      (at.year % 100) * 10000 +
       at.month * 100 +
       at.day;
 
@@ -233,22 +221,13 @@ class PushNotificationService {
     if (config.weekdaysOnly && !_isWeekday(now)) return;
 
     final prefs = await SharedPreferences.getInstance();
-    if (lunchEnabled) {
+    for (final slot in config.enabledSchedules) {
+      if (!_userWantsSlot(slot.id, lunchEnabled, dinnerEnabled)) continue;
       await _maybeRecordDelivered(
         prefs: prefs,
-        slot: PeakPushSlot.lunch,
-        hour: config.lunchHour,
-        minute: config.lunchMinute,
-        now: now,
-        restaurantId: restaurantId,
-      );
-    }
-    if (dinnerEnabled) {
-      await _maybeRecordDelivered(
-        prefs: prefs,
-        slot: PeakPushSlot.dinner,
-        hour: config.dinnerHour,
-        minute: config.dinnerMinute,
+        slotId: slot.id,
+        hour: slot.hour,
+        minute: slot.minute,
         now: now,
         restaurantId: restaurantId,
       );
@@ -257,7 +236,7 @@ class PushNotificationService {
 
   Future<void> _maybeRecordDelivered({
     required SharedPreferences prefs,
-    required PeakPushSlot slot,
+    required String slotId,
     required int hour,
     int minute = 0,
     required tz.TZDateTime now,
@@ -274,12 +253,12 @@ class PushNotificationService {
     if (now.isBefore(fireAt)) return;
     if (now.difference(fireAt) > const Duration(hours: 3)) return;
 
-    final dayKey = '${slot.name}_${now.year}${now.month}${now.day}';
+    final dayKey = '${slotId}_${now.year}${now.month}${now.day}';
     final prefKey = 'cl_push_delivered_$dayKey';
     if (prefs.getBool(prefKey) == true) return;
 
     await _analytics.recordPushDelivered(
-      slot: slot.name,
+      slot: slotId,
       restaurantId: restaurantId,
       dayKey: dayKey,
     );
@@ -316,7 +295,7 @@ class PushNotificationService {
 
     await _plugin.zonedSchedule(
       debugId,
-      '[테스트] $gate에서 대기 없이 식사할 수 있어요',
+      '[테스트] 대기 없이 식사할 수 있어요',
       '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
       at,
       NotificationDetails(

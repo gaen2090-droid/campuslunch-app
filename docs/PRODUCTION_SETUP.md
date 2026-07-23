@@ -41,7 +41,7 @@ Supabase Dashboard → Authentication → Users 에서 관리자 생성 후
 ```
 
 앱에서는 **이 계정으로 Supabase 로그인**해야 지도 등록·매장 수정이 동작합니다.  
-`admin` / `admin123` 은 **디버그 빌드에서만** 로컬 UI 테스트용이며 DB 쓰기 권한이 없습니다.
+디버그 로컬 계정(`owner`/`user`)은 **디버그 빌드에서만** 동작하며 DB 쓰기 권한이 없습니다.
 
 ## 5. API 키 보안
 

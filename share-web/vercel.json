@@ -17,6 +17,10 @@
       "destination": "/api/link?kind=home"
     },
     {
+      "source": "/invite",
+      "destination": "/api/link?kind=invite"
+    },
+    {
       "source": "/restaurant/:id",
       "destination": "/api/restaurant?id=:id"
     }

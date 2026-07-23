@@ -61,9 +61,22 @@ class _ShareSheet extends StatelessWidget {
   Future<void> _shareToKakao(BuildContext context) async {
     Navigator.pop(context);
     try {
+      final url = Uri.parse(buildShareLink(restaurant));
+      final params = restaurant.linkNo > 0
+          ? <String, String>{'r': '${restaurant.linkNo}'}
+          : <String, String>{'path': 'home'};
+      final link = Link(
+        webUrl: url,
+        mobileWebUrl: url,
+        androidExecutionParams: params,
+        iosExecutionParams: params,
+      );
       final template = TextTemplate(
         text: buildKakaoShareText(restaurant),
-        link: Link(webUrl: Uri.parse(buildShareLink(restaurant))),
+        link: link,
+        buttons: [
+          Button(title: '앱에서 열기', link: link),
+        ],
       );
       if (await ShareClient.instance.isKakaoTalkSharingAvailable()) {
         final uri = await ShareClient.instance.shareDefault(template: template);

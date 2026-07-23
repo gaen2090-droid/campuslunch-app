@@ -8,7 +8,7 @@ import '../widgets/owner_verify_sheet.dart';
 import '../widgets/rice_ball_icon.dart';
 import 'bookmark_list_screen.dart';
 import 'coupon_box_screen.dart';
-import 'legal_policy_placeholder_screen.dart';
+import 'legal_policy_hub_screen.dart';
 import 'referral_invite_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
@@ -274,7 +274,7 @@ class _MyScreenState extends State<MyScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) =>
-                                const LegalPolicyPlaceholderScreen()),
+                                const LegalPolicyHubScreen()),
                       ),
                     ),
                   ],

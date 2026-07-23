@@ -1,4 +1,16 @@
+export interface PeakPushSchedule {
+  id: string;
+  label: string;
+  enabled: boolean;
+  hour: number;
+  minute: number;
+  titleTemplate: string;
+  bodyTemplate: string;
+}
+
 export interface PushNotificationConfig {
+  schedules: PeakPushSchedule[];
+  /** @deprecated 하위 호환 — schedules[0] 기준 */
   lunchHour: number;
   lunchMinute: number;
   dinnerHour: number;
@@ -15,16 +27,37 @@ export interface PushNotificationConfig {
   updatedAt: Date | null;
 }
 
+export const DEFAULT_PEAK_SCHEDULES: PeakPushSchedule[] = [
+  {
+    id: "lunch",
+    label: "점심",
+    enabled: true,
+    hour: 12,
+    minute: 0,
+    titleTemplate: "대기 없이 식사할 수 있어요",
+    bodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+  },
+  {
+    id: "dinner",
+    label: "저녁",
+    enabled: true,
+    hour: 18,
+    minute: 0,
+    titleTemplate: "대기 없이 식사할 수 있어요",
+    bodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+  },
+];
+
 export const DEFAULT_PUSH_CONFIG: PushNotificationConfig = {
+  schedules: DEFAULT_PEAK_SCHEDULES.map((s) => ({ ...s })),
   lunchHour: 12,
   lunchMinute: 0,
   dinnerHour: 18,
   dinnerMinute: 0,
-  titleTemplate: "{gate}에서 대기 없이 식사할 수 있어요",
-  bodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+  titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
+  bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
   weekdaysOnly: true,
   scheduleDaysAhead: 14,
-  // 피크는 로컬 예약이 기본, 서버 FCM은 옵션
   peakFcmEnabled: false,
   communityFcmEnabled: true,
   peakLocalScheduleEnabled: true,
@@ -51,6 +84,72 @@ export const EMPTY_PUSH_OPS: PushOpsSnapshot = {
   lastPeakSent: [],
 };
 
+function stripGatePlaceholder(text: string): string {
+  return text.replaceAll("{gate}", "").replaceAll(/\s{2,}/g, " ").trim();
+}
+
+function parseSchedule(
+  raw: Record<string, unknown>,
+  fallback: PeakPushSchedule,
+): PeakPushSchedule {
+  const readInt = (key: string, fb: number) => {
+    const v = raw[key];
+    if (typeof v === "number") return v;
+    const n = Number.parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? n : fb;
+  };
+  const title = String(raw.title_template ?? raw.titleTemplate ?? "").trim();
+  const body = String(raw.body_template ?? raw.bodyTemplate ?? "").trim();
+  return {
+    id: String(raw.id ?? fallback.id).trim() || fallback.id,
+    label: String(raw.label ?? fallback.label).trim() || fallback.label,
+    enabled: raw.enabled === undefined ? fallback.enabled : Boolean(raw.enabled),
+    hour: Math.min(23, Math.max(0, readInt("hour", fallback.hour))),
+    minute: Math.min(59, Math.max(0, readInt("minute", fallback.minute))),
+    titleTemplate: title
+      ? stripGatePlaceholder(title) || fallback.titleTemplate
+      : fallback.titleTemplate,
+    bodyTemplate: body
+      ? stripGatePlaceholder(body) || fallback.bodyTemplate
+      : fallback.bodyTemplate,
+  };
+}
+
+function schedulesFromLegacy(raw: Record<string, unknown>): PeakPushSchedule[] {
+  const readInt = (key: string, fallback: number) => {
+    const v = raw[key];
+    if (typeof v === "number") return v;
+    const n = Number.parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const titleRaw = String(raw.title_template ?? "").trim();
+  const bodyRaw = String(raw.body_template ?? "").trim();
+  const title =
+    stripGatePlaceholder(titleRaw) || DEFAULT_PEAK_SCHEDULES[0].titleTemplate;
+  const body =
+    stripGatePlaceholder(bodyRaw) || DEFAULT_PEAK_SCHEDULES[0].bodyTemplate;
+  return [
+    {
+      id: "lunch",
+      label: "점심",
+      enabled: true,
+      hour: readInt("lunch_hour", 12),
+      minute: readInt("lunch_minute", 0),
+      titleTemplate: title,
+      bodyTemplate: body,
+    },
+    {
+      id: "dinner",
+      label: "저녁",
+      enabled: true,
+      hour: readInt("dinner_hour", 18),
+      minute: readInt("dinner_minute", 0),
+      titleTemplate: title,
+      bodyTemplate: body,
+    },
+  ];
+}
+
 export function parsePushConfig(raw: Record<string, unknown>): PushNotificationConfig {
   const readInt = (key: string, fallback: number) => {
     const v = raw[key];
@@ -67,13 +166,33 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
     return s || fallback;
   };
 
+  let schedules: PeakPushSchedule[];
+  if (Array.isArray(raw.peak_schedules) && raw.peak_schedules.length > 0) {
+    schedules = raw.peak_schedules.map((row, i) =>
+      parseSchedule(
+        (row ?? {}) as Record<string, unknown>,
+        DEFAULT_PEAK_SCHEDULES[Math.min(i, DEFAULT_PEAK_SCHEDULES.length - 1)],
+      ),
+    );
+  } else {
+    schedules = schedulesFromLegacy(raw);
+  }
+
+  const first = schedules[0] ?? DEFAULT_PEAK_SCHEDULES[0];
+  const lunch = schedules.find((s) => s.id === "lunch") ?? first;
+  const dinner =
+    schedules.find((s) => s.id === "dinner") ??
+    schedules[1] ??
+    DEFAULT_PEAK_SCHEDULES[1];
+
   return {
-    lunchHour: readInt("lunch_hour", DEFAULT_PUSH_CONFIG.lunchHour),
-    lunchMinute: readInt("lunch_minute", DEFAULT_PUSH_CONFIG.lunchMinute),
-    dinnerHour: readInt("dinner_hour", DEFAULT_PUSH_CONFIG.dinnerHour),
-    dinnerMinute: readInt("dinner_minute", DEFAULT_PUSH_CONFIG.dinnerMinute),
-    titleTemplate: readText("title_template", DEFAULT_PUSH_CONFIG.titleTemplate),
-    bodyTemplate: readText("body_template", DEFAULT_PUSH_CONFIG.bodyTemplate),
+    schedules,
+    lunchHour: lunch.hour,
+    lunchMinute: lunch.minute,
+    dinnerHour: dinner.hour,
+    dinnerMinute: dinner.minute,
+    titleTemplate: first.titleTemplate,
+    bodyTemplate: first.bodyTemplate,
     weekdaysOnly:
       raw.weekdays_only === undefined
         ? DEFAULT_PUSH_CONFIG.weekdaysOnly
@@ -106,6 +225,30 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
   };
 }
 
+export function schedulesToJson(schedules: PeakPushSchedule[]) {
+  return schedules.map((s) => ({
+    id: s.id,
+    label: s.label,
+    enabled: s.enabled,
+    hour: s.hour,
+    minute: s.minute,
+    title_template: s.titleTemplate,
+    body_template: s.bodyTemplate,
+  }));
+}
+
+export function newPeakSchedule(index: number): PeakPushSchedule {
+  return {
+    id: `slot_${Date.now()}_${index}`,
+    label: `알림 ${index + 1}`,
+    enabled: true,
+    hour: 12,
+    minute: 0,
+    titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
+    bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
+  };
+}
+
 export function parsePushOpsSnapshot(raw: Record<string, unknown>): PushOpsSnapshot {
   const last = Array.isArray(raw.last_peak_sent) ? raw.last_peak_sent : [];
   return {
@@ -127,10 +270,6 @@ export function parsePushOpsSnapshot(raw: Record<string, unknown>): PushOpsSnaps
 
 export function formatTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-export function previewTitle(template: string, gate = "정문"): string {
-  return template.replaceAll("{gate}", gate);
 }
 
 const PREVIEW_NICK = "김캠퍼스";
