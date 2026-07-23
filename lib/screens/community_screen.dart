@@ -20,7 +20,6 @@ import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
 import 'community_search_screen.dart';
 import 'detail_screen.dart';
-import 'home_screen.dart' show HomeFilterChip, SimpleFilterSheet;
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -43,8 +42,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   bool _collectionsLoading = true;
   String? _collectionsError;
   bool _savedCollectionsOnly = false;
-  String _collectionSortBy = '인기순';
-  static const _collectionSortOpts = ['인기순', '최신순'];
+  // 인기순 고정 — 좋아요 누를 때마다 순서가 바뀌면 산만하므로, 새로고침
+  // 또는 탭 전환 시점에만 이 순서를 다시 계산해 스냅샷으로 고정한다.
+  List<String> _collectionOrder = [];
 
   CommunityNotice? _notice;
   List<CommunityPost> _pinnedPosts = [];
@@ -193,6 +193,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ..clear()
           ..addAll(itemsByCollection);
         _collectionsLoading = false;
+        _recomputeCollectionOrder();
       });
     } catch (e) {
       if (!mounted) return;
@@ -201,6 +202,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
         _collectionsLoading = false;
       });
     }
+  }
+
+  void _recomputeCollectionOrder() {
+    final sorted = List<RestaurantCollection>.from(_collections);
+    sorted.sort((a, b) {
+      final likeDiff = b.likeCount.compareTo(a.likeCount);
+      if (likeDiff != 0) return likeDiff;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    _collectionOrder = sorted.map((c) => c.id).toList();
   }
 
   Future<void> _toggleCollectionLike(RestaurantCollection collection) async {
@@ -293,6 +304,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
     await _checkUnreadNotifications();
   }
 
+  bool _wasCommunityTab = false;
+
   @override
   Widget build(BuildContext context) {
     final pendingId =
@@ -302,6 +315,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
         if (mounted) _openPendingPushPost();
       });
     }
+    // 다른 하단 탭(홈/지도/마이)에 갔다가 커뮤니티 탭으로 돌아올 때마다
+    // 인기순 정렬을 다시 계산 — 좋아요를 누를 때마다 즉시 재정렬되면
+    // 산만하므로, 탭을 벗어났다 돌아온 시점에만 갱신한다.
+    final isCommunityTab = context.select<AppProvider, bool>(
+      (p) => p.mainTabIndex == p.communityTabIndex,
+    );
+    if (isCommunityTab && !_wasCommunityTab) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(_recomputeCollectionOrder);
+      });
+    }
+    _wasCommunityTab = isCommunityTab;
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       // 맛집 컬렉션은 관리자 웹에서만 등록.
@@ -529,28 +554,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        HomeFilterChip(
-          label: _collectionSortBy,
-          active: _collectionSortBy != '인기순',
-          open: false,
-          onTap: () => showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) => SimpleFilterSheet(
-              title: '정렬',
-              items: _collectionSortOpts,
-              selected: {_collectionSortBy},
-              multiSelect: false,
-              isActive: _collectionSortBy != '인기순',
-              locationMode: true,
-              onApply: (v) => setState(() => _collectionSortBy = v.first),
-              onReset: () => setState(() => _collectionSortBy = '인기순'),
-              onRequestLocation: () {},
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -605,7 +608,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final active = _segment == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _segment = index),
+        onTap: () => setState(() {
+          _segment = index;
+          if (index == 1) _recomputeCollectionOrder();
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -672,11 +678,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     var visibleCollections = _savedCollectionsOnly
         ? _collections.where((c) => c.likedByMe).toList()
         : List<RestaurantCollection>.from(_collections);
+    final orderIndex = {for (var i = 0; i < _collectionOrder.length; i++) _collectionOrder[i]: i};
     visibleCollections.sort((a, b) {
-      if (_collectionSortBy == '최신순') return b.createdAt.compareTo(a.createdAt);
-      final likeDiff = b.likeCount.compareTo(a.likeCount);
-      if (likeDiff != 0) return likeDiff;
-      return b.createdAt.compareTo(a.createdAt);
+      final ai = orderIndex[a.id] ?? _collectionOrder.length;
+      final bi = orderIndex[b.id] ?? _collectionOrder.length;
+      return ai.compareTo(bi);
     });
 
     if (visibleCollections.isEmpty) {
