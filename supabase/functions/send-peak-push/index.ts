@@ -7,6 +7,64 @@ import {
   sendFcmMessage,
 } from "../_shared/fcm.ts";
 
+type PeakSchedule = {
+  id: string;
+  label?: string;
+  enabled?: boolean;
+  hour: number;
+  minute: number;
+  title_template: string;
+  body_template: string;
+};
+
+function stripGate(text: string): string {
+  return text.replaceAll("{gate}", "").replace(/\s{2,}/g, " ").trim();
+}
+
+function parseSchedules(cfg: Record<string, unknown>): PeakSchedule[] {
+  const raw = cfg.peak_schedules;
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.map((row, i) => {
+      const r = row as Record<string, unknown>;
+      return {
+        id: String(r.id ?? `slot_${i}`),
+        label: String(r.label ?? ""),
+        enabled: r.enabled !== false,
+        hour: Number(r.hour ?? 12),
+        minute: Number(r.minute ?? 0),
+        title_template: stripGate(String(r.title_template ?? "")),
+        body_template: stripGate(String(r.body_template ?? "")),
+      };
+    }).filter((s) => s.title_template && s.body_template);
+  }
+  // legacy lunch/dinner
+  const title = stripGate(String(cfg.title_template ?? "대기 없이 식사할 수 있어요"));
+  const body = stripGate(
+    String(
+      cfg.body_template ??
+        "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+    ),
+  );
+  return [
+    {
+      id: "lunch",
+      enabled: true,
+      hour: Number(cfg.lunch_hour ?? 12),
+      minute: Number(cfg.lunch_minute ?? 0),
+      title_template: title,
+      body_template: body,
+    },
+    {
+      id: "dinner",
+      enabled: true,
+      hour: Number(cfg.dinner_hour ?? 18),
+      minute: Number(cfg.dinner_minute ?? 0),
+      title_template: title,
+      body_template: body,
+    },
+  ];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204 });
@@ -28,16 +86,7 @@ Deno.serve(async (req) => {
       "get_push_notification_config",
     );
     if (cfgErr) throw cfgErr;
-    const cfg = cfgRow as {
-      lunch_hour: number;
-      lunch_minute: number;
-      dinner_hour: number;
-      dinner_minute: number;
-      title_template: string;
-      body_template: string;
-      weekdays_only: boolean;
-      peak_fcm_enabled?: boolean;
-    };
+    const cfg = cfgRow as Record<string, unknown>;
 
     if (cfg.peak_fcm_enabled === false) {
       return jsonResponse({ skipped: true, reason: "peak_fcm_disabled" });
@@ -49,13 +98,13 @@ Deno.serve(async (req) => {
     if (req.method === "POST") {
       try {
         const body = await req.json() as { force?: string };
-        if (body.force === "lunch" || body.force === "dinner") {
-          force = body.force;
-        }
+        if (body.force) force = body.force;
       } catch {
         /* empty body ok for cron */
       }
     }
+    if (force === "peak_lunch") force = "lunch";
+    if (force === "peak_dinner") force = "dinner";
 
     const now = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
@@ -65,16 +114,23 @@ Deno.serve(async (req) => {
       return jsonResponse({ skipped: true, reason: "weekend" });
     }
 
+    const schedules = parseSchedules(cfg).filter((s) => s.enabled !== false);
     const hour = now.getHours();
     const minute = now.getMinutes();
-    let slot: "lunch" | "dinner" | null = null;
-    if (hour === cfg.lunch_hour && minute === cfg.lunch_minute) slot = "lunch";
-    if (hour === cfg.dinner_hour && minute === cfg.dinner_minute) {
-      slot = "dinner";
-    }
-    if (force === "lunch" || force === "dinner") slot = force;
 
-    if (!slot) {
+    let matched: PeakSchedule | null = null;
+    if (force) {
+      matched = schedules.find((s) => s.id === force) ?? null;
+      // allow force even if disabled (admin test)
+      if (!matched) {
+        matched = parseSchedules(cfg).find((s) => s.id === force) ?? null;
+      }
+    } else {
+      matched = schedules.find((s) => s.hour === hour && s.minute === minute) ??
+        null;
+    }
+
+    if (!matched) {
       return jsonResponse({
         skipped: true,
         reason: "not_slot_time",
@@ -82,6 +138,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    const slot = matched.id;
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
     const d = String(now.getDate()).padStart(2, "0");
@@ -107,9 +164,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ skipped: true, reason: "no_available_restaurant" });
     }
 
-    const gate = String(rest.gate ?? "캠퍼스");
-    const title = String(cfg.title_template).replaceAll("{gate}", gate);
-    const body = String(cfg.body_template);
+    const gate = String((rest as { gate?: string }).gate ?? "캠퍼스");
+    const title = matched.title_template;
+    const body = matched.body_template;
 
     const { data: tokens, error: tokErr } = await supabase.rpc(
       "list_peak_push_tokens",
@@ -135,7 +192,7 @@ Deno.serve(async (req) => {
         data: {
           type: "peak",
           slot,
-          restaurant_id: String(rest.restaurant_id),
+          restaurant_id: String((rest as { restaurant_id: string }).restaurant_id),
           gate,
         },
       });
@@ -164,7 +221,7 @@ Deno.serve(async (req) => {
       slot,
       sent,
       failed,
-      restaurant_id: rest.restaurant_id,
+      restaurant_id: (rest as { restaurant_id: string }).restaurant_id,
       gate,
       forced: Boolean(force),
     });

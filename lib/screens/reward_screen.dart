@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/reward_limits.dart';
 import '../providers/app_provider.dart';
 import '../widgets/rice_ball_icon.dart';
 
@@ -190,7 +191,7 @@ class _StampSummaryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '오늘 $today / 999',
+                  '오늘 $today / ${RewardLimits.dailyStampCap}',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
                 ),
               ),
@@ -233,7 +234,7 @@ class _StampSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            '하루 최대 999개의 스탬프를 획득할 수 있어요. (테스트)',
+            '하루 최대 ${RewardLimits.dailyStampCap}개의 스탬프를 획득할 수 있어요.',
             style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
           ),
         ],

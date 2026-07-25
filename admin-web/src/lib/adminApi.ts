@@ -11,6 +11,7 @@ import {
   DEFAULT_PUSH_CONFIG,
   parsePushConfig,
   parsePushOpsSnapshot,
+  schedulesToJson,
   EMPTY_PUSH_OPS,
   type PushNotificationConfig,
   type PushOpsSnapshot,
@@ -684,12 +685,7 @@ export async function updatePushNotificationConfig(
   const { data, error } = await supabase.rpc(
     "admin_update_push_notification_config",
     {
-      p_lunch_hour: config.lunchHour,
-      p_lunch_minute: config.lunchMinute,
-      p_dinner_hour: config.dinnerHour,
-      p_dinner_minute: config.dinnerMinute,
-      p_title_template: config.titleTemplate,
-      p_body_template: config.bodyTemplate,
+      p_peak_schedules: schedulesToJson(config.schedules),
       p_weekdays_only: config.weekdaysOnly,
       p_schedule_days_ahead: config.scheduleDaysAhead,
       p_peak_fcm_enabled: config.peakFcmEnabled,
@@ -715,7 +711,7 @@ export async function fetchPushOpsSnapshot(): Promise<PushOpsSnapshot> {
 
 /** Edge Function 호출 (로그인한 어드민 JWT). 배포·시크릿 필요. */
 export async function invokePushEdge(
-  action: "peak_lunch" | "peak_dinner" | "config_refresh",
+  action: string,
 ): Promise<unknown> {
   if (action === "config_refresh") {
     const { data, error } = await supabase.functions.invoke(
@@ -725,7 +721,8 @@ export async function invokePushEdge(
     if (error) throw error;
     return data;
   }
-  const force = action === "peak_lunch" ? "lunch" : "dinner";
+  const force =
+    action === "peak_lunch" ? "lunch" : action === "peak_dinner" ? "dinner" : action;
   const { data, error } = await supabase.functions.invoke("send-peak-push", {
     body: { force },
   });

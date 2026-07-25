@@ -281,6 +281,7 @@ class AppProvider extends ChangeNotifier {
   static const _kAuthProvider = 'cl_auth_provider';
   static const _kHiddenGifticons = 'cl_hidden_gifticon_ids';
   static const _kReferralPromptPendingUsers = 'cl_referral_prompt_pending_users';
+  static const _kReferralCodeFromInviteLink = 'cl_referral_code_from_invite';
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -331,7 +332,7 @@ class AppProvider extends ChangeNotifier {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  /// App Link 수신. 미로그인·앱 메인 전(stage≠app)이면 무시 → 초기 화면 플로우 유지.
+  /// App Link 수신. invite ref는 미로그인·가입 중에도 저장. 나머지는 stage=app 일 때만 라우팅.
   void handleIncomingUri(Uri uri) {
     if (_bootstrapping) {
       _queuedIncomingUri = uri;
@@ -339,13 +340,47 @@ class AppProvider extends ChangeNotifier {
     }
     final parsed = AppLinks.parse(uri);
     if (parsed == null) return;
+
+    final ref = parsed.referralCode;
+    if (ref != null && ref.isNotEmpty) {
+      unawaited(_saveReferralCodeFromInviteLink(ref));
+    }
+
     if (!_isLoggedIn || _stage != 'app') {
-      debugPrint('[AppLink] ignored (loggedIn=$_isLoggedIn stage=$_stage): $uri');
+      debugPrint(
+        '[AppLink] nav deferred (loggedIn=$_isLoggedIn stage=$_stage ref=$ref): $uri',
+      );
       return;
     }
     _pendingAppLink = parsed.target;
     _pendingRestaurantLinkNo = parsed.linkNo;
     notifyListeners();
+  }
+
+  Future<void> _saveReferralCodeFromInviteLink(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kReferralCodeFromInviteLink, trimmed);
+      debugPrint('[AppLink] saved invite referral code');
+    } catch (e, st) {
+      debugPrint('[AppLink] save invite referral failed: $e\n$st');
+    }
+  }
+
+  /// 추천인 코드 입력 화면에서 1회 소비
+  Future<String?> consumeReferralCodeFromInviteLink() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final code = prefs.getString(_kReferralCodeFromInviteLink)?.trim();
+      if (code == null || code.isEmpty) return null;
+      await prefs.remove(_kReferralCodeFromInviteLink);
+      return code;
+    } catch (e, st) {
+      debugPrint('[AppLink] consume invite referral failed: $e\n$st');
+      return null;
+    }
   }
 
   /// MainScreen에서 소비 후 null 반환
@@ -546,18 +581,22 @@ class AppProvider extends ChangeNotifier {
       } on AuthException catch (e) {
         final msg = e.message.toLowerCase();
         if (msg.contains('email not confirmed') || msg.contains('not confirmed')) {
-          // 이메일 미인증 → 로컬 폴백 없이 바로 false 반환 (메시지 별도 처리)
           debugPrint('[Supabase] email not confirmed: ${e.message}');
           return false;
         }
         debugPrint('[Supabase] login AuthException: ${e.message}');
-        // 그 외 Supabase 에러 → 로컬 폴백으로 진행
+        if (!kDebugMode) return false;
       } catch (e) {
         debugPrint('[Supabase] login failed: $e');
+        if (!kDebugMode) return false;
       }
+    } else if (!kDebugMode) {
+      // 릴리즈는 Supabase 필수
+      return false;
     }
 
-    // 로컬 폴백
+    // 로컬 폴백 — 디버그 빌드에서만
+    if (!kDebugMode) return false;
     final prefs = await SharedPreferences.getInstance();
     final accounts = _loadAccounts(prefs);
     final account = accounts
@@ -619,6 +658,10 @@ class AppProvider extends ChangeNotifier {
         debugPrint('[Supabase] register failed: $e');
         return '회원가입에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
+    }
+
+    if (!kDebugMode) {
+      return '서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.';
     }
 
     final prefs = await SharedPreferences.getInstance();

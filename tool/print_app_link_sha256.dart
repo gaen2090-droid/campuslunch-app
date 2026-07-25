@@ -15,7 +15,7 @@ Future<void> main() async {
   print('디버그 (flutter run):');
   print('  keytool -list -v -keystore ~/.android/debug.keystore \\');
   print('    -alias androiddebugkey -storepass android -keypass android');
-  print('  → SHA256 줄의 콜론 제거 후 assetlinks.json 에 붙여넣기\n');
+  print('  → SHA256 줄 → assetlinks.json 에 붙여넣기\n');
   print('파일: share-web/public/.well-known/assetlinks.json');
   print('호스트: campuslunch.shop → share-web Vercel 프로젝트에 연결');
   exit(0);

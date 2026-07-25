@@ -43,9 +43,26 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="${APP_LINK_HOST}" android:path="/"/>
                 <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/home"/>
+                <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/invite"/>
                 <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/coupons"/>
                 <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/r"/>
                 <data android:scheme="https" android:host="${APP_LINK_HOST}" android:pathPrefix="/restaurant"/>
+            </intent-filter>
+            <!-- 카카오톡 공유 버튼 → 앱 바로 실행 (kakao{NATIVE_KEY}://kakaolink?…) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:host="kakaolink"
+                    android:scheme="kakao${KAKAO_NATIVE_APP_KEY}"/>
+            </intent-filter>
+            <!-- 이메일 인증 복귀 campuslunch://login-callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="campuslunch" android:host="login-callback"/>
             </intent-filter>
         </activity>
         <meta-data

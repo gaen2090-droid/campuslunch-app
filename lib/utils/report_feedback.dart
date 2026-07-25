@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/reward_limits.dart';
 import '../providers/app_provider.dart';
 
 Future<void> submitCrowdReportFeedback(
@@ -42,10 +43,10 @@ Future<void> submitCrowdReportFeedback(
     message = '소중한 제보 감사드려요!';
   } else if (stamp.granted) {
     message =
-        '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/999)';
-  } else if (stamp.totalStamps >= 20) {
+        '혼잡도 제보가 등록되었어요.\n스탬프가 적립되었어요! (오늘 ${stamp.todayStamps}/${RewardLimits.dailyStampCap})';
+  } else if (stamp.totalStamps >= RewardLimits.stampsPerGifticon) {
     message =
-        '혼잡도 제보가 등록되었어요.\n스탬프 20개를 모았어요. 기프티콘 재고 확인 중이에요.';
+        '혼잡도 제보가 등록되었어요.\n스탬프 ${RewardLimits.stampsPerGifticon}개를 모았어요. 기프티콘 재고 확인 중이에요.';
   } else {
     message = '혼잡도 제보가 등록되었어요.\n오늘 스탬프를 모두 받았어요. 내일 다시 받을 수 있어요.';
   }

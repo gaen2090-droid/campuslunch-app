@@ -373,7 +373,7 @@ def build(pdf: GuidePDF) -> None:
         "  -> RewardScreen (MY 탭), redeem_gifticon RPC\n"
         "  lib/data/reward_repository.dart, lib/models/reward.dart\n"
         "\n"
-        "주의: rewards.sql 현재 하루 스탬프 상한 999 (테스트용, 출시 전 3으로 복구)"
+        "스탬프 일일 한도: grant_stamp 하루 최대 3 (KST). 출시 SQL: rewards_daily_cap_to_3.sql"
     )
 
     pdf.section("5.7 APK 테스트·소셜 로그인", 2)
@@ -674,7 +674,7 @@ def build(pdf: GuidePDF) -> None:
         "영업시간: 앱은 description JSON hours_periods, SQL은 hours 문자열만 — "
         "영업안함 판정 불일치 가능",
         "rewards.sql 실행 시 submit_crowd_report 함수 재정의 — 순서 주의",
-        "스탬프 일일 한도 999는 테스트용 — 출시 전 rewards.sql에서 3으로 복구",
+        "스탬프 일일 한도 3 — supabase/rewards_daily_cap_to_3.sql 적용",
         "APK 소셜 로그인 실패 -> signingReport / 카카오 릴리스 키 해시 등록",
         "Supabase 미설정 시 Realtime·RPC 전부 스킵, 로컬만 동작",
     ])
@@ -705,7 +705,7 @@ def build(pdf: GuidePDF) -> None:
     pdf.body(
         "[75aa50a] 제보 제한 AppProvider 전담, kDebugMode 우회, GPS 150m\n"
         "  어드민 제보 제한 Supabase 토글 제거, 24h 영업 business_hours 수정\n"
-        "  Realtime publication SQL, 스탬프 일일 999(테스트)\n"
+        "  Realtime publication SQL, 스탬프 일일 한도 3 (rewards_daily_cap_to_3.sql)\n"
         "[48dd69d] Android 릴리스 서명 key.properties\n"
         "[4d4bdb3] 리워드 시스템 (RewardScreen, rewards.sql)\n"
         "[이전] 홈 필터/정렬, Realtime 구독, 사장님 MainScreen 탭, owner enum 수정"
