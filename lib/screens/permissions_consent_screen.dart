@@ -52,6 +52,8 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
       context,
       title: card.title,
       body: card.documentBody,
+      fullDocumentAssetPath: card.documentAssetPath,
+      fullDocumentLinkLabel: card.documentLinkLabel,
     );
   }
 

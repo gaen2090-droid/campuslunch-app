@@ -19,7 +19,6 @@ import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/legal_terms_consent_screen.dart';
 import 'screens/permissions_consent_screen.dart';
-import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/location_permission_screen.dart';
@@ -184,8 +183,6 @@ class _RootState extends State<_Root> {
         const PermissionsConsentScreen(key: ValueKey('permissions_consent')),
       'legal_terms_consent' =>
         const LegalTermsConsentScreen(key: ValueKey('legal_terms_consent')),
-      'onboarding' =>
-        const OnboardingScreen(key: ValueKey('onboarding')),
       'login' => const LoginScreen(key: ValueKey('login')),
       'location_permission' =>
         const LocationPermissionScreen(key: ValueKey('location')),

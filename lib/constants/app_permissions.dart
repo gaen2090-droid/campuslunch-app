@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 /// 첫 앱 실행 시 기기 권한 안내 (OS 권한 팝업은 확인 버튼 시점)
 abstract final class AppPermissions {
-  static const introTitle = '환영합니다!\n앱 이용을 위해\n아래 약관에 동의해주세요';
+  static const introTitle = '환영합니다!\n앱 이용을 위해\n아래 권한에 동의해주세요';
 
   static const confirmLabel = '확인';
 
@@ -21,36 +21,46 @@ abstract final class AppPermissions {
               '위치(GPS) 권한은 필수 동의 항목입니다.\n\n'
               '지도에서 내 위치 표시, 매장 길찾기, 혼잡도 제보 시 '
               '제보 위치 검증(제보 시 GPS 좌표가 매장 인근인지 확인)에 사용됩니다.\n\n'
-              '수집된 위치 정보는 제보 내역(crowd_reports)에 함께 저장되며, '
+              '수집된 위치 정보는 제보 내역에 함께 저장되며, '
               '회원 탈퇴 시 지체 없이 삭제됩니다.\n\n'
               '위치 권한을 허용하지 않으면 지도·길찾기·혼잡도 제보 기능을 '
-              '이용할 수 없습니다.',
+              '이용할 수 없습니다.\n\n'
+              '자세한 내용은 아래 「위치기반서비스 이용약관」 전문에서 확인할 수 있습니다.',
+          documentAssetPath: 'assets/legal/LOCATION_TERMS.md',
+          documentLinkLabel: '위치기반서비스 이용약관 전문 보기',
         ),
         if (!kIsWeb && Platform.isAndroid)
           const AppPermissionCard(
             id: 'nearby_devices',
             title: '주변 기기 탐색 이용 동의',
-            required: true,
+            required: false,
+            subtitle: '실내 등에서 위치 정확도를 높이는 데 참고돼요.',
             documentBody:
                 '주변 기기 탐색(Wi-Fi·블루투스 스캔) 권한은 안드로이드 기기의 '
-                '위치 정확도를 높이기 위해 OS가 요구하는 필수 동의 항목입니다.\n\n'
+                '위치 정확도를 높이기 위해 OS가 요구하는 선택 동의 항목입니다.\n\n'
                 'GPS 신호가 약한 실내 등에서도 매장 인근 여부를 더 정확히 '
                 '판단할 수 있도록 주변 Wi-Fi·블루투스 신호 세기를 참고합니다.\n\n'
                 '이 권한으로 블루투스 기기에 연결하거나 제어하지 않으며, '
-                '수집된 신호 정보를 별도로 저장하지 않습니다.',
+                '수집된 신호 정보를 별도로 저장하지 않습니다.\n\n'
+                '동의하지 않아도 위치(GPS) 기반의 다른 기능은 동일하게 '
+                '이용할 수 있습니다.',
           ),
         const AppPermissionCard(
           id: 'notification',
-          title: '마케팅 정보 앱 푸시 알림 수신 동의',
+          title: '광고성 정보(마케팅 푸시) 수신 동의',
           required: false,
           subtitle: '이벤트 및 혜택 정보를 받아보실 수 있어요.',
           documentBody:
               '알림 권한은 선택 동의 항목입니다.\n\n'
-              '평일 점심·저녁 피크 추천 알림과 커뮤니티 댓글 알림을 '
+              '이벤트·기획전 등 광고성 알림과, 평일 점심·저녁 피크 추천·'
+              '커뮤니티 댓글 알림 등 서비스 이용 알림을 '
               'Firebase Cloud Messaging(FCM)으로 보내드립니다. '
               '앱이 꺼져 있어도 서버에서 발송할 수 있습니다.\n\n'
               '동의하지 않아도 앱의 다른 기능은 동일하게 이용할 수 있으며, '
-              '설정 화면에서 언제든지 알림 수신 여부를 변경할 수 있습니다.',
+              '설정 화면에서 언제든지 알림 수신 여부를 변경할 수 있습니다.\n\n'
+              '자세한 내용은 아래 「광고성 정보 수신 동의」 전문에서 확인할 수 있습니다.',
+          documentAssetPath: 'assets/legal/MARKETING_PUSH_TERMS.md',
+          documentLinkLabel: '광고성 정보 수신 동의 전문 보기',
         ),
       ];
 
@@ -68,6 +78,8 @@ class AppPermissionCard {
     required this.required,
     required this.documentBody,
     this.subtitle,
+    this.documentAssetPath,
+    this.documentLinkLabel,
   });
 
   final String id;
@@ -75,4 +87,10 @@ class AppPermissionCard {
   final bool required;
   final String documentBody;
   final String? subtitle;
+
+  /// 전문(全文) 약관 파일 경로. null이면 인라인 요약만 표시.
+  final String? documentAssetPath;
+
+  /// 전문 보기 링크 라벨.
+  final String? documentLinkLabel;
 }

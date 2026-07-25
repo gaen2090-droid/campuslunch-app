@@ -9,10 +9,22 @@ class LegalPolicyHubScreen extends StatelessWidget {
 
   static const _extra = [
     LegalTermsCheckItem(
+      id: 'location',
+      label: '위치기반서비스 이용약관',
+      required: false,
+      assetPath: 'assets/legal/LOCATION_TERMS.md',
+    ),
+    LegalTermsCheckItem(
       id: 'community',
       label: '커뮤니티 이용정책',
       required: false,
       assetPath: 'assets/legal/COMMUNITY_POLICY.md',
+    ),
+    LegalTermsCheckItem(
+      id: 'marketing_push',
+      label: '광고성 정보(마케팅 푸시) 수신 동의',
+      required: false,
+      assetPath: 'assets/legal/MARKETING_PUSH_TERMS.md',
     ),
   ];
 

@@ -9,10 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
+import '../constants/legal_terms.dart';
 import '../utils/nickname_generator.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/community_repository.dart';
+import '../data/legal_consent_repository.dart';
 import '../data/profile_repository.dart';
 import '../data/push_config_repository.dart';
 import '../data/supabase_restaurant_repository.dart';
@@ -37,7 +39,7 @@ import '../utils/profanity_filter.dart';
 
 class AppProvider extends ChangeNotifier {
   // ── 앱 상태 ──
-  String _stage = 'splash'; // splash | onboarding | login | app | admin
+  String _stage = 'splash'; // splash | permissions_consent | legal_terms_consent | login | app | admin
   String get stage => _stage;
 
   // ── 인증 ──
@@ -305,6 +307,7 @@ class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepo = AuthRepository();
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
   final PushConfigRepository _pushConfigRepo = PushConfigRepository();
+  final LegalConsentRepository _legalConsentRepo = LegalConsentRepository();
 
   @override
   void dispose() {
@@ -1913,7 +1916,7 @@ class AppProvider extends ChangeNotifier {
     return true;
   }
 
-  Future<void> completeLegalTermsConsent() async {
+  Future<void> completeLegalTermsConsent([Map<String, bool>? agreed]) async {
     final prefs = await SharedPreferences.getInstance();
     final userId = _sessionUserId(prefs);
     if (userId.isEmpty) {
@@ -1931,14 +1934,18 @@ class AppProvider extends ChangeNotifier {
     }
     await _clearPendingLegalTerms(prefs, userId);
 
+    if (agreed != null) {
+      for (final item in LegalTerms.checkItems) {
+        await _legalConsentRepo.recordConsent(
+          termId: item.id,
+          termLabel: item.label,
+          agreed: agreed[item.id] ?? false,
+        );
+      }
+    }
+
     _stage = await _postAppStage(prefs);
     if (hasOwnerTab) _mainTabIndex = 0;
-    notifyListeners();
-  }
-
-  // ── 온보딩 완료 ──
-  void completeOnboarding() {
-    _stage = 'permissions_consent';
     notifyListeners();
   }
 

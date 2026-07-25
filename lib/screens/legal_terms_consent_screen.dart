@@ -51,7 +51,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
   Future<void> _confirm() async {
     if (_loading || !_canProceed) return;
     setState(() => _loading = true);
-    await context.read<AppProvider>().completeLegalTermsConsent();
+    await context.read<AppProvider>().completeLegalTermsConsent(_agreed);
     if (mounted) setState(() => _loading = false);
   }
 
