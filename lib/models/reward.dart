@@ -28,6 +28,7 @@ class StampResult {
   final int todayStamps;
   final int totalStamps;
   final AutoRedeemResult autoRedeem;
+  final String? reason;
 
   const StampResult({
     required this.granted,
@@ -35,7 +36,10 @@ class StampResult {
     required this.todayStamps,
     required this.totalStamps,
     this.autoRedeem = AutoRedeemResult.none,
+    this.reason,
   });
+
+  bool get isOutOfStampHours => reason == 'out_of_hours';
 
   factory StampResult.fromJson(Map<String, dynamic> json) {
     final granted = json['granted'] as bool? ?? false;
@@ -50,6 +54,7 @@ class StampResult {
       todayStamps: (json['today_stamps'] as num?)?.toInt() ?? 0,
       totalStamps: (json['total_stamps'] as num?)?.toInt() ?? 0,
       autoRedeem: auto,
+      reason: json['reason'] as String?,
     );
   }
 

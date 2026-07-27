@@ -6,6 +6,7 @@ import type {
   RestaurantFormData,
 } from "../types/restaurant";
 import type { Gifticon } from "../types/gifticon";
+import type { OwnerApplication } from "../types/ownerApplication";
 import { parseAdminUser, type AdminUser } from "../types/user";
 import {
   DEFAULT_PUSH_CONFIG,
@@ -169,8 +170,7 @@ function mergeRestaurant(
     longitude: Number(row.longitude ?? 0),
     reports: reportCounts,
     menu: parseMenu(extra?.menu),
-    ownerCode: String(extra?.owner_code ?? ""),
-    ownerRegistered: extra?.owner_registered === true,
+    ownerId: row.owner_id ? String(row.owner_id) : null,
     manualRank:
       typeof extra?.manual_rank === "number"
         ? extra.manual_rank
@@ -256,10 +256,9 @@ export async function fetchAdminRestaurants(): Promise<AdminRestaurant[]> {
 
 export async function insertRestaurant(
   data: RestaurantFormData,
-): Promise<string> {
+): Promise<void> {
   const desc: Record<string, unknown> = {
     hours: data.hours,
-    owner_code: String(100000 + Math.floor(Math.random() * 900000)),
   };
   if (data.menu?.length) desc.menu = data.menu;
   if (data.kakao_place_id) desc.kakao_place_id = data.kakao_place_id;
@@ -267,25 +266,19 @@ export async function insertRestaurant(
   if (data.hours_display) desc.hours_display = data.hours_display;
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
 
-  const { data: row, error } = await supabase
-    .from("restaurants")
-    .insert({
-      name: data.name,
-      category: data.category,
-      area: data.area,
-      address: data.address || data.area,
-      image_url: data.image_url ?? "",
-      description: JSON.stringify(desc),
-      latitude: data.latitude ?? 0,
-      longitude: data.longitude ?? 0,
-      is_active: true,
-    })
-    .select("description")
-    .single();
+  const { error } = await supabase.from("restaurants").insert({
+    name: data.name,
+    category: data.category,
+    area: data.area,
+    address: data.address || data.area,
+    image_url: data.image_url ?? "",
+    description: JSON.stringify(desc),
+    latitude: data.latitude ?? 0,
+    longitude: data.longitude ?? 0,
+    is_active: true,
+  });
 
   if (error) throw error;
-  const parsed = parseDescription(row?.description);
-  return String(parsed?.owner_code ?? "");
 }
 
 export async function updateRestaurant(
@@ -358,28 +351,6 @@ export async function deleteRestaurant(id: string): Promise<void> {
   }
 }
 
-export async function generateOwnerCode(restaurantId: string): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 900000));
-  const { data: existing, error: fetchErr } = await supabase
-    .from("restaurants")
-    .select("description")
-    .eq("id", restaurantId)
-    .single();
-  if (fetchErr) throw fetchErr;
-  const desc = parseDescription(existing?.description) ?? {};
-  desc.owner_code = code;
-  const { data, error } = await supabase
-    .from("restaurants")
-    .update({ description: JSON.stringify(desc) })
-    .eq("id", restaurantId)
-    .select("id");
-  if (error) throw error;
-  if (!data?.length) {
-    throw new Error("인증번호 저장 실패: 관리자 권한을 확인하세요.");
-  }
-  return code;
-}
-
 export async function findRestaurantIdByKakaoPlaceId(
   placeId: string,
 ): Promise<string | null> {
@@ -449,6 +420,48 @@ export async function fetchRecentCrowdReports(
       userId: row.user_id ? String(row.user_id) : null,
     };
   });
+}
+
+export async function fetchOwnerApplications(): Promise<OwnerApplication[]> {
+  const { data, error } = await supabase.rpc("admin_list_owner_applications");
+  if (error) throw error;
+  return (data ?? []).map((raw: Record<string, unknown>) => ({
+    id: String(raw.id),
+    userId: String(raw.user_id),
+    userNickname: String(raw.user_nickname ?? ""),
+    restaurantId: String(raw.restaurant_id),
+    restaurantName: String(raw.restaurant_name ?? ""),
+    phone: String(raw.phone ?? ""),
+    email: String(raw.email ?? ""),
+    licensePaths: Array.isArray(raw.license_paths)
+      ? (raw.license_paths as string[])
+      : [],
+    status: String(raw.status ?? "pending"),
+    rejectReason: raw.reject_reason ? String(raw.reject_reason) : null,
+    createdAt: new Date(String(raw.created_at)),
+    reviewedAt: raw.reviewed_at ? new Date(String(raw.reviewed_at)) : null,
+  }));
+}
+
+export async function reviewOwnerApplication(
+  applicationId: string,
+  approve: boolean,
+  rejectReason?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_review_owner_application", {
+    p_application_id: applicationId,
+    p_approve: approve,
+    p_reject_reason: rejectReason ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function resolveOwnerLicenseUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("owner-licenses")
+    .createSignedUrl(path, 3600);
+  if (error || !data) return "";
+  return data.signedUrl;
 }
 
 export async function uploadRestaurantImage(
@@ -530,10 +543,7 @@ async function resolveGifticonImageUrl(raw: string | null | undefined): Promise<
 }
 
 export async function fetchFeedback(): Promise<AppFeedback[]> {
-  const { data, error } = await supabase
-    .from("app_feedback")
-    .select("id, category, content, user_id, created_at")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("admin_list_feedback");
   if (error) throw error;
   if (!data) return [];
   return (data as Record<string, unknown>[]).map((raw) => ({
@@ -541,6 +551,8 @@ export async function fetchFeedback(): Promise<AppFeedback[]> {
     category: String(raw.category ?? ""),
     content: String(raw.content ?? ""),
     userId: raw.user_id ? String(raw.user_id) : null,
+    nickname: String(raw.nickname ?? ""),
+    isFromOwner: raw.is_from_owner === true,
     createdAt: new Date(String(raw.created_at)),
   }));
 }

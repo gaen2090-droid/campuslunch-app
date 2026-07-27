@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+
+import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 
+/// 사장님 인증 플로우: 가게 선택 → 사업자등록증/연락처 제출 → 심사중 안내.
+/// 진입 시 기존 신청 상태(pending/rejected/approved)를 먼저 확인해 알맞은 화면을 보여준다.
 class OwnerVerifyScreen extends StatefulWidget {
   const OwnerVerifyScreen({super.key});
 
@@ -16,34 +22,42 @@ class OwnerVerifyScreen extends StatefulWidget {
   State<OwnerVerifyScreen> createState() => _OwnerVerifyScreenState();
 }
 
+enum _Step { loading, pickRestaurant, form, pending, rejected }
+
 class _OwnerVerifyScreenState extends State<OwnerVerifyScreen> {
-  final _ctrl = TextEditingController();
-  String _status = 'idle'; // idle | loading | success | error
-  String _errorCode = 'INVALID_CODE';
+  _Step _step = _Step.loading;
+  String? _rejectReason;
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadStatus();
   }
 
-  Future<void> _submit() async {
-    if (_ctrl.text.length != 6) return;
-    setState(() => _status = 'loading');
-    final error = await context.read<AppProvider>().verifyOwnerCode(_ctrl.text.trim());
+  Future<void> _loadStatus() async {
+    final app = await context.read<AppProvider>().fetchMyOwnerApplication();
     if (!mounted) return;
-    if (error == null) {
-      setState(() => _status = 'success');
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } else {
+    final status = app?['status'] as String?;
+    if (status == 'pending') {
+      setState(() => _step = _Step.pending);
+    } else if (status == 'rejected') {
       setState(() {
-        _errorCode = error;
-        _status = 'error';
+        _rejectReason = app?['reject_reason'] as String?;
+        _step = _Step.rejected;
       });
+    } else {
+      setState(() => _step = _Step.pickRestaurant);
     }
   }
+
+  void _onRestaurantPicked(Restaurant r) {
+    setState(() {
+      _pickedRestaurant = r;
+      _step = _Step.form;
+    });
+  }
+
+  Restaurant? _pickedRestaurant;
 
   @override
   Widget build(BuildContext context) {
@@ -69,140 +83,481 @@ class _OwnerVerifyScreenState extends State<OwnerVerifyScreen> {
         ),
         centerTitle: false,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          20,
-          20,
-          MediaQuery.of(context).padding.bottom + 20,
-        ),
+      body: switch (_step) {
+        _Step.loading => const Center(child: CircularProgressIndicator(color: Color(0xFF9ECA8B))),
+        _Step.pickRestaurant => _RestaurantPickStep(onPicked: _onRestaurantPicked),
+        _Step.form => _ApplicationFormStep(
+            restaurant: _pickedRestaurant!,
+            onBack: () => setState(() => _step = _Step.pickRestaurant),
+            onSubmitted: () => setState(() => _step = _Step.pending),
+          ),
+        _Step.pending => const _StatusMessage(
+            emoji: '🕓',
+            title: '심사 중이에요',
+            body: '제출해주신 내용을 관리자가 확인하고 있어요.\n승인되면 사장님 기능을 바로 사용할 수 있어요.',
+          ),
+        _Step.rejected => _RejectedStep(
+            reason: _rejectReason,
+            onRetry: () => setState(() => _step = _Step.pickRestaurant),
+          ),
+      },
+    );
+  }
+}
+
+class _StatusMessage extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String body;
+
+  const _StatusMessage({
+    required this.emoji,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (_status == 'success') ...[
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F8F0),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Column(
-                  children: [
-                    Text('🎉', style: TextStyle(fontSize: 32)),
-                    SizedBox(height: 12),
-                    Text(
-                      '사장님 인증이 완료되었어요.\n이제 내 매장의 혼잡도를 직접 반영할 수 있어요.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        height: 1.6,
-                        color: Color(0xFF15803D),
-                      ),
-                    ),
-                  ],
-                ),
+            Text(emoji, style: const TextStyle(fontSize: 40)),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
-            ] else ...[
-              const Text(
-                '관리자에게 받은 6자리 인증번호를 입력해주세요.',
-                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.6,
+                color: Colors.black,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _ctrl,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                textAlign: TextAlign.center,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setState(() => _status = 'idle'),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 8,
-                  color: Color(0xFF111827),
-                ),
-                decoration: InputDecoration(
-                  hintText: '000000',
-                  hintStyle: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 8,
-                    color: Color(0xFFD1D5DB),
-                  ),
-                  counterText: '',
-                  filled: true,
-                  fillColor: const Color(0xFFF9FAFB),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5),
-                  ),
-                ),
-              ),
-              if (_status == 'error') ...[
-                const SizedBox(height: 8),
-                Text(
-                  _errorCode == 'ALREADY_USED'
-                      ? '이미 사용된 인증번호예요.\n관리자에게 문의해주세요.'
-                      : _errorCode == 'LOGIN_REQUIRED'
-                          ? '로그인 후 인증해주세요.\n계정으로 로그인한 뒤 다시 시도해주세요.'
-                          : '인증번호가 일치하지 않아요.\n다시 확인해주세요.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                    color: Color(0xFFEF4444),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Opacity(
-                opacity: _ctrl.text.length == 6 ? 1.0 : 0.4,
-                child: GestureDetector(
-                  onTap: (_ctrl.text.length == 6 && _status != 'loading') ? _submit : null,
-                  child: Container(
-                    height: 56,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF9ECA8B),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: _status == 'loading'
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Color(0xFF111827),
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              '인증하기',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _RejectedStep extends StatelessWidget {
+  final String? reason;
+  final VoidCallback onRetry;
+
+  const _RejectedStep({required this.reason, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('😔', style: TextStyle(fontSize: 40)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '이번 신청은 반려되었어요',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.black),
+                  ),
+                  if (reason != null && reason!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      '사유: $reason',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.6, color: Colors.black),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: GestureDetector(
+            onTap: onRetry,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFF9ECA8B),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Text(
+                  '다시 신청하기',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RestaurantPickStep extends StatefulWidget {
+  final void Function(Restaurant) onPicked;
+  const _RestaurantPickStep({required this.onPicked});
+
+  @override
+  State<_RestaurantPickStep> createState() => _RestaurantPickStepState();
+}
+
+class _RestaurantPickStepState extends State<_RestaurantPickStep> {
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final all = context.watch<AppProvider>().restaurants;
+    final unclaimed = all.where((r) => r.ownerId == null).toList();
+    final query = _searchCtrl.text.trim().toLowerCase();
+    final results = query.isEmpty
+        ? unclaimed
+        : unclaimed.where((r) => r.name.toLowerCase().contains(query)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '인증할 매장을 선택해주세요.',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '이미 사장님이 등록된 매장은 목록에 나오지 않아요.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    const Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(
+                          hintText: '매장명 검색',
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: results.isEmpty
+              ? const Center(
+                  child: Text('검색 결과가 없어요.', style: TextStyle(color: Color(0xFF9CA3AF))),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: results.length,
+                  itemBuilder: (context, i) {
+                    final r = results[i];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text(
+                        r.area == r.category ? r.area : '${r.area} · ${r.category}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: Color(0xFFD1D5DB)),
+                      onTap: () => widget.onPicked(r),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PickedLicenseImage {
+  final Uint8List bytes;
+  final String ext;
+  const _PickedLicenseImage({required this.bytes, required this.ext});
+}
+
+class _ApplicationFormStep extends StatefulWidget {
+  final Restaurant restaurant;
+  final VoidCallback onBack;
+  final VoidCallback onSubmitted;
+
+  const _ApplicationFormStep({
+    required this.restaurant,
+    required this.onBack,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_ApplicationFormStep> createState() => _ApplicationFormStepState();
+}
+
+class _ApplicationFormStepState extends State<_ApplicationFormStep> {
+  static const _maxImages = 3;
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final List<_PickedLicenseImage> _images = [];
+  bool _submitting = false;
+  String? _error;
+
+  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    if (_images.length >= _maxImages) return;
+    final remaining = _maxImages - _images.length;
+    final picker = ImagePicker();
+    final List<XFile> picked;
+    if (remaining == 1) {
+      final single = await picker.pickImage(source: ImageSource.gallery);
+      picked = single == null ? const [] : [single];
+    } else {
+      picked = await picker.pickMultiImage(limit: remaining);
+    }
+    if (picked.isEmpty) return;
+    final loaded = <_PickedLicenseImage>[];
+    for (final file in picked.take(remaining)) {
+      final bytes = await file.readAsBytes();
+      final ext = file.name.contains('.') ? file.name.split('.').last : 'jpg';
+      loaded.add(_PickedLicenseImage(bytes: bytes, ext: ext));
+    }
+    if (!mounted) return;
+    setState(() => _images.addAll(loaded));
+  }
+
+  void _removeImage(int index) => setState(() => _images.removeAt(index));
+
+  bool get _canSubmit =>
+      _phoneCtrl.text.trim().isNotEmpty &&
+      _emailRegex.hasMatch(_emailCtrl.text.trim()) &&
+      _images.isNotEmpty &&
+      !_submitting;
+
+  Future<void> _submit() async {
+    if (!_canSubmit) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    final provider = context.read<AppProvider>();
+    try {
+      final paths = <String>[];
+      for (final img in _images) {
+        paths.add(await provider.uploadOwnerLicenseImage(img.bytes, img.ext));
+      }
+      final err = await provider.submitOwnerApplication(
+        restaurantId: widget.restaurant.id,
+        phone: _phoneCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        licensePaths: paths,
+      );
+      if (!mounted) return;
+      if (err != null) {
+        setState(() {
+          _error = err;
+          _submitting = false;
+        });
+        return;
+      }
+      widget.onSubmitted();
+    } catch (e) {
+      debugPrint('[OwnerVerify] submit failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = '제출 중 오류가 발생했어요. 다시 시도해주세요.';
+        _submitting = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: widget.onBack,
+                icon: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF9CA3AF)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.restaurant.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('사업자등록증', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+          const SizedBox(height: 4),
+          const Text('최대 3장까지 첨부할 수 있어요.', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (var i = 0; i < _images.length; i++)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(_images[i].bytes, width: 84, height: 84, fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _removeImage(i),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              if (_images.length < _maxImages)
+                GestureDetector(
+                  onTap: _pickImages,
+                  child: Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF9CA3AF)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text('전화번호', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            onChanged: (_) => setState(() {}),
+            decoration: _fieldDecoration('010-1234-5678'),
+          ),
+          const SizedBox(height: 16),
+          const Text('이메일', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            onChanged: (_) => setState(() {}),
+            decoration: _fieldDecoration('example@email.com'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
+          ],
+          const SizedBox(height: 24),
+          Opacity(
+            opacity: _canSubmit ? 1.0 : 0.4,
+            child: GestureDetector(
+              onTap: _canSubmit ? _submit : null,
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9ECA8B),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Color(0xFF111827), strokeWidth: 2),
+                        )
+                      : const Text(
+                          '제출하기',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5),
+        ),
+      );
 }

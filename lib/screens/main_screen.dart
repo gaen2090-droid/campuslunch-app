@@ -10,7 +10,9 @@ import 'detail_screen.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
+import 'owner_my_screen.dart';
 import 'owner_screen.dart';
+import 'owner_usage_guide_screen.dart';
 
 /// 지도 탭 아이콘 코치마크가 위치를 찾을 수 있도록 전역으로 노출
 final mapNavIconKey = GlobalKey();
@@ -27,6 +29,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _communityMounted = false;
   bool _showCoachMark = false;
   bool _handlingAppLink = false;
+  bool _ownerGuideChecked = false;
+  bool _ownerGuideShowing = false;
 
   @override
   void initState() {
@@ -104,6 +108,7 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _maybeShowCoachMark() async {
     if (!mounted) return;
     final provider = context.read<AppProvider>();
+    if (provider.hasOwnerTab) return;
     final show = await provider.shouldShowCoachMark();
     if (!mounted || !show) return;
     setState(() => _showCoachMark = true);
@@ -112,6 +117,17 @@ class _MainScreenState extends State<MainScreen> {
   void _finishCoachMark() {
     context.read<AppProvider>().completeCoachMark();
     setState(() => _showCoachMark = false);
+  }
+
+  Future<void> _maybeShowOwnerUsageGuide(bool hasOwner) async {
+    if (!hasOwner || _ownerGuideChecked || _ownerGuideShowing) return;
+    _ownerGuideChecked = true;
+    final provider = context.read<AppProvider>();
+    final show = await provider.shouldShowOwnerUsageGuide();
+    if (!mounted || !show) return;
+    _ownerGuideShowing = true;
+    await OwnerUsageGuideScreen.show(context);
+    _ownerGuideShowing = false;
   }
 
   @override
@@ -130,9 +146,16 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
     final hasOwner = provider.hasOwnerTab;
-    final index = provider.mainTabIndex.clamp(0, hasOwner ? 4 : 3);
-    final mapIndex = hasOwner ? 2 : 1;
-    final communityIndex = hasOwner ? 3 : 2;
+    if (hasOwner && !_ownerGuideChecked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeShowOwnerUsageGuide(hasOwner);
+      });
+    }
+    // 사장님 모드는 지도 탭이 없는 완전히 별개의 3탭(제보/커뮤니티/마이) 구성이라
+    // mapIndex를 도달 불가능한 값으로 두어 아래 지도 관련 분기를 자연히 우회한다.
+    final index = provider.mainTabIndex.clamp(0, hasOwner ? 2 : 3);
+    final mapIndex = hasOwner ? -1 : 1;
+    final communityIndex = hasOwner ? 1 : 2;
 
     if (index == mapIndex) {
       _mapMounted = true;
@@ -141,14 +164,20 @@ class _MainScreenState extends State<MainScreen> {
       _communityMounted = true;
     }
 
-    final nonMapTabs = <Widget>[
-      if (hasOwner) const OwnerScreen(),
-      const HomeScreen(),
-      if (_communityMounted) const CommunityScreen() else const SizedBox.shrink(),
-      const MyScreen(),
-    ];
-    final nonMapIndex =
-        index == mapIndex ? 0 : (index > mapIndex ? index - 1 : index);
+    final nonMapTabs = hasOwner
+        ? <Widget>[
+            const OwnerScreen(),
+            if (_communityMounted) const CommunityScreen() else const SizedBox.shrink(),
+            const OwnerMyScreen(),
+          ]
+        : <Widget>[
+            const HomeScreen(),
+            if (_communityMounted) const CommunityScreen() else const SizedBox.shrink(),
+            const MyScreen(),
+          ];
+    final nonMapIndex = hasOwner
+        ? index
+        : (index == mapIndex ? 0 : (index > mapIndex ? index - 1 : index));
 
     // PlatformView(카카오맵)는 IndexedStack 비활성 자식에 두면 iOS 터치가 막힘
     return Stack(
@@ -182,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
         // bottomNavigationBar(지도 탭 아이콘)까지 덮으려면 Scaffold 밖, 화면 전체를
         // 덮는 최상위 Stack에 있어야 한다. Scaffold.body 안에 두면 nav bar 영역은
         // 가려지지 않아 4번째 스텝(지도 아이콘)이 화면에 그려지지 않는다.
-        if (_showCoachMark && index != mapIndex)
+        if (_showCoachMark && !hasOwner && index != mapIndex)
           Material(
             type: MaterialType.transparency,
             child: Stack(
@@ -247,17 +276,7 @@ class _BottomNav extends StatelessWidget {
             _NavItem(
               icon: Icons.storefront_outlined,
               activeIcon: Icons.storefront,
-              label: '사장님',
-            ),
-            _NavItem(
-              icon: Icons.home_outlined,
-              activeIcon: Icons.home,
-              label: '홈',
-            ),
-            _NavItem(
-              icon: Icons.map_outlined,
-              activeIcon: Icons.map,
-              label: '지도',
+              label: '제보',
             ),
             _NavItem(
               icon: Icons.forum_outlined,

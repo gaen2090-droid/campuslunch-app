@@ -23,8 +23,7 @@ class Restaurant {
   final String imageUrl;
   final int popularityScore;
   final int manualRank;
-  final String ownerCode;
-  final bool ownerRegistered;
+  final String? ownerId;
   final double distance;
   final double latitude;
   final double longitude;
@@ -57,8 +56,7 @@ class Restaurant {
     required this.imageUrl,
     this.popularityScore = 0,
     this.manualRank = 0,
-    this.ownerCode = '',
-    this.ownerRegistered = false,
+    this.ownerId,
     required this.distance,
     this.latitude = 0,
     this.longitude = 0,
@@ -98,8 +96,7 @@ class Restaurant {
         imageUrl: imageUrl,
         popularityScore: popularityScore,
         manualRank: manualRank,
-        ownerCode: ownerCode,
-        ownerRegistered: ownerRegistered,
+        ownerId: ownerId,
         distance: distance ?? this.distance,
         latitude: latitude,
         longitude: longitude,

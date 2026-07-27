@@ -1,5 +1,8 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/reward_limits.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/load_error_view.dart';
@@ -63,11 +66,16 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _sortOpts = ['최신순', '인기순', '가까운순'];
 
   bool _filterLoaded = false;
+  Timer? _stampHoursTicker;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    // 스탬프 제공 시간대(10~19시) 경계를 넘어갈 때 배너가 자동으로 갱신되도록 주기적 rebuild.
+    _stampHoursTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadHistory() async {
@@ -118,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _stampHoursTicker?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -390,6 +399,22 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+        if (!RewardLimits.isWithinStampHours(DateTime.now()))
+          Container(
+            width: double.infinity,
+            color: const Color(0xFFFFF7E6),
+            padding: EdgeInsets.fromLTRB(
+                20, MediaQuery.of(context).padding.top + 8, 20, 8),
+            child: Text(
+              '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 10시~오후 7시)',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF92660A),
+              ),
+            ),
+          ),
         // ── 헤더 ──
         Container(
           color: Colors.white,
@@ -784,6 +809,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   restaurant: results[i],
                   onTap: () {
                     _recordViewedRestaurant(results[i]);
+                    context.read<AppProvider>().recordSearchResultClick(results[i].id);
                     _openDetail(results[i]);
                   },
                 ),
@@ -1387,6 +1413,7 @@ class StampInfoPopup extends StatelessWidget {
       '혼잡도를 제보하면 스탬프를 1개 받아요.',
       '최초 제보 시에는 스탬프를 2개 받아요.',
       '단, 하루 최대 3개의 스탬프를 획득할 수 있어요.',
+      '스탬프는 오전 10시~오후 7시에만 제공돼요. (제보는 영업시간 내 항상 가능해요)',
       '획득한 스탬프는 마이페이지에서 확인할 수 있어요.',
     ];
 

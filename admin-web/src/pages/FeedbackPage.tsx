@@ -35,6 +35,12 @@ export function FeedbackPage({ feedback, loading, error }: Props) {
             <li key={f.id} className="feedback-row">
               <div className="feedback-row-head">
                 <span className="badge">{f.category}</span>
+                {f.isFromOwner && (
+                  <span className="badge owner">사장님</span>
+                )}
+                {f.nickname && (
+                  <span className="muted sm">{f.nickname}</span>
+                )}
                 <span className="muted sm">{formatDate(f.createdAt)}</span>
               </div>
               <p className="feedback-content">{f.content}</p>

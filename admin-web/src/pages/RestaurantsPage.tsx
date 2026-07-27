@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   deleteRestaurant,
   fetchRecentCrowdReports,
-  generateOwnerCode,
   totalReports,
 } from "../lib/adminApi";
 import type { AdminRestaurant, RecentCrowdReport } from "../types/restaurant";
@@ -79,21 +78,6 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
     }
   }
 
-  async function handleGenerateCode(id: string) {
-    setBusyId(id);
-    setError(null);
-    setSuccess(null);
-    try {
-      const code = await generateOwnerCode(id);
-      setSuccess(`사장님 코드 ${code} 발급 완료`);
-      onReload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
     <div className="page">
       {error && <div className="alert">{error}</div>}
@@ -133,7 +117,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                   <div>
                     <div className="card-title-row">
                       <h3>{r.name}</h3>
-                      {r.ownerRegistered && (
+                      {r.ownerId && (
                         <span className="owner-registered-tag">등록 완료</span>
                       )}
                     </div>
@@ -185,21 +169,6 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                         </code>
                       ) : (
                         <span className="muted xs">번호 미배정 (SQL 실행 필요)</span>
-                      )}
-                    </div>
-                    <div className="owner-code-row">
-                      <span className="muted xs">사장님 코드 </span>
-                      {r.ownerCode ? (
-                        <code className="owner-code">{r.ownerCode}</code>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn ghost sm"
-                          disabled={busyId === r.id}
-                          onClick={() => handleGenerateCode(r.id)}
-                        >
-                          발급
-                        </button>
                       )}
                     </div>
                   </div>

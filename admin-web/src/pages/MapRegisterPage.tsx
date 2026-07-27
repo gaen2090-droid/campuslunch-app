@@ -29,7 +29,7 @@ export function MapRegisterPage({ onReload }: Props) {
   const [loading, setLoading] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ownerCode, setOwnerCode] = useState<string | null>(null);
+  const [registered, setRegistered] = useState(false);
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export function MapRegisterPage({ onReload }: Props) {
       const imageUrl = selected.photoUrl
         ? (await persistGooglePhoto(selected.photoUrl)) ?? ""
         : "";
-      const code = await insertRestaurant({
+      await insertRestaurant({
         name: selected.name,
         address: selected.address,
         latitude: selected.latitude,
@@ -100,7 +100,7 @@ export function MapRegisterPage({ onReload }: Props) {
         kakao_place_id: selected.placeId,
         google_place_id: selected.googlePlaceId,
       });
-      setOwnerCode(code);
+      setRegistered(true);
       onReload();
       setSelected(null);
       setQuery("");
@@ -201,15 +201,14 @@ export function MapRegisterPage({ onReload }: Props) {
         {registering ? "등록 중…" : "가게 신규 등록"}
       </button>
 
-      {ownerCode && (
-        <Modal title="가게 등록 완료" onClose={() => setOwnerCode(null)}>
-          <p className="owner-code-lg">{ownerCode}</p>
+      {registered && (
+        <Modal title="가게 등록 완료" onClose={() => setRegistered(false)}>
           <p className="muted sm">
             영업시간·사진은 Google Places에서 자동 수집됩니다. 매칭이 안 되면
             매장 관리에서 수정해주세요.
           </p>
           <p className="muted sm">
-            사장님 앱 → 인증 화면에서 위 번호를 입력하면 혼잡도를 관리할 수
+            사장님은 앱 → 사장님 인증에서 이 매장을 선택해 인증을 신청할 수
             있어요.
           </p>
         </Modal>

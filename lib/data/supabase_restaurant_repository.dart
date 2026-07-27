@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -136,6 +135,66 @@ class SupabaseRestaurantRepository {
       debugPrint('[Supabase] fetchByLinkNo failed: $e\n$st');
       return null;
     }
+  }
+
+  /// 사장님 통계용: 본인 매장의 누적 즐겨찾기 수
+  Future<int> fetchOwnerRestaurantBookmarkCount(String restaurantId) async {
+    try {
+      final raw = await _client.rpc(
+        'owner_restaurant_bookmark_count',
+        params: {'p_restaurant_id': restaurantId},
+      );
+      if (raw is num) return raw.toInt();
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnerRestaurantBookmarkCount failed: $e\n$st');
+    }
+    return 0;
+  }
+
+  /// 사장님 통계용: 본인 매장의 오늘/누적 지도 클릭 수 + 오늘 제보수 + 누적 검색수 + 오늘/누적 상세페이지 방문수
+  Future<Map<String, int>> fetchOwnerRestaurantEngagementStats(
+      String restaurantId) async {
+    try {
+      final rows = await _client.rpc(
+        'owner_restaurant_engagement_stats',
+        params: {'p_restaurant_id': restaurantId},
+      );
+      if (rows is List && rows.isNotEmpty) {
+        final row = rows.first as Map;
+        return {
+          'todayMapClicks': (row['today_map_clicks'] as num?)?.toInt() ?? 0,
+          'totalMapClicks': (row['total_map_clicks'] as num?)?.toInt() ?? 0,
+          'todayReports': (row['today_reports'] as num?)?.toInt() ?? 0,
+          'totalSearchClicks': (row['total_search_clicks'] as num?)?.toInt() ?? 0,
+          'todayDetailViews': (row['today_detail_views'] as num?)?.toInt() ?? 0,
+          'totalDetailViews': (row['total_detail_views'] as num?)?.toInt() ?? 0,
+        };
+      }
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnerRestaurantEngagementStats failed: $e\n$st');
+    }
+    return {
+      'todayMapClicks': 0,
+      'totalMapClicks': 0,
+      'todayReports': 0,
+      'totalSearchClicks': 0,
+      'todayDetailViews': 0,
+      'totalDetailViews': 0,
+    };
+  }
+
+  /// 사장님 통계용: 이 매장에 대해 사장님으로 승인받은 시점 (매장 자체 등록일이 아님)
+  Future<DateTime?> fetchOwnerVerifiedSince(String restaurantId) async {
+    try {
+      final raw = await _client.rpc(
+        'owner_verified_since',
+        params: {'p_restaurant_id': restaurantId},
+      );
+      if (raw is String) return DateTime.tryParse(raw)?.toLocal();
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchOwnerVerifiedSince failed: $e\n$st');
+    }
+    return null;
   }
 
   Future<int> fetchOwnerInfluence() async {
@@ -423,8 +482,6 @@ class SupabaseRestaurantRepository {
     if (data.containsKey('google_place_id')) {
       desc['google_place_id'] = data['google_place_id'];
     }
-    // 6자리 고유 인증번호 생성 (최초 1회)
-    desc['owner_code'] = (100000 + Random().nextInt(900000)).toString();
 
     final row = await _client
         .from('restaurants')
@@ -630,8 +687,7 @@ class SupabaseRestaurantRepository {
         extra?['hours'] as String? ?? '',
       ),
       manualRank: (extra?['manual_rank'] as num?)?.toInt() ?? 0,
-      ownerCode: extra?['owner_code'] as String? ?? '',
-      ownerRegistered: extra?['owner_registered'] == true,
+      ownerId: row['owner_id'] as String?,
       crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
       crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
       // 좌석 업데이트(사장님의 한마디)는 상세 페이지 전용 — 혼잡도 뱃지 시간(updated)과는 무관
@@ -724,16 +780,45 @@ class SupabaseRestaurantRepository {
     );
   }
 
-  /// 6자리 코드로 사장님 등록 (RPC, Publishable 키로 호출 가능)
-  Future<String> claimOwnerByCode(String code) async {
-    final result = await _client.rpc(
-      'claim_owner_by_code',
-      params: {'p_code': code.trim()},
-    );
-    return result as String;
+  /// 사장님 인증 신청 제출 (가게 선택 + 사업자등록증 + 연락처)
+  Future<void> submitOwnerApplication({
+    required String restaurantId,
+    required String phone,
+    required String email,
+    required List<String> licensePaths,
+  }) async {
+    await _client.rpc('submit_owner_application', params: {
+      'p_restaurant_id': restaurantId,
+      'p_phone': phone,
+      'p_email': email,
+      'p_license_paths': licensePaths,
+    });
   }
 
-  /// 본인 소유 매장 등록 해제 (owner_id·owner_registered 초기화)
+  /// 내 최신 사장님 인증 신청 상태 (없으면 null)
+  Future<Map<String, dynamic>?> fetchMyOwnerApplication() async {
+    final rows = await _client.rpc('get_my_owner_application');
+    if (rows is List && rows.isNotEmpty) {
+      return Map<String, dynamic>.from(rows.first as Map);
+    }
+    return null;
+  }
+
+  /// 사업자등록증 이미지 업로드 (private 버킷, 본인 폴더 하위). 실패 시 예외를 그대로 전파.
+  Future<String> uploadOwnerLicenseImage(Uint8List bytes, String ext) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('로그인이 필요해요.');
+    const bucket = 'owner-licenses';
+    final path =
+        '$uid/${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000000000)}.$ext';
+    await _client.storage.from(bucket).uploadBinary(
+          path, bytes,
+          fileOptions: FileOptions(contentType: 'image/$ext', upsert: false),
+        );
+    return path;
+  }
+
+  /// 본인 소유 매장 등록 해제 (owner_id 초기화)
   Future<void> releaseOwnerRestaurant(String restaurantId) async {
     await _client.rpc(
       'release_owner_restaurant',
@@ -782,38 +867,6 @@ class SupabaseRestaurantRepository {
       debugPrint('[Storage] fallback to base64: $e');
       return 'data:image/$ext;base64,${base64Encode(bytes)}';
     }
-  }
-
-  Future<String> generateOwnerCode(String restaurantId) async {
-    final code = (100000 + Random().nextInt(900000)).toString();
-    final existing = await _client
-        .from('restaurants')
-        .select('description')
-        .eq('id', restaurantId)
-        .single();
-    final desc = _parseDescription(existing['description']) ?? {};
-    desc['owner_code'] = code;
-    final updated = await _client
-        .from('restaurants')
-        .update({'description': jsonEncode(desc)})
-        .eq('id', restaurantId)
-        .select('id');
-    if ((updated as List).isEmpty) {
-      throw Exception('owner_code DB 저장 실패: 권한 부족이거나 존재하지 않는 매장 ID');
-    }
-    return code;
-  }
-
-  Future<String?> findRestaurantIdByOwnerCode(String code) async {
-    final rows = await _client
-        .from('restaurants')
-        .select('id, description')
-        .eq('is_active', true);
-    for (final row in rows) {
-      final desc = _parseDescription(row['description']);
-      if (desc?['owner_code'] == code) return row['id'] as String;
-    }
-    return null;
   }
 
   Future<void> updateManualRanks(Map<String, int> rankById) async {

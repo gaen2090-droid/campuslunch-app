@@ -152,27 +152,46 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                           onPageChanged: (i) => setState(() => _page = i),
                           itemBuilder: (context, i) => _GuidePageView(page: _pages[i]),
                         ),
-                        // 좌우 28px 여백(Padding)까지 포함해 화면 진짜 끝부터 터치되도록 확장
-                        Positioned(
-                          left: -28,
-                          top: 0,
-                          bottom: 0,
-                          width: 56 + 28,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: _prev,
+                        if (_page > 0)
+                          Positioned(
+                            left: -20,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _prev,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.chevron_left,
+                                    size: 28,
+                                    color: Color(0xFFD1D5DB),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        Positioned(
-                          right: -28,
-                          top: 0,
-                          bottom: 0,
-                          width: 56 + 28,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: _next,
+                        if (!isLast)
+                          Positioned(
+                            right: -20,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _next,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.chevron_right,
+                                    size: 28,
+                                    color: Color(0xFFD1D5DB),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

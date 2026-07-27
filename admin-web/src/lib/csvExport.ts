@@ -89,7 +89,7 @@ export function buildMetricsCsv(params: {
       ["매장명", "오너 등록"],
       ...restaurants.map((r) => [
         r.name,
-        r.ownerRegistered ? "등록됨" : "미등록",
+        r.ownerId ? "등록됨" : "미등록",
       ]),
     ]);
   }

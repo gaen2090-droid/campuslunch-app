@@ -3,5 +3,7 @@ export interface AppFeedback {
   category: string;
   content: string;
   userId: string | null;
+  nickname: string;
+  isFromOwner: boolean;
   createdAt: Date;
 }

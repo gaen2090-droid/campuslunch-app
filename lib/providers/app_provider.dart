@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
@@ -48,12 +47,54 @@ class AppProvider extends ChangeNotifier {
   String _accountId = '';
   String _userRole = 'user';
   List<String> _ownerRestaurantIds = [];
+  String? _selectedOwnerRestaurantId;
 
   bool get isLoggedIn => _isLoggedIn;
   String get nickname => _nickname;
   String get accountId => _accountId;
   String get userRole => _userRole;
   List<String> get ownerRestaurantIds => _ownerRestaurantIds;
+
+  /// 사장님 탭들(제보/마이페이지)이 공유하는 현재 선택 매장 ID.
+  /// 선택값이 더 이상 소유 목록에 없으면(삭제 등) 첫 번째 매장으로 폴백.
+  String? get selectedOwnerRestaurantId {
+    if (_ownerRestaurantIds.isEmpty) return null;
+    if (_selectedOwnerRestaurantId != null &&
+        _ownerRestaurantIds.contains(_selectedOwnerRestaurantId)) {
+      return _selectedOwnerRestaurantId;
+    }
+    return _ownerRestaurantIds.first;
+  }
+
+  void selectOwnerRestaurant(String restaurantId) {
+    if (_selectedOwnerRestaurantId == restaurantId) return;
+    _selectedOwnerRestaurantId = restaurantId;
+    notifyListeners();
+  }
+
+  /// 사장님이 커뮤니티에서 "OO 가게 사장님"으로 표시될 매장 (제보/마이 선택과 별개).
+  /// 매장이 1개뿐이면 선택 UI 없이 그 매장으로 항상 고정.
+  String? _activeOwnerRestaurantId;
+
+  String? get communityActiveOwnerRestaurantId {
+    if (_ownerRestaurantIds.length == 1) return _ownerRestaurantIds.first;
+    if (_activeOwnerRestaurantId != null &&
+        _ownerRestaurantIds.contains(_activeOwnerRestaurantId)) {
+      return _activeOwnerRestaurantId;
+    }
+    return null;
+  }
+
+  Future<void> setCommunityActiveOwnerRestaurant(String restaurantId) async {
+    if (_activeOwnerRestaurantId == restaurantId) return;
+    _activeOwnerRestaurantId = restaurantId;
+    notifyListeners();
+    try {
+      await CommunityRepository().setActiveOwnerRestaurant(restaurantId);
+    } catch (e, st) {
+      debugPrint('[setCommunityActiveOwnerRestaurant] failed: $e\n$st');
+    }
+  }
 
   /// 약관 동의 + 추천인 코드 입력까지 끝나고 메인 화면에서 1회 표시
   bool _showSignupCompleteMessage = false;
@@ -97,6 +138,22 @@ class AppProvider extends ChangeNotifier {
     _coachMarkSeenCache = true;
     SharedPreferences.getInstance()
         .then((prefs) => prefs.setBool(_kCoachMarkSeen, true));
+  }
+
+  /// 사장님 인증 승인 후 사장님 모드 첫 진입 시 1회만 보여줄 사용법 가이드.
+  bool? _ownerUsageGuideSeenCache;
+
+  Future<bool> shouldShowOwnerUsageGuide() async {
+    if (_ownerUsageGuideSeenCache != null) return !_ownerUsageGuideSeenCache!;
+    final prefs = await SharedPreferences.getInstance();
+    _ownerUsageGuideSeenCache = prefs.getBool(_kOwnerUsageGuideSeen) ?? false;
+    return !_ownerUsageGuideSeenCache!;
+  }
+
+  void completeOwnerUsageGuide() {
+    _ownerUsageGuideSeenCache = true;
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_kOwnerUsageGuideSeen, true));
   }
 
   bool? _communityGuidelineSeenCache;
@@ -166,7 +223,7 @@ class AppProvider extends ChangeNotifier {
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
 
-  /// 소유 매장(restaurants.owner_id)이 있을 때만 하단 「사장님」 탭 표시
+  /// 소유 매장(restaurants.owner_id)이 있으면 사장님 전용 3탭(제보/커뮤니티/마이) 앱으로 전환
   bool get hasOwnerTab {
     if (_ownerRestaurantIds.isEmpty) return false;
     if (_restaurants.isEmpty) return true;
@@ -175,12 +232,12 @@ class AppProvider extends ChangeNotifier {
     );
   }
 
-  /// 푸시·일반 「홈」 탭 인덱스 (사장님 탭이 있으면 1)
-  int get homeTabIndex => hasOwnerTab ? 1 : 0;
+  /// 사장님 모드: 0=제보, 1=커뮤니티, 2=마이. 일반 모드: 0=홈, 1=지도, 2=커뮤니티, 3=MY.
+  int get homeTabIndex => hasOwnerTab ? 0 : 0;
 
-  int get communityTabIndex => hasOwnerTab ? 3 : 2;
+  int get communityTabIndex => hasOwnerTab ? 1 : 2;
 
-  int get myTabIndex => hasOwnerTab ? 4 : 3;
+  int get myTabIndex => hasOwnerTab ? 2 : 3;
 
   String? _pendingCommunityPostId;
   String? get pendingCommunityPostId => _pendingCommunityPostId;
@@ -260,6 +317,7 @@ class AppProvider extends ChangeNotifier {
   static const _kLegalTermsAcceptedUsers = 'cl_legal_terms_accepted_users';
   static const _kPendingLegalTermsUsers = 'cl_pending_legal_terms_users';
   static const _kUsageGuideSeen = 'cl_usage_guide_seen';
+  static const _kOwnerUsageGuideSeen = 'cl_owner_usage_guide_seen';
   static const _kCoachMarkSeen = 'cl_coach_mark_seen';
   static const _kCommunityGuidelineSeen = 'cl_community_guideline_seen';
   static const _kLogin = 'cl_logged_in';
@@ -1228,9 +1286,13 @@ class AppProvider extends ChangeNotifier {
     final p = prefs ?? await SharedPreferences.getInstance();
     _ownerRestaurantIds = await _resolveOwnerRestaurantIds();
     await p.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
-    if (hadOwnerTab && !hasOwnerTab) {
-      _mainTabIndex =
-          _mainTabIndex > 0 ? (_mainTabIndex - 1).clamp(0, 3) : 0;
+    // 사장님↔일반 유저 전환 시 탭셋 자체가 바뀌므로 인덱스는 항상 0으로 리셋.
+    if (hadOwnerTab != hasOwnerTab) {
+      _mainTabIndex = 0;
+    }
+    // 매장이 1개뿐이면 선택 UI 없이 그 매장을 커뮤니티 활동 매장으로 서버에도 자동 반영.
+    if (_ownerRestaurantIds.length == 1) {
+      unawaited(setCommunityActiveOwnerRestaurant(_ownerRestaurantIds.first));
     }
   }
 
@@ -1412,7 +1474,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setMainTabIndex(int index) {
-    final max = hasOwnerTab ? 4 : 3;
+    final max = hasOwnerTab ? 2 : 3;
     final next = index.clamp(0, max);
     if (_mainTabIndex == next) return;
     _mainTabIndex = next;
@@ -1467,14 +1529,16 @@ class AppProvider extends ChangeNotifier {
   /// 하단 탭 전환 시 웹처럼 해당 화면 데이터를 서버에서 다시 불러온다.
   Future<void> _refreshForMainTab(int index) async {
     try {
+      if (hasOwnerTab) {
+        await refreshRestaurants();
+        await refreshOwnerState();
+        return;
+      }
       if (index == myTabIndex) {
         await fetchMyReward();
         return;
       }
       await refreshRestaurants();
-      if (hasOwnerTab && index == 0) {
-        await refreshOwnerState();
-      }
     } catch (e, st) {
       debugPrint('[AppProvider] _refreshForMainTab failed: $e\n$st');
     }
@@ -2038,7 +2102,7 @@ class AppProvider extends ChangeNotifier {
   }
 
 
-  /// 카카오 로컬 API로 매장 등록. 성공 시 6자리 ownerCode 반환.
+  /// 카카오 로컬 API로 매장 등록. 성공 시 등록된 매장 id 반환.
   Future<String?> addRestaurantFromKakaoPlace({
     required String placeId,
     required String name,
@@ -2081,7 +2145,7 @@ class AppProvider extends ChangeNotifier {
       });
 
       await _syncRestaurantListsAfterAdminChange();
-      return restaurant.ownerCode;
+      return restaurant.id;
     } catch (e, st) {
       debugPrint('[Supabase] addRestaurantFromKakaoPlace failed: $e\n$st');
       return null;
@@ -2128,7 +2192,7 @@ class AppProvider extends ChangeNotifier {
       });
 
       await _syncRestaurantListsAfterAdminChange();
-      return restaurant.ownerCode;
+      return restaurant.id;
     } catch (e, st) {
       debugPrint('[Supabase] addRestaurantFromGooglePlace failed: $e\n$st');
       return null;
@@ -2217,6 +2281,52 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// 사장님 통계용: 본인 매장의 누적 즐겨찾기 수
+  Future<int> fetchOwnerRestaurantBookmarkCount(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return 0;
+    return repo.fetchOwnerRestaurantBookmarkCount(restaurantId);
+  }
+
+  /// 사장님 통계용: 본인 매장의 오늘/누적 지도 클릭 수 + 오늘 제보수
+  Future<Map<String, int>> fetchOwnerRestaurantEngagementStats(
+      String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) {
+      return {
+        'todayMapClicks': 0,
+        'totalMapClicks': 0,
+        'todayReports': 0,
+        'totalSearchClicks': 0,
+        'todayDetailViews': 0,
+        'totalDetailViews': 0,
+      };
+    }
+    return repo.fetchOwnerRestaurantEngagementStats(restaurantId);
+  }
+
+  /// 지도에서 매장 마커를 탭했을 때 기록 (사장님 통계의 "지도 클릭 수" 집계용)
+  Future<void> recordMapMarkerClick(String restaurantId) async {
+    await _analyticsRepo.recordMapMarkerClick(restaurantId);
+  }
+
+  /// 홈/지도 검색 결과에서 매장을 선택했을 때 기록 (사장님 통계의 "누적 검색수" 집계용)
+  Future<void> recordSearchResultClick(String restaurantId) async {
+    await _analyticsRepo.recordSearchResultClick(restaurantId);
+  }
+
+  /// 매장 상세페이지 진입 시 기록 (사장님 통계의 "페이지 방문수" 집계용)
+  Future<void> recordDetailView(String restaurantId) async {
+    await _analyticsRepo.recordDetailView(restaurantId);
+  }
+
+  /// 사장님 통계용: 이 매장에 대해 사장님으로 승인받은 시점
+  Future<DateTime?> fetchOwnerVerifiedSince(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return null;
+    return repo.fetchOwnerVerifiedSince(restaurantId);
+  }
+
   Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {
     final repo = _restaurantRepo;
     if (repo == null) return null;
@@ -2283,114 +2393,49 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> generateOwnerCode(String restaurantId) async {
-    if (!_canAdminOps) {
-      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
-    }
+  /// 사업자등록증 이미지 업로드 (사장님 인증 신청용). 실패 시 예외를 그대로 던짐.
+  Future<String> uploadOwnerLicenseImage(Uint8List bytes, String ext) async {
+    final repo = _restaurantRepo;
+    if (repo == null) throw Exception('Supabase 연결이 필요해요.');
+    return repo.uploadOwnerLicenseImage(bytes, ext);
+  }
+
+  /// 사장님 인증 신청 제출 (가게 선택 후 사업자등록증 + 연락처)
+  Future<String?> submitOwnerApplication({
+    required String restaurantId,
+    required String phone,
+    required String email,
+    required List<String> licensePaths,
+  }) async {
+    if (!_hasSupabaseSession) return '로그인이 필요해요.';
     final repo = _restaurantRepo;
     if (repo == null) return 'Supabase 연결이 필요해요.';
     try {
-      final code = await repo.generateOwnerCode(restaurantId);
-      _restaurants = _restaurants.map((r) {
-        if (r.id != restaurantId) return r;
-        return Restaurant(
-          id: r.id,
-          name: r.name,
-          category: r.category,
-          area: r.area,
-          address: r.address,
-          status: r.status,
-          updated: r.updated,
-          imageUrl: r.imageUrl,
-          distance: r.distance,
-          latitude: r.latitude,
-          longitude: r.longitude,
-          x: r.x,
-          y: r.y,
-          hours: r.hours,
-          reports: r.reports,
-          menu: r.menu,
-          popularityScore: r.popularityScore,
-          manualRank: r.manualRank,
-          ownerCode: code,
-          ownerRegistered: r.ownerRegistered,
-        );
-      }).toList();
-      notifyListeners();
+      await repo.submitOwnerApplication(
+        restaurantId: restaurantId,
+        phone: phone,
+        email: email,
+        licensePaths: licensePaths,
+      );
       return null;
+    } on PostgrestException catch (e) {
+      debugPrint('[submitOwnerApplication] $e');
+      return e.message;
     } catch (e, st) {
-      debugPrint('[Supabase] generateOwnerCode failed: $e\n$st');
-      return '인증번호 발급에 실패했어요.';
+      debugPrint('[submitOwnerApplication] failed: $e\n$st');
+      return '신청 제출에 실패했어요.';
     }
   }
 
-  Future<String?> verifyOwnerCode(String code) async {
-    final trimmed = code.trim();
-    if (trimmed.length != 6) return 'INVALID_CODE';
-
-    if (!_hasSupabaseSession) {
-      return 'LOGIN_REQUIRED';
-    }
-
+  /// 내 최신 사장님 인증 신청 상태 (없으면 null)
+  Future<Map<String, dynamic>?> fetchMyOwnerApplication() async {
     final repo = _restaurantRepo;
-    String? restaurantId;
-
-    if (repo != null) {
-      try {
-        restaurantId = await repo.claimOwnerByCode(trimmed);
-      } on PostgrestException catch (e) {
-        final msg = e.message;
-        if (msg.contains('ALREADY_USED')) return 'ALREADY_USED';
-        if (msg.contains('LOGIN_REQUIRED')) return 'LOGIN_REQUIRED';
-        debugPrint('[verifyOwnerCode] RPC: $msg');
-        return 'INVALID_CODE';
-      } catch (e) {
-        debugPrint('[verifyOwnerCode] RPC failed: $e');
-        if (_hasSupabaseSession) return 'INVALID_CODE';
-        // 오프라인/미배포 RPC: 로컬 폴백 (Supabase 세션 없을 때만)
-        final found =
-            _restaurants.where((r) => r.ownerCode == trimmed);
-        if (found.isEmpty) return 'INVALID_CODE';
-        if (found.first.ownerRegistered) return 'ALREADY_USED';
-        restaurantId = found.first.id;
-      }
-    } else {
-      final found = _restaurants.where((r) => r.ownerCode == trimmed);
-      if (found.isEmpty) return 'INVALID_CODE';
-      if (found.first.ownerRegistered) return 'ALREADY_USED';
-      restaurantId = found.first.id;
-    }
-
+    if (repo == null) return null;
     try {
-      final ownedIds = repo != null
-          ? await _resolveOwnerRestaurantIds(
-              fallbackIds: [
-                if (restaurantId != null) restaurantId,
-              ],
-            )
-          : [
-              if (restaurantId != null) restaurantId,
-            ];
-      _ownerRestaurantIds = ownedIds.toSet().toList();
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kOwnerIds, jsonEncode(_ownerRestaurantIds));
-
-      await _syncMetadata({
-        'restaurant_ids': _ownerRestaurantIds,
-      });
-
-      if (repo != null) {
-        await refreshRestaurants();
-      }
-
-      _stage = 'app';
-      if (hasOwnerTab) _mainTabIndex = 0;
-      notifyListeners();
+      return await repo.fetchMyOwnerApplication();
+    } catch (e, st) {
+      debugPrint('[fetchMyOwnerApplication] failed: $e\n$st');
       return null;
-    } catch (e) {
-      debugPrint('[verifyOwnerCode] $e');
-      return 'INVALID_CODE';
     }
   }
 

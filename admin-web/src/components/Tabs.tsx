@@ -8,11 +8,13 @@ export type AdminTab =
   | "community"
   | "collections"
   | "users"
-  | "push";
+  | "push"
+  | "owner_applications";
 
 export const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "metrics", label: "핵심 지표" },
   { id: "restaurants", label: "매장 관리" },
+  { id: "owner_applications", label: "사장님 인증" },
   { id: "popularity", label: "인기 관리" },
   { id: "map_register", label: "지도 등록" },
   { id: "gifticons", label: "기프티콘" },

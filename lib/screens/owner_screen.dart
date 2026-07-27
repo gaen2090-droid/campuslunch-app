@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/load_error_view.dart';
+import '../widgets/owner_restaurant_dropdown.dart';
 import '../widgets/owner_verify_sheet.dart';
 import '../widgets/report_sheet.dart';
+import 'detail_screen.dart';
 
+/// 사장님 제보 탭: 소유 매장 선택 + 혼잡도 제보 + 입장 가능 인원 반영.
+/// 헤더는 사장님 마이페이지(owner_my_screen.dart)와 동일한 드롭다운 톤을 사용.
 class OwnerScreen extends StatefulWidget {
   const OwnerScreen({super.key});
 
@@ -14,13 +19,10 @@ class OwnerScreen extends StatefulWidget {
 }
 
 class _OwnerScreenState extends State<OwnerScreen> {
-  String? _selectedId;
   String? _toast;
   final _seatCtrl = TextEditingController();
   bool _seatSubmitting = false;
   bool _statusSubmitting = false;
-  bool _releasing = false;
-  bool _confirmRelease = false;
   String? _seatSuccessMessage;
 
   @override
@@ -79,30 +81,6 @@ class _OwnerScreenState extends State<OwnerScreen> {
     return '지금 $seats명 입장 가능해요';
   }
 
-  Future<void> _releaseRestaurant(
-    AppProvider provider,
-    String restaurantId,
-  ) async {
-    setState(() => _releasing = true);
-    final err = await provider.releaseOwnerRestaurant(restaurantId);
-    if (!mounted) return;
-    setState(() {
-      _releasing = false;
-      _confirmRelease = false;
-    });
-    if (err != null) {
-      _showToast(err);
-      return;
-    }
-    if (!provider.hasOwnerTab) return;
-    setState(() {
-      _selectedId = null;
-      _seatCtrl.clear();
-      _seatSuccessMessage = null;
-    });
-    _showToast('매장 등록을 해제했어요');
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -117,20 +95,19 @@ class _OwnerScreenState extends State<OwnerScreen> {
             return null;
           }
         })
-        .whereType<dynamic>()
-        .where((r) => r != null)
+        .whereType<Restaurant>()
         .toList();
 
     if (ownedList.isEmpty) {
       if (ownerIds.isNotEmpty && allRestaurants.isEmpty) {
         if (provider.restaurantsLoading) {
           return const Scaffold(
-            backgroundColor: Color(0xFFFAFAF8),
+            backgroundColor: Colors.white,
             body: Center(child: CircularProgressIndicator()),
           );
         }
         return Scaffold(
-          backgroundColor: const Color(0xFFFAFAF8),
+          backgroundColor: Colors.white,
           body: LoadErrorView(
             message: provider.restaurantsLoadFailed
                 ? '네트워크 연결을 확인해주세요.'
@@ -142,10 +119,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
           ),
         );
       }
-      return Stack(
-        children: [
-          Scaffold(
-        backgroundColor: const Color(0xFFFAFAF8),
+      return Scaffold(
+        backgroundColor: Colors.white,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -215,12 +190,10 @@ class _OwnerScreenState extends State<OwnerScreen> {
             ),
           ),
         ),
-      ),
-        ],
       );
     }
 
-    final selectedId = _selectedId ?? ownerIds.first;
+    final selectedId = provider.selectedOwnerRestaurantId ?? ownerIds.first;
     final restaurant = ownedList.firstWhere(
       (r) => r.id.toString() == selectedId,
       orElse: () => ownedList.first,
@@ -229,529 +202,348 @@ class _OwnerScreenState extends State<OwnerScreen> {
     final current = restaurant.hasCrowdUpdate ? restaurant.status : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAF8),
-      body: Stack(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
         children: [
-          SafeArea(
-            bottom: false,
+          SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Restaurant tab pills
-                if (ownedList.length > 1) ...[
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                    child: Row(
-                      children: ownedList.map((r) {
-                        final isSelected = r.id.toString() == selectedId;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () => setState(() {
-                              _selectedId = r.id.toString();
-                              _seatCtrl.clear();
-                              _seatSuccessMessage = null;
-                              _confirmRelease = false;
-                            }),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF111827)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF111827)
-                                      : const Color(0xFFE5E7EB),
-                                ),
-                              ),
-                              child: Text(
-                                r.name,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF6B7280),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ] else
-                  const SizedBox(height: 32),
-
-                // Header
+                const SizedBox(height: 21),
+                // ── 매장 선택 헤더 (마이페이지와 동일한 드롭다운) ──
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: OwnerRestaurantDropdown(
+                    ownedList: ownedList,
+                    selected: restaurant,
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
-                        '내 매장',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                          color: Color(0xFF9CA3AF),
+                      const Expanded(
+                        child: Text(
+                          '지금 매장 상태를 선택해주세요',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        restaurant.name,
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.28,
-                          height: 1.18,
-                          color: Color(0xFF111827),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DetailScreen(restaurant: restaurant),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '지금 매장 상태를 선택해주세요',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F8F0),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFBFE0B0)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.visibility_outlined,
+                                  size: 13, color: Color(0xFF5E8C4A)),
+                              SizedBox(width: 4),
+                              Text(
+                                '소비자 화면 보기',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF5E8C4A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
 
-                // Status + 입장 가능 인원
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                    child: Column(
-                      children: [
-                        ..._opts.map((opt) {
-                          final selected = current == opt.status;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: GestureDetector(
-                              onTap: () async {
-                                if (selected || _statusSubmitting) return;
-                                setState(() => _statusSubmitting = true);
-                                final err = await provider.reportStatus(
-                                  restaurant.id,
-                                  opt.status,
-                                );
-                                if (!context.mounted) return;
-                                setState(() => _statusSubmitting = false);
-                                if (err != null) {
-                                  _showToast(err);
-                                  return;
-                                }
-                                _showToast(
-                                    '\'${restaurant.name}\' 혼잡도를 \'${opt.status}\'으로 업데이트했어요');
-                              },
-                              child: AnimatedContainer(
-                                height: 80,
-                                duration: const Duration(milliseconds: 200),
-                                decoration: BoxDecoration(
-                                  color: selected ? opt.bgColor : Colors.white,
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: selected
-                                        ? opt.borderColor
-                                        : const Color(0xFFE5E7EB),
-                                    width: selected ? 2 : 1,
-                                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      ..._opts.map((opt) {
+                        final selected = current == opt.status;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GestureDetector(
+                            onTap: () async {
+                              if (selected || _statusSubmitting) return;
+                              setState(() => _statusSubmitting = true);
+                              final err = await provider.reportStatus(
+                                restaurant.id,
+                                opt.status,
+                              );
+                              if (!context.mounted) return;
+                              setState(() => _statusSubmitting = false);
+                              if (err != null) {
+                                _showToast(err);
+                                return;
+                              }
+                              _showToast(
+                                  '\'${restaurant.name}\' 혼잡도를 \'${opt.status}\'으로 업데이트했어요');
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 18),
+                              decoration: BoxDecoration(
+                                color: selected ? opt.bgColor : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: selected
+                                      ? opt.borderColor
+                                      : const Color(0xFFE5E7EB),
+                                  width: selected ? 2 : 1,
                                 ),
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 28),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                boxShadow: selected
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(8),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
                                     children: [
-                                      Row(
+                                      Container(
+                                        width: 16,
+                                        height: 16,
+                                        decoration: BoxDecoration(
+                                          color: opt.textColor,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Container(
-                                            width: 20,
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                              color: opt.textColor,
-                                              shape: BoxShape.circle,
+                                          Text(
+                                            opt.label,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: -0.5,
+                                              color: selected
+                                                  ? opt.textColor
+                                                  : const Color(0xFF374151),
                                             ),
                                           ),
-                                          const SizedBox(width: 16),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                opt.label,
-                                                style: TextStyle(
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: -0.78,
-                                                  color: selected
-                                                      ? opt.textColor
-                                                      : const Color(0xFF374151),
-                                                ),
-                                              ),
-                                              Text(
-                                                opt.subtitle,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: selected
-                                                      ? opt.textColor.withAlpha(180)
-                                                      : const Color(0xFF9CA3AF),
-                                                ),
-                                              ),
-                                            ],
+                                          Text(
+                                            opt.subtitle,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: selected
+                                                  ? opt.textColor.withAlpha(180)
+                                                  : const Color(0xFF9CA3AF),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      if (selected)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: opt.textColor,
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: const Text(
-                                            '현재',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
                                     ],
+                                  ),
+                                  if (selected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: opt.textColor,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Text(
+                                        '현재',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(8),
+                              blurRadius: 8,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '지금 몇 명까지 입장 가능한가요?',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _seatCtrl,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827),
+                              ),
+                              onChanged: (_) => setState(() {
+                                _seatSuccessMessage = null;
+                              }),
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                hintStyle: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFFD1D5DB),
+                                ),
+                                suffixText: '명',
+                                suffixStyle: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.grey.shade700,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF9FAFB),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E7EB),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E7EB),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF5E8C4A),
+                                    width: 1.5,
                                   ),
                                 ),
                               ),
                             ),
-                          );
-                        }),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '지금 몇 명까지 입장 가능한가요?',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF111827),
-                                ),
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F8F0),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _seatCtrl,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      onChanged: (_) => setState(() {
-                                        _seatSuccessMessage = null;
-                                      }),
-                                      decoration: InputDecoration(
-                                        hintText: '0',
-                                        filled: true,
-                                        fillColor: const Color(0xFFF9FAFB),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFFE5E7EB),
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFFE5E7EB),
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFF5E8C4A),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '명',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
+                              child: Text(
                                 _seatPreviewText(),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF6B7280),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              GestureDetector(
-                                onTap: _seatSubmitting
-                                    ? null
-                                    : () => _submitSeatUpdate(
-                                          provider,
-                                          restaurant.id.toString(),
-                                        ),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  decoration: BoxDecoration(
-                                    color: _seatSubmitting
-                                        ? const Color(0xFFBFE0B0)
-                                        : const Color(0xFF9ECA8B),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Center(
-                                    child: _seatSubmitting
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Color(0xFF111827),
-                                            ),
-                                          )
-                                        : const Text(
-                                            '반영하기',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xFF111827),
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                              if (_seatSuccessMessage != null) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  _seatSuccessMessage!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF5E8C4A),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Bottom buttons
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    0,
-                    24,
-                    MediaQuery.of(context).padding.bottom + 40,
-                  ),
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () async {
-                          final success = await OwnerVerifyScreen.show(context);
-                          if (success == true) _showToast('매장이 추가됐어요');
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add,
-                                  size: 16, color: Color(0xFF374151)),
-                              SizedBox(width: 6),
-                              Text(
-                                '매장 추가',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF374151),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_confirmRelease) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF5F5),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFFECACA)),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                ownedList.length == 1
-                                    ? '마지막 매장 등록을 삭제할까요?\n삭제 후에는 일반 유저 화면으로 돌아가요.'
-                                    : '\'${restaurant.name}\' 등록을 삭제할까요?\n앱에는 매장이 그대로 남아요.',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF374151),
-                                  height: 1.45,
+                                  color: Color(0xFF5E8C4A),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 14),
+                            GestureDetector(
+                              onTap: _seatSubmitting
+                                  ? null
+                                  : () => _submitSeatUpdate(
+                                        provider,
+                                        restaurant.id.toString(),
+                                      ),
+                              child: Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: _seatSubmitting
+                                      ? const Color(0xFFBFE0B0)
+                                      : const Color(0xFF9ECA8B),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Center(
+                                  child: _seatSubmitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF111827),
+                                          ),
+                                        )
+                                      : const Text(
+                                          '반영하기',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF111827),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                            if (_seatSuccessMessage != null) ...[
                               const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: _releasing
-                                          ? null
-                                          : () => setState(
-                                                () => _confirmRelease = false,
-                                              ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: const Color(0xFFE5E7EB),
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            '취소',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xFF6B7280),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: _releasing
-                                          ? null
-                                          : () => _releaseRestaurant(
-                                                provider,
-                                                restaurant.id.toString(),
-                                              ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEF4444),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Center(
-                                          child: _releasing
-                                              ? const SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Colors.white,
-                                                  ),
-                                                )
-                                              : const Text(
-                                                  '삭제',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                _seatSuccessMessage!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF5E8C4A),
+                                  height: 1.4,
+                                ),
                               ),
                             ],
-                          ),
-                        ),
-                      ] else
-                        GestureDetector(
-                          onTap: () => setState(() => _confirmRelease = true),
-                          child: const Text(
-                            '매장 삭제',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      GestureDetector(
-                        onTap: () => provider.logout(),
-                        child: const Text(
-                          '로그아웃',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFC1BDB7),
-                          ),
+                          ],
                         ),
                       ),
                     ],
@@ -764,7 +556,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
           // Toast
           if (_toast != null)
             Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 40,
+              bottom: 40,
               left: 20,
               right: 20,
               child: Center(
@@ -786,10 +578,9 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 ),
               ),
             ),
-
         ],
+      ),
       ),
     );
   }
 }
-

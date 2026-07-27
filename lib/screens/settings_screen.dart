@@ -154,15 +154,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
-          _SettingsButton(
-            label: '푸시 알림 설정',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const PushNotificationSettingsScreen()),
+          if (!provider.hasOwnerTab) ...[
+            _SettingsButton(
+              label: '푸시 알림 설정',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const PushNotificationSettingsScreen()),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           GestureDetector(
             onTap: () {
               provider.logout();

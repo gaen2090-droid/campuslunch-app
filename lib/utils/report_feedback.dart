@@ -38,7 +38,10 @@ Future<void> submitCrowdReportFeedback(
 
   final stamp = provider.lastStampResult;
   String message;
-  if (!stamp.granted && stamp.todayStamps == 0 && stamp.totalStamps == 0) {
+  if (stamp.isOutOfStampHours) {
+    message =
+        '혼잡도 제보가 등록되었어요.\n지금은 스탬프 제공 시간이 아니에요. (오전 10시~오후 7시)';
+  } else if (!stamp.granted && stamp.todayStamps == 0 && stamp.totalStamps == 0) {
     // 사장님 제보 또는 Supabase 미연결
     message = '소중한 제보 감사드려요!';
   } else if (stamp.granted) {

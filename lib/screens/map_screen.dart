@@ -200,7 +200,13 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
           child: RestaurantKakaoMap(
             restaurants: filtered,
             selected: _selected,
-            onSelect: (r) => setState(() => _selected = _selected?.id == r.id ? null : r),
+            onSelect: (r) {
+              final wasSelected = _selected?.id == r.id;
+              setState(() => _selected = wasSelected ? null : r);
+              if (!wasSelected) {
+                context.read<AppProvider>().recordMapMarkerClick(r.id);
+              }
+            },
             onDeselect: () => setState(() => _selected = null),
             showMyLocationMarker: provider.locationMode,
             myLocationEnabled: provider.locationMode,

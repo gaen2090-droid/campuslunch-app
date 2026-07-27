@@ -8,6 +8,8 @@
 15. supabase/deploy_prelaunch_security.sql   ← 배포 전 반드시
     (같은 세션에서 push_analytics.sql 66~312행 admin_dashboard_metrics 도 실행)
 16. supabase/users_nickname_unique.sql       (미실행 시)
+17. supabase/owner_applications.sql          ← 사장님 인증(가게선택+서류제출+승인) 신설
+18. supabase/owner_code_cleanup.sql          ← 17번 배포 후 실행. 6자리 코드 RPC/필드 제거
 ```
 
 ## 테이블별 RLS · CRUD (앱 anon/authenticated 기준)
@@ -22,6 +24,7 @@
 | `user_rewards` | 본인 + admin | RPC만 | RPC만 | cascade |
 | `analytics_events` | — | authenticated (본인) | — | admin |
 | `owner_seat_updates` | 전체 | owner RPC | — | — |
+| `owner_applications` | 본인 + admin | RPC만 | RPC만 | — |
 | `app_feedback` | admin | authenticated | — | — |
 
 제보·스탬프·기프티콘은 **직접 테이블 쓰기보다 RPC** (`submit_crowd_report`, `redeem_gifticon` 등) 사용.
@@ -31,6 +34,7 @@
 1. **Authentication → Policies**: 위 테이블 RLS `enabled`
 2. **API Keys**: 앱에는 **anon(publishable) 키만** — `service_role` 절대 포함 금지
 3. **Storage `gifticons`**: private 버킷 + `rewards.sql` storage policy 적용
+3b. **Storage `owner-licenses`**: private 버킷 (owner_applications.sql이 자동 생성) + 본인 업로드/관리자 열람 policy 적용 확인
 4. **관리자 계정**: `public.users.role = 'admin'` 은 Dashboard SQL로만 부여
 
 ```sql

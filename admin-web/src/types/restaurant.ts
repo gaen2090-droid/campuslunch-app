@@ -17,8 +17,7 @@ export interface AdminRestaurant {
   longitude: number;
   reports: Record<string, number>;
   menu: MenuItem[];
-  ownerCode: string;
-  ownerRegistered: boolean;
+  ownerId: string | null;
   manualRank: number;
   popularityScore: number;
   crowdBaseSource: string;

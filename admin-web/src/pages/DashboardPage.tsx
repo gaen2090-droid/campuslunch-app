@@ -33,7 +33,7 @@ export function DashboardPage({ metrics, restaurants }: Props) {
     )
     .slice(0, 3);
 
-  const registeredOwners = restaurants.filter((r) => r.ownerRegistered).length;
+  const registeredOwners = restaurants.filter((r) => r.ownerId).length;
 
   return (
     <div className="dashboard">

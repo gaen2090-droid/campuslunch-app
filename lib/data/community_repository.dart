@@ -14,6 +14,13 @@ class CommunityRepository {
 
   final SupabaseClient _client;
 
+  /// 사장님이 커뮤니티에서 활동할 매장을 설정 (null이면 해제)
+  Future<void> setActiveOwnerRestaurant(String? restaurantId) async {
+    await _client.rpc('set_active_owner_restaurant', params: {
+      'p_restaurant_id': restaurantId,
+    });
+  }
+
   Future<List<CommunityPost>> fetchFeed({
     DateTime? before,
     int limit = 20,

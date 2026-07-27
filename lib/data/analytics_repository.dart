@@ -27,6 +27,50 @@ class AnalyticsRepository {
     await _recordBanner('banner_click', restaurantId);
   }
 
+  Future<void> recordMapMarkerClick(String restaurantId) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    if (restaurantId.isEmpty) return;
+    try {
+      await _client.rpc(
+        'record_map_marker_click',
+        params: {'p_restaurant_id': restaurantId},
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] map_marker_click: $e\n$st');
+    }
+  }
+
+  /// 홈/지도 검색 결과에서 이 매장을 선택(클릭)했을 때 기록
+  Future<void> recordSearchResultClick(String restaurantId) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    if (restaurantId.isEmpty) return;
+    try {
+      await _client.rpc(
+        'record_search_result_click',
+        params: {'p_restaurant_id': restaurantId},
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] search_result_click: $e\n$st');
+    }
+  }
+
+  /// 매장 상세페이지 진입 시 기록 (사장님 본인 매장 미리보기는 호출측에서 제외)
+  Future<void> recordDetailView(String restaurantId) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    if (restaurantId.isEmpty) return;
+    try {
+      await _client.rpc(
+        'record_detail_view',
+        params: {'p_restaurant_id': restaurantId},
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] detail_view: $e\n$st');
+    }
+  }
+
   Future<void> recordPushDelivered({
     required String slot,
     String? restaurantId,

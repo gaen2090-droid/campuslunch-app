@@ -38,7 +38,12 @@ class _DetailScreenState extends State<DetailScreen> {
         (x) => x.id == widget.restaurant.id,
         orElse: () => widget.restaurant,
       );
-      if (r.status == '영업안함') {
+      // 사장님이 자기 매장을 미리보기할 때는 실제 유저 방문이 아니므로 집계에서 제외.
+      if (!provider.hasOwnerTab) {
+        provider.recordDetailView(r.id);
+      }
+      // 사장님이 자기 매장을 미리보기할 때는 제보 유도 시트를 띄우지 않는다.
+      if (r.status == '영업안함' || provider.hasOwnerTab) {
         _loadOwnerSeatUpdate();
         _loadRecentReports();
         return;
@@ -269,55 +274,57 @@ class _DetailScreenState extends State<DetailScreen> {
 
             BusinessHoursSection(hours: r.hours),
 
-            if (ownerPriorityActive) const _OwnerPriorityWindowCard(),
-
             if (_ownerSeatUpdate != null &&
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
 
+            if (ownerPriorityActive) const _OwnerPriorityWindowCard(),
+
             if (_recentReports.isNotEmpty) _RecentReportsSection(reports: _recentReports),
 
-            // ── 액션 버튼 ──
+            // ── 액션 버튼 (사장님이 자기 매장을 미리보기할 때는 제보 버튼 숨김) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 children: [
-                  Opacity(
-                    opacity: r.status == '영업안함' ? 0.4 : 1.0,
-                    child: GestureDetector(
-                    onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
-                      context,
-                      r,
-                      (status) => _submitReport(r.id, status),
-                    ),
-                    child: Container(
-                      height: 52,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
-                        borderRadius: BorderRadius.circular(16),
+                  if (!provider.hasOwnerTab) ...[
+                    Opacity(
+                      opacity: r.status == '영업안함' ? 0.4 : 1.0,
+                      child: GestureDetector(
+                      onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
+                        context,
+                        r,
+                        (status) => _submitReport(r.id, status),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.edit_outlined,
-                              size: 16, color: Color(0xFF111827)),
-                          SizedBox(width: 8),
-                          Text(
-                            '혼잡도 제보하기',
-                            style: TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
+                      child: Container(
+                        height: 52,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9ECA8B),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit_outlined,
+                                size: 16, color: Color(0xFF111827)),
+                            SizedBox(width: 8),
+                            Text(
+                              '혼잡도 제보하기',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  ),
-                  const SizedBox(height: 10),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   GestureDetector(
                     onTap: () => _navigate(r),
                     child: Container(

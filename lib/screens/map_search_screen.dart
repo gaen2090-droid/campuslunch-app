@@ -67,6 +67,7 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
     final updated = await _historyStore.addRestaurant(r.id, r.name, _history);
     if (!mounted) return;
     setState(() => _history = updated);
+    context.read<AppProvider>().recordSearchResultClick(r.id);
     widget.onSelectRestaurant(r);
   }
 

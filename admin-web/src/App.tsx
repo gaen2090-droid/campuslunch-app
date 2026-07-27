@@ -16,10 +16,12 @@ import { FeedbackPage } from "./pages/FeedbackPage";
 import { GifticonsPage } from "./pages/GifticonsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapRegisterPage } from "./pages/MapRegisterPage";
+import { OwnerApplicationsPage } from "./pages/OwnerApplicationsPage";
 import { PopularityPage } from "./pages/PopularityPage";
 import { PushSettingsPage } from "./pages/PushSettingsPage";
 import { RestaurantsPage } from "./pages/RestaurantsPage";
 import { UsersPage } from "./pages/UsersPage";
+import { useOwnerApplications } from "./hooks/useOwnerApplications";
 import { usePushConfig } from "./hooks/usePushConfig";
 import { useUsers } from "./hooks/useUsers";
 
@@ -37,6 +39,9 @@ export default function App() {
   const collectionsState = useCollections(enabled && tab === "collections");
   const usersState = useUsers(enabled && tab === "users");
   const pushConfigState = usePushConfig(enabled && tab === "push");
+  const ownerApplicationsState = useOwnerApplications(
+    enabled && tab === "owner_applications",
+  );
 
   const refreshAll = useCallback(async () => {
     await Promise.all([
@@ -48,6 +53,9 @@ export default function App() {
       tab === "collections" ? collectionsState.reload() : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
+      tab === "owner_applications"
+        ? ownerApplicationsState.reload()
+        : Promise.resolve(),
     ]);
   }, [
     metricsState,
@@ -58,6 +66,7 @@ export default function App() {
     collectionsState,
     usersState,
     pushConfigState,
+    ownerApplicationsState,
     tab,
   ]);
 
@@ -201,6 +210,17 @@ export default function App() {
       );
     }
 
+    if (tab === "owner_applications") {
+      return (
+        <OwnerApplicationsPage
+          applications={ownerApplicationsState.applications}
+          loading={ownerApplicationsState.loading}
+          error={ownerApplicationsState.error}
+          onReload={ownerApplicationsState.reload}
+        />
+      );
+    }
+
     return (
       <GifticonsPage
         gifticons={gifticonsState.gifticons}
@@ -223,6 +243,7 @@ export default function App() {
           if (next === "collections") collectionsState.reload();
           if (next === "users") usersState.reload();
           if (next === "push") pushConfigState.reload();
+          if (next === "owner_applications") ownerApplicationsState.reload();
         }}
         onSignOut={auth.signOut}
         onExport={() => setShowExport(true)}

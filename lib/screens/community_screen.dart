@@ -347,6 +347,111 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
+  Widget _ownerActiveRestaurantChip() {
+    final provider = context.watch<AppProvider>();
+    if (!provider.hasOwnerTab) return const SizedBox.shrink();
+
+    final ownerIds = provider.ownerRestaurantIds;
+    final restaurants = provider.restaurants;
+    final owned = ownerIds
+        .map((rid) {
+          try {
+            return restaurants.firstWhere((r) => r.id.toString() == rid);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Restaurant>()
+        .toList();
+    if (owned.isEmpty) return const SizedBox.shrink();
+
+    final activeId = provider.communityActiveOwnerRestaurantId;
+    final active = owned.firstWhere(
+      (r) => r.id.toString() == activeId,
+      orElse: () => owned.first,
+    );
+    final canChange = owned.length > 1;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: GestureDetector(
+        onTap: canChange ? () => _showOwnerRestaurantPicker(owned, activeId) : null,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          color: const Color(0xFFF3F8F0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🏪', style: TextStyle(fontSize: 11)),
+              const SizedBox(width: 4),
+              Text(
+                '${active.name} 사장님으로 활동 중',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF5E8C4A),
+                ),
+              ),
+              if (canChange) ...[
+                const SizedBox(width: 2),
+                const Icon(Icons.keyboard_arrow_down_rounded,
+                    size: 14, color: Color(0xFF5E8C4A)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOwnerRestaurantPicker(List<Restaurant> owned, String? activeId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                '어느 매장 사장님으로 활동할까요?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              ),
+            ),
+            for (final r in owned)
+              ListTile(
+                title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                trailing: r.id.toString() == activeId
+                    ? const Icon(Icons.check, color: Color(0xFF5E8C4A))
+                    : null,
+                onTap: () {
+                  context.read<AppProvider>().setCommunityActiveOwnerRestaurant(r.id.toString());
+                  Navigator.pop(context);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
@@ -426,6 +531,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ],
             ),
           ),
+          _ownerActiveRestaurantChip(),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
