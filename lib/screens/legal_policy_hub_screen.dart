@@ -21,16 +21,19 @@ class LegalPolicyHubScreen extends StatelessWidget {
       assetPath: 'assets/legal/COMMUNITY_POLICY.md',
     ),
     LegalTermsCheckItem(
-      id: 'marketing_push',
-      label: '광고성 정보(마케팅 푸시) 수신 동의',
+      id: 'business_info',
+      label: '사업자 정보',
       required: false,
-      assetPath: 'assets/legal/MARKETING_PUSH_TERMS.md',
+      assetPath: 'assets/legal/BUSINESS_INFO.md',
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final items = [...LegalTerms.checkItems, ..._extra];
+    final items = [
+      ...LegalTerms.checkItems.where((item) => item.assetPath != null),
+      ..._extra,
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -68,7 +71,7 @@ class LegalPolicyHubScreen extends StatelessWidget {
               onTap: () => LegalDocumentScreen.open(
                 context,
                 title: item.label,
-                assetPath: item.assetPath,
+                assetPath: item.assetPath!,
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

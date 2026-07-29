@@ -29,4 +29,16 @@ class LegalConsentRepository {
       debugPrint('[LegalConsent] recordConsent($termId): $e\n$st');
     }
   }
+
+  Future<bool> fetchMarketingConsent() async {
+    if (!SupabaseService.isReady) return false;
+    if (_client.auth.currentUser == null) return false;
+    try {
+      final result = await _client.rpc('fetch_marketing_consent');
+      return result as bool? ?? false;
+    } catch (e, st) {
+      debugPrint('[LegalConsent] fetchMarketingConsent: $e\n$st');
+      return false;
+    }
+  }
 }

@@ -402,7 +402,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         if (!RewardLimits.isWithinStampHours(DateTime.now()))
           Container(
             width: double.infinity,
-            color: const Color(0xFFFFF7E6),
+            color: const Color(0xFFF3F8F0),
             padding: EdgeInsets.fromLTRB(
                 20, MediaQuery.of(context).padding.top + 8, 20, 8),
             child: Text(
@@ -411,7 +411,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF92660A),
+                color: Color(0xFF5E8C4A),
               ),
             ),
           ),

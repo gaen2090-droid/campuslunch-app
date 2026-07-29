@@ -32,6 +32,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
           id: item.id,
           label: item.label,
           required: item.required,
+          viewable: item.assetPath != null,
         ),
       )
       .toList();
@@ -40,11 +41,11 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
 
   void _openDocument(String id) {
     final item = LegalTerms.itemById(id);
-    if (item == null) return;
+    if (item == null || item.assetPath == null) return;
     LegalDocumentScreen.open(
       context,
       title: item.label,
-      assetPath: item.assetPath,
+      assetPath: item.assetPath!,
     );
   }
 

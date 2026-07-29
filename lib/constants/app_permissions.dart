@@ -47,20 +47,16 @@ abstract final class AppPermissions {
           ),
         const AppPermissionCard(
           id: 'notification',
-          title: '광고성 정보(마케팅 푸시) 수신 동의',
+          title: '실시간 서비스 알림 받기',
           required: false,
-          subtitle: '이벤트 및 혜택 정보를 받아보실 수 있어요.',
+          subtitle: '점심시간 알림, 여유로운 매장 알림 등 서비스 기본 알림',
           documentBody:
               '알림 권한은 선택 동의 항목입니다.\n\n'
-              '이벤트·기획전 등 광고성 알림과, 평일 점심·저녁 피크 추천·'
-              '커뮤니티 댓글 알림 등 서비스 이용 알림을 '
-              'Firebase Cloud Messaging(FCM)으로 보내드립니다. '
+              '점심시간 알림, 여유로운 매장 알림, 커뮤니티 댓글 알림 등 '
+              '서비스 이용 알림을 Firebase Cloud Messaging(FCM)으로 보내드립니다. '
               '앱이 꺼져 있어도 서버에서 발송할 수 있습니다.\n\n'
               '동의하지 않아도 앱의 다른 기능은 동일하게 이용할 수 있으며, '
-              '설정 화면에서 언제든지 알림 수신 여부를 변경할 수 있습니다.\n\n'
-              '자세한 내용은 아래 「광고성 정보 수신 동의」 전문에서 확인할 수 있습니다.',
-          documentAssetPath: 'assets/legal/MARKETING_PUSH_TERMS.md',
-          documentLinkLabel: '광고성 정보 수신 동의 전문 보기',
+              '기기 설정에서 언제든지 알림 권한을 변경할 수 있습니다.',
         ),
       ];
 

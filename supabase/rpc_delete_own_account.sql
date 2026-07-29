@@ -1,5 +1,13 @@
--- 회원 탈퇴 (연관 데이터 정리 + public.users + auth.users 삭제)
--- Dashboard → SQL Editor → Run (users_auth.sql 이후)
+-- 회원 탈퇴 (Dashboard → SQL Editor → Run)
+-- 정책(PRIVACY_POLICY.md): 탈퇴 시 커뮤니티 게시물/댓글은 삭제하지 않고 유지하되,
+-- 작성자 표시만 '탈퇴한 회원'으로 익명화한다.
+--
+-- 주의: public.users.id 는 auth.users(id) on delete cascade 이므로,
+-- auth.users 를 삭제하면 public.users 행도 함께 삭제되어 게시물의 작성자 조인이 끊긴다
+-- (community_posts.user_id → public.users on delete cascade).
+-- 그래서 auth.users 는 삭제하지 않고, public.users 행을 남긴 채 개인정보만 스크럽하고
+-- nickname/role 을 '탈퇴한 회원'/user 로 바꿔 기존 조회 RPC(u.nickname, u.role='owner' 조인)가
+-- 별도 수정 없이 자동으로 익명화된 값을 반환하도록 한다.
 
 create or replace function public.delete_own_account()
 returns void
@@ -14,6 +22,7 @@ begin
     raise exception 'NOT_AUTHENTICATED';
   end if;
 
+  -- 게시물/댓글/좋아요·신고 이력은 커뮤니티 맥락 보존을 위해 삭제하지 않는다.
   delete from public.bookmarks where user_id = uid;
   delete from public.user_push_tokens where user_id = uid;
   delete from public.user_notification_prefs where user_id = uid;
@@ -22,19 +31,25 @@ begin
   delete from public.crowd_reports where user_id = uid;
   delete from public.analytics_events where user_id = uid;
   delete from public.app_feedback where user_id = uid;
-  delete from public.community_reports where reporter_id = uid;
-  delete from public.community_likes where user_id = uid;
-  delete from public.community_comments where user_id = uid;
-  delete from public.community_posts where user_id = uid;
   delete from public.owner_seat_updates where owner_id = uid;
   delete from public.user_rewards where user_id = uid;
-  update public.gifticons
-  set assigned_user_id = null, assigned_at = null
-  where assigned_user_id = uid;
+  update public.gifticons set assigned_user_id = null, assigned_at = null where assigned_user_id = uid;
   update public.restaurants set owner_id = null where owner_id = uid;
+  update public.restaurant_verification_codes set claimed_by = null where claimed_by = uid;
 
-  delete from public.users where id = uid;
-  delete from auth.users where id = uid;
+  -- 탈퇴 회원 익명화: 게시물/댓글은 남기고 표시 정보만 스크럽
+  update public.users
+  set nickname = '탈퇴한 회원',
+      email = null,
+      kakao_user_id = null,
+      avatar_url = null,
+      role = 'user'::public.user_role,
+      active_owner_restaurant_id = null
+  where id = uid;
+
+  -- auth.users 는 삭제하지 않는다 (cascade로 public.users 까지 사라짐).
+  -- 대신 재로그인을 막기 위해 계정을 비활성화한다.
+  update auth.users set banned_until = 'infinity' where id = uid;
 end;
 $$;
 

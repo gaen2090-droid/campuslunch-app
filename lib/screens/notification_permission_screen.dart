@@ -48,7 +48,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        '피크 시간대에\n추천 매장을 알려드릴게요',
+                        '실시간 서비스 알림을\n받아보세요',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 20,
@@ -60,7 +60,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        '평일 점심(12:00)과 저녁(18:00)에\n지금 바로 입장 가능한 매장을 알려드려요.',
+                        '점심시간 알림, 여유로운 매장 알림 등\n서비스 기본 알림을 보내드려요.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,

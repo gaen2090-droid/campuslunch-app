@@ -147,6 +147,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                   ),
                   Expanded(
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
                         PageView.builder(
                           controller: _controller,
@@ -163,12 +164,18 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                               child: GestureDetector(
                                 behavior: HitTestBehavior.opaque,
                                 onTap: _prev,
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0x809CA3AF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
                                     Icons.chevron_left,
                                     size: 28,
-                                    color: Color(0xFFD1D5DB),
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
@@ -183,12 +190,18 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                               child: GestureDetector(
                                 behavior: HitTestBehavior.opaque,
                                 onTap: _next,
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0x809CA3AF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
                                     Icons.chevron_right,
                                     size: 28,
-                                    color: Color(0xFFD1D5DB),
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),

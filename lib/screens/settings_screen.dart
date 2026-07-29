@@ -156,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
           if (!provider.hasOwnerTab) ...[
             _SettingsButton(
-              label: '푸시 알림 설정',
+              label: '알림 설정',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(

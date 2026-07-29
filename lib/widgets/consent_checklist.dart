@@ -29,12 +29,14 @@ class ConsentCheckItem {
     required this.label,
     required this.required,
     this.subtitle,
+    this.viewable = true,
   });
 
   final String id;
   final String label;
   final bool required;
   final String? subtitle;
+  final bool viewable;
 }
 
 class _ConsentChecklistState extends State<ConsentChecklist> {
@@ -69,7 +71,7 @@ class _ConsentChecklistState extends State<ConsentChecklist> {
         ...widget.items.map((item) {
           final summary = widget.expandedSummaries?[item.id];
           final expanded = _expanded.contains(item.id);
-          final canView = widget.onViewDocument != null;
+          final canView = widget.onViewDocument != null && item.viewable;
           return Column(
             children: [
               _ConsentRow(

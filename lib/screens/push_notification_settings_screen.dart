@@ -13,7 +13,10 @@ class PushNotificationSettingsScreen extends StatefulWidget {
 class _PushNotificationSettingsScreenState
     extends State<PushNotificationSettingsScreen> {
   late bool _lunchPush;
+  late bool _rewardPush;
+  late bool _newsPush;
   late bool _communityPush;
+  bool _marketingConsent = false;
   bool _initialized = false;
 
   @override
@@ -23,29 +26,17 @@ class _PushNotificationSettingsScreenState
       _initialized = true;
       final provider = context.read<AppProvider>();
       _lunchPush = provider.lunchPushEnabled;
+      _rewardPush = provider.rewardPushEnabled;
+      _newsPush = provider.lunchPushEnabled;
       _communityPush = provider.communityCommentsPushEnabled;
+      _loadMarketingConsent();
     }
   }
 
-  Future<void> _snack(String message) async {
+  Future<void> _loadMarketingConsent() async {
+    final agreed = await context.read<AppProvider>().fetchMarketingConsent();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF111827),
-        ),
-      ),
-      backgroundColor: const Color(0xFF9ECA8B),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-      duration: const Duration(milliseconds: 1600),
-      elevation: 0,
-    ));
+    setState(() => _marketingConsent = agreed);
   }
 
   @override
@@ -61,7 +52,7 @@ class _PushNotificationSettingsScreenState
         ),
         titleSpacing: 0,
         title: const Text(
-          '푸시 알림 설정',
+          '알림 설정',
           style: TextStyle(
             fontFamily: 'Pretendard',
             fontSize: 18,
@@ -75,31 +66,85 @@ class _PushNotificationSettingsScreenState
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const _SectionHeader('서비스 알림'),
             _ToggleRow(
-              title: '점심 피크 추천 알림',
-              desc: '점심 피크 시간에 여유로운 매장을 알려드려요.',
+              title: '점심시간 알림',
+              desc: '점심시간에 캠퍼스런치 이용을 알려드려요.',
               enabled: _lunchPush,
               onToggle: () async {
                 final next = !_lunchPush;
                 setState(() => _lunchPush = next);
                 await context.read<AppProvider>().setLunchPush(next);
-                if (next) await _snack('점심 피크 알림을 켰어요.');
               },
             ),
             const Divider(height: 1, color: Color(0xFFE5E7EB)),
             _ToggleRow(
-              title: '커뮤니티 댓글 알림',
+              title: '리워드 지급 알림',
+              desc: '기프티콘이 지급되면 알려드려요.',
+              enabled: _rewardPush,
+              onToggle: () async {
+                final next = !_rewardPush;
+                setState(() => _rewardPush = next);
+                await context.read<AppProvider>().setRewardPush(next);
+              },
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            _ToggleRow(
+              title: '캠퍼스런치 소식 알림',
+              desc: '업데이트, 이벤트 등 운영 소식을 알려드려요.',
+              enabled: _newsPush,
+              onToggle: () async {
+                final next = !_newsPush;
+                setState(() => _newsPush = next);
+              },
+            ),
+            const SizedBox(height: 24),
+            const _SectionHeader('커뮤니티'),
+            _ToggleRow(
+              title: '댓글 알림',
               desc: '글 상단의 알림 버튼을 켜두면, 댓글이 달렸을 때 알려드려요.',
               enabled: _communityPush,
               onToggle: () async {
                 final next = !_communityPush;
                 setState(() => _communityPush = next);
                 await context.read<AppProvider>().setCommunityCommentsPush(next);
-                if (next) await _snack('커뮤니티 댓글 알림을 켰어요.');
+              },
+            ),
+            const SizedBox(height: 24),
+            const _SectionHeader('서비스 동의'),
+            _ToggleRow(
+              title: '개인정보 활용 및 마케팅 정보 수신',
+              desc: '마케팅 및 프로모션 활동에 대한 개인정보 활용에 동의해요.',
+              enabled: _marketingConsent,
+              onToggle: () async {
+                final next = !_marketingConsent;
+                setState(() => _marketingConsent = next);
+                await context.read<AppProvider>().setMarketingConsent(next);
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF9CA3AF),
         ),
       ),
     );

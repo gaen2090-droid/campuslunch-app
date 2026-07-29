@@ -315,7 +315,7 @@ class _ReleaseConfirm extends StatelessWidget {
         children: [
           Text(
             isLastRestaurant
-                ? '마지막 매장 등록을 삭제할까요?\n삭제 후에는 일반 유저 화면으로 돌아가요.'
+                ? '매장을 삭제할까요?\n삭제 후에는 일반 소비자 화면으로 돌아가요.'
                 : '\'$restaurantName\' 등록을 삭제할까요?\n앱에는 매장이 그대로 남아요.',
             textAlign: TextAlign.center,
             style: const TextStyle(

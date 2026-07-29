@@ -212,7 +212,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
         <form className="panel push-form" onSubmit={(e) => void submit(e)}>
           <section className="push-section">
             <div className="push-section-head row">
-              <h3>피크 추천</h3>
+              <h3>점심시간 알림</h3>
               <label className="field inline-days">
                 <span>예약 일수</span>
                 <input
