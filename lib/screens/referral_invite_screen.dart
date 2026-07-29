@@ -26,13 +26,16 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
     });
   }
 
-  static const _shareBody =
-      '지금 바로 중앙대 근처 맛집들의 혼잡도를 알아보세요. '
-      '추천인 코드 넣고 가입하면 아이스 아메리카노 스탬프 지급!';
+  static String _shareBody(String code) =>
+      '중앙대생 필수 앱 캠퍼스런치!\n'
+      '지금 바로 갈 수 있는 식당을 알 수 있다고? 🧚🏻‍♀️\n\n'
+      '스탬프 모아서 아메리카노 쿠폰도 받아봐 ☕️\n'
+      '친구 추천으로 가입하면 둘 다 스탬프 3개 지급 🎉\n\n'
+      '추천인 코드: $code';
 
   /// 카톡 미설치 등 — 시스템 공유 폴백
   static String shareMessage(String code) {
-    return '$_shareBody\n\n${AppLinks.inviteUrl(code)}';
+    return '${_shareBody(code)}\n\n${AppLinks.inviteUrl(code)}';
   }
 
   Rect? _shareOrigin() {
@@ -64,7 +67,7 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
       iosExecutionParams: params,
     );
     final template = TextTemplate(
-      text: _shareBody,
+      text: _shareBody(code),
       link: link,
       buttons: [
         Button(title: '앱에서 열기', link: link),
