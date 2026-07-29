@@ -2524,6 +2524,8 @@ class AppProvider extends ChangeNotifier {
     required String phone,
     required String email,
     required List<String> licensePaths,
+    bool notifyPush = false,
+    bool notifySms = false,
   }) async {
     if (!_hasSupabaseSession) return '로그인이 필요해요.';
     final repo = _restaurantRepo;
@@ -2534,6 +2536,8 @@ class AppProvider extends ChangeNotifier {
         phone: phone,
         email: email,
         licensePaths: licensePaths,
+        notifyPush: notifyPush,
+        notifySms: notifySms,
       );
       return null;
     } on PostgrestException catch (e) {

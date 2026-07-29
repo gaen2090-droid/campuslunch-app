@@ -438,6 +438,8 @@ export async function fetchOwnerApplications(): Promise<OwnerApplication[]> {
       : [],
     status: String(raw.status ?? "pending"),
     rejectReason: raw.reject_reason ? String(raw.reject_reason) : null,
+    notifyPush: Boolean(raw.notify_push),
+    notifySms: Boolean(raw.notify_sms),
     createdAt: new Date(String(raw.created_at)),
     reviewedAt: raw.reviewed_at ? new Date(String(raw.reviewed_at)) : null,
   }));

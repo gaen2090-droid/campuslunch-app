@@ -30,7 +30,8 @@ function formatTemplate(
 type Payload =
   | { event: "comment"; commentId: string }
   | { event: "like"; postId: string; likerId: string }
-  | { event: "moderation_delete"; kind: "post" | "comment"; userId: string };
+  | { event: "moderation_delete"; kind: "post" | "comment"; userId: string }
+  | { event: "owner_approved"; userId: string; restaurantId: string };
 
 function extractPayload(body: Record<string, unknown>): Payload | null {
   const eventRaw = body.event ?? body.type;
@@ -42,6 +43,13 @@ function extractPayload(body: Record<string, unknown>): Payload | null {
     const userId = String(body.user_id ?? "");
     if (!kind || !userId) return null;
     return { event: "moderation_delete", kind, userId };
+  }
+
+  if (eventRaw === "owner_approved") {
+    const userId = String(body.user_id ?? "");
+    const restaurantId = String(body.restaurant_id ?? "");
+    if (!userId || !restaurantId) return null;
+    return { event: "owner_approved", userId, restaurantId };
   }
 
   // Database webhook: INSERT on community_comments
@@ -167,6 +175,52 @@ Deno.serve(async (req) => {
         ok: true,
         event: payload.event,
         kind: payload.kind,
+        sent,
+        failed,
+      });
+    }
+
+    if (payload.event === "owner_approved") {
+      const { data: tokens, error } = await supabase.rpc(
+        "list_owner_approval_push_tokens",
+        { p_user_id: payload.userId },
+      );
+      if (error) throw error;
+      const list = (tokens ?? []) as { token: string }[];
+
+      const { data: restaurant } = await supabase
+        .from("restaurants")
+        .select("name")
+        .eq("id", payload.restaurantId)
+        .maybeSingle();
+      const restaurantName = (restaurant as { name?: string } | null)?.name ?? "매장";
+
+      for (const row of list) {
+        const result = await sendFcmMessage(sa, access, {
+          token: row.token,
+          title: "사장님 인증이 승인됐어요",
+          body: `${restaurantName} 사장님 인증이 승인되었어요. 지금 바로 사장님 기능을 이용해보세요.`,
+          data: {
+            type: "owner_approved",
+            restaurant_id: payload.restaurantId,
+          },
+        });
+        if (result.ok) sent++;
+        else {
+          failed++;
+          if (
+            result.status === 404 ||
+            result.body.includes("UNREGISTERED") ||
+            result.body.includes("NOT_FOUND")
+          ) {
+            invalidTokens.push(row.token);
+          }
+        }
+      }
+      await flushInvalid();
+      return jsonResponse({
+        ok: true,
+        event: payload.event,
         sent,
         failed,
       });

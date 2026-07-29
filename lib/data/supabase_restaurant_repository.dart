@@ -786,12 +786,16 @@ class SupabaseRestaurantRepository {
     required String phone,
     required String email,
     required List<String> licensePaths,
+    bool notifyPush = false,
+    bool notifySms = false,
   }) async {
     await _client.rpc('submit_owner_application', params: {
       'p_restaurant_id': restaurantId,
       'p_phone': phone,
       'p_email': email,
       'p_license_paths': licensePaths,
+      'p_notify_push': notifyPush,
+      'p_notify_sms': notifySms,
     });
   }
 

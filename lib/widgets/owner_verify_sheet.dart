@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../services/fcm_push_service.dart';
+import '../services/push_notification_service.dart';
 
 /// 사장님 인증 플로우: 가게 선택 → 사업자등록증/연락처 제출 → 심사중 안내.
 /// 진입 시 기존 신청 상태(pending/rejected/approved)를 먼저 확인해 알맞은 화면을 보여준다.
@@ -340,6 +342,10 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
   final List<_PickedLicenseImage> _images = [];
   bool _submitting = false;
   String? _error;
+  bool _notifyPush = false;
+  bool _notifySms = false;
+  bool _requestingPushPermission = false;
+  String? _pushPermissionDeniedNotice;
 
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -348,6 +354,37 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleNotifyPush(bool value) async {
+    if (!value) {
+      setState(() {
+        _notifyPush = false;
+        _pushPermissionDeniedNotice = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _requestingPushPermission = true;
+      _pushPermissionDeniedNotice = null;
+    });
+    var granted = false;
+    try {
+      granted = await PushNotificationService.instance.requestPermission();
+      if (granted) {
+        await FcmPushService.instance.requestPermissionAndRegister();
+      }
+    } catch (_) {
+      granted = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _requestingPushPermission = false;
+      _notifyPush = granted;
+      _pushPermissionDeniedNotice =
+          granted ? null : '알림 권한이 꺼져 있어 앱 푸시를 받을 수 없어요.\n기기 설정에서 알림을 허용해주세요.';
+    });
   }
 
   Future<void> _pickImages() async {
@@ -398,6 +435,8 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
         phone: _phoneCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         licensePaths: paths,
+        notifyPush: _notifyPush,
+        notifySms: _notifySms,
       );
       if (!mounted) return;
       if (err != null) {
@@ -506,6 +545,31 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
             onChanged: (_) => setState(() {}),
             decoration: _fieldDecoration('example@email.com'),
           ),
+          const SizedBox(height: 20),
+          const Text(
+            '승인되면 알림을 보내드릴게요!',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 10),
+          _NotifyMethodCheckbox(
+            label: '앱 푸시로 받기',
+            checked: _notifyPush,
+            loading: _requestingPushPermission,
+            onChanged: _toggleNotifyPush,
+          ),
+          const SizedBox(height: 8),
+          _NotifyMethodCheckbox(
+            label: '문자로 받기',
+            checked: _notifySms,
+            onChanged: (v) => setState(() => _notifySms = v),
+          ),
+          if (_pushPermissionDeniedNotice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _pushPermissionDeniedNotice!,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFEF4444), height: 1.4),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
@@ -560,4 +624,56 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
           borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5),
         ),
       );
+}
+
+class _NotifyMethodCheckbox extends StatelessWidget {
+  final String label;
+  final bool checked;
+  final bool loading;
+  final ValueChanged<bool> onChanged;
+
+  const _NotifyMethodCheckbox({
+    required this.label,
+    required this.checked,
+    this.loading = false,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: loading ? null : () => onChanged(!checked),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: checked ? const Color(0xFFF3F8F0) : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: checked ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          children: [
+            if (loading)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF9ECA8B)),
+              )
+            else
+              Icon(
+                checked ? Icons.check_box : Icons.check_box_outline_blank,
+                size: 20,
+                color: checked ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+              ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

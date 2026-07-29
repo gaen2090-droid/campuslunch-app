@@ -108,6 +108,19 @@ export function OwnerApplicationsPage({
                       <p className="muted sm">
                         신청자 {app.userNickname} · {app.phone} · {app.email}
                       </p>
+                      {(app.notifyPush || app.notifySms) && (
+                        <p className="muted xs">
+                          승인 알림:{" "}
+                          {app.notifyPush && (
+                            <span className="badge assigned">앱 푸시</span>
+                          )}{" "}
+                          {app.notifySms && (
+                            <span className="badge danger">
+                              문자 (승인 시 {app.phone}로 수동 발송 필요)
+                            </span>
+                          )}
+                        </p>
+                      )}
                       <p className="muted xs">
                         신청일 {app.createdAt.toLocaleString("ko-KR")}
                       </p>
@@ -178,6 +191,19 @@ export function OwnerApplicationsPage({
                       <p className="muted sm">
                         신청자 {app.userNickname} · {app.phone} · {app.email}
                       </p>
+                      {(app.notifyPush || app.notifySms) && (
+                        <p className="muted xs">
+                          승인 알림:{" "}
+                          {app.notifyPush && (
+                            <span className="badge assigned">앱 푸시</span>
+                          )}{" "}
+                          {app.notifySms && (
+                            <span className="badge danger">
+                              문자 ({app.phone})
+                            </span>
+                          )}
+                        </p>
+                      )}
                       {app.rejectReason && (
                         <p className="muted sm">반려 사유: {app.rejectReason}</p>
                       )}
