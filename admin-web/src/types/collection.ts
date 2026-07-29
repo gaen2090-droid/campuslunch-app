@@ -1,4 +1,4 @@
-export const COLLECTION_HASHTAGS = ["혼밥", "밥약", "카공", "맛집"] as const;
+export const COLLECTION_HASHTAGS = ["혼밥", "밥약", "카공", "맛집", "가성비"] as const;
 
 export interface RestaurantCollection {
   id: string;

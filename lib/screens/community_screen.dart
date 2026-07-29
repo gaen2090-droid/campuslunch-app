@@ -43,7 +43,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   String? _collectionsError;
   bool _savedCollectionsOnly = false;
   final Set<String> _activeHashtags = {};
-  static const _collectionHashtags = ['혼밥', '밥약', '카공', '맛집'];
+  static const _collectionHashtags = ['혼밥', '밥약', '카공', '맛집', '가성비'];
   // 인기순 고정 — 좋아요 누를 때마다 순서가 바뀌면 산만하므로, 새로고침
   // 또는 탭 전환 시점에만 이 순서를 다시 계산해 스냅샷으로 고정한다.
   List<String> _collectionOrder = [];
