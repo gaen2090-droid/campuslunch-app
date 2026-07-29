@@ -8,6 +8,27 @@
 -- 그래서 auth.users 는 삭제하지 않고, public.users 행을 남긴 채 개인정보만 스크럽하고
 -- nickname/role 을 '탈퇴한 회원'/user 로 바꿔 기존 조회 RPC(u.nickname, u.role='owner' 조인)가
 -- 별도 수정 없이 자동으로 익명화된 값을 반환하도록 한다.
+--
+-- 운영 통계 보존을 위해 아래 4개 테이블은 삭제 대신 user_id만 null로 비운다
+-- (매장별 혼잡도 제보 수·즐겨찾기 수·쿠폰 지급 수·피드백 내용은 통계/운영
+-- 자산이라 탈퇴자 수만큼 계속 깎여나가면 안 됨. 개인 식별자만 제거하면
+-- 개인정보보호법상 통계 목적의 익명 정보로 계속 보관 가능):
+--   crowd_reports.user_id  (원래 nullable)
+--   bookmarks.user_id      (원래 not null → 이 파일에서 nullable로 변경)
+--   gifticons.assigned_user_id (원래 nullable, assigned_at은 유지해 지급 이력 보존)
+--   app_feedback.user_id   (원래 nullable)
+-- 반면 아래는 탈퇴자 개인에게만 의미 있는 데이터라 지금처럼 삭제 유지:
+--   user_push_tokens, user_notification_prefs, notification_settings,
+--   user_devices, analytics_events, owner_seat_updates(1시간 지나면 조회 자체가
+--   안 되는 실시간 정보), user_rewards(1:1 개인 잔액이라 익명화해도 무의미)
+
+-- bookmarks.user_id를 nullable로 바꾸고, 유저 삭제 시 즐겨찾기 row 자체가
+-- cascade로 사라지지 않도록 on delete set null로 변경한다.
+alter table public.bookmarks alter column user_id drop not null;
+alter table public.bookmarks drop constraint if exists bookmarks_user_id_fkey;
+alter table public.bookmarks
+  add constraint bookmarks_user_id_fkey
+  foreign key (user_id) references public.users(id) on delete set null;
 
 create or replace function public.delete_own_account()
 returns void
@@ -23,17 +44,19 @@ begin
   end if;
 
   -- 게시물/댓글/좋아요·신고 이력은 커뮤니티 맥락 보존을 위해 삭제하지 않는다.
-  delete from public.bookmarks where user_id = uid;
+  -- 매장별 통계에 쓰이는 4개 테이블은 삭제 대신 user_id만 익명화한다.
+  update public.crowd_reports set user_id = null where user_id = uid;
+  update public.bookmarks set user_id = null where user_id = uid;
+  update public.gifticons set assigned_user_id = null where assigned_user_id = uid;
+  update public.app_feedback set user_id = null where user_id = uid;
+
   delete from public.user_push_tokens where user_id = uid;
   delete from public.user_notification_prefs where user_id = uid;
   delete from public.notification_settings where user_id = uid;
   delete from public.user_devices where user_id = uid;
-  delete from public.crowd_reports where user_id = uid;
   delete from public.analytics_events where user_id = uid;
-  delete from public.app_feedback where user_id = uid;
   delete from public.owner_seat_updates where owner_id = uid;
   delete from public.user_rewards where user_id = uid;
-  update public.gifticons set assigned_user_id = null, assigned_at = null where assigned_user_id = uid;
   update public.restaurants set owner_id = null where owner_id = uid;
   update public.restaurant_verification_codes set claimed_by = null where claimed_by = uid;
 
