@@ -67,9 +67,15 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>주변 식당과 내 위치를 지도에 표시하기 위해 위치 권한이 필요합니다.</string>
+	<string>주변 식당과 내 위치를 지도에 표시하고, 매장까지 길찾기·혼잡도 제보 시 매장 인근 여부를 확인하기 위해 위치 권한이 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>주변 식당과 내 위치를 지도에 표시하고, 매장까지 길찾기·혼잡도 제보 시 매장 인근 여부를 확인하기 위해 위치 권한이 필요합니다. 백그라운드에서 위치를 추적하지 않습니다.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>커뮤니티 게시글에 사진을 첨부하기 위해 사진 보관함 접근이 필요합니다.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>기프티콘 쿠폰 이미지를 사진 앨범에 저장하기 위해 권한이 필요합니다.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>커뮤니티 게시글에 사진을 촬영·첨부하기 위해 카메라 접근이 필요합니다.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

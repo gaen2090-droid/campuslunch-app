@@ -30,6 +30,10 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<{
+    sent: number;
+    failed: number;
+  } | null>(null);
 
   useEffect(() => {
     if (config) setForm(config);
@@ -107,7 +111,24 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     setSuccess(null);
     try {
       const result = await invokePushEdge(action);
-      setSuccess(`${label} 완료: ${JSON.stringify(result)}`);
+      if (
+        action === "config_refresh" &&
+        result &&
+        typeof result === "object" &&
+        "sent" in result
+      ) {
+        const sent = Number((result as { sent?: unknown }).sent ?? 0);
+        const failed = Number((result as { failed?: unknown }).failed ?? 0);
+        const pruned = Number((result as { pruned?: unknown }).pruned ?? 0);
+        setLastRefresh({ sent, failed });
+        setSuccess(
+          pruned > 0
+            ? `설정 전파 완료 — 성공 ${sent}대 · 실패 ${failed}대 · 무효 토큰 ${pruned}개 삭제`
+            : `설정 전파 완료 — 성공 ${sent}대 · 실패 ${failed}대`,
+        );
+      } else {
+        setSuccess(`${label} 완료: ${JSON.stringify(result)}`);
+      }
       await reloadOps();
     } catch (err) {
       setFormError(
@@ -140,20 +161,12 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
 
       <div className="panel push-ops compact">
         <div className="push-ops-top">
-          <div className="push-ops-stats">
-            <span>
-              토큰 <strong>{ops.tokenCount}</strong>
-              <em>({ops.uniqueUsersWithToken}명)</em>
-            </span>
-            <span>
-              점심 <strong>{ops.peakLunchOn}</strong>
-            </span>
-            <span>
-              저녁 <strong>{ops.peakDinnerOn}</strong>
-            </span>
-            <span>
-              커뮤니티 <strong>{ops.communityOn}</strong>
-            </span>
+          <div>
+            <h3 className="push-ops-title">수신 현황</h3>
+            <p className="muted sm push-ops-lead">
+              서버 FCM 기준 · 알림을 켠 유저 중 <strong>토큰이 있는</strong> 대상만
+              집계합니다. (로컬 예약 알림은 폰에서 따로 울립니다)
+            </p>
           </div>
           <button
             type="button"
@@ -164,6 +177,49 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
             {opsLoading ? "…" : "새로고침"}
           </button>
         </div>
+
+        <div className="push-reach-grid">
+          <div className="push-reach-card">
+            <span className="push-reach-label">점심 피크</span>
+            <strong className="push-reach-main">{ops.lunchUsers}명</strong>
+            <span className="muted sm">기기 {ops.lunchDevices}대</span>
+          </div>
+          <div className="push-reach-card">
+            <span className="push-reach-label">저녁 피크</span>
+            <strong className="push-reach-main">{ops.dinnerUsers}명</strong>
+            <span className="muted sm">기기 {ops.dinnerDevices}대</span>
+          </div>
+          <div className="push-reach-card">
+            <span className="push-reach-label">커뮤니티 댓글</span>
+            <strong className="push-reach-main">{ops.communityUsers}명</strong>
+            <span className="muted sm">기기 {ops.communityDevices}대</span>
+          </div>
+        </div>
+
+        <div className="push-cost-box">
+          <p>
+            <strong>설정 전파</strong> 시 전체 등록 토큰{" "}
+            <strong>{ops.configRefreshDevices}</strong>건에 data-only 1회씩
+            시도합니다. (알림 팝업 없음 · 앱 스케줄 재동기화용)
+          </p>
+          <p className="muted sm">
+            FCM 메시지 발송 <strong>과금 없음</strong> (Firebase 무료 할당량).
+            운영에서 볼 지표는 「몇 명/몇 대에 시도하는가」입니다.
+            {lastRefresh && (
+              <>
+                {" "}
+                · 최근 전파 성공 {lastRefresh.sent} / 실패 {lastRefresh.failed}
+              </>
+            )}
+          </p>
+          {!form.peakFcmEnabled && (
+            <p className="muted sm">
+              지금 「서버 FCM」이 꺼져 있어 피크 테스트·정기 서버 발송은 나가지
+              않습니다. 위 인원은 켰을 때 기준입니다.
+            </p>
+          )}
+        </div>
+
         <div className="push-ops-actions">
           {enabledSchedules.slice(0, 4).map((s) => (
             <button
@@ -187,7 +243,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
         </div>
         {ops.lastPeakSent.length > 0 && (
           <p className="push-ops-log-inline muted sm">
-            최근:{" "}
+            최근 서버 피크 발송:{" "}
             {ops.lastPeakSent
               .slice(0, 3)
               .map(

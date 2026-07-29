@@ -69,9 +69,18 @@ export const DEFAULT_PUSH_CONFIG: PushNotificationConfig = {
 export interface PushOpsSnapshot {
   tokenCount: number;
   uniqueUsersWithToken: number;
+  /** @deprecated 알림 ON만 (토큰 유무 무시) — UI는 reachable* 사용 */
   peakLunchOn: number;
   peakDinnerOn: number;
   communityOn: number;
+  lunchUsers: number;
+  lunchDevices: number;
+  dinnerUsers: number;
+  dinnerDevices: number;
+  communityUsers: number;
+  communityDevices: number;
+  /** 설정 전파 시 FCM 시도 건수(= 전체 토큰) */
+  configRefreshDevices: number;
   lastPeakSent: Array<{ sentDate: string; slot: string; createdAt: string }>;
 }
 
@@ -81,6 +90,13 @@ export const EMPTY_PUSH_OPS: PushOpsSnapshot = {
   peakLunchOn: 0,
   peakDinnerOn: 0,
   communityOn: 0,
+  lunchUsers: 0,
+  lunchDevices: 0,
+  dinnerUsers: 0,
+  dinnerDevices: 0,
+  communityUsers: 0,
+  communityDevices: 0,
+  configRefreshDevices: 0,
   lastPeakSent: [],
 };
 
@@ -251,12 +267,22 @@ export function newPeakSchedule(index: number): PeakPushSchedule {
 
 export function parsePushOpsSnapshot(raw: Record<string, unknown>): PushOpsSnapshot {
   const last = Array.isArray(raw.last_peak_sent) ? raw.last_peak_sent : [];
+  const tokenCount = Number(raw.token_count ?? 0);
   return {
-    tokenCount: Number(raw.token_count ?? 0),
+    tokenCount,
     uniqueUsersWithToken: Number(raw.unique_users_with_token ?? 0),
     peakLunchOn: Number(raw.peak_lunch_on ?? 0),
     peakDinnerOn: Number(raw.peak_dinner_on ?? 0),
     communityOn: Number(raw.community_on ?? 0),
+    lunchUsers: Number(raw.lunch_users ?? 0),
+    lunchDevices: Number(raw.lunch_devices ?? 0),
+    dinnerUsers: Number(raw.dinner_users ?? 0),
+    dinnerDevices: Number(raw.dinner_devices ?? 0),
+    communityUsers: Number(raw.community_users ?? 0),
+    communityDevices: Number(raw.community_devices ?? 0),
+    configRefreshDevices: Number(
+      raw.config_refresh_devices ?? raw.token_count ?? 0,
+    ),
     lastPeakSent: last.map((row) => {
       const r = row as Record<string, unknown>;
       return {

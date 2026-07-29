@@ -725,21 +725,63 @@ export async function fetchPushOpsSnapshot(): Promise<PushOpsSnapshot> {
 export async function invokePushEdge(
   action: string,
 ): Promise<unknown> {
-  if (action === "config_refresh") {
-    const { data, error } = await supabase.functions.invoke(
-      "send-config-refresh",
-      { body: {} },
-    );
-    if (error) throw error;
-    return data;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error("로그인이 만료됐어요. 다시 로그인해 주세요.");
   }
+
+  const baseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(
+    /\/$/,
+    "",
+  );
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!baseUrl || !anonKey) {
+    throw new Error("Supabase URL/anon key가 없어요.");
+  }
+
+  const name =
+    action === "config_refresh" ? "send-config-refresh" : "send-peak-push";
   const force =
-    action === "peak_lunch" ? "lunch" : action === "peak_dinner" ? "dinner" : action;
-  const { data, error } = await supabase.functions.invoke("send-peak-push", {
-    body: { force },
+    action === "config_refresh"
+      ? undefined
+      : action === "peak_lunch"
+        ? "lunch"
+        : action === "peak_dinner"
+          ? "dinner"
+          : action;
+  const body =
+    name === "send-peak-push" ? { force } : {};
+
+  const res = await fetch(`${baseUrl}/functions/v1/${name}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: anonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
-  if (error) throw error;
-  return data;
+
+  const text = await res.text();
+  let parsed: unknown = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = text;
+  }
+
+  if (!res.ok) {
+    const msg =
+      parsed &&
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "error" in parsed
+        ? String((parsed as { error: unknown }).error)
+        : text || res.statusText;
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  return parsed;
 }
 
 export async function fetchCommunityReports(): Promise<CommunityReport[]> {

@@ -27,9 +27,11 @@ create table if not exists public.user_notification_prefs (
 
 create table if not exists public.peak_push_sent_log (
   sent_date  date not null,
-  slot       text not null check (slot in ('lunch', 'dinner')),
+  slot       text not null,
+  hour       int not null default 0 check (hour >= 0 and hour <= 23),
+  minute     int not null default 0 check (minute >= 0 and minute <= 59),
   created_at timestamptz not null default now(),
-  primary key (sent_date, slot)
+  primary key (sent_date, slot, hour, minute)
 );
 
 alter table public.user_push_tokens enable row level security;
@@ -295,10 +297,12 @@ $$;
 revoke all on function public.list_community_comment_push_recipients(uuid) from public;
 grant execute on function public.list_community_comment_push_recipients(uuid) to service_role;
 
--- 중복 발송 방지 클레임 (inserted면 true)
+-- 중복 발송 방지: 같은 날짜·슬롯·시·분만 (시각 바꾸면 당일 재발송 가능)
 create or replace function public.try_claim_peak_push(
   p_slot text,
-  p_date date default (timezone('Asia/Seoul', now()))::date
+  p_date date default (timezone('Asia/Seoul', now()))::date,
+  p_hour int default null,
+  p_minute int default null
 )
 returns boolean
 language plpgsql
@@ -307,20 +311,32 @@ set search_path = public
 as $$
 declare
   inserted int;
+  v_hour int;
+  v_minute int;
+  v_slot text;
 begin
-  if p_slot not in ('lunch', 'dinner') then
+  v_slot := nullif(trim(coalesce(p_slot, '')), '');
+  if v_slot is null then
     return false;
   end if;
-  insert into public.peak_push_sent_log (sent_date, slot)
-  values (p_date, p_slot)
+
+  v_hour := coalesce(p_hour, extract(hour from timezone('Asia/Seoul', now()))::int);
+  v_minute := coalesce(p_minute, extract(minute from timezone('Asia/Seoul', now()))::int);
+
+  if v_hour < 0 or v_hour > 23 or v_minute < 0 or v_minute > 59 then
+    return false;
+  end if;
+
+  insert into public.peak_push_sent_log (sent_date, slot, hour, minute)
+  values (p_date, v_slot, v_hour, v_minute)
   on conflict do nothing;
   get diagnostics inserted = row_count;
   return inserted > 0;
 end;
 $$;
 
-revoke all on function public.try_claim_peak_push(text, date) from public;
-grant execute on function public.try_claim_peak_push(text, date) to service_role;
+revoke all on function public.try_claim_peak_push(text, date, int, int) from public;
+grant execute on function public.try_claim_peak_push(text, date, int, int) to service_role;
 
 -- ═══════════════════════════════════════════════════════════════
 -- 4. 댓글 INSERT → Edge Function 호출 (pg_net)
