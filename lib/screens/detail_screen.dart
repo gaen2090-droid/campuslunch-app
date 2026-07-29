@@ -282,6 +282,36 @@ class _DetailScreenState extends State<DetailScreen> {
 
             if (_recentReports.isNotEmpty) _RecentReportsSection(reports: _recentReports),
 
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.info_outline, size: 12, color: Color(0xFF9CA3AF)),
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        '추후 축적된 제보 데이터를 바탕으로 AI 기반 혼잡도 예측 정보 제공 예정',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // ── 액션 버튼 (사장님이 자기 매장을 미리보기할 때는 제보 버튼 숨김) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),

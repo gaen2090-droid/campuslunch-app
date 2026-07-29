@@ -87,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _submitSearch(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
+    FocusScope.of(context).unfocus();
     final updated = await _historyStore.addSearch(trimmed, _history);
     if (!mounted) return;
     setState(() => _history = updated);
@@ -399,26 +400,41 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-        if (!RewardLimits.isWithinStampHours(DateTime.now()))
+        if (!RewardLimits.isWithinStampHours(DateTime.now())) ...[
+          Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).padding.top,
+            color: const Color(0xFFF3F8F0),
+          ),
           Container(
             width: double.infinity,
             color: const Color(0xFFF3F8F0),
-            padding: EdgeInsets.fromLTRB(
-                20, MediaQuery.of(context).padding.top + 8, 20, 8),
-            child: Text(
-              '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 10시~오후 7시)',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF5E8C4A),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 10시~오후 7시)',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF5E8C4A),
+                ),
               ),
             ),
           ),
+        ],
         // ── 헤더 ──
         Container(
           color: Colors.white,
-          padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20, 12),
+          padding: EdgeInsets.fromLTRB(
+              20,
+              RewardLimits.isWithinStampHours(DateTime.now())
+                  ? MediaQuery.of(context).padding.top + 12
+                  : 6,
+              20,
+              12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -482,11 +498,14 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   if (_searchActive) ...[
                     const SizedBox(width: 12),
                     GestureDetector(
-                      onTap: () => setState(() {
-                        _searchActive = false;
-                        _searchCtrl.clear();
-                        _openDropdown = null;
-                      }),
+                      onTap: () {
+                        FocusScope.of(context).unfocus();
+                        setState(() {
+                          _searchActive = false;
+                          _searchCtrl.clear();
+                          _openDropdown = null;
+                        });
+                      },
                       child: const Text('취소',
                           style: TextStyle(
                               fontSize: 14,

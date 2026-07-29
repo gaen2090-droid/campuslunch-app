@@ -49,7 +49,7 @@ abstract final class AppPermissions {
           id: 'notification',
           title: '실시간 서비스 알림 받기',
           required: false,
-          subtitle: '점심시간 알림, 여유로운 매장 알림 등 서비스 기본 알림',
+          subtitle: '리워드 지급 알림, 이벤트 알림 등 서비스 기본 알림',
           documentBody:
               '알림 권한은 선택 동의 항목입니다.\n\n'
               '점심시간 알림, 여유로운 매장 알림, 커뮤니티 댓글 알림 등 '

@@ -8,6 +8,7 @@ import '../config/env.dart';
 import '../models/map_lat_lng.dart';
 import '../models/restaurant.dart';
 import '../models/route_summary.dart';
+import '../services/kakao_map_bootstrap.dart';
 import '../services/osrm_directions_service.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/kakao_route_line.dart';
@@ -31,6 +32,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   String? _error;
   bool _loadingRoute = true;
   bool _isEstimatedRoute = false;
+  bool _waitingKakaoMapSdk = false;
 
   MapLatLng get _destination => MapLatLng(
         widget.restaurant.latitude,
@@ -41,6 +43,18 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   void initState() {
     super.initState();
     unawaited(_loadRoute());
+    _ensureKakaoMapSdk();
+  }
+
+  void _ensureKakaoMapSdk() {
+    if (Env.kakaoMapSdkInitialized || !Env.hasKakaoNativeKey) return;
+    _waitingKakaoMapSdk = true;
+    unawaited(
+      KakaoMapBootstrap.ensureInitialized().then((_) {
+        if (!mounted) return;
+        setState(() => _waitingKakaoMapSdk = false);
+      }),
+    );
   }
 
   @override
@@ -75,7 +89,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
         ),
-      );
+      ).timeout(const Duration(seconds: 10));
       origin = MapLatLng(pos.latitude, pos.longitude);
     } catch (_) {
       origin = null;
@@ -132,6 +146,12 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
       setState(() => _mapReady = true);
       await _setupMap();
     });
+    // runWhenKakaoMapReady가 타임아웃으로 조용히 리턴하면 _mapReady가
+    // 계속 false로 남아 로딩 오버레이가 영구히 떠 있게 되므로 강제 해제.
+    if (mounted && !_mapReady) {
+      setState(() => _mapReady = true);
+      unawaited(_setupMap());
+    }
   }
 
   Future<void> _setupMap() async {
@@ -327,6 +347,12 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                                 alignment: LogoAlignment.bottomLeft,
                               ),
                             )
+                          else if (_waitingKakaoMapSdk)
+                            const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF4A7FE5),
+                              ),
+                            )
                           else
                             Center(
                               child: Padding(
@@ -343,7 +369,8 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                                 ),
                               ),
                             ),
-                          if (_loadingRoute || !_mapReady)
+                          if (Env.isKakaoMapConfigured &&
+                              (_loadingRoute || !_mapReady))
                             const ColoredBox(
                               color: Color(0x66FFFFFF),
                               child: Center(

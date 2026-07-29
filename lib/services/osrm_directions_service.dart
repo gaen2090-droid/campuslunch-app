@@ -37,7 +37,7 @@ class OsrmDirectionsService {
       final res = await http.get(
         uri,
         headers: const {'User-Agent': 'CampusLunch/1.0 (directions)'},
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (res.statusCode != 200) {
         return DirectionsResponse(
