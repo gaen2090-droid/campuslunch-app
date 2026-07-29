@@ -5,6 +5,35 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import 'owner_verify_sheet.dart';
 
+/// 사장님 제보/마이페이지 화면 상단에 공용으로 쓰는 헤더 (여백 + 드롭다운).
+/// 두 화면이 이 위젯을 그대로 호출해야 세로 위치가 실제로 동일해진다 —
+/// 각자 SizedBox/Padding 수치를 따로 맞추는 방식은 우연히 값이 같을 뿐
+/// 트리 구조가 달라 화면마다 어긋나기 쉽다.
+class OwnerHeaderSection extends StatelessWidget {
+  final List<Restaurant> ownedList;
+  final Restaurant? selected;
+  final VoidCallback? onSettingsTap;
+
+  const OwnerHeaderSection({
+    super.key,
+    required this.ownedList,
+    required this.selected,
+    this.onSettingsTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      child: OwnerRestaurantDropdown(
+        ownedList: ownedList,
+        selected: selected,
+        onSettingsTap: onSettingsTap,
+      ),
+    );
+  }
+}
+
 /// 사장님 제보/마이페이지 헤더에 공용으로 쓰는 매장 선택. 탭하면 표준 바텀시트로
 /// 매장 목록 + 매장 추가 + 매장 삭제가 아래에서 올라온다.
 class OwnerRestaurantDropdown extends StatelessWidget {
@@ -42,6 +71,8 @@ class OwnerRestaurantDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 커뮤니티 헤더(_header() in community_screen.dart)와 동일하게, 텍스트는
+    // 별도 높이 보정 없이 바깥 Row(기본 center 정렬)에 그대로 맡긴다.
     return Row(
       children: [
         Expanded(
@@ -72,16 +103,20 @@ class OwnerRestaurantDropdown extends StatelessWidget {
             ),
           ),
         ),
-        if (onSettingsTap != null)
-          IconButton(
-            onPressed: onSettingsTap,
-            icon: const Icon(Icons.settings_outlined,
-                size: 24, color: Color(0xFF5E8C4A)),
-          )
-        else
-          // 톱니바퀴는 없지만, 마이페이지와 텍스트 위치를 맞추기 위해 IconButton의
-          // 내부 아이콘(24px)과 동일한 크기만큼만 자리를 확보 (48px 최소 터치영역은 제외).
-          const SizedBox(width: 24, height: 24),
+        // if/else로 서로 다른 위젯(IconButton vs SizedBox)을 넣으면 실제
+        // 레이아웃 박스 크기가 우연히 같을 뿐 트리가 달라 어긋나기 쉽다.
+        // 항상 같은 IconButton을 렌더링하고, 톱니바퀴가 없을 때는 아이콘만
+        // 투명하게 숨겨 두 화면이 물리적으로 동일한 트리를 갖게 한다.
+        IconButton(
+          onPressed: onSettingsTap,
+          icon: Icon(
+            Icons.settings_outlined,
+            size: 24,
+            color: onSettingsTap == null
+                ? Colors.transparent
+                : const Color(0xFF5E8C4A),
+          ),
+        ),
       ],
     );
   }

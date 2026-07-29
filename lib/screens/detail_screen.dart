@@ -298,7 +298,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        '추후 축적된 제보 데이터를 바탕으로 AI 기반 혼잡도 예측 정보 제공 예정',
+                        '추후 축적된 제보 데이터를 바탕으로 AI 기반 혼잡도 예측 정보 별도 제공 예정',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,

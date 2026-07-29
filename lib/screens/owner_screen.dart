@@ -212,14 +212,10 @@ class _OwnerScreenState extends State<OwnerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 21),
-                // ── 매장 선택 헤더 (마이페이지와 동일한 드롭다운) ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: OwnerRestaurantDropdown(
-                    ownedList: ownedList,
-                    selected: restaurant,
-                  ),
+                // ── 매장 선택 헤더 (마이페이지와 완전히 동일한 공용 위젯) ──
+                OwnerHeaderSection(
+                  ownedList: ownedList,
+                  selected: restaurant,
                 ),
 
                 Padding(

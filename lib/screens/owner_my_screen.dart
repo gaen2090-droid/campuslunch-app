@@ -87,18 +87,13 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              // ── 매장 선택 헤더 (제보 탭과 동일한 드롭다운, 매장 추가/삭제 포함) ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: OwnerRestaurantDropdown(
-                  ownedList: ownedList,
-                  selected: restaurant,
-                  arrowOffsetY: -1,
-                  onSettingsTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  ),
+              // ── 매장 선택 헤더 (제보 탭과 완전히 동일한 공용 위젯) ──
+              OwnerHeaderSection(
+                ownedList: ownedList,
+                selected: restaurant,
+                onSettingsTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
                 ),
               ),
 
