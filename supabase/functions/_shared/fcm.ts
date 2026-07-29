@@ -30,7 +30,11 @@ function b64url(data: ArrayBuffer | string): string {
 }
 
 export function loadServiceAccountFromEnv(): ServiceAccount {
-  const json = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  // Dashboard에 예전에 "firebase service key" 로 넣은 경우도 허용
+  const json =
+    Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON") ??
+    Deno.env.get("FIREBASE_SERVICE_KEY") ??
+    Deno.env.get("firebase service key");
   if (json) {
     const parsed = JSON.parse(json) as ServiceAccount;
     return {
@@ -145,10 +149,22 @@ export async function sendFcmMessage(
   return { ok: res.ok, status: res.status, body: text };
 }
 
+/** 어드민 웹(브라우저) → functions.invoke 용 CORS */
+export const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
+export function corsPreflightResponse(): Response {
+  return new Response("ok", { status: 200, headers: corsHeaders });
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }
 
@@ -171,18 +187,17 @@ export async function authorizeRequest(req: Request): Promise<boolean> {
   if (serviceKey && auth === `Bearer ${serviceKey}`) return true;
 
   if (!auth.startsWith("Bearer ")) return false;
-  const jwt = auth.slice("Bearer ".length);
-  const url = Deno.env.get("SUPABASE_URL");
-  const anon = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!url || !anon || !serviceKey) return false;
+  const jwt = auth.slice("Bearer ".length).trim();
+  if (!jwt) return false;
 
-  const userClient = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  });
-  const { data: userData, error: userErr } = await userClient.auth.getUser();
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!url || !serviceKey) return false;
+
+  // service role로 JWT 검증 (anon 키/헤더 이슈 회피)
+  const adminClient = createClient(url, serviceKey);
+  const { data: userData, error: userErr } = await adminClient.auth.getUser(jwt);
   if (userErr || !userData.user) return false;
 
-  const adminClient = createClient(url, serviceKey);
   const { data: row } = await adminClient
     .from("users")
     .select("role")
