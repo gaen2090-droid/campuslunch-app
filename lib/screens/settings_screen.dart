@@ -21,7 +21,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text('회원 탈퇴', style: TextStyle(fontWeight: FontWeight.w900)),
         content: const Text(
           '계정과 프로필이 삭제되며 복구할 수 없어요.\n'
-          '카카오 로그인 계정은 카카오 연결도 해제됩니다.',
+          '카카오 로그인 계정은 카카오 연결도 해제됩니다.\n\n'
+          '탈퇴 후 30일간은 같은 계정으로 재가입할 수 없어요.',
         ),
         actions: [
           TextButton(

@@ -693,6 +693,8 @@ class AppProvider extends ChangeNotifier {
       switch (status) {
         case EmailSignupStatus.registered:
           return _emailAlreadyRegisteredMessage(trimmedEmail);
+        case EmailSignupStatus.withdrawn:
+          return _withdrawnCooldownMessage;
         case EmailSignupStatus.pending:
           await _storePendingSignupCredentials(
             password: password,
@@ -751,6 +753,10 @@ class AppProvider extends ChangeNotifier {
       '이미 가입된 이메일이에요.\n'
       '다른 이메일로 가입하거나 로그인해주세요.';
 
+  static const String _withdrawnCooldownMessage =
+      '탈퇴한 계정이에요.\n'
+      '탈퇴 후 30일간은 같은 계정으로 재가입할 수 없어요.';
+
   /// Supabase Auth 메일 발송 실패 시 사용자 안내. 해당 없으면 null.
   static String? _formatAuthEmailSendFailure(AuthException e) {
     final msg = e.message.toLowerCase();
@@ -776,6 +782,8 @@ class AppProvider extends ChangeNotifier {
       case OAuthLoginEmailStatus.pending:
         return '이 이메일은 가입 인증이 진행 중이에요.\n'
             '메일의 인증번호 입력을 먼저 완료해주세요.';
+      case OAuthLoginEmailStatus.withdrawn:
+        return _withdrawnCooldownMessage;
       case OAuthLoginEmailStatus.blockedOther:
         return '이 이메일은 이미 다른 방식으로 가입된 계정이에요.\n'
             '가입할 때 사용한 로그인 방법을 이용해주세요.';
@@ -1137,17 +1145,9 @@ class AppProvider extends ChangeNotifier {
     final authProvider = prefs.getString(_kAuthProvider) ?? '';
 
     try {
-      if (authProvider == 'kakao') {
-        await KakaoAuthService.unlinkKakao();
-      } else if (authProvider == 'google') {
-        await GoogleAuthService.disconnect();
-      }
+      // DB 탈퇴가 실패해도 계정을 그대로 쓸 수 있도록, 되돌릴 수 없는
+      // 카카오/구글 연결 해제보다 DB 삭제(RPC)를 먼저 성공시킨다.
       await _profileRepo.deleteOwnAccount();
-      await SupabaseService.client.auth.signOut();
-      await _clearSession(prefs);
-      _stage = 'login';
-      notifyListeners();
-      return null;
     } on PostgrestException catch (e) {
       debugPrint('[withdraw] RPC: ${e.message}');
       return '탈퇴 처리에 실패했어요. (${e.message})';
@@ -1155,6 +1155,32 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[withdraw] $e');
       return '탈퇴 처리에 실패했어요.';
     }
+
+    try {
+      if (authProvider == 'kakao') {
+        await KakaoAuthService.unlinkKakao();
+      } else if (authProvider == 'google') {
+        await GoogleAuthService.disconnect();
+      }
+    } catch (e) {
+      // DB 탈퇴는 이미 끝났으니 소셜 연결 해제 실패는 무시하고 계속 진행한다.
+      debugPrint('[withdraw] social unlink failed (ignored): $e');
+    }
+
+    try {
+      // RPC 마지막 단계에서 auth.users.banned_until을 세팅해 재로그인을
+      // 막기 때문에, 서버 로그아웃(GoTrue) 요청은 이미 무효화된 세션으로
+      // 거부되기 쉽다. 로컬 세션 정리만 하고(scope: local) 서버 왕복은
+      // 건너뛰어, 이 호출이 실패해도 아래 로그인 화면 전환은 반드시 실행된다.
+      await SupabaseService.client.auth
+          .signOut(scope: SignOutScope.local);
+    } catch (e) {
+      debugPrint('[withdraw] signOut failed (ignored): $e');
+    }
+    await _clearSession(prefs);
+    _stage = 'login';
+    notifyListeners();
+    return null;
   }
 
   /// OAuth SDK가 설정 오류를 cancel로 반환할 때 안내
@@ -1182,6 +1208,10 @@ class AppProvider extends ChangeNotifier {
     } on AuthException catch (e) {
       if (e.message.contains('Unacceptable audience in id_token')) {
         return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+      if (e.message.toLowerCase().contains('banned') ||
+          e.message.toLowerCase().contains('suspended')) {
+        return _withdrawnCooldownMessage;
       }
       return e.message;
     } catch (e) {
@@ -1236,6 +1266,9 @@ class AppProvider extends ChangeNotifier {
       if (e.message.contains('Unacceptable audience in id_token') ||
           e.message.contains('audience')) {
         return '구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+      if (msg.contains('banned') || msg.contains('suspended')) {
+        return _withdrawnCooldownMessage;
       }
       return e.message;
     } catch (e) {

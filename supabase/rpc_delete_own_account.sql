@@ -48,8 +48,11 @@ begin
   where id = uid;
 
   -- auth.users 는 삭제하지 않는다 (cascade로 public.users 까지 사라짐).
-  -- 대신 재로그인을 막기 위해 계정을 비활성화한다.
-  update auth.users set banned_until = 'infinity' where id = uid;
+  -- 대신 재로그인/재가입 어뷰징(탈퇴 후 즉시 재가입 반복)을 막기 위해
+  -- 30일간 계정을 비활성화한다. 30일 후에는 같은 이메일/카카오·구글 계정으로
+  -- 재가입할 수 있다 — 그때는 새로 만들어질 public.users 행이 별개이므로
+  -- 기존에 남아있는 게시물(작성자 표시는 이미 '탈퇴한 회원'으로 익명화됨)과는 무관하다.
+  update auth.users set banned_until = now() + interval '30 days' where id = uid;
 end;
 $$;
 

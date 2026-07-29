@@ -1,6 +1,10 @@
 -- OAuth(google/kakao 등) 로그인 전 이메일 충돌 확인
 -- 이메일·비밀번호로 가입 완료된 계정과 동일 Gmail → 소셜 로그인 차단
 -- Dashboard → SQL Editor → Run
+--
+-- 탈퇴한 계정(delete_own_account())은 banned_until 이 30일 뒤로 세팅되므로,
+-- 이 기간 중에는 'same_provider'(재로그인 취급)가 아닌 'withdrawn' 을 반환해
+-- "N일 뒤 재가입 가능" 안내를 보여줄 수 있게 한다.
 
 create or replace function public.oauth_login_email_check(
   p_email text,
@@ -19,6 +23,12 @@ as $$
       select 1 from auth.users u
       where lower(u.email) = lower(trim(p_email))
     ) then 'available'
+    when exists (
+      select 1 from auth.users u
+      where lower(u.email) = lower(trim(p_email))
+        and u.banned_until is not null
+        and u.banned_until > now()
+    ) then 'withdrawn'
     when exists (
       select 1 from auth.users u
       where lower(u.email) = lower(trim(p_email))

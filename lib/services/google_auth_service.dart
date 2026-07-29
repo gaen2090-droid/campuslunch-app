@@ -126,6 +126,7 @@ class GoogleAuthService {
         case OAuthLoginEmailStatus.blockedEmail:
         case OAuthLoginEmailStatus.blockedOther:
         case OAuthLoginEmailStatus.pending:
+        case OAuthLoginEmailStatus.withdrawn:
         case OAuthLoginEmailStatus.invalid:
           await GoogleSignIn.instance.signOut();
           throw GoogleEmailBlocked(status);

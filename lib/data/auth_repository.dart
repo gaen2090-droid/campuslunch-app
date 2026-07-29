@@ -8,6 +8,8 @@ enum EmailSignupStatus {
   available,
   registered,
   pending,
+  /// 탈퇴 후 재가입 대기 기간(30일) 중인 계정
+  withdrawn,
   invalid,
   unknown,
 }
@@ -19,6 +21,8 @@ enum OAuthLoginEmailStatus {
   blockedEmail,
   blockedOther,
   pending,
+  /// 탈퇴 후 재가입 대기 기간(30일) 중인 계정
+  withdrawn,
   invalid,
   unknown,
 }
@@ -54,6 +58,8 @@ class AuthRepository {
         return EmailSignupStatus.registered;
       case 'pending':
         return EmailSignupStatus.pending;
+      case 'withdrawn':
+        return EmailSignupStatus.withdrawn;
       case 'invalid':
         return EmailSignupStatus.invalid;
       default:
@@ -97,6 +103,8 @@ class AuthRepository {
         return OAuthLoginEmailStatus.blockedOther;
       case 'pending':
         return OAuthLoginEmailStatus.pending;
+      case 'withdrawn':
+        return OAuthLoginEmailStatus.withdrawn;
       case 'invalid':
         return OAuthLoginEmailStatus.invalid;
       default:
