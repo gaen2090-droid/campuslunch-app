@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
 import '../utils/crowd_status_label.dart';
 import 'restaurant_image.dart';

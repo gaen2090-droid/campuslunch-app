@@ -1,4 +1,4 @@
-# 길찾기 Polyline 구현 가이드
+ㄹ# 길찾기 Polyline 구현 가이드
 
 앱 내 **길찾기** 화면(`DirectionsScreen`)에서 **현재 위치 → 식당** 도보 경로를 카카오맵 위에 선(polyline)으로 그리는 방법입니다.
 

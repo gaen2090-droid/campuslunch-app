@@ -1179,16 +1179,76 @@ code {
 }
 
 .push-ops.compact {
-  padding: 12px 14px;
+  padding: 14px 16px;
   margin-bottom: 12px;
 }
 
 .push-ops-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.push-ops-title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.push-ops-lead {
+  margin: 0;
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.push-reach-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.push-reach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.push-reach-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.push-reach-main {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.push-cost-box {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #374151;
+}
+
+.push-cost-box p {
+  margin: 0 0 6px;
+}
+
+.push-cost-box p:last-child {
+  margin-bottom: 0;
 }
 
 .push-ops-stats {
@@ -1215,6 +1275,12 @@ code {
 .push-ops-log-inline {
   margin: 8px 0 0;
   line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .push-reach-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn.sm {

@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   authorizeRequest,
+  corsPreflightResponse,
   getGoogleAccessToken,
   jsonResponse,
   loadServiceAccountFromEnv,
@@ -84,7 +85,7 @@ function moderationCopy(kind: "post" | "comment"): { title: string; body: string
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
+    return corsPreflightResponse();
   }
   if (req.method !== "POST") {
     return jsonResponse({ error: "method not allowed" }, 405);

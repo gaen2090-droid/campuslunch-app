@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   authorizeRequest,
+  corsPreflightResponse,
   getGoogleAccessToken,
   jsonResponse,
   loadServiceAccountFromEnv,
@@ -67,7 +68,7 @@ function parseSchedules(cfg: Record<string, unknown>): PeakSchedule[] {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
+    return corsPreflightResponse();
   }
   if (req.method !== "POST" && req.method !== "GET") {
     return jsonResponse({ error: "method not allowed" }, 405);
@@ -147,11 +148,22 @@ Deno.serve(async (req) => {
     if (!force) {
       const { data: claimed, error: claimErr } = await supabase.rpc(
         "try_claim_peak_push",
-        { p_slot: slot, p_date: dateStr },
+        {
+          p_slot: slot,
+          p_date: dateStr,
+          p_hour: matched.hour,
+          p_minute: matched.minute,
+        },
       );
       if (claimErr) throw claimErr;
       if (!claimed) {
-        return jsonResponse({ skipped: true, reason: "already_sent", slot });
+        return jsonResponse({
+          skipped: true,
+          reason: "already_sent",
+          slot,
+          hour: matched.hour,
+          minute: matched.minute,
+        });
       }
     }
 

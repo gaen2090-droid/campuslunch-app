@@ -1,0 +1,15 @@
+# Edge Functions — push endpoints are called by pg_net/cron with EDGE_PUSH_SECRET
+# (not a user JWT). Gateway JWT verify must be off; authorizeRequest() still enforces
+# EDGE_PUSH_SECRET / service_role / admin JWT inside the function.
+
+[functions.send-config-refresh]
+verify_jwt = false
+
+[functions.send-peak-push]
+verify_jwt = false
+
+[functions.send-community-push]
+verify_jwt = false
+
+[functions.send-reward-push]
+verify_jwt = false

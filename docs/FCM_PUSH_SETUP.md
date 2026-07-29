@@ -20,7 +20,7 @@ Supabase Dashboard → SQL Editor **순서대로**:
 
 | Secret | 값 |
 |--------|-----|
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | 서비스 계정 JSON 전체 (한 줄/이스케이프 OK) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | 서비스 계정 JSON 전체 (한 줄/이스케이프 OK). 예전 이름 `firebase service key` 도 Edge에서 읽음 |
 | `EDGE_PUSH_SECRET` | 임의 긴 문자열 (cron·웹훅 Authorization) |
 
 또는 분리:
@@ -94,18 +94,20 @@ Dashboard → Database → Webhooks (각각 INSERT):
 
 Edge는 `record` / `event` / `comment_id` / `post_id`+`liker_id` 모두 인식합니다.
 
-### 방법 B — 트리거 + pg_net (`community_push_v2.sql`)
+### 방법 B — 트리거 + pg_net (권장, 원격 적용됨)
 
-SQL에서 설정:
+1. `pg_net` / `pg_cron` 확장
+2. 테이블 `public.push_edge_runtime_config` 에
+   - `community_url` → `.../functions/v1/send-community-push`
+   - `reward_url` → `.../functions/v1/send-reward-push`
+   - `push_secret` → Edge Secret `EDGE_PUSH_SECRET` 과 **동일**
+3. 트리거 `notify_community_comment_push` / `notify_reward_gifticon_push` 가 위 테이블을 읽음
+4. Edge Function `verify_jwt = false` (게이트웨이 JWT 검사 OFF) + 함수 내부 `authorizeRequest`
 
-```sql
-alter database postgres set app.settings.edge_community_push_url =
-  'https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-community-push';
-alter database postgres set app.settings.edge_push_secret =
-  'YOUR_EDGE_PUSH_SECRET';
-```
+템플릿: `supabase/fcm_push_wiring.sql`
 
-`pg_net` 확장이 켜져 있어야 합니다. 댓글·좋아요 INSERT 트리거가 Edge를 호출합니다.
+> `ALTER DATABASE ... app.settings.*` 는 링크드 롤 권한으로 막힐 수 있어, 운영은 **runtime config 테이블**을 씁니다.
+
 
 ## 6. iOS APNs
 
