@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  fetchPushNotificationConfig,
   fetchPushOpsSnapshot,
+  invokeNewsPush,
   invokePushEdge,
   updatePushNotificationConfig,
 } from "../lib/adminApi";
@@ -26,11 +28,20 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   const [form, setForm] = useState<PushNotificationConfig>(DEFAULT_PUSH_CONFIG);
   const [ops, setOps] = useState<PushOpsSnapshot>(EMPTY_PUSH_OPS);
   const [opsLoading, setOpsLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingSection, setSavingSection] = useState<
+    "lunch" | "community" | "news" | null
+  >(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<{
+    sent: number;
+    failed: number;
+  } | null>(null);
+  const [newsTitle, setNewsTitle] = useState("");
+  const [newsBody, setNewsBody] = useState("");
+  const [newsSending, setNewsSending] = useState(false);
+  const [newsResult, setNewsResult] = useState<{
     sent: number;
     failed: number;
   } | null>(null);
@@ -87,13 +98,22 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     });
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
+  /**
+   * 섹션별 저장: 서버의 최신 설정을 다시 받아온 뒤, 그 위에 이 섹션이 다루는
+   * 필드만 로컬 form 값으로 덮어써서 저장한다. 다른 섹션을 편집 중인 동안
+   * 이 섹션만 저장해도 서로의 변경을 덮어쓰지 않도록 하기 위함.
+   */
+  async function saveSection(
+    section: "lunch" | "community" | "news",
+    overrides: Partial<PushNotificationConfig>,
+  ) {
+    setSavingSection(section);
     setFormError(null);
     setSuccess(null);
     try {
-      const saved = await updatePushNotificationConfig(form);
+      const latest = await fetchPushNotificationConfig();
+      const merged = { ...latest, ...overrides };
+      const saved = await updatePushNotificationConfig(merged);
       setForm(saved);
       setSuccess("저장했어요. 앱은 다음 실행·설정 전파 시 반영됩니다.");
       onReload();
@@ -101,8 +121,32 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSaving(false);
+      setSavingSection(null);
     }
+  }
+
+  function saveLunchSection() {
+    return saveSection("lunch", {
+      schedules: form.schedules,
+      weekdaysOnly: form.weekdaysOnly,
+      scheduleDaysAhead: form.scheduleDaysAhead,
+      peakFcmEnabled: form.peakFcmEnabled,
+      peakLocalScheduleEnabled: form.peakLocalScheduleEnabled,
+    });
+  }
+
+  function saveCommunitySection() {
+    return saveSection("community", {
+      communityFcmEnabled: form.communityFcmEnabled,
+      communityCommentTitleTemplate: form.communityCommentTitleTemplate,
+      communityCommentBodyTemplate: form.communityCommentBodyTemplate,
+    });
+  }
+
+  function saveNewsSection() {
+    return saveSection("news", {
+      newsFcmEnabled: form.newsFcmEnabled,
+    });
   }
 
   async function runAction(action: string, label: string) {
@@ -138,6 +182,40 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       );
     } finally {
       setActionBusy(null);
+    }
+  }
+
+  async function sendNewsPush() {
+    const title = newsTitle.trim();
+    const body = newsBody.trim();
+    if (!title || !body) {
+      setFormError("소식 알림 제목/본문을 입력해주세요.");
+      return;
+    }
+    const targetCount = Math.max(ops.newsDevices, 0);
+    if (
+      !window.confirm(
+        `기기 ${targetCount}대에 소식 알림을 보낼까요?\n\n제목: ${title}\n본문: ${body}`,
+      )
+    ) {
+      return;
+    }
+    setNewsSending(true);
+    setFormError(null);
+    setSuccess(null);
+    try {
+      const result = await invokeNewsPush(title, body);
+      if (result.skipped) {
+        setSuccess(`발송 건너뜀: ${result.skipped}`);
+      } else {
+        setNewsResult({ sent: result.sent, failed: result.failed });
+        setSuccess(`소식 알림 발송 완료 — 성공 ${result.sent} · 실패 ${result.failed}`);
+      }
+      await reloadOps();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setNewsSending(false);
     }
   }
 
@@ -193,6 +271,16 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
             <span className="push-reach-label">커뮤니티 댓글</span>
             <strong className="push-reach-main">{ops.communityUsers}명</strong>
             <span className="muted sm">기기 {ops.communityDevices}대</span>
+          </div>
+          <div className="push-reach-card">
+            <span className="push-reach-label">리워드 지급</span>
+            <strong className="push-reach-main">{ops.rewardUsers}명</strong>
+            <span className="muted sm">기기 {ops.rewardDevices}대</span>
+          </div>
+          <div className="push-reach-card">
+            <span className="push-reach-label">캠퍼스런치 소식</span>
+            <strong className="push-reach-main">{ops.newsUsers}명</strong>
+            <span className="muted sm">기기 {ops.newsDevices}대</span>
           </div>
         </div>
 
@@ -265,7 +353,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       {loading && !config ? (
         <p className="muted center">불러오는 중…</p>
       ) : (
-        <form className="panel push-form" onSubmit={(e) => void submit(e)}>
+        <div className="panel push-form">
           <section className="push-section">
             <div className="push-section-head row">
               <h3>점심시간 알림</h3>
@@ -411,6 +499,17 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
             >
               + 스케줄 추가
             </button>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn primary sm"
+                disabled={savingSection != null}
+                onClick={() => void saveLunchSection()}
+              >
+                {savingSection === "lunch" ? "저장 중…" : "점심시간 설정 저장"}
+              </button>
+            </div>
           </section>
 
           <section className="push-section">
@@ -456,19 +555,94 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 </span>
               </label>
             </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn primary sm"
+                disabled={savingSection != null}
+                onClick={() => void saveCommunitySection()}
+              >
+                {savingSection === "community" ? "저장 중…" : "커뮤니티 설정 저장"}
+              </button>
+            </div>
           </section>
 
-          <div className="form-actions sticky-save">
-            <button type="submit" className="btn primary" disabled={saving}>
-              {saving ? "저장 중…" : "설정 저장"}
-            </button>
-            {form.updatedAt && (
-              <span className="muted sm">
-                {form.updatedAt.toLocaleString("ko-KR")}
-              </span>
-            )}
-          </div>
-        </form>
+          <section className="push-section">
+            <div className="push-section-head row">
+              <h3>캠퍼스런치 소식</h3>
+              <label className="chip-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.newsFcmEnabled}
+                  onChange={(e) => patch({ newsFcmEnabled: e.target.checked })}
+                />
+                FCM
+              </label>
+            </div>
+            <p className="muted sm">
+              업데이트·이벤트 등 운영 소식을 소식 알림에 동의한 전체 유저에게 즉시
+              발송합니다. (별도 저장 없이 바로 나가는 발송이니 신중하게)
+            </p>
+            <div className="community-fields">
+              <label className="field">
+                <span className="field-label">제목</span>
+                <input
+                  type="text"
+                  value={newsTitle}
+                  onChange={(e) => setNewsTitle(e.target.value)}
+                  placeholder="예: 새 기능이 추가됐어요"
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">본문</span>
+                <input
+                  type="text"
+                  value={newsBody}
+                  onChange={(e) => setNewsBody(e.target.value)}
+                  placeholder="예: 지금 확인해보세요 >"
+                />
+              </label>
+            </div>
+            <div className="push-ops-actions">
+              <button
+                type="button"
+                className="btn sm"
+                disabled={savingSection != null}
+                onClick={() => void saveNewsSection()}
+              >
+                {savingSection === "news" ? "저장 중…" : "소식 FCM 설정 저장"}
+              </button>
+              <button
+                type="button"
+                className="btn primary sm"
+                disabled={
+                  newsSending || !form.newsFcmEnabled || !newsTitle.trim() ||
+                  !newsBody.trim()
+                }
+                onClick={() => void sendNewsPush()}
+              >
+                {newsSending ? "발송 중…" : `전체 발송 (기기 ${ops.newsDevices}대)`}
+              </button>
+              {!form.newsFcmEnabled && (
+                <span className="muted sm">
+                  소식 FCM이 꺼져 있어 발송할 수 없어요.
+                </span>
+              )}
+              {newsResult && (
+                <span className="muted sm">
+                  최근 발송 성공 {newsResult.sent} · 실패 {newsResult.failed}
+                </span>
+              )}
+            </div>
+          </section>
+
+          {form.updatedAt && (
+            <p className="muted sm push-updated-at">
+              마지막 저장: {form.updatedAt.toLocaleString("ko-KR")}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

@@ -42,6 +42,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   bool _collectionsLoading = true;
   String? _collectionsError;
   bool _savedCollectionsOnly = false;
+  final Set<String> _activeHashtags = {};
+  static const _collectionHashtags = ['혼밥', '밥약', '카공', '맛집'];
   // 인기순 고정 — 좋아요 누를 때마다 순서가 바뀌면 산만하므로, 새로고침
   // 또는 탭 전환 시점에만 이 순서를 다시 계산해 스냅샷으로 고정한다.
   List<String> _collectionOrder = [];
@@ -628,39 +630,76 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _collectionFilterBar() {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _savedCollectionsOnly = !_savedCollectionsOnly),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '저장한 컬렉션',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: _savedCollectionsOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
-                ),
-                const SizedBox(width: 3),
-                Icon(
-                  _savedCollectionsOnly ? Icons.favorite : Icons.favorite_border,
-                  size: 14,
-                  color: const Color(0xFF111827),
-                ),
-              ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _savedCollectionsOnly = !_savedCollectionsOnly),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '저장한 컬렉션',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: _savedCollectionsOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(
+                    _savedCollectionsOnly ? Icons.favorite : Icons.favorite_border,
+                    size: 14,
+                    color: const Color(0xFF111827),
+                  ),
+                ],
+              ),
             ),
           ),
+          for (final tag in _collectionHashtags) ...[
+            const SizedBox(width: 8),
+            _hashtagFilterChip(tag),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _hashtagFilterChip(String tag) {
+    final active = _activeHashtags.contains(tag);
+    return GestureDetector(
+      onTap: () => setState(() {
+        if (active) {
+          _activeHashtags.remove(tag);
+        } else {
+          _activeHashtags.add(tag);
+        }
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
         ),
-      ],
+        child: Text(
+          '#$tag',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: active ? const Color(0xFF111827) : const Color(0xFF374151),
+          ),
+        ),
+      ),
     );
   }
 
@@ -784,6 +823,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     var visibleCollections = _savedCollectionsOnly
         ? _collections.where((c) => c.likedByMe).toList()
         : List<RestaurantCollection>.from(_collections);
+    if (_activeHashtags.isNotEmpty) {
+      visibleCollections = visibleCollections
+          .where((c) => c.hashtags.any(_activeHashtags.contains))
+          .toList();
+    }
     final orderIndex = {for (var i = 0; i < _collectionOrder.length; i++) _collectionOrder[i]: i};
     visibleCollections.sort((a, b) {
       final ai = orderIndex[a.id] ?? _collectionOrder.length;
@@ -792,14 +836,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
     });
 
     if (visibleCollections.isEmpty) {
+      final message = _activeHashtags.isNotEmpty
+          ? '선택한 해시태그의 컬렉션이 없어요.'
+          : _savedCollectionsOnly
+              ? '저장한 컬렉션이 없어요.'
+              : '컬렉션이 없어요.';
       return ListView(
         children: [
           _header(),
           const SizedBox(height: 120),
-          const Center(
+          Center(
             child: Text(
-              '저장한 컬렉션이 없어요.',
-              style: TextStyle(color: Color(0xFF9CA3AF)),
+              message,
+              style: const TextStyle(color: Color(0xFF9CA3AF)),
             ),
           ),
         ],

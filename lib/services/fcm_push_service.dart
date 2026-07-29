@@ -170,6 +170,7 @@ class FcmPushService {
     required bool peakDinner,
     required bool communityComments,
     required bool rewardGifticon,
+    required bool news,
   }) async {
     try {
       await _tokenRepo.upsertPrefs(
@@ -177,6 +178,7 @@ class FcmPushService {
         peakDinner: peakDinner,
         communityComments: communityComments,
         rewardGifticon: rewardGifticon,
+        news: news,
       );
     } catch (e, st) {
       debugPrint('[FCM] syncPrefs failed: $e\n$st');

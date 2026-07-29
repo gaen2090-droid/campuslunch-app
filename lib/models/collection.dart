@@ -9,6 +9,7 @@ class RestaurantCollection {
   final String? authorNickname;
   final bool isOwner;
   final DateTime createdAt;
+  final List<String> hashtags;
 
   const RestaurantCollection({
     required this.id,
@@ -21,6 +22,7 @@ class RestaurantCollection {
     this.authorNickname,
     this.isOwner = false,
     required this.createdAt,
+    this.hashtags = const [],
   });
 
   /// 관리자 큐레이션(작성자 없음)인지 여부
@@ -40,6 +42,7 @@ class RestaurantCollection {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : DateTime.fromMillisecondsSinceEpoch(0),
+      hashtags: (map['hashtags'] as List?)?.cast<String>() ?? const [],
     );
   }
 
@@ -55,6 +58,7 @@ class RestaurantCollection {
       authorNickname: authorNickname,
       isOwner: isOwner,
       createdAt: createdAt,
+      hashtags: hashtags,
     );
   }
 }

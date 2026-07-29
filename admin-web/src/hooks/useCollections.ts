@@ -9,6 +9,7 @@ import {
   fetchCollectionItems,
   removeCollectionItem,
   reorderCollectionItems,
+  reorderCollections,
   setCollectionCommentHidden,
   setCollectionPublished,
   updateCollection,
@@ -26,37 +27,48 @@ export function useCollections(enabled: boolean) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    if (!enabled) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [list, commentList] = await Promise.all([
-        fetchAdminCollections(),
-        fetchCollectionComments(),
-      ]);
-      const itemMap: Record<string, CollectionItem[]> = {};
-      for (const c of list) {
-        itemMap[c.id] = await fetchCollectionItems(c.id);
+  const reload = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!enabled) return;
+      if (!opts?.silent) setLoading(true);
+      setError(null);
+      try {
+        const [list, commentList] = await Promise.all([
+          fetchAdminCollections(),
+          fetchCollectionComments(),
+        ]);
+        const itemLists = await Promise.all(
+          list.map((c) => fetchCollectionItems(c.id)),
+        );
+        const itemMap: Record<string, CollectionItem[]> = {};
+        list.forEach((c, i) => {
+          itemMap[c.id] = itemLists[i];
+        });
+        setCollections(list);
+        setItems(itemMap);
+        setComments(commentList);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!opts?.silent) setLoading(false);
       }
-      setCollections(list);
-      setItems(itemMap);
-      setComments(commentList);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [enabled]);
+    },
+    [enabled],
+  );
 
   useEffect(() => {
     if (enabled) void reload();
   }, [enabled, reload]);
 
   const addCollection = useCallback(
-    async (params: { title: string; subtitle: string; sortOrder: number }) => {
+    async (params: {
+      title: string;
+      subtitle: string;
+      sortOrder: number;
+      hashtags: string[];
+    }) => {
       await createCollection(params);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -64,10 +76,10 @@ export function useCollections(enabled: boolean) {
   const editCollection = useCallback(
     async (
       id: string,
-      params: { title: string; subtitle: string; sortOrder: number },
+      params: { title: string; subtitle: string; hashtags: string[] },
     ) => {
       await updateCollection(id, params);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -75,7 +87,7 @@ export function useCollections(enabled: boolean) {
   const togglePublished = useCallback(
     async (id: string, published: boolean) => {
       await setCollectionPublished(id, published);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -83,7 +95,7 @@ export function useCollections(enabled: boolean) {
   const removeCollection = useCallback(
     async (id: string, reason: string) => {
       await deleteCollection(id, reason);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -96,7 +108,7 @@ export function useCollections(enabled: boolean) {
       sortOrder: number;
     }) => {
       await addCollectionItem(params);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -104,7 +116,7 @@ export function useCollections(enabled: boolean) {
   const removeItem = useCallback(
     async (id: string) => {
       await removeCollectionItem(id);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -112,7 +124,15 @@ export function useCollections(enabled: boolean) {
   const reorderItems = useCallback(
     async (orderedIds: string[]) => {
       await reorderCollectionItems(orderedIds);
-      await reload();
+      await reload({ silent: true });
+    },
+    [reload],
+  );
+
+  const reorderCollectionsList = useCallback(
+    async (orderedIds: string[]) => {
+      await reorderCollections(orderedIds);
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -120,7 +140,7 @@ export function useCollections(enabled: boolean) {
   const hideComment = useCallback(
     async (id: string, hidden: boolean) => {
       await setCollectionCommentHidden(id, hidden);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -128,7 +148,7 @@ export function useCollections(enabled: boolean) {
   const removeComment = useCallback(
     async (id: string) => {
       await deleteCollectionComment(id);
-      await reload();
+      await reload({ silent: true });
     },
     [reload],
   );
@@ -147,6 +167,7 @@ export function useCollections(enabled: boolean) {
     addItem,
     removeItem,
     reorderItems,
+    reorderCollectionsList,
     hideComment,
     removeComment,
   };

@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.send-reward-push]
 verify_jwt = false
+
+[functions.send-news-push]
+verify_jwt = false

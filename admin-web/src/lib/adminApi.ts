@@ -705,6 +705,7 @@ export async function updatePushNotificationConfig(
       p_peak_local_schedule_enabled: config.peakLocalScheduleEnabled,
       p_community_comment_title_template: config.communityCommentTitleTemplate,
       p_community_comment_body_template: config.communityCommentBodyTemplate,
+      p_news_fcm_enabled: config.newsFcmEnabled,
     },
   );
   if (error) throw error;
@@ -781,7 +782,65 @@ export async function invokePushEdge(
         : text || res.statusText;
     throw new Error(`${res.status}: ${msg}`);
   }
+
   return parsed;
+}
+
+/** 캠퍼스런치 소식 알림 즉시 발송 (관리자 JWT). */
+export async function invokeNewsPush(
+  title: string,
+  body: string,
+): Promise<{ ok: boolean; sent: number; failed: number; skipped?: string }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error("로그인이 만료됐어요. 다시 로그인해 주세요.");
+  }
+
+  const baseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(
+    /\/$/,
+    "",
+  );
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!baseUrl || !anonKey) {
+    throw new Error("Supabase URL/anon key가 없어요.");
+  }
+
+  const res = await fetch(`${baseUrl}/functions/v1/send-news-push`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: anonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ title, body }),
+  });
+
+  const text = await res.text();
+  let parsed: unknown = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = text;
+  }
+
+  if (!res.ok) {
+    const msg =
+      parsed &&
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "error" in parsed
+        ? String((parsed as { error: unknown }).error)
+        : text || res.statusText;
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  const result = (parsed ?? {}) as Record<string, unknown>;
+  return {
+    ok: Boolean(result.ok),
+    sent: Number(result.sent ?? 0),
+    failed: Number(result.failed ?? 0),
+    skipped: typeof result.skipped === "string" ? result.skipped : undefined,
+  };
 }
 
 export async function fetchCommunityReports(): Promise<CommunityReport[]> {
@@ -949,25 +1008,27 @@ export async function createCollection(params: {
   title: string;
   subtitle: string;
   sortOrder: number;
+  hashtags: string[];
 }): Promise<void> {
   const { error } = await supabase.from("collections").insert({
     title: params.title.trim(),
     subtitle: params.subtitle.trim() || null,
     sort_order: params.sortOrder,
+    hashtags: params.hashtags,
   });
   if (error) throw error;
 }
 
 export async function updateCollection(
   id: string,
-  params: { title: string; subtitle: string; sortOrder: number },
+  params: { title: string; subtitle: string; hashtags: string[] },
 ): Promise<void> {
   const { error } = await supabase
     .from("collections")
     .update({
       title: params.title.trim(),
       subtitle: params.subtitle.trim() || null,
-      sort_order: params.sortOrder,
+      hashtags: params.hashtags,
     })
     .eq("id", id);
   if (error) throw error;
@@ -1034,6 +1095,17 @@ export async function reorderCollectionItems(
   await Promise.all(
     orderedIds.map((id, index) =>
       supabase.from("collection_items").update({ sort_order: index }).eq("id", id),
+    ),
+  ).then((results) => {
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+  });
+}
+
+export async function reorderCollections(orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from("collections").update({ sort_order: index }).eq("id", id),
     ),
   ).then((results) => {
     const failed = results.find((r) => r.error);

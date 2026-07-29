@@ -182,6 +182,7 @@ export default function App() {
           onAddItem={collectionsState.addItem}
           onRemoveItem={collectionsState.removeItem}
           onReorderItems={collectionsState.reorderItems}
+          onReorderCollections={collectionsState.reorderCollectionsList}
           onHideComment={collectionsState.hideComment}
           onRemoveComment={collectionsState.removeComment}
         />

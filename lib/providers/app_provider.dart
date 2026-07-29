@@ -220,6 +220,7 @@ class AppProvider extends ChangeNotifier {
   bool _dinnerPushEnabled = true;
   bool _communityCommentsPushEnabled = true;
   bool _rewardPushEnabled = true;
+  bool _newsPushEnabled = true;
   bool _useAlgorithmRanking = true;
   int _ownerInfluence = 80;
   int _mainTabIndex = 0;
@@ -257,6 +258,7 @@ class AppProvider extends ChangeNotifier {
   bool get dinnerPushEnabled => _dinnerPushEnabled;
   bool get communityCommentsPushEnabled => _communityCommentsPushEnabled;
   bool get rewardPushEnabled => _rewardPushEnabled;
+  bool get newsPushEnabled => _newsPushEnabled;
   bool get useAlgorithmRanking => _useAlgorithmRanking;
   int get ownerInfluence => _ownerInfluence;
   int get mainTabIndex => _mainTabIndex;
@@ -329,6 +331,7 @@ class AppProvider extends ChangeNotifier {
   static const _kDinnerPush = 'cl_push_dinner';
   static const _kCommunityCommentsPush = 'cl_push_community_comments';
   static const _kRewardPush = 'cl_push_reward';
+  static const _kNewsPush = 'cl_push_news';
   static const _kSessionExp = 'cl_session_exp';
   static const _kUserRole = 'cl_user_role';
   static const _kOwnerIds = 'cl_owner_restaurant_ids';
@@ -600,6 +603,7 @@ class AppProvider extends ChangeNotifier {
     _communityCommentsPushEnabled =
         prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
     _rewardPushEnabled = prefs.getBool(_kRewardPush) ?? _notificationEnabled;
+    _newsPushEnabled = prefs.getBool(_kNewsPush) ?? _notificationEnabled;
   }
 
   // ── 로그인 ──
@@ -1071,6 +1075,7 @@ class AppProvider extends ChangeNotifier {
     _communityCommentsPushEnabled =
         prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
     _rewardPushEnabled = prefs.getBool(_kRewardPush) ?? _notificationEnabled;
+    _newsPushEnabled = prefs.getBool(_kNewsPush) ?? _notificationEnabled;
 
     final userId = supabaseUserId.isNotEmpty
         ? supabaseUserId
@@ -1398,11 +1403,13 @@ class AppProvider extends ChangeNotifier {
     _dinnerPushEnabled = enabled;
     _communityCommentsPushEnabled = enabled;
     _rewardPushEnabled = enabled;
+    _newsPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kDinnerPush, enabled);
     await prefs.setBool(_kCommunityCommentsPush, enabled);
     await prefs.setBool(_kRewardPush, enabled);
+    await prefs.setBool(_kNewsPush, enabled);
     try {
       if (enabled) {
         await PushNotificationService.instance.requestPermission();
@@ -1424,11 +1431,13 @@ class AppProvider extends ChangeNotifier {
     _dinnerPushEnabled = enabled;
     _communityCommentsPushEnabled = enabled;
     _rewardPushEnabled = enabled;
+    _newsPushEnabled = enabled;
     await prefs.setBool(_kPush, enabled);
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kDinnerPush, enabled);
     await prefs.setBool(_kCommunityCommentsPush, enabled);
     await prefs.setBool(_kRewardPush, enabled);
+    await prefs.setBool(_kNewsPush, enabled);
     if (enabled) {
       await PushNotificationService.instance.requestPermission();
       await FcmPushService.instance.requestPermissionAndRegister();
@@ -1443,7 +1452,8 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = _lunchPushEnabled ||
         _dinnerPushEnabled ||
         _communityCommentsPushEnabled ||
-        _rewardPushEnabled;
+        _rewardPushEnabled ||
+        _newsPushEnabled;
     await prefs.setBool(_kLunchPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
@@ -1460,7 +1470,8 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = _lunchPushEnabled ||
         _dinnerPushEnabled ||
         _communityCommentsPushEnabled ||
-        _rewardPushEnabled;
+        _rewardPushEnabled ||
+        _newsPushEnabled;
     await prefs.setBool(_kDinnerPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
@@ -1477,7 +1488,8 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = _lunchPushEnabled ||
         _dinnerPushEnabled ||
         _communityCommentsPushEnabled ||
-        _rewardPushEnabled;
+        _rewardPushEnabled ||
+        _newsPushEnabled;
     await prefs.setBool(_kCommunityCommentsPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
@@ -1494,8 +1506,27 @@ class AppProvider extends ChangeNotifier {
     _notificationEnabled = _lunchPushEnabled ||
         _dinnerPushEnabled ||
         _communityCommentsPushEnabled ||
-        _rewardPushEnabled;
+        _rewardPushEnabled ||
+        _newsPushEnabled;
     await prefs.setBool(_kRewardPush, enabled);
+    await prefs.setBool(_kPush, _notificationEnabled);
+    if (enabled) {
+      await PushNotificationService.instance.requestPermission();
+      await FcmPushService.instance.requestPermissionAndRegister();
+    }
+    await _syncPushNotifications();
+    notifyListeners();
+  }
+
+  Future<void> setNewsPush(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    _newsPushEnabled = enabled;
+    _notificationEnabled = _lunchPushEnabled ||
+        _dinnerPushEnabled ||
+        _communityCommentsPushEnabled ||
+        _rewardPushEnabled ||
+        _newsPushEnabled;
+    await prefs.setBool(_kNewsPush, enabled);
     await prefs.setBool(_kPush, _notificationEnabled);
     if (enabled) {
       await PushNotificationService.instance.requestPermission();
@@ -1585,6 +1616,7 @@ class AppProvider extends ChangeNotifier {
       final communityOn =
           _notificationEnabled && _communityCommentsPushEnabled;
       final rewardOn = _notificationEnabled && _rewardPushEnabled;
+      final newsOn = _notificationEnabled && _newsPushEnabled;
 
       final pushConfig = await _pushConfigRepo.fetchConfig();
 
@@ -1598,9 +1630,10 @@ class AppProvider extends ChangeNotifier {
         peakDinner: dinnerOn,
         communityComments: communityOn,
         rewardGifticon: rewardOn,
+        news: newsOn,
       );
 
-      if (lunchOn || dinnerOn || communityOn || rewardOn) {
+      if (lunchOn || dinnerOn || communityOn || rewardOn || newsOn) {
         await FcmPushService.instance.registerToken();
       }
 
@@ -1995,6 +2028,7 @@ class AppProvider extends ChangeNotifier {
     _dinnerPushEnabled = pushGranted;
     _communityCommentsPushEnabled = pushGranted;
     _rewardPushEnabled = pushGranted;
+    _newsPushEnabled = pushGranted;
 
     await prefs.setBool(_kPermissionsConsentSeen, true);
     await prefs.setBool(_kLocation, true);
@@ -2003,6 +2037,7 @@ class AppProvider extends ChangeNotifier {
     await prefs.setBool(_kDinnerPush, pushGranted);
     await prefs.setBool(_kCommunityCommentsPush, pushGranted);
     await prefs.setBool(_kRewardPush, pushGranted);
+    await prefs.setBool(_kNewsPush, pushGranted);
 
     if (_hasSupabaseSession && pushGranted) {
       unawaited(_syncPushNotifications());

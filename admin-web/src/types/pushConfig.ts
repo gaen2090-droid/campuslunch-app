@@ -24,6 +24,7 @@ export interface PushNotificationConfig {
   peakLocalScheduleEnabled: boolean;
   communityCommentTitleTemplate: string;
   communityCommentBodyTemplate: string;
+  newsFcmEnabled: boolean;
   updatedAt: Date | null;
 }
 
@@ -63,6 +64,7 @@ export const DEFAULT_PUSH_CONFIG: PushNotificationConfig = {
   peakLocalScheduleEnabled: true,
   communityCommentTitleTemplate: "{nickname}님이 댓글을 남겼어요",
   communityCommentBodyTemplate: "{content}",
+  newsFcmEnabled: true,
   updatedAt: null,
 };
 
@@ -79,6 +81,10 @@ export interface PushOpsSnapshot {
   dinnerDevices: number;
   communityUsers: number;
   communityDevices: number;
+  rewardUsers: number;
+  rewardDevices: number;
+  newsUsers: number;
+  newsDevices: number;
   /** 설정 전파 시 FCM 시도 건수(= 전체 토큰) */
   configRefreshDevices: number;
   lastPeakSent: Array<{ sentDate: string; slot: string; createdAt: string }>;
@@ -96,6 +102,10 @@ export const EMPTY_PUSH_OPS: PushOpsSnapshot = {
   dinnerDevices: 0,
   communityUsers: 0,
   communityDevices: 0,
+  rewardUsers: 0,
+  rewardDevices: 0,
+  newsUsers: 0,
+  newsDevices: 0,
   configRefreshDevices: 0,
   lastPeakSent: [],
 };
@@ -237,6 +247,7 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
       "community_comment_body_template",
       DEFAULT_PUSH_CONFIG.communityCommentBodyTemplate,
     ),
+    newsFcmEnabled: readBool("news_fcm_enabled", DEFAULT_PUSH_CONFIG.newsFcmEnabled),
     updatedAt: raw.updated_at ? new Date(String(raw.updated_at)) : null,
   };
 }
@@ -280,6 +291,10 @@ export function parsePushOpsSnapshot(raw: Record<string, unknown>): PushOpsSnaps
     dinnerDevices: Number(raw.dinner_devices ?? 0),
     communityUsers: Number(raw.community_users ?? 0),
     communityDevices: Number(raw.community_devices ?? 0),
+    rewardUsers: Number(raw.reward_users ?? 0),
+    rewardDevices: Number(raw.reward_devices ?? 0),
+    newsUsers: Number(raw.news_users ?? 0),
+    newsDevices: Number(raw.news_devices ?? 0),
     configRefreshDevices: Number(
       raw.config_refresh_devices ?? raw.token_count ?? 0,
     ),

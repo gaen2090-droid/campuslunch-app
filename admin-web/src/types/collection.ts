@@ -1,3 +1,5 @@
+export const COLLECTION_HASHTAGS = ["혼밥", "밥약", "카공", "맛집"] as const;
+
 export interface RestaurantCollection {
   id: string;
   title: string;
@@ -7,6 +9,7 @@ export interface RestaurantCollection {
   createdAt: Date;
   userId: string | null;
   authorNickname: string | null;
+  hashtags: string[];
 }
 
 export interface CollectionItem {
@@ -30,6 +33,7 @@ export function parseRestaurantCollection(
     createdAt: new Date(String(raw.created_at)),
     userId: raw.user_id != null ? String(raw.user_id) : null,
     authorNickname: raw.author_nickname != null ? String(raw.author_nickname) : null,
+    hashtags: Array.isArray(raw.hashtags) ? raw.hashtags.map(String) : [],
   };
 }
 

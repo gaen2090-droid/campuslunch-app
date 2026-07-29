@@ -27,7 +27,7 @@ class _PushNotificationSettingsScreenState
       final provider = context.read<AppProvider>();
       _lunchPush = provider.lunchPushEnabled;
       _rewardPush = provider.rewardPushEnabled;
-      _newsPush = provider.lunchPushEnabled;
+      _newsPush = provider.newsPushEnabled;
       _communityPush = provider.communityCommentsPushEnabled;
       _loadMarketingConsent();
     }
@@ -98,6 +98,7 @@ class _PushNotificationSettingsScreenState
               onToggle: () async {
                 final next = !_newsPush;
                 setState(() => _newsPush = next);
+                await context.read<AppProvider>().setNewsPush(next);
               },
             ),
             const SizedBox(height: 24),

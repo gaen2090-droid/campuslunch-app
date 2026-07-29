@@ -1205,28 +1205,28 @@ code {
 
 .push-reach-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
   margin-bottom: 12px;
 }
 
 .push-reach-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  gap: 1px;
+  padding: 7px 10px;
+  border-radius: 8px;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
 }
 
 .push-reach-label {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: #6b7280;
 }
 
 .push-reach-main {
-  font-size: 1.375rem;
+  font-size: 1.0625rem;
   font-weight: 700;
   color: #111827;
   letter-spacing: -0.02em;
@@ -1279,7 +1279,7 @@ code {
 
 @media (max-width: 720px) {
   .push-reach-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -29,6 +29,7 @@ class PushTokenRepository {
     required bool peakDinner,
     required bool communityComments,
     required bool rewardGifticon,
+    required bool news,
   }) async {
     if (!SupabaseService.isReady) return;
     await SupabaseService.client.rpc(
@@ -38,6 +39,7 @@ class PushTokenRepository {
         'p_peak_dinner': peakDinner,
         'p_community_comments': communityComments,
         'p_reward_gifticon': rewardGifticon,
+        'p_news': news,
       },
     );
   }
@@ -48,6 +50,7 @@ class PushTokenRepository {
         bool peakDinner,
         bool communityComments,
         bool rewardGifticon,
+        bool news,
       })?> fetchPrefs() async {
     if (!SupabaseService.isReady) return null;
     final row = await SupabaseService.client.rpc('get_notification_prefs');
@@ -58,6 +61,7 @@ class PushTokenRepository {
       peakDinner: map['peak_dinner'] as bool? ?? true,
       communityComments: map['community_comments'] as bool? ?? true,
       rewardGifticon: map['reward_gifticon'] as bool? ?? true,
+      news: map['news'] as bool? ?? true,
     );
   }
 

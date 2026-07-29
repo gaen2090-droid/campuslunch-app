@@ -64,7 +64,9 @@ class _MyScreenState extends State<MyScreen> {
     final provider = context.watch<AppProvider>();
     final hasOwner = provider.hasOwnerTab;
 
-    return Stack(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: Stack(
       children: [
         SingleChildScrollView(
           padding: EdgeInsets.only(
@@ -105,10 +107,10 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              // ══ 섹션 1: 프로필 + 오늘의 스탬프 + 바로가기 3버튼 ══
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+              // ══ 카드 1: 프로필 + 오늘의 스탬프 + 바로가기 3버튼 ══
+              _MyCardSection(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── 프로필 ──
                     GestureDetector(
@@ -156,7 +158,7 @@ class _MyScreenState extends State<MyScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 21),
 
                     // ── 오늘의 스탬프 (초록 키컬러 카드) ──
                     _RewardCard(
@@ -168,63 +170,57 @@ class _MyScreenState extends State<MyScreen> {
                     const SizedBox(height: 12),
 
                     // ── 즐겨찾기 / 스탬프북 / 내 쿠폰함 ──
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _QuickAction(
-                              icon: Icons.bookmark,
-                              label: '즐겨찾기',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const BookmarkListScreen()),
-                              ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.bookmark,
+                            label: '즐겨찾기',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const BookmarkListScreen()),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _QuickAction(
-                              icon: Icons.stars_rounded,
-                              label: '스탬프북',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const RewardScreen()),
-                              ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.stars_rounded,
+                            label: '스탬프북',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const RewardScreen()),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _QuickAction(
-                              icon: Icons.card_giftcard_rounded,
-                              label: '내 쿠폰함',
-                              showDot: provider.hasUnseenCoupon,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const CouponBoxScreen()),
-                              ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.card_giftcard_rounded,
+                            label: '내 쿠폰함',
+                            showDot: provider.hasUnseenCoupon,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CouponBoxScreen()),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 20),
-              const MyPageSectionDivider(),
+              const SizedBox(height: 16),
 
-              // ══ 섹션 2: 쿠폰/이벤트 ══
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              // ══ 카드 2: 쿠폰/이벤트 ══
+              _MyCardSection(
+                title: '이벤트',
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const MyPageSectionTitle('쿠폰/이벤트'),
                     MyPageSectionRow(
                       label: '친구 초대하고 함께 스탬프 받기',
                       icon: const Icon(Icons.card_giftcard_outlined,
@@ -240,15 +236,13 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              const MyPageSectionDivider(),
+              const SizedBox(height: 16),
 
-              // ══ 섹션 3: 고객지원 ══
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              // ══ 카드 3: 고객지원 ══
+              _MyCardSection(
+                title: '고객지원',
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const MyPageSectionTitle('고객지원'),
                     MyPageSectionRow(
                       label: '캠퍼스런치 이용 가이드',
                       icon: const Icon(Icons.help_rounded,
@@ -281,16 +275,13 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              // ══ 섹션 4: 비즈니스 ══
-              if (!hasOwner) const MyPageSectionDivider(),
-
-              if (!hasOwner)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              // ══ 카드 4: 비즈니스 ══
+              if (!hasOwner) ...[
+                const SizedBox(height: 16),
+                _MyCardSection(
+                  title: '비즈니스',
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const MyPageSectionTitle('비즈니스'),
                       MyPageSectionRow(
                         label: '내 가게 등록',
                         icon: const Icon(Icons.storefront_outlined,
@@ -301,13 +292,12 @@ class _MyScreenState extends State<MyScreen> {
                     ],
                   ),
                 ),
-
-              if (hasOwner) const MyPageSectionDivider(),
+              ],
 
               // ── 사장님(오너) 전용 배너 ──
               if (hasOwner)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: GestureDetector(
                     onTap: () => provider.setMainTabIndex(0),
                     child: Container(
@@ -331,8 +321,6 @@ class _MyScreenState extends State<MyScreen> {
                     ),
                   ),
                 ),
-
-              if (hasOwner) const SizedBox(height: 20),
             ],
           ),
         ),
@@ -530,6 +518,60 @@ class _MyScreenState extends State<MyScreen> {
             ),
           ),
       ],
+      ),
+    );
+  }
+}
+
+/// 마이페이지 카드 (사장님 마이페이지 _OwnerCardSection과 동일한 스타일).
+/// title이 있으면 카드 맨 위에 섹션 제목을 포함한다.
+class _MyCardSection extends StatelessWidget {
+  final String? title;
+  final Widget child;
+
+  const _MyCardSection({this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 4),
+                child: Text(
+                  title!,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              )
+            else
+              const SizedBox(height: 16),
+            child,
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
   }
 }
