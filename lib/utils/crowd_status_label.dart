@@ -13,6 +13,17 @@ String formatUpdateAgeFromDateTime(DateTime? updatedAt) {
   return formatUpdateAge(DateTime.now().difference(updatedAt).inMinutes.clamp(0, 99999));
 }
 
+/// 하루(24시간) 이상 지난 제보는 몇 시에 있었는지 알기 어려워지므로
+/// "9일 전 · 11:45"처럼 시각을 함께 보여준다.
+String formatUpdateAgeWithTime(DateTime createdAt) {
+  final minutes = DateTime.now().difference(createdAt).inMinutes.clamp(0, 99999);
+  final age = formatUpdateAge(minutes);
+  if (minutes < 24 * 60) return age;
+  final hh = createdAt.hour.toString().padLeft(2, '0');
+  final mm = createdAt.minute.toString().padLeft(2, '0');
+  return '$age · $hh:$mm';
+}
+
 /// 화면 표시: `여유로움` 또는 `여유로움 · 5분 전`
 String formatCrowdStatusLine(
   String status, {

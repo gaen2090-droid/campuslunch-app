@@ -183,12 +183,15 @@ class _ShareOption extends StatelessWidget {
               child: Icon(icon, size: 18, color: iconColor ?? const Color(0xFF374151)),
             ),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
               ),
             ),
           ],

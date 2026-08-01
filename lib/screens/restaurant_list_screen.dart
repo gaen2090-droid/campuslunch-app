@@ -290,22 +290,27 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                               size: 18, color: Color(0xFF111827)),
                         ),
                         const SizedBox(width: 12),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(
-                                  color: _dotColor, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_title,
-                                style: TextStyle(
-                                    fontFamily: 'Pretendard',
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.5,
-                                    color: _titleColor)),
-                          ],
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(
+                                    color: _dotColor, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(_title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontFamily: 'Pretendard',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.5,
+                                        color: _titleColor)),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),

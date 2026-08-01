@@ -897,36 +897,45 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8, height: 8,
-                      decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(title,
-                        style: const TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827))),
-                  ],
-                ),
-                if (subText != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3, left: 16),
-                    child: Text(subText,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF9CA3AF))),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(title,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF111827))),
+                      ),
+                    ],
                   ),
-              ],
+                  if (subText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3, left: 16),
+                      child: Text(subText,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF9CA3AF))),
+                    ),
+                ],
+              ),
             ),
-            if (trailing != null) trailing,
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing,
+            ],
           ],
         ),
       );
@@ -936,19 +945,18 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           onTap: onTap,
           child: Container(
             margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+              color: const Color(0xFF4B4B4B),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
             child: const Center(
               child: Text('더보기',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF9CA3AF))),
+                      color: Colors.white)),
             ),
           ),
         );
@@ -1148,7 +1156,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        crowdBadge('제보필요', const Color(0xFFF3F4F6), const Color(0xFF111827)),
+                        crowdBadge('제보필요', const Color(0xFFE5E7EB), const Color(0xFF111827)),
                       ],
                     ),
                   ),
@@ -1626,15 +1634,15 @@ class NeedsReportCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
                 '제보하면 스탬프 2개',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
                 ),
               ),
             ),
@@ -1773,11 +1781,14 @@ class _FilterSheetState extends State<HomeFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('필터',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827))),
+              const Flexible(
+                child: Text('필터',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827))),
+              ),
               if (_hasActive)
                 GestureDetector(
                   onTap: _reset,
@@ -1795,11 +1806,14 @@ class _FilterSheetState extends State<HomeFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('정렬',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF6B7280))),
+              const Flexible(
+                child: Text('정렬',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6B7280))),
+              ),
               if (_sortBy != '최신순')
                 GestureDetector(
                   onTap: () => setState(() => _sortBy = '최신순'),
@@ -1849,11 +1863,14 @@ class _FilterSheetState extends State<HomeFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('위치',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF6B7280))),
+              const Flexible(
+                child: Text('위치',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6B7280))),
+              ),
               if (!_isAll(_regions))
                 GestureDetector(
                   onTap: () => setState(() => _regions = {_allLabel}),
@@ -1896,11 +1913,14 @@ class _FilterSheetState extends State<HomeFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('음식종류',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF6B7280))),
+              const Flexible(
+                child: Text('음식종류',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6B7280))),
+              ),
               if (!_isAll(_cuisines))
                 GestureDetector(
                   onTap: () => setState(() => _cuisines = {_allLabel}),
@@ -2235,11 +2255,14 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.title,
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827))),
+              Flexible(
+                child: Text(widget.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111827))),
+              ),
               if (!widget.multiSelect
                   ? !_selected.contains(widget.items.first)
                   : !(_selected.length == 1 && _selected.contains(_allLabel)))

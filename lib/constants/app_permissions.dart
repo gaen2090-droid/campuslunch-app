@@ -34,7 +34,7 @@ abstract final class AppPermissions {
             id: 'nearby_devices',
             title: '주변 기기 탐색 이용 동의',
             required: false,
-            subtitle: '실내 등에서 위치 정확도를 높이는 데 참고돼요.',
+            subtitle: '위치 정확도를 높이는 데 참고돼요.',
             documentBody:
                 '주변 기기 탐색(Wi-Fi·블루투스 스캔) 권한은 안드로이드 기기의 '
                 '위치 정확도를 높이기 위해 OS가 요구하는 선택 동의 항목입니다.\n\n'

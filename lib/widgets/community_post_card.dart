@@ -42,9 +42,12 @@ class CommunityPostCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            post.nickname,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                          Flexible(
+                            child: Text(
+                              post.nickname,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                            ),
                           ),
                           if (post.isAuthorOwner) ...[
                             const SizedBox(width: 4),

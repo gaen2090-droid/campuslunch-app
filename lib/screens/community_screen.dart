@@ -383,16 +383,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           color: const Color(0xFFF3F8F0),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               const Text('🏪', style: TextStyle(fontSize: 11)),
               const SizedBox(width: 4),
-              Text(
-                '${active.name} 사장님으로 활동 중',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF5E8C4A),
+              Flexible(
+                child: Text(
+                  '${active.name} 사장님으로 활동 중',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF5E8C4A),
+                  ),
                 ),
               ),
               if (canChange) ...[
@@ -880,8 +882,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 context,
                 collectionId: c.id,
                 collectionTitle: c.title,
+                onCountChanged: (count) {
+                  if (!mounted) return;
+                  final index = _collections.indexWhere((x) => x.id == c.id);
+                  if (index == -1) return;
+                  setState(() {
+                    _collections[index] =
+                        _collections[index].copyWith(commentCount: count);
+                  });
+                },
               );
-              if (mounted) _loadCollections();
             },
             onTapLike: () => _toggleCollectionLike(collection),
           ),

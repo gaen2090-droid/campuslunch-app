@@ -205,6 +205,9 @@ class _OwnerScreenState extends State<OwnerScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         bottom: false,
+        child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
         child: Stack(
         children: [
           SingleChildScrollView(
@@ -282,7 +285,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: GestureDetector(
                             onTap: () async {
-                              if (selected || _statusSubmitting) return;
+                              if (_statusSubmitting) return;
                               setState(() => _statusSubmitting = true);
                               final err = await provider.reportStatus(
                                 restaurant.id,
@@ -323,7 +326,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
+                                  Expanded(
+                                    child: Row(
                                     children: [
                                       Container(
                                         width: 16,
@@ -334,12 +338,14 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 14),
-                                      Column(
+                                      Flexible(
+                                        child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Text(
                                             opt.label,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w900,
@@ -351,6 +357,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                           ),
                                           Text(
                                             opt.subtitle,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
@@ -360,10 +367,13 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                             ),
                                           ),
                                         ],
+                                        ),
                                       ),
                                     ],
+                                    ),
                                   ),
-                                  if (selected)
+                                  if (selected) ...[
+                                    const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
@@ -380,6 +390,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                         ),
                                       ),
                                     ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -575,6 +586,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
               ),
             ),
         ],
+      ),
       ),
       ),
     );

@@ -8,16 +8,19 @@ import '../utils/time_ago.dart';
 class CollectionCommentsSheet extends StatefulWidget {
   final String collectionId;
   final String collectionTitle;
+  final ValueChanged<int>? onCountChanged;
 
   const CollectionCommentsSheet({
     super.key,
     required this.collectionId,
     required this.collectionTitle,
+    this.onCountChanged,
   });
 
   static Future<void> show(BuildContext context, {
     required String collectionId,
     required String collectionTitle,
+    ValueChanged<int>? onCountChanged,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -26,6 +29,7 @@ class CollectionCommentsSheet extends StatefulWidget {
       builder: (_) => CollectionCommentsSheet(
         collectionId: collectionId,
         collectionTitle: collectionTitle,
+        onCountChanged: onCountChanged,
       ),
     );
   }
@@ -84,6 +88,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
       await _repo.addCollectionComment(widget.collectionId, content);
       _commentCtrl.clear();
       await _load();
+      widget.onCountChanged?.call(_comments.length);
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = '댓글 등록에 실패했어요.');
@@ -96,6 +101,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
     try {
       await _repo.deleteCollectionComment(comment.id);
       await _load();
+      widget.onCountChanged?.call(_comments.length);
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = '댓글 삭제에 실패했어요.');
@@ -104,7 +110,13 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pop(_comments.length);
+      },
+      child: Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: MediaQuery.of(context).size.height * 0.75,
@@ -216,6 +228,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -239,9 +252,12 @@ class _CollectionCommentTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      comment.nickname,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                    Flexible(
+                      child: Text(
+                        comment.nickname,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Text(

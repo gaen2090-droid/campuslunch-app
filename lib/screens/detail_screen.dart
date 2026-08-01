@@ -561,13 +561,12 @@ class _RecentReportsSection extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             ...reports.map((r) {
-              final minutesAgo = DateTime.now().difference(r.createdAt).inMinutes;
               final prefix = r.isOwner ? '사장님 · ' : '';
               final statusLabel = r.status == '웨이팅많음' ? '웨이팅' : r.status;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  '$prefix$statusLabel · ${formatUpdateAge(minutesAgo)}',
+                  '$prefix$statusLabel · ${formatUpdateAgeWithTime(r.createdAt)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

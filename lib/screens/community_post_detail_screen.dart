@@ -386,9 +386,12 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        _post.nickname,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      Flexible(
+                        child: Text(
+                          _post.nickname,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                        ),
                       ),
                       if (_post.isAuthorOwner) ...[
                         const SizedBox(width: 4),
@@ -601,9 +604,12 @@ class _CommentTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      comment.nickname,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                    Flexible(
+                      child: Text(
+                        comment.nickname,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      ),
                     ),
                     if (comment.isAuthorOwner) ...[
                       const SizedBox(width: 4),

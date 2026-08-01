@@ -84,21 +84,43 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
     }
 
     MapLatLng? origin;
+    String? locationError;
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      ).timeout(const Duration(seconds: 10));
-      origin = MapLatLng(pos.latitude, pos.longitude);
-    } catch (_) {
-      origin = null;
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        locationError = '위치 권한이 꺼져 있어요.\n설정에서 위치 권한을 허용해주세요.';
+      } else if (!await Geolocator.isLocationServiceEnabled()) {
+        locationError = '기기의 위치 서비스가 꺼져 있어요.\n설정에서 위치(GPS)를 켜주세요.';
+      } else {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null &&
+            DateTime.now().difference(lastKnown.timestamp).inMinutes < 5) {
+          origin = MapLatLng(lastKnown.latitude, lastKnown.longitude);
+        } else {
+          final pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 10),
+            ),
+          );
+          origin = MapLatLng(pos.latitude, pos.longitude);
+        }
+      }
+    } on LocationServiceDisabledException {
+      locationError = '기기의 위치 서비스가 꺼져 있어요.\n설정에서 위치(GPS)를 켜주세요.';
+    } on TimeoutException {
+      debugPrint('[Directions] location fix timed out');
+      locationError = '현재 위치를 확인할 수 없어요.\n신호가 약한 곳이라면 실외에서 다시 시도해주세요.';
+    } catch (e, st) {
+      debugPrint('[Directions] location failed: $e\n$st');
+      locationError = '현재 위치를 확인할 수 없어요.\n위치 권한을 켜고 다시 시도해주세요.';
     }
 
     if (origin == null) {
       setState(() {
         _loadingRoute = false;
-        _error = '현재 위치를 확인할 수 없어요.\n위치 권한을 켜고 다시 시도해주세요.';
+        _error = locationError ?? '현재 위치를 확인할 수 없어요.\n위치 권한을 켜고 다시 시도해주세요.';
       });
       return;
     }

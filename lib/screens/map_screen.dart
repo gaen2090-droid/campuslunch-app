@@ -1091,15 +1091,20 @@ class _SelectedCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(r.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF111827))),
                         const SizedBox(height: 2),
                         Row(children: [
-                          Text('${r.area} · ',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Color(0xFF9CA3AF))),
+                          Flexible(
+                            child: Text('${r.area} · ',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF9CA3AF))),
+                          ),
                           Text(meta.label,
                               style: TextStyle(
                                   fontSize: 12,

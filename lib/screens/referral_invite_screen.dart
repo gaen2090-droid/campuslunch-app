@@ -231,13 +231,16 @@ class _InvitedFriendsSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Text(
-              '초대한 친구',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
-                letterSpacing: -0.3,
+            const Flexible(
+              child: Text(
+                '초대한 친구',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
             const SizedBox(width: 8),
