@@ -75,7 +75,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('확인', style: TextStyle(color: Color(0xFF5E8C4A))),
+            child: const Text('확인', style: TextStyle(color: Color(0xFF111827))),
           ),
         ],
       ),
@@ -119,7 +119,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF2F5233), Color(0xFF5E8C4A)],
+                  colors: [Color(0xFF111827), Color(0xFF374151)],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),

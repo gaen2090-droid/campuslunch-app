@@ -64,7 +64,7 @@ Future<void> showLocationPermissionDialog(
                       height: 48,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Center(
@@ -73,7 +73,7 @@ Future<void> showLocationPermissionDialog(
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -140,13 +140,13 @@ class LocationPermissionScreen extends StatelessWidget {
                     height: 48,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9ECA8B),
+                      color: const Color(0xFF111827),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Center(
                       child: Text(
                         '권한 허용하기',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                        style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                     ),
                   ),

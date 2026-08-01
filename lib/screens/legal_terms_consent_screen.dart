@@ -130,15 +130,15 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: canProceed
-                                ? const Color(0xFF9ECA8B)
+                                ? const Color(0xFF111827)
                                 : const Color(0xFFE5E7EB),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: canProceed
-                                ? const [
+                                ? [
                                     BoxShadow(
-                                      color: Color(0xFFC8E6BA),
+                                      color: Colors.black.withAlpha(30),
                                       blurRadius: 20,
-                                      offset: Offset(0, 6),
+                                      offset: const Offset(0, 6),
                                     ),
                                   ]
                                 : null,
@@ -150,7 +150,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
                                     height: 22,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Color(0xFF111827),
+                                      color: Colors.white,
                                     ),
                                   )
                                 : Text(
@@ -159,7 +159,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
                                       fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                       color: canProceed
-                                          ? const Color(0xFF111827)
+                                          ? Colors.white
                                           : const Color(0xFF9CA3AF),
                                     ),
                                   ),

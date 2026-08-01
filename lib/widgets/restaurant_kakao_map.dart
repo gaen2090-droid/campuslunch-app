@@ -694,7 +694,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
                 height: 28,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Color(0xFF5E8C4A),
+                  color: Color(0xFF111827),
                 ),
               ),
               SizedBox(height: 12),

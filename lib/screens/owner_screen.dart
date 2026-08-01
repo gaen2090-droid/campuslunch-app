@@ -150,7 +150,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9ECA8B),
+                      color: const Color(0xFF111827),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
@@ -158,7 +158,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -247,22 +247,22 @@ class _OwnerScreenState extends State<OwnerScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F8F0),
+                            color: const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFBFE0B0)),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.visibility_outlined,
-                                  size: 13, color: Color(0xFF5E8C4A)),
+                                  size: 13, color: Color(0xFF374151)),
                               SizedBox(width: 4),
                               Text(
                                 '소비자 화면 보기',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF5E8C4A),
+                                  color: Color(0xFF374151),
                                 ),
                               ),
                             ],
@@ -474,7 +474,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: const BorderSide(
-                                    color: Color(0xFF5E8C4A),
+                                    color: Color(0xFF111827),
                                     width: 1.5,
                                   ),
                                 ),
@@ -486,7 +486,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3F8F0),
+                                color: const Color(0xFFF3F4F6),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -495,7 +495,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF5E8C4A),
+                                  color: Color(0xFF374151),
                                 ),
                               ),
                             ),
@@ -513,8 +513,8 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                     const EdgeInsets.symmetric(vertical: 14),
                                 decoration: BoxDecoration(
                                   color: _seatSubmitting
-                                      ? const Color(0xFFBFE0B0)
-                                      : const Color(0xFF9ECA8B),
+                                      ? const Color(0xFF9CA3AF)
+                                      : const Color(0xFF111827),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Center(
@@ -524,7 +524,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                           height: 20,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: Color(0xFF111827),
+                                            color: Colors.white,
                                           ),
                                         )
                                       : const Text(
@@ -532,7 +532,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w900,
-                                            color: Color(0xFF111827),
+                                            color: Colors.white,
                                           ),
                                         ),
                                 ),
@@ -545,7 +545,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF5E8C4A),
+                                  color: Color(0xFF374151),
                                   height: 1.4,
                                 ),
                               ),

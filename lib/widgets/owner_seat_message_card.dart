@@ -18,9 +18,9 @@ class OwnerSeatMessageCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F8F0),
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFBFE0B0)),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,7 +28,7 @@ class OwnerSeatMessageCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(top: 2),
               child: Icon(Icons.chat_bubble_outline,
-                  size: 18, color: Color(0xFF5E8C4A)),
+                  size: 18, color: Color(0xFF6B7280)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -37,7 +37,7 @@ class OwnerSeatMessageCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF4C9C2A),
+                  color: Color(0xFF374151),
                   height: 1.4,
                 ),
               ),

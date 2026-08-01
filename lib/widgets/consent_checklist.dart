@@ -220,10 +220,10 @@ class _CheckBox extends StatelessWidget {
       width: emphasized ? 24 : 22,
       height: emphasized ? 24 : 22,
       decoration: BoxDecoration(
-        color: checked ? const Color(0xFF9ECA8B) : Colors.white,
+        color: checked ? const Color(0xFF111827) : Colors.white,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: checked ? const Color(0xFF9ECA8B) : const Color(0xFFD1D5DB),
+          color: checked ? const Color(0xFF111827) : const Color(0xFFD1D5DB),
           width: 1.5,
         ),
       ),
@@ -231,7 +231,7 @@ class _CheckBox extends StatelessWidget {
           ? Icon(
               Icons.check,
               size: emphasized ? 16 : 14,
-              color: const Color(0xFF111827),
+              color: Colors.white,
             )
           : null,
     );

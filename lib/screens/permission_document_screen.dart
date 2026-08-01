@@ -90,7 +90,7 @@ class PermissionDocumentScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF5E8C4A),
+                    color: Color(0xFF111827),
                     decoration: TextDecoration.underline,
                   ),
                 ),

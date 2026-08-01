@@ -100,17 +100,17 @@ class CommunityPostCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F8F0),
+                    color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF5E8C4A)),
+                      const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF374151)),
                       const SizedBox(width: 4),
                       Text(
                         post.restaurantName!,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
                       ),
                     ],
                   ),

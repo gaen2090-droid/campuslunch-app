@@ -32,9 +32,9 @@ class _RewardScreenState extends State<RewardScreen> {
     final remaining = target - total;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F8F0),
+      backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F8F0),
+        backgroundColor: const Color(0xFFF3F4F6),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
@@ -55,7 +55,7 @@ class _RewardScreenState extends State<RewardScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
-        color: const Color(0xFF5E8C4A),
+        color: const Color(0xFF111827),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
@@ -95,7 +95,7 @@ class _RewardScreenState extends State<RewardScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF5E8C4A),
+                              color: Color(0xFF111827),
                             ),
                           ),
                         ),
@@ -166,7 +166,7 @@ class _StampSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFBFE0B0)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
         ],
@@ -187,12 +187,12 @@ class _StampSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E1),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '오늘 $today / ${RewardLimits.dailyStampCap}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                 ),
               ),
             ],
@@ -203,7 +203,7 @@ class _StampSummaryCard extends StatelessWidget {
             children: [
               Text(
                 '$total',
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF5E8C4A), height: 1),
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF111827), height: 1),
               ),
               const Text(
                 ' / 20',
@@ -218,7 +218,7 @@ class _StampSummaryCard extends StatelessWidget {
               value: (total / 20).clamp(0.0, 1.0),
               minHeight: 8,
               backgroundColor: const Color(0xFFF3F4F6),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF5E8C4A)),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF111827)),
             ),
           ),
           const SizedBox(height: 12),
@@ -229,7 +229,7 @@ class _StampSummaryCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: remaining > 0 ? const Color(0xFF6B7280) : const Color(0xFF5E8C4A),
+              color: remaining > 0 ? const Color(0xFF6B7280) : const Color(0xFF111827),
             ),
           ),
           const SizedBox(height: 6),
@@ -253,9 +253,9 @@ class _ReferralHistoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F8F0),
+        color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFBFE0B0)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Row(
         children: [
@@ -263,7 +263,7 @@ class _ReferralHistoryCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: const BoxDecoration(
-              color: Color(0xFF5E8C4A),
+              color: Color(0xFF111827),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.people_alt_rounded, size: 17, color: Colors.white),
@@ -344,10 +344,10 @@ class _StampCell extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: filled ? const Color(0xFFE8F5E1) : const Color(0xFFF9FAFB),
+        color: filled ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB),
         shape: BoxShape.circle,
         border: Border.all(
-          color: filled ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
+          color: const Color(0xFFE5E7EB),
           width: 1.5,
         ),
       ),

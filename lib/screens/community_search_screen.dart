@@ -226,7 +226,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
 
     if (_searching) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF5E8C4A)),
+        child: CircularProgressIndicator(color: Color(0xFF111827)),
       );
     }
 

@@ -86,7 +86,7 @@ class _OwnerVerifyScreenState extends State<OwnerVerifyScreen> {
         centerTitle: false,
       ),
       body: switch (_step) {
-        _Step.loading => const Center(child: CircularProgressIndicator(color: Color(0xFF9ECA8B))),
+        _Step.loading => const Center(child: CircularProgressIndicator(color: Color(0xFF111827))),
         _Step.pickRestaurant => _RestaurantPickStep(onPicked: _onRestaurantPicked),
         _Step.form => _ApplicationFormStep(
             restaurant: _pickedRestaurant!,
@@ -197,13 +197,13 @@ class _RejectedStep extends StatelessWidget {
             child: Container(
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF9ECA8B),
+                color: const Color(0xFF111827),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
                 child: Text(
                   '다시 신청하기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
                 ),
               ),
             ),
@@ -582,7 +582,7 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B),
+                  color: const Color(0xFF111827),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
@@ -590,11 +590,11 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(color: Color(0xFF111827), strokeWidth: 2),
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
                           '제출하기',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
                         ),
                 ),
               ),
@@ -621,7 +621,7 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF111827), width: 1.5),
         ),
       );
 }
@@ -646,10 +646,10 @@ class _NotifyMethodCheckbox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: checked ? const Color(0xFFF3F8F0) : const Color(0xFFF9FAFB),
+          color: checked ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: checked ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB),
+            color: checked ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
           ),
         ),
         child: Row(
@@ -658,13 +658,13 @@ class _NotifyMethodCheckbox extends StatelessWidget {
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF9ECA8B)),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
               )
             else
               Icon(
                 checked ? Icons.check_box : Icons.check_box_outline_blank,
                 size: 20,
-                color: checked ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                color: checked ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
               ),
             const SizedBox(width: 10),
             Text(

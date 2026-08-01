@@ -179,7 +179,7 @@ class _StepView extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: step.circleShape ? BoxShape.circle : BoxShape.rectangle,
                     borderRadius: step.circleShape ? null : BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF9ECA8B), width: 2.5),
+                    border: Border.all(color: Colors.white, width: 2.5),
                   ),
                 ),
               ),

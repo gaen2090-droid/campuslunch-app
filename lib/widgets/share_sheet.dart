@@ -48,9 +48,9 @@ class _ShareSheet extends StatelessWidget {
         content: const Text(
           '클립보드에 복사했어요.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF9ECA8B),
+        backgroundColor: const Color(0xFF111827),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),

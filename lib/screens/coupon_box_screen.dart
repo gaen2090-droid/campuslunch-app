@@ -61,9 +61,9 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
         provider.visibleMyGifticons.where((g) => g.status == 'assigned').toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F8F0),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F8F0),
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
@@ -98,7 +98,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
-        color: const Color(0xFF5E8C4A),
+        color: const Color(0xFF111827),
         child: provider.rewardLoadFailed && gifticons.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),

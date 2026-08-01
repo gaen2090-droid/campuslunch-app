@@ -49,10 +49,10 @@ class _MainScreenState extends State<MainScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF111827),
+                color: Colors.white,
               ),
             ),
-            backgroundColor: const Color(0xFF9ECA8B),
+            backgroundColor: const Color(0xFF111827),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -383,7 +383,7 @@ class _NavTab extends StatelessWidget {
               child: Icon(
                 active ? item.activeIcon : item.icon,
                 size: 22,
-                color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
               ),
             ),
             const SizedBox(height: 2),
@@ -393,7 +393,7 @@ class _NavTab extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color:
-                    active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                    active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
               ),
             ),
           ],

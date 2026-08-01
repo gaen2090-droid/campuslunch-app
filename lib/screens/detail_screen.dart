@@ -167,7 +167,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                     : Icons.bookmark_border,
                                 size: 16,
                                 color: isBookmarked
-                                    ? const Color(0xFF5E8C4A)
+                                    ? const Color(0xFF111827)
                                     : const Color(0xFF6B7280),
                               ),
                             ),
@@ -330,14 +330,14 @@ class _DetailScreenState extends State<DetailScreen> {
                         height: 52,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF9ECA8B),
+                          color: const Color(0xFF111827),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.edit_outlined,
-                                size: 16, color: Color(0xFF111827)),
+                                size: 16, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
                               '혼잡도 제보하기',
@@ -345,7 +345,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                 fontFamily: 'Pretendard',
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
+                                color: Colors.white,
                               ),
                             ),
                           ],
@@ -363,13 +363,13 @@ class _DetailScreenState extends State<DetailScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF5E8C4A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF111827), width: 1.5),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.navigation_outlined,
-                              size: 16, color: Color(0xFF5E8C4A)),
+                              size: 16, color: Color(0xFF111827)),
                           SizedBox(width: 6),
                           Text(
                             '길찾기',
@@ -377,7 +377,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               fontFamily: 'Pretendard',
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF5E8C4A),
+                              color: Color(0xFF111827),
                             ),
                           ),
                         ],
@@ -445,7 +445,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF5E8C4A),
+                                    color: Color(0xFF111827),
                                   ),
                                 ),
                               ],
@@ -501,9 +501,9 @@ class _OwnerPriorityWindowCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F8F0),
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFBFE0B0)),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +511,7 @@ class _OwnerPriorityWindowCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(top: 2),
               child: Icon(Icons.chat_bubble_outline,
-                  size: 18, color: Color(0xFF5E8C4A)),
+                  size: 18, color: Color(0xFF6B7280)),
             ),
             const SizedBox(width: 10),
             const Expanded(
@@ -520,7 +520,7 @@ class _OwnerPriorityWindowCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF4C9C2A),
+                  color: Color(0xFF374151),
                   height: 1.4,
                 ),
               ),
@@ -544,9 +544,9 @@ class _RecentReportsSection extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F8F0),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFBFE0B0)),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

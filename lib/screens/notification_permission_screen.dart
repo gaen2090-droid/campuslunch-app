@@ -35,14 +35,14 @@ class NotificationPermissionScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F8F0),
+                          color: const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.notifications,
                             size: 28,
-                            color: Color(0xFF5E8C4A),
+                            color: Color(0xFF111827),
                           ),
                         ),
                       ),
@@ -84,9 +84,9 @@ class NotificationPermissionScreen extends StatelessWidget {
                               content: const Text(
                                 '평일 12:00·18:00에 알림을 보내드릴게요!',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                               ),
-                              backgroundColor: const Color(0xFF9ECA8B),
+                              backgroundColor: const Color(0xFF111827),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
@@ -100,7 +100,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                           height: 56,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF9ECA8B),
+                            color: const Color(0xFF111827),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Center(
@@ -109,7 +109,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
+                                color: Colors.white,
                               ),
                             ),
                           ),

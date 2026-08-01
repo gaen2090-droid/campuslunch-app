@@ -158,7 +158,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
             const SizedBox(height: 12),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A)))
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF111827)))
                   : _comments.isEmpty
                       ? const Center(
                           child: Text('첫 댓글을 남겨보세요.', style: TextStyle(color: Color(0xFF9CA3AF))),
@@ -217,7 +217,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
                             )
                           : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
                     ),

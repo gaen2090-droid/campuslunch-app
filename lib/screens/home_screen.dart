@@ -298,7 +298,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
                 width: active ? 2 : 1,
               ),
             ),
@@ -309,7 +309,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
             ),
           ),
         ),
@@ -404,11 +404,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           Container(
             width: double.infinity,
             height: MediaQuery.of(context).padding.top,
-            color: const Color(0xFFF3F8F0),
+            color: const Color(0xFF111827),
           ),
           Container(
             width: double.infinity,
-            color: const Color(0xFFF3F8F0),
+            color: const Color(0xFF111827),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -419,7 +419,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF5E8C4A),
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -557,10 +557,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: _bookmarkOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                            color: _bookmarkOnly ? const Color(0xFF111827) : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: _bookmarkOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                                color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -570,13 +570,13 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                                 style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w900,
-                                    color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                                    color: _bookmarkOnly ? Colors.white : const Color(0xFF374151)),
                               ),
                               const SizedBox(width: 3),
                               Icon(
                                 _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                                 size: 14,
-                                color: const Color(0xFF111827),
+                                color: _bookmarkOnly ? Colors.white : const Color(0xFF111827),
                               ),
                             ],
                           ),
@@ -796,7 +796,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         if (results.isEmpty)
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF5E8C4A),
+              color: const Color(0xFF111827),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView(
                 children: [
@@ -818,7 +818,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         else
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF5E8C4A),
+              color: const Color(0xFF111827),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
@@ -975,7 +975,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
       child: RefreshIndicator(
-        color: const Color(0xFF5E8C4A),
+        color: const Color(0xFF111827),
         onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
@@ -986,7 +986,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
                 child: Center(
                   child: loading
-                      ? const CircularProgressIndicator(color: Color(0xFF9ECA8B))
+                      ? const CircularProgressIndicator(color: Color(0xFF111827))
                       : LoadErrorView(
                           onRetry: () => context.read<AppProvider>().refreshRestaurants()),
                 ),
@@ -1285,10 +1285,10 @@ class _SectionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
         decoration: BoxDecoration(
-          color: bgColor ?? (highlighted ? const Color(0xFFF3F8F0) : Colors.white),
+          color: bgColor ?? (highlighted ? const Color(0xFFF3F4F6) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: highlighted ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: highlighted ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withAlpha(8),
@@ -1666,24 +1666,24 @@ class HomeFilterIconButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          color: active ? const Color(0xFF111827) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.tune_rounded,
                 size: 13,
-                color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
+                color: active ? Colors.white : const Color(0xFF374151)),
             const SizedBox(width: 5),
             Text(
               '필터',
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
+                  color: active ? Colors.white : const Color(0xFF374151)),
             ),
           ],
         ),
@@ -1796,7 +1796,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF5E8C4A))),
+                          color: Color(0xFF374151))),
                 ),
             ],
           ),
@@ -1843,16 +1843,16 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    color: on ? const Color(0xFF111827) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                          color: on ? Colors.white : const Color(0xFF374151))),
                 ),
               );
             }).toList(),
@@ -1893,16 +1893,16 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    color: on ? const Color(0xFF111827) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                          color: on ? Colors.white : const Color(0xFF374151))),
                 ),
               );
             }).toList(),
@@ -1943,16 +1943,16 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF9ECA8B) : Colors.white,
+                    color: on ? const Color(0xFF111827) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: on ? const Color(0xFF111827) : const Color(0xFF374151))),
+                          color: on ? Colors.white : const Color(0xFF374151))),
                 ),
               );
             }).toList(),
@@ -1969,7 +1969,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
               height: 52,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF9ECA8B),
+                color: const Color(0xFF111827),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
@@ -1977,7 +1977,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827))),
+                        color: Colors.white)),
               ),
             ),
           ),
@@ -2000,10 +2000,10 @@ class HomeCafeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          color: active ? const Color(0xFF111827) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2013,13 +2013,13 @@ class HomeCafeFilterChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: active ? const Color(0xFF111827) : const Color(0xFF374151)),
+                  color: active ? Colors.white : const Color(0xFF374151)),
             ),
             const SizedBox(width: 6),
             Icon(
               Icons.coffee_rounded,
               size: 14,
-              color: active ? const Color(0xFF111827) : const Color(0xFF5E8C4A),
+              color: active ? Colors.white : const Color(0xFF374151),
             ),
           ],
         ),
@@ -2049,10 +2049,10 @@ class HomeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF9ECA8B) : Colors.white,
+          color: on ? const Color(0xFF111827) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2062,13 +2062,13 @@ class HomeFilterChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: on ? const Color(0xFF111827) : const Color(0xFF374151)),
+                  color: on ? Colors.white : const Color(0xFF374151)),
             ),
             const SizedBox(width: 4),
             Icon(
               open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 12,
-              color: on ? const Color(0xFF111827) : const Color(0xFF374151),
+              color: on ? Colors.white : const Color(0xFF374151),
             ),
           ],
         ),
@@ -2122,7 +2122,7 @@ class HomeDropdownGrid extends StatelessWidget {
                       onTap: () => onSelect(opt),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: on ? const Color(0xFFF3F8F0) : Colors.transparent,
+                          color: on ? const Color(0xFFF3F4F6) : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         padding:
@@ -2136,7 +2136,7 @@ class HomeDropdownGrid extends StatelessWidget {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
                                   color: on
-                                      ? const Color(0xFF5E8C4A)
+                                      ? const Color(0xFF111827)
                                       : const Color(0xFF374151),
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -2146,7 +2146,7 @@ class HomeDropdownGrid extends StatelessWidget {
                               const Padding(
                                 padding: EdgeInsets.only(left: 4),
                                 child: Icon(Icons.check,
-                                    size: 14, color: Color(0xFF5E8C4A)),
+                                    size: 14, color: Color(0xFF111827)),
                               ),
                           ],
                         ),
@@ -2167,7 +2167,7 @@ class HomeDropdownGrid extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF5E8C4A))),
+                      color: Color(0xFF374151))),
             ),
           ),
       ],
@@ -2317,7 +2317,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                               color: on ? const Color(0xFF111827) : const Color(0xFF6B7280))),
                     ),
                     if (on)
-                      const Icon(Icons.check_rounded, size: 18, color: Color(0xFF5E8C4A)),
+                      const Icon(Icons.check_rounded, size: 18, color: Color(0xFF111827)),
                   ],
                 ),
               ),
@@ -2370,7 +2370,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                     child: Container(
                       height: 52,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Center(
@@ -2378,7 +2378,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827))),
+                                color: Colors.white)),
                       ),
                     ),
                   ),

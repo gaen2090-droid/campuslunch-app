@@ -225,9 +225,9 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
                           .map((r) => Chip(
                                 label: Text(r.name, style: const TextStyle(fontSize: 12)),
                                 onDeleted: () => _toggle(r),
-                                backgroundColor: const Color(0xFFF3F8F0),
-                                deleteIconColor: const Color(0xFF5E8C4A),
-                                side: const BorderSide(color: Color(0xFFBFE0B0)),
+                                backgroundColor: const Color(0xFFF3F4F6),
+                                deleteIconColor: const Color(0xFF374151),
+                                side: const BorderSide(color: Color(0xFFE5E7EB)),
                               ))
                           .toList(),
                     ),
@@ -250,7 +250,7 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
                           subtitle: Text('${r.area} · ${r.category}', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
                           trailing: Icon(
                             isSelected ? Icons.check_circle : Icons.add_circle_outline,
-                            color: isSelected ? const Color(0xFF5E8C4A) : const Color(0xFFD1D5DB),
+                            color: isSelected ? const Color(0xFF111827) : const Color(0xFFD1D5DB),
                           ),
                           onTap: () => _toggle(r),
                         );
@@ -271,7 +271,7 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  color: _submitting ? const Color(0xFFE5E7EB) : const Color(0xFF5E8C4A),
+                  color: _submitting ? const Color(0xFFE5E7EB) : const Color(0xFF111827),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(

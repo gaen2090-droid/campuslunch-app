@@ -87,7 +87,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
                       fontFamily: 'Pretendard',
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                       letterSpacing: -0.8,
                     ),
                     maxLines: 1,
@@ -97,7 +97,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
                 const SizedBox(width: 4),
                 Transform.translate(
                   offset: Offset(0, arrowOffsetY),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF5E8C4A)),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF111827)),
                 ),
               ],
             ),
@@ -114,7 +114,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
             size: 24,
             color: onSettingsTap == null
                 ? Colors.transparent
-                : const Color(0xFF5E8C4A),
+                : const Color(0xFF111827),
           ),
         ),
       ],
@@ -251,7 +251,7 @@ class _RestaurantSheetState extends State<_RestaurantSheet> {
                                   : const Color(0xFF6B7280),
                             )),
                         trailing: isSelected
-                            ? const Icon(Icons.check, color: Color(0xFF5E8C4A))
+                            ? const Icon(Icons.check, color: Color(0xFF111827))
                             : null,
                         onTap: () {
                           widget.onSelect(r);

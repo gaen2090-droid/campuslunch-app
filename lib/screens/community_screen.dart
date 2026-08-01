@@ -330,12 +330,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
     _wasCommunityTab = isCommunityTab;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.transparent,
       // 맛집 컬렉션은 관리자 웹에서만 등록.
       floatingActionButton: _segment == 0
           ? FloatingActionButton(
               onPressed: () => _openEditor(),
-              backgroundColor: const Color(0xFF5E8C4A),
+              backgroundColor: const Color(0xFF111827),
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
           : null,
@@ -343,6 +343,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         bottom: false,
         child: RefreshIndicator(
           onRefresh: _segment == 0 ? _loadFeed : _loadCollections,
+          color: const Color(0xFF111827),
           child: _segment == 0 ? _buildBody() : _buildCollectionsBody(),
         ),
       ),
@@ -381,7 +382,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          color: const Color(0xFFF3F8F0),
+          color: const Color(0xFFF3F4F6),
           child: Row(
             children: [
               const Text('🏪', style: TextStyle(fontSize: 11)),
@@ -393,14 +394,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF5E8C4A),
+                    color: Color(0xFF374151),
                   ),
                 ),
               ),
               if (canChange) ...[
                 const SizedBox(width: 2),
                 const Icon(Icons.keyboard_arrow_down_rounded,
-                    size: 14, color: Color(0xFF5E8C4A)),
+                    size: 14, color: Color(0xFF374151)),
               ],
             ],
           ),
@@ -442,7 +443,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ListTile(
                 title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                 trailing: r.id.toString() == activeId
-                    ? const Icon(Icons.check, color: Color(0xFF5E8C4A))
+                    ? const Icon(Icons.check, color: Color(0xFF111827))
                     : null,
                 onTap: () {
                   context.read<AppProvider>().setCommunityActiveOwnerRestaurant(r.id.toString());
@@ -476,7 +477,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       fontFamily: 'Pretendard',
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                       letterSpacing: -0.8,
                     ),
                   ),
@@ -486,14 +487,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     context,
                     MaterialPageRoute(builder: (_) => const CommunitySearchScreen()),
                   ),
-                  icon: const Icon(Icons.search, color: Color(0xFF5E8C4A), size: 24),
+                  icon: const Icon(Icons.search, color: Color(0xFF111827), size: 24),
                 ),
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
                       onPressed: _openNotifications,
-                      icon: const Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A), size: 24),
+                      icon: const Icon(Icons.notifications_outlined, color: Color(0xFF111827), size: 24),
                     ),
                     if (_hasUnreadNotification)
                       Positioned(
@@ -511,7 +512,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ],
                 ),
                 PopupMenuButton<MyActivityMode>(
-                  icon: const Icon(Icons.menu, color: Color(0xFF5E8C4A), size: 24),
+                  icon: const Icon(Icons.menu, color: Color(0xFF111827), size: 24),
                   offset: const Offset(0, 44),
                   onSelected: (mode) => Navigator.push(
                     context,
@@ -576,7 +577,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Row(
         children: [
           const SizedBox(width: 20),
-          const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF4C9C2A)),
+          const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF111827)),
           const SizedBox(width: 10),
           Expanded(
             child: ClipRect(
@@ -605,9 +606,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F8F0),
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFBFE0B0)),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Row(
           children: [
@@ -641,10 +642,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                color: _savedCollectionsOnly ? const Color(0xFF111827) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: _savedCollectionsOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                    color: _savedCollectionsOnly ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -654,13 +655,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
-                        color: _savedCollectionsOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                        color: _savedCollectionsOnly ? Colors.white : const Color(0xFF374151)),
                   ),
                   const SizedBox(width: 3),
                   Icon(
                     _savedCollectionsOnly ? Icons.favorite : Icons.favorite_border,
                     size: 14,
-                    color: const Color(0xFF111827),
+                    color: _savedCollectionsOnly ? Colors.white : const Color(0xFF111827),
                   ),
                 ],
               ),
@@ -688,17 +689,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF9ECA8B) : Colors.white,
+          color: active ? const Color(0xFF111827) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
         ),
         child: Text(
           '#$tag',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: active ? const Color(0xFF111827) : const Color(0xFF374151),
+            color: active ? Colors.white : const Color(0xFF374151),
           ),
         ),
       ),
@@ -764,7 +765,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
                 width: active ? 2 : 1,
               ),
             ),
@@ -775,7 +776,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
             ),
           ),
         ),
@@ -790,7 +791,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           _header(),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 80),
-            child: Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A))),
+            child: Center(child: CircularProgressIndicator(color: Color(0xFF111827))),
           ),
         ],
       );
@@ -906,7 +907,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           _header(),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 80),
-            child: Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A))),
+            child: Center(child: CircularProgressIndicator(color: Color(0xFF111827))),
           ),
         ],
       );
@@ -959,7 +960,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
                 ),
               ),
             );

@@ -31,7 +31,7 @@ class CollectionRestaurantCard extends StatelessWidget {
                 aspectRatio: 3 / 4,
                 child: RestaurantImage(
                   url: restaurant.imageUrl,
-                  fallback: () => const ColoredBox(color: Color(0xFF9ECA8B)),
+                  fallback: () => const ColoredBox(color: Color(0xFFF3F4F6)),
                 ),
               ),
               Positioned.fill(

@@ -69,7 +69,7 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF9ECA8B)),
+              child: CircularProgressIndicator(color: Color(0xFF111827)),
             );
           }
           if (snapshot.hasError || !snapshot.hasData) {
@@ -134,7 +134,7 @@ class _LegalMarkdownBody extends StatelessWidget {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF5E8C4A),
+              color: Color(0xFF111827),
               height: 1.4,
             ),
           ),
@@ -162,9 +162,9 @@ class _LegalMarkdownBody extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F8F0),
+            color: const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFDAFFCA)),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: Text(
             _stripInline(line.substring(2)),

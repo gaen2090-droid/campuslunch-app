@@ -185,7 +185,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final hasImage = !_isFallback;
     final isBusy = r.status == '약간혼잡';
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
-    final reportTextColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF5E8C4A);
+    const reportTextColor = Color(0xFF111827);
     final statusLabel = r.status == '웨이팅많음' ? '🔥웨이팅' : r.status;
     final meta = crowdStatusMeta(r.status);
 

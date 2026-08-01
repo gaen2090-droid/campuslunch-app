@@ -442,7 +442,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF5E8C4A),
+                          color: Color(0xFF111827),
                         ),
                       ),
                     ),
@@ -469,7 +469,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isRefreshing ? const Color(0xFF9ECA8B) : Colors.white,
+                  color: _isRefreshing ? const Color(0xFF111827) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -502,7 +502,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isLocated ? const Color(0xFFF3F8F0) : Colors.white,
+                  color: _isLocated ? const Color(0xFFF3F4F6) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -511,7 +511,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -636,7 +636,7 @@ class _StampCriteriaSheet extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B),
+                  color: const Color(0xFF111827),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Center(
@@ -645,7 +645,7 @@ class _StampCriteriaSheet extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -954,8 +954,8 @@ class _MapFilterChip extends StatelessWidget {
     final on = active || open;
     final restBg = restingBg ?? Colors.white;
     final restText = restingText ?? const Color(0xFF374151);
-    final bgColor = on ? (activeBg ?? const Color(0xFF9ECA8B)) : restBg;
-    final textColor = on ? (activeText ?? const Color(0xFF111827)) : restText;
+    final bgColor = on ? (activeBg ?? const Color(0xFF111827)) : restBg;
+    final textColor = on ? (activeText ?? Colors.white) : restText;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1069,7 +1069,7 @@ class _SelectedCard extends StatelessWidget {
                     width: 48, height: 48,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F8F0),
+                      color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: RestaurantImage(
@@ -1080,7 +1080,7 @@ class _SelectedCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF5E8C4A)),
+                              color: Color(0xFF111827)),
                         ),
                       ),
                     ),
@@ -1131,7 +1131,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF5E8C4A), width: 1.5),
+                        border: Border.all(color: const Color(0xFF111827), width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -1139,13 +1139,13 @@ class _SelectedCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.navigation_outlined,
-                                size: 16, color: Color(0xFF5E8C4A)),
+                                size: 16, color: Color(0xFF111827)),
                             SizedBox(width: 6),
                             Text('길찾기',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF5E8C4A))),
+                                    color: Color(0xFF111827))),
                           ],
                         ),
                       ),
@@ -1161,7 +1161,7 @@ class _SelectedCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF9ECA8B),
+                          color: const Color(0xFF111827),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
@@ -1169,7 +1169,7 @@ class _SelectedCard extends StatelessWidget {
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827))),
+                                  color: Colors.white)),
                         ),
                       ),
                     ),

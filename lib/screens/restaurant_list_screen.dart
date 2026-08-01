@@ -334,10 +334,10 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
-                                color: _bookmarkOnly ? const Color(0xFF9ECA8B) : Colors.white,
+                                color: _bookmarkOnly ? const Color(0xFF111827) : Colors.white,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                    color: _bookmarkOnly ? const Color(0xFF9ECA8B) : const Color(0xFFE5E7EB)),
+                                    color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -347,13 +347,13 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w900,
-                                        color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFF374151)),
+                                        color: _bookmarkOnly ? Colors.white : const Color(0xFF374151)),
                                   ),
                                   const SizedBox(width: 3),
                                   Icon(
                                     _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                                     size: 14,
-                                    color: const Color(0xFF111827),
+                                    color: _bookmarkOnly ? Colors.white : const Color(0xFF111827),
                                   ),
                                 ],
                               ),
@@ -452,7 +452,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
               // ── 콘텐츠 ──
               Expanded(
                 child: RefreshIndicator(
-                    color: const Color(0xFF5E8C4A),
+                    color: const Color(0xFF111827),
                     onRefresh: () => provider.refreshRestaurants(),
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(0, 12, 0, 100),
@@ -499,7 +499,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             child: Center(
                               child: loading
                                   ? const CircularProgressIndicator(
-                                      color: Color(0xFF9ECA8B))
+                                      color: Color(0xFF111827))
                                   : loadFailed
                                       ? LoadErrorView(
                                           onRetry: () =>

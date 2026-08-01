@@ -174,13 +174,13 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
                     decoration: BoxDecoration(
                       color: code.isEmpty
                           ? const Color(0xFFE5E7EB)
-                          : const Color(0xFF5E8C4A),
+                          : const Color(0xFF111827),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: code.isEmpty
                           ? null
                           : [
                               BoxShadow(
-                                color: const Color(0xFF5E8C4A).withAlpha(60),
+                                color: Colors.black.withAlpha(60),
                                 blurRadius: 16,
                                 offset: const Offset(0, 6),
                               ),
@@ -249,7 +249,7 @@ class _InvitedFriendsSection extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF5E8C4A),
+                color: Color(0xFF111827),
                 letterSpacing: -0.3,
               ),
             ),
@@ -313,14 +313,14 @@ class _MyReferralCodeSection extends StatelessWidget {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.copy_rounded, size: 15, color: Color(0xFF5E8C4A)),
+                    Icon(Icons.copy_rounded, size: 15, color: Color(0xFF111827)),
                     SizedBox(width: 6),
                     Text(
                       '복사',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF5E8C4A),
+                        color: Color(0xFF111827),
                       ),
                     ),
                   ],

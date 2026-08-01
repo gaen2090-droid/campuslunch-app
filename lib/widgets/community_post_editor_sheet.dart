@@ -280,7 +280,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     height: 52,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9ECA8B),
+                      color: const Color(0xFF111827),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(
@@ -288,14 +288,14 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : Text(
                               isEditing ? '수정 완료' : '게시하기',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
+                                color: Colors.white,
                               ),
                             ),
                     ),

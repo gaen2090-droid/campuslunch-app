@@ -114,7 +114,7 @@ class CollectionSection extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F8F0),
+                        color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -122,7 +122,7 @@ class CollectionSection extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF5E8C4A),
+                          color: Color(0xFF374151),
                         ),
                       ),
                     ),

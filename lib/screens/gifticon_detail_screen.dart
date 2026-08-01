@@ -76,13 +76,13 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
         content: Text(
           err ?? '사진 앨범에 저장했어요.',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: err != null ? Colors.white : const Color(0xFF111827),
+            color: Colors.white,
           ),
         ),
-        backgroundColor: err != null ? const Color(0xFF111827) : const Color(0xFF9ECA8B),
+        backgroundColor: const Color(0xFF111827),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -124,14 +124,14 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                     ),
                   )
                 : Icon(
                     Icons.download_rounded,
                     size: 22,
                     color: _hasImage
-                        ? const Color(0xFF5E8C4A)
+                        ? const Color(0xFF111827)
                         : const Color(0xFFD1D5DB),
                   ),
           ),
@@ -170,7 +170,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                     ? const SizedBox(
                         height: 420,
                         child: Center(
-                          child: CircularProgressIndicator(color: Color(0xFF5E8C4A)),
+                          child: CircularProgressIndicator(color: Color(0xFF111827)),
                         ),
                       )
                     : (_freshImageUrl?.isNotEmpty == true
@@ -191,7 +191,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _hasImage && !_downloading
-                      ? const Color(0xFF5E8C4A)
+                      ? const Color(0xFF111827)
                       : const Color(0xFFE5E7EB),
                   borderRadius: BorderRadius.circular(16),
                 ),

@@ -33,7 +33,7 @@ class _PrivacyNoticeExpansionState extends State<PrivacyNoticeExpansion> {
                   const Icon(
                     Icons.privacy_tip_outlined,
                     size: 18,
-                    color: Color(0xFF5E8C4A),
+                    color: Color(0xFF111827),
                   ),
                   const SizedBox(width: 8),
                   const Expanded(
@@ -139,9 +139,7 @@ class _CollectionBlock extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: item.required
-                      ? const Color(0xFFDAFFCA)
-                      : const Color(0xFFF3F4F6),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -150,7 +148,7 @@ class _CollectionBlock extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: item.required
-                        ? const Color(0xFF4C9C2A)
+                        ? const Color(0xFF111827)
                         : const Color(0xFF9CA3AF),
                   ),
                 ),

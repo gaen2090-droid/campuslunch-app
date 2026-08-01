@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/restaurants.dart';
@@ -93,36 +92,6 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          Positioned(
-            right: -80,
-            top: 60,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC8E6BA),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -100,
-            bottom: 80,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B).withAlpha(180),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(28, 12, 28, 32),
@@ -223,7 +192,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                             width: active ? 22 : 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -237,13 +206,13 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0xFFC8E6BA),
+                            color: Colors.black.withAlpha(40),
                             blurRadius: 24,
-                            offset: Offset(0, 8),
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
@@ -253,7 +222,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -322,7 +291,7 @@ class _PreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF9ECA8B).withAlpha(60),
+            color: Colors.black.withAlpha(30),
             blurRadius: 36,
             offset: const Offset(0, 18),
           ),
@@ -421,7 +390,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
               height: 36,
               child: RestaurantImage(
                 url: imageUrl,
-                fallback: () => Container(color: const Color(0xFF9ECA8B)),
+                fallback: () => Container(color: const Color(0xFFF3F4F6)),
               ),
             ),
           ),
@@ -567,7 +536,7 @@ class _StampMockup extends StatelessWidget {
             children: [
               Text(
                 '14',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF5E8C4A), height: 1),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF111827), height: 1),
               ),
               Text(
                 ' / 20',
@@ -582,7 +551,7 @@ class _StampMockup extends StatelessWidget {
               value: 14 / 20,
               minHeight: 6,
               backgroundColor: Color(0xFFF3F4F6),
-              valueColor: AlwaysStoppedAnimation(Color(0xFF5E8C4A)),
+              valueColor: AlwaysStoppedAnimation(Color(0xFF111827)),
             ),
           ),
           const SizedBox(height: 6),
@@ -618,10 +587,10 @@ class _StampCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: filled ? const Color(0xFFE8F5E1) : const Color(0xFFF9FAFB),
+        color: filled ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB),
         shape: BoxShape.circle,
         border: Border.all(
-          color: filled ? const Color(0xFFBFE0B0) : const Color(0xFFE5E7EB),
+          color: const Color(0xFFE5E7EB),
           width: 1.5,
         ),
       ),

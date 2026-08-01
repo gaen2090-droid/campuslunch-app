@@ -124,6 +124,7 @@ class _CommunityMyActivityScreenState extends State<CommunityMyActivityScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _load,
+        color: const Color(0xFF111827),
         child: _buildBody(),
       ),
     );
@@ -131,7 +132,7 @@ class _CommunityMyActivityScreenState extends State<CommunityMyActivityScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111827)));
     }
     if (_error != null) {
       return ListView(

@@ -65,7 +65,7 @@ class _MyScreenState extends State<MyScreen> {
     final hasOwner = provider.hasOwnerTab;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.transparent,
       body: Stack(
       children: [
         SingleChildScrollView(
@@ -89,7 +89,7 @@ class _MyScreenState extends State<MyScreen> {
                           fontFamily: 'Pretendard',
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF5E8C4A),
+                          color: Color(0xFF111827),
                           letterSpacing: -0.8,
                         ),
                       ),
@@ -101,7 +101,7 @@ class _MyScreenState extends State<MyScreen> {
                             builder: (_) => const SettingsScreen()),
                       ),
                       icon: const Icon(Icons.settings_outlined,
-                          size: 24, color: Color(0xFF5E8C4A)),
+                          size: 24, color: Color(0xFF111827)),
                     ),
                   ],
                 ),
@@ -224,7 +224,7 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '친구 초대하고 함께 스탬프 받기',
                       icon: const Icon(Icons.card_giftcard_outlined,
-                          size: 20, color: Color(0xFF5E8C4A)),
+                          size: 20, color: Color(0xFF111827)),
                       showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
@@ -246,7 +246,7 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '캠퍼스런치 이용 가이드',
                       icon: const Icon(Icons.help_rounded,
-                          size: 20, color: Color(0xFF5E8C4A)),
+                          size: 20, color: Color(0xFF111827)),
                       onTap: () => launchUrl(
                         Uri.parse(
                             'https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
@@ -256,13 +256,13 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '개선 제안',
                       icon: const Icon(Icons.lightbulb_outline,
-                          size: 20, color: Color(0xFF5E8C4A)),
+                          size: 20, color: Color(0xFF111827)),
                       onTap: () => showFeedbackSheet(context),
                     ),
                     MyPageSectionRow(
                       label: '약관 및 정책',
                       icon: const Icon(Icons.description_outlined,
-                          size: 20, color: Color(0xFF5E8C4A)),
+                          size: 20, color: Color(0xFF111827)),
                       showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
@@ -285,7 +285,7 @@ class _MyScreenState extends State<MyScreen> {
                       MyPageSectionRow(
                         label: '내 가게 등록',
                         icon: const Icon(Icons.storefront_outlined,
-                            size: 20, color: Color(0xFF5E8C4A)),
+                            size: 20, color: Color(0xFF111827)),
                         showBottomBorder: false,
                         onTap: () => OwnerVerifyScreen.show(context),
                       ),
@@ -304,9 +304,9 @@ class _MyScreenState extends State<MyScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F8F0),
+                        color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFBFE0B0)),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: const Center(
                         child: Text(
@@ -314,7 +314,7 @@ class _MyScreenState extends State<MyScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF5E8C4A),
+                            color: Color(0xFF111827),
                           ),
                         ),
                       ),
@@ -489,7 +489,7 @@ class _MyScreenState extends State<MyScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 14),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF9ECA8B),
+                                          color: const Color(0xFF111827),
                                           borderRadius:
                                               BorderRadius.circular(16),
                                         ),
@@ -499,7 +499,7 @@ class _MyScreenState extends State<MyScreen> {
                                             style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w900,
-                                                color: Color(0xFF111827)),
+                                                color: Colors.white),
                                           ),
                                         ),
                                       ),
@@ -605,7 +605,7 @@ class _QuickAction extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, size: 22, color: const Color(0xFF5E8C4A)),
+                Icon(icon, size: 22, color: const Color(0xFF111827)),
                 if (showDot)
                   Positioned(
                     right: -4,
@@ -665,9 +665,9 @@ class _RewardCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F8F0),
+          color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFBFE0B0)),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -680,7 +680,7 @@ class _RewardCard extends StatelessWidget {
                     width: 16,
                     height: 16,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.star_rounded,
@@ -702,7 +702,7 @@ class _RewardCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E1),
+                      color: const Color(0xFFE5E7EB),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -710,7 +710,7 @@ class _RewardCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF5E8C4A),
+                        color: Color(0xFF111827),
                       ),
                     ),
                   ),
@@ -743,7 +743,7 @@ class _RewardCard extends StatelessWidget {
                           height: cellSize,
                           decoration: BoxDecoration(
                             color: filled
-                                ? const Color(0xFFB2D7A3)
+                                ? const Color(0xFFD1D5DB)
                                 : const Color(0xFFE5E7EB),
                             shape: BoxShape.circle,
                           ),

@@ -39,7 +39,7 @@ class RiceBallIcon extends StatelessWidget {
         errorBuilder: (_, __, ___) => Icon(
           Icons.rice_bowl_outlined,
           size: renderSize,
-          color: const Color(0xFF5E8C4A),
+          color: const Color(0xFF111827),
         ),
       ),
     );
@@ -73,7 +73,7 @@ class AppLauncherIcon extends StatelessWidget {
         errorBuilder: (_, __, ___) => Icon(
           Icons.rice_bowl_outlined,
           size: size,
-          color: const Color(0xFF5E8C4A),
+          color: const Color(0xFF111827),
         ),
       ),
     );

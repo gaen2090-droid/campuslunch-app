@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -196,13 +196,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const SizedBox(
                                 width: 20, height: 20,
                                 child: CircularProgressIndicator(
-                                    color: Color(0xFF111827), strokeWidth: 2))
+                                    color: Colors.white, strokeWidth: 2))
                             : Text(
                                 _isLogin ? '로그인' : '가입하기',
                                 style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF111827)),
+                                    color: Colors.white),
                               ),
                       ),
                     ),
@@ -357,7 +357,7 @@ class _Field extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF111827), width: 1.5)),
       ),
     );
   }
@@ -400,7 +400,7 @@ class _PasswordFieldState extends State<_PasswordField> {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFF5E8C4A), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF111827), width: 1.5)),
       ),
     );
   }
@@ -528,12 +528,12 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F8F0),
+                    color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const Center(
                     child: Icon(Icons.pin_outlined,
-                        size: 36, color: Color(0xFF5E8C4A)),
+                        size: 36, color: Color(0xFF111827)),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -594,7 +594,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                          color: Color(0xFF5E8C4A), width: 1.5),
+                          color: Color(0xFF111827), width: 1.5),
                     ),
                   ),
                 ),
@@ -619,7 +619,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                       color: _resendMsg!.contains('실패') ||
                               _resendMsg!.contains('없')
                           ? const Color(0xFFEF4444)
-                          : const Color(0xFF5E8C4A),
+                          : const Color(0xFF111827),
                     ),
                   ),
                 ],
@@ -630,7 +630,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF5E8C4A),
+                      color: Color(0xFF111827),
                     ),
                   ),
                 ],
@@ -648,8 +648,8 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                       decoration: BoxDecoration(
                         color: (_verifying ||
                                 _otpCtrl.text.length != emailSignupOtpLength)
-                            ? const Color(0xFFBFE0B0)
-                            : const Color(0xFF9ECA8B),
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -658,13 +658,13 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                                 width: 22,
                                 height: 22,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Color(0xFF111827)))
+                                    strokeWidth: 2, color: Colors.white))
                             : const Text(
                                 '인증하기',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827),
+                                  color: Colors.white,
                                 ),
                               ),
                       ),
@@ -706,7 +706,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _verified
-                          ? const Color(0xFF9ECA8B)
+                          ? const Color(0xFF111827)
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -717,7 +717,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
                           color: _verified
-                              ? const Color(0xFF111827)
+                              ? Colors.white
                               : const Color(0xFF374151),
                         ),
                       ),

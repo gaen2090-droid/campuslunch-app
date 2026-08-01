@@ -64,9 +64,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           content: const Text(
             '피드백이 전송되었어요. 감사합니다!',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
           ),
-          backgroundColor: const Color(0xFF9ECA8B),
+          backgroundColor: const Color(0xFF111827),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
@@ -136,7 +136,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFF9ECA8B)
+                          ? const Color(0xFF111827)
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -145,7 +145,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: selected ? const Color(0xFF111827) : const Color(0xFF6B7280),
+                        color: selected ? Colors.white : const Color(0xFF6B7280),
                       ),
                     ),
                   ),
@@ -184,8 +184,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9ECA8B),
-                  foregroundColor: const Color(0xFF111827),
+                  backgroundColor: const Color(0xFF111827),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

@@ -356,7 +356,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                 onPressed: _toggleSubscription,
                 icon: Icon(
                   _subscribed ? Icons.notifications_active : Icons.notifications_off_outlined,
-                  color: _subscribed ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                  color: _subscribed ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
                 ),
               ),
             PopupMenuButton<String>(
@@ -438,17 +438,17 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F8F0),
+                          color: const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF5E8C4A)),
+                            const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF374151)),
                             const SizedBox(width: 4),
                             Text(
                               _post.restaurantName!,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
                             ),
                           ],
                         ),
@@ -482,7 +482,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                   if (_loadingComments)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator(color: Color(0xFF5E8C4A))),
+                      child: Center(child: CircularProgressIndicator(color: Color(0xFF111827))),
                     )
                   else if (_comments.isEmpty)
                     const Padding(
@@ -558,9 +558,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5E8C4A)),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
                               )
-                            : const Icon(Icons.send, color: Color(0xFF5E8C4A)),
+                            : const Icon(Icons.send, color: Color(0xFF111827)),
                       ),
                     ],
                   ),
@@ -637,7 +637,7 @@ class _CommentTile extends StatelessWidget {
                           Icon(
                             comment.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
                             size: 16,
-                            color: comment.likedByMe ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+                            color: comment.likedByMe ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
                           ),
                           if (comment.likeCount > 0) ...[
                             const SizedBox(width: 4),

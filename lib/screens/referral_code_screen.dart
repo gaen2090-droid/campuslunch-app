@@ -123,13 +123,13 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF9ECA8B),
+                    color: const Color(0xFF111827),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0xFFC8E6BA),
+                        color: Colors.black.withAlpha(30),
                         blurRadius: 20,
-                        offset: Offset(0, 6),
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -140,7 +140,7 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFF111827),
+                              color: Colors.white,
                             ),
                           )
                         : const Text(
@@ -148,7 +148,7 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
+                              color: Colors.white,
                             ),
                           ),
                   ),

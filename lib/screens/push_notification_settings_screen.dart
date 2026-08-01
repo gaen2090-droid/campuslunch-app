@@ -198,7 +198,7 @@ class _ToggleRow extends StatelessWidget {
           const SizedBox(width: 12),
           Switch.adaptive(
             value: enabled,
-            activeColor: const Color(0xFF5E8C4A),
+            activeColor: const Color(0xFF111827),
             onChanged: (_) => onToggle(),
           ),
         ],

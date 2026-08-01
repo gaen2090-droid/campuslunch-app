@@ -223,7 +223,7 @@ class _LocationBlockedView extends StatelessWidget {
                   height: 52,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF9ECA8B),
+                    color: const Color(0xFF111827),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
@@ -233,7 +233,7 @@ class _LocationBlockedView extends StatelessWidget {
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFF111827),
+                              color: Colors.white,
                             ),
                           )
                         : const Text(
@@ -241,7 +241,7 @@ class _LocationBlockedView extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
+                              color: Colors.white,
                             ),
                           ),
                   ),
@@ -294,7 +294,7 @@ class _BottomBar extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 color: canConfirm
-                    ? const Color(0xFF9ECA8B)
+                    ? const Color(0xFF111827)
                     : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -305,15 +305,15 @@ class _BottomBar extends StatelessWidget {
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFF111827),
+                          color: Colors.white,
                         ),
                       )
-                    : const Text(
+                    : Text(
                         AppPermissions.confirmLabel,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827),
+                          color: canConfirm ? Colors.white : const Color(0xFF9CA3AF),
                         ),
                       ),
               ),

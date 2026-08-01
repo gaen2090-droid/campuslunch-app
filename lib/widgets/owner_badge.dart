@@ -9,7 +9,7 @@ class OwnerBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFF5E8C4A),
+        color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Text(

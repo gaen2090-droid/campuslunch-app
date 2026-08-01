@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -95,36 +94,6 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          Positioned(
-            right: -80,
-            top: 60,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC8E6BA),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -100,
-            bottom: 80,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9ECA8B).withAlpha(180),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(28, 12, 28, 32),
@@ -225,7 +194,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                             width: active ? 22 : 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+                              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -239,13 +208,13 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9ECA8B),
+                        color: const Color(0xFF111827),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0xFFC8E6BA),
+                            color: Colors.black.withAlpha(40),
                             blurRadius: 24,
-                            offset: Offset(0, 8),
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
@@ -255,7 +224,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -324,7 +293,7 @@ class _PreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF9ECA8B).withAlpha(60),
+            color: Colors.black.withAlpha(30),
             blurRadius: 36,
             offset: const Offset(0, 18),
           ),
@@ -364,13 +333,13 @@ class _OwnerReportMockup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF5E8C4A),
+                    color: Color(0xFF111827),
                     letterSpacing: -0.8,
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF5E8C4A)),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF111827)),
             ],
           ),
           const SizedBox(height: 12),
@@ -497,16 +466,16 @@ class _OwnerCommunityMockup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF5E8C4A),
+                    color: Color(0xFF111827),
                     letterSpacing: -0.8,
                   ),
                 ),
               ),
-              Icon(Icons.search, color: Color(0xFF5E8C4A), size: 18),
+              Icon(Icons.search, color: Color(0xFF111827), size: 18),
               SizedBox(width: 10),
-              Icon(Icons.notifications_outlined, color: Color(0xFF5E8C4A), size: 18),
+              Icon(Icons.notifications_outlined, color: Color(0xFF111827), size: 18),
               SizedBox(width: 10),
-              Icon(Icons.menu, color: Color(0xFF5E8C4A), size: 18),
+              Icon(Icons.menu, color: Color(0xFF111827), size: 18),
             ],
           ),
           const SizedBox(height: 12),
@@ -538,17 +507,17 @@ class _OwnerCommunityMockup extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F8F0),
+              color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.storefront_outlined, size: 13, color: Color(0xFF5E8C4A)),
+                Icon(Icons.storefront_outlined, size: 13, color: Color(0xFF374151)),
                 SizedBox(width: 4),
                 Text(
                   _demoRestaurantName,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF5E8C4A)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
                 ),
               ],
             ),
@@ -584,7 +553,7 @@ class _MockSegmentTab extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: active ? const Color(0xFF5E8C4A) : const Color(0xFFE5E7EB),
+              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
               width: active ? 2 : 1,
             ),
           ),
@@ -595,7 +564,7 @@ class _MockSegmentTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-            color: active ? const Color(0xFF5E8C4A) : const Color(0xFF9CA3AF),
+            color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
           ),
         ),
       ),
@@ -633,7 +602,7 @@ class _OwnerStatsMockup extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF2F5233), Color(0xFF5E8C4A)],
+                colors: [Color(0xFF111827), Color(0xFF374151)],
               ),
               borderRadius: BorderRadius.circular(14),
             ),

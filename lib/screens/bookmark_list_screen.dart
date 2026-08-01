@@ -312,7 +312,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
           Expanded(
             child: provider.restaurantsLoading && provider.restaurants.isEmpty
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF9ECA8B)),
+                    child: CircularProgressIndicator(color: Color(0xFF111827)),
                   )
                 : list.isEmpty
                     ? bookmarks.isEmpty
@@ -356,19 +356,19 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                                     margin: const EdgeInsets.only(right: 10),
                                     decoration: BoxDecoration(
                                       color: _selectedIds.contains(r.id)
-                                          ? const Color(0xFF9ECA8B)
+                                          ? const Color(0xFF111827)
                                           : Colors.white,
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: _selectedIds.contains(r.id)
-                                            ? const Color(0xFF9ECA8B)
+                                            ? const Color(0xFF111827)
                                             : const Color(0xFFD1D5DB),
                                         width: 2,
                                       ),
                                     ),
                                     child: _selectedIds.contains(r.id)
                                         ? const Icon(Icons.check,
-                                            size: 14, color: Color(0xFF111827))
+                                            size: 14, color: Colors.white)
                                         : null,
                                   ),
                                 ),
@@ -446,7 +446,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         child: Container(
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF9ECA8B),
+                            color: const Color(0xFF111827),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
@@ -457,7 +457,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827)),
+                                  color: Colors.white),
                             ),
                           ),
                         ),

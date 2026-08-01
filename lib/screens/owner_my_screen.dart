@@ -105,9 +105,8 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F8F0),
+                      color: const Color(0xFF111827),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFBFE0B0)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +116,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -133,7 +132,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                               const VerticalDivider(
                                 width: 1,
                                 thickness: 1,
-                                color: Color(0xFFBFE0B0),
+                                color: Colors.white38,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -145,7 +144,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                               const VerticalDivider(
                                 width: 1,
                                 thickness: 1,
-                                color: Color(0xFFBFE0B0),
+                                color: Colors.white38,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -171,7 +170,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '통계',
                     icon: const Icon(Icons.bar_chart_rounded,
-                        size: 20, color: Color(0xFF5E8C4A)),
+                        size: 20, color: Color(0xFF111827)),
                     onTap: restaurant == null
                         ? () {}
                         : () => Navigator.push(
@@ -184,7 +183,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '홍보',
                     icon: const Icon(Icons.campaign_outlined,
-                        size: 20, color: Color(0xFF5E8C4A)),
+                        size: 20, color: Color(0xFF111827)),
                     showBottomBorder: false,
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(
@@ -216,19 +215,19 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '사장님 이용 가이드',
                     icon: const Icon(Icons.help_rounded,
-                        size: 20, color: Color(0xFF5E8C4A)),
+                        size: 20, color: Color(0xFF111827)),
                     onTap: () => _showToast('준비 중이에요. 곧 만나요!'),
                   ),
                   MyPageSectionRow(
                     label: '개선 제안',
                     icon: const Icon(Icons.lightbulb_outline,
-                        size: 20, color: Color(0xFF5E8C4A)),
+                        size: 20, color: Color(0xFF111827)),
                     onTap: () => showFeedbackSheet(context),
                   ),
                   MyPageSectionRow(
                     label: '약관 및 정책',
                     icon: const Icon(Icons.description_outlined,
-                        size: 20, color: Color(0xFF5E8C4A)),
+                        size: 20, color: Color(0xFF111827)),
                     showBottomBorder: false,
                     onTap: () => Navigator.push(
                       context,
@@ -340,7 +339,7 @@ class _InlineStat extends StatelessWidget {
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF9CA3AF),
+              color: Colors.white70,
             ),
           ),
           const SizedBox(height: 8),
@@ -349,7 +348,7 @@ class _InlineStat extends StatelessWidget {
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: Colors.white,
             ),
           ),
         ],
