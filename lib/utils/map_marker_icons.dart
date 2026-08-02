@@ -317,8 +317,6 @@ class MapMarkerIcons {
         return 'pin_moderate';
       case '자리없음':
         return 'pin_full';
-      case '웨이팅많음':
-        return 'pin_hot_waiting';
       case '영업안함':
         return 'pin_closed';
       default:

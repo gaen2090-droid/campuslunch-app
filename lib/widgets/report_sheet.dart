@@ -188,17 +188,8 @@ const reportOptions = [
     subtitle: '조금 기다려야 해요',
     status: '자리없음',
     icon: Icons.groups,
-    borderColor: Color(0xFFFED7AA),
-    bgColor: Color(0xFFFFEDD5),
-    textColor: Color(0xFFF97316),
-  ),
-  ReportOption(
-    label: '웨이팅이 많아요',
-    subtitle: '기다리는 사람이 많아요',
-    status: '웨이팅많음',
-    icon: Icons.local_fire_department,
     borderColor: Color(0xFFFECACA),
     bgColor: Color(0xFFFEF2F2),
-    textColor: Color(0xFFDC2626),
+    textColor: Color(0xFFEF4444),
   ),
 ];

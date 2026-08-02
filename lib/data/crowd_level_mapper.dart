@@ -4,7 +4,6 @@ class CrowdLevelMapper {
     '여유로움': 'normal',
     '약간혼잡': 'full',
     '자리없음': 'full',
-    '웨이팅많음': 'full',
     '영업안함': 'closed',
   };
 

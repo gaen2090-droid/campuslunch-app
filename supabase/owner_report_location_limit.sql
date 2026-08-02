@@ -33,7 +33,7 @@ begin
     raise exception '로그인이 필요해요.';
   end if;
 
-  if p_status not in ('여유로움', '약간혼잡', '자리없음', '웨이팅많음') then
+  if p_status not in ('여유로움', '약간혼잡', '자리없음') then
     raise exception '유효하지 않은 혼잡도예요.';
   end if;
 

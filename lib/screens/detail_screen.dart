@@ -297,7 +297,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               r.status == '영업안함'
                                   ? r.status
                                   : r.hasCrowdUpdate
-                                      ? (r.status == '웨이팅많음' ? '🔥웨이팅' : r.status)
+                                      ? r.status
                                       : '제보필요',
                               maxLines: 1,
                               textAlign: TextAlign.right,
@@ -404,8 +404,7 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (status) {
       case '여유로움': return const Color(0xFF4C9C2A);
       case '약간혼잡': return const Color(0xFFF59E0B);
-      case '자리없음': return const Color(0xFFF97316);
-      case '웨이팅많음': return const Color(0xFFEF4444);
+      case '자리없음': return const Color(0xFFEF4444);
       default: return const Color(0xFF9CA3AF);
     }
   }
@@ -706,7 +705,7 @@ class _RecentReportsSection extends StatelessWidget {
             const SizedBox(height: 10),
             ...reports.map((r) {
               final prefix = r.isOwner ? '사장님 · ' : '';
-              final statusLabel = r.status == '웨이팅많음' ? '웨이팅' : r.status;
+              final statusLabel = r.status;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(

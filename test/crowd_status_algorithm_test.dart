@@ -22,15 +22,13 @@ CrowdStatusComputeParams _p({
 
 void main() {
   group('레벨 매핑', () {
-    test('4단계가 서로 독립된 값으로 매핑됨', () {
+    test('3단계가 서로 독립된 값으로 매핑됨', () {
       expect(crowdStatusToLevel('여유로움'), 1);
       expect(crowdStatusToLevel('약간혼잡'), 2);
       expect(crowdStatusToLevel('자리없음'), 3);
-      expect(crowdStatusToLevel('웨이팅많음'), 4);
       expect(crowdLevelToStatus(1), '여유로움');
       expect(crowdLevelToStatus(2), '약간혼잡');
       expect(crowdLevelToStatus(3), '자리없음');
-      expect(crowdLevelToStatus(4), '웨이팅많음');
     });
   });
 
@@ -46,9 +44,9 @@ void main() {
       expect(r.refreshUpdatedAt, isTrue);
     });
 
-    test('유저 2건: 5분 전 웨이팅많음, 방금 여유로움 → 대표=여유로움(최신)', () {
+    test('유저 2건: 5분 전 자리없음, 방금 여유로움 → 대표=여유로움(최신)', () {
       final r = computeCrowdStatus(
-        _p(users: [_r(4, 5), _r(1, 0)]),
+        _p(users: [_r(3, 5), _r(1, 0)]),
       );
       expect(r.displayStatus, '여유로움');
     });
@@ -73,13 +71,13 @@ void main() {
   });
 
   group('쿨다운 없음 — 직전 상태 시작 시각과 무관하게 즉시 반영', () {
-    test('방금 여유로움으로 바뀐 상태에서 웨이팅많음 제보 → 즉시 웨이팅많음', () {
-      final r = computeCrowdStatus(_p(users: [_r(4, 0)], current: 1));
-      expect(r.displayStatus, '웨이팅많음');
+    test('방금 여유로움으로 바뀐 상태에서 자리없음 제보 → 즉시 자리없음', () {
+      final r = computeCrowdStatus(_p(users: [_r(3, 0)], current: 1));
+      expect(r.displayStatus, '자리없음');
     });
 
-    test('방금 웨이팅많음으로 바뀐 상태에서 여유로움 제보 → 즉시 여유로움', () {
-      final r = computeCrowdStatus(_p(users: [_r(1, 0)], current: 4));
+    test('방금 자리없음으로 바뀐 상태에서 여유로움 제보 → 즉시 여유로움', () {
+      final r = computeCrowdStatus(_p(users: [_r(1, 0)], current: 3));
       expect(r.displayStatus, '여유로움');
     });
   });
@@ -173,26 +171,6 @@ void main() {
       // "최신 두 개 불일치 + 차이<2" 케이스: 다수결로 판단 → high
       expect(r.confidence, 'high');
       expect(r.displayStatus, '약간혼잡');
-    });
-  });
-
-  group('웨이팅많음은 자리없음과 별개 단계', () {
-    test('유저 1명 웨이팅많음 → 그대로 웨이팅많음 (자리없음과 합쳐지지 않음)', () {
-      final r = computeCrowdStatus(_p(users: [_r(4, 0)], current: 3));
-      expect(r.displayStatus, '웨이팅많음');
-    });
-
-    test('자리없음 다수 + 웨이팅많음 최신 1건 → 대표는 웨이팅많음(최신)', () {
-      final r = computeCrowdStatus(
-        _p(users: [_r(3, 5), _r(3, 4), _r(3, 3), _r(4, 0)]),
-      );
-      expect(r.displayStatus, '웨이팅많음');
-    });
-
-    test('사장님 웨이팅많음 제보 → 웨이팅많음 반영', () {
-      final r = computeCrowdStatus(_p(owner: _r(4, 0)));
-      expect(r.displayStatus, '웨이팅많음');
-      expect(r.baseSource, 'owner');
     });
   });
 

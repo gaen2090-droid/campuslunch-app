@@ -1,30 +1,69 @@
--- submit_crowd_report 최종 통합본: 위치검증(50m) + 스탬프 지급 (Dashboard → SQL Editor → Run)
---
--- 문제: owner_report_location_limit.sql 실행 시 동일 시그니처의 submit_crowd_report를
--- drop 후 재정의하면서, rewards.sql이 정의했던 스탬프 지급 로직(grant_stamp 호출,
--- returns jsonb)이 통째로 사라지고 위치검증만 하는 returns void 버전으로 교체됐다.
--- 그 결과 제보는 성공하지만 스탬프가 전혀 지급되지 않았다.
---
--- 이 파일은 두 버전을 하나로 병합한 최종본이다. 이후 submit_crowd_report를 다시 수정할 때는
--- crowd_status.sql / hotfix_crowd_report_types.sql / owner_report_location_limit.sql /
--- rewards.sql 이 아니라 반드시 이 파일을 갱신해서 실행할 것.
---
--- 위치(50m)는 user/owner 공통 적용. 디버그 빌드는 클라이언트가 매장 좌표를 그대로
--- 전송하므로(app_provider.dart) 거리 0m로 항상 통과한다.
+-- 웨이팅많음(4단계) 되돌림: 여유로움/약간혼잡/자리없음 3단계로 복원 (Dashboard → SQL Editor → Run)
+-- hotfix_waiting_level.sql로 도입했던 4단계 독립 레벨을 폐기하고,
+-- crowd_status.sql 원래 정의(3단계)로 세 함수를 재정의한다.
 
-drop function if exists public.submit_crowd_report(uuid, text, text, double precision, double precision);
+create or replace function public.ui_level_to_crowd_level(p_ui_level int)
+returns public.crowd_level
+language sql
+immutable
+as $$
+  select case greatest(1, least(3, coalesce(p_ui_level, 1)))
+    when 1 then 'normal'::public.crowd_level
+    else 'full'::public.crowd_level
+  end;
+$$;
 
+create or replace function public.ui_status_to_level(p_input text)
+returns int
+language sql
+immutable
+as $$
+  select case trim(coalesce(p_input, ''))
+    when '1' then 1
+    when '2' then 2
+    when '3' then 3
+    when '여유로움' then 1
+    when '약간혼잡' then 2
+    when '자리없음' then 3
+    when 'normal' then 1
+    when 'relaxed' then 1
+    when 'full' then 2
+    when 'moderate' then 2
+    when 'closed' then 1
+    else greatest(1, least(3, coalesce(
+      nullif(regexp_replace(trim(coalesce(p_input, '')), '[^0-9]', '', 'g'), '')::int,
+      1
+    )))
+  end;
+$$;
+
+create or replace function public.level_to_ui_status(p_level int)
+returns text
+language sql
+immutable
+as $$
+  select case greatest(1, least(3, coalesce(p_level, 1)))
+    when 1 then '여유로움'
+    when 2 then '약간혼잡'
+    else '자리없음'
+  end;
+$$;
+
+comment on column public.crowd_status.display_level is
+  '1=여유로움, 2=약간혼잡, 3=자리없음 (셋 다 독립된 동급 단계). UI 한글은 level_to_ui_status()로 변환.';
+
+-- submit_crowd_report의 유효성 검사에서 '웨이팅많음' 제거
 create or replace function public.submit_crowd_report(
   p_restaurant_id uuid,
-  p_status        text,
-  p_source        text default 'user',
-  p_lat           double precision default null,
-  p_lng           double precision default null
+  p_status text,
+  p_source text default 'user'::text,
+  p_lat double precision default null::double precision,
+  p_lng double precision default null::double precision
 )
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path to 'public'
 as $$
 declare
   v_uid        uuid := auth.uid();
@@ -148,7 +187,9 @@ begin
 end;
 $$;
 
-grant execute on function public.submit_crowd_report(uuid, text, text, double precision, double precision)
-  to authenticated;
+comment on function public.submit_crowd_report is
+  '유저 제보/사장님 제보. 위치·쿨다운 제한은 클라이언트(앱)에서 검사 (디버그 우회).';
 
-select 'submit_crowd_report_merge_stamp_and_location.sql ok' as status;
+-- 기존에 4로 저장된 레벨(level/display_level)을 3(자리없음)으로 정리
+update public.crowd_status set level = 3 where level > 3;
+update public.crowd_status set display_level = 3 where display_level > 3;

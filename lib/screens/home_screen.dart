@@ -326,7 +326,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final searchResults = _search(all, _searchCtrl.text);
     final byId = {for (final r in all) r.id: r};
 
-    bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
+    bool isBusyStatus(Restaurant r) => r.status == '자리없음';
     int minutesSince(Restaurant r) =>
         r.updatedAt != null ? DateTime.now().difference(r.updatedAt!).inMinutes : r.updated;
 
@@ -1208,9 +1208,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      crowdBadge('자리없음', const Color(0xFFFFEDD5), const Color(0xFFF97316)),
-                      const SizedBox(width: 6),
-                      crowdBadge('🔥웨이팅', const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                      crowdBadge('자리없음', const Color(0xFFFEE2E2), const Color(0xFFEF4444)),
                     ],
                   ),
                 ),
@@ -1345,7 +1343,6 @@ class CrowdLevelInfoPopup extends StatelessWidget {
       CrowdLevelInfo(status: '여유로움', description: '바로 앉을 수 있어요'),
       CrowdLevelInfo(status: '약간혼잡', description: '빈자리 조금 있어요'),
       CrowdLevelInfo(status: '자리없음', description: '조금 기다려야 해요'),
-      CrowdLevelInfo(status: '웨이팅많음', description: '웨이팅이 많아요'),
     ];
 
     return Stack(
@@ -1532,7 +1529,6 @@ class StatusBadgePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = crowdStatusMeta(status);
-    final isHotWaiting = status == '웨이팅많음';
     return Container(
       width: 76,
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1541,30 +1537,14 @@ class StatusBadgePreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
-        child: isHotWaiting
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('🔥', style: TextStyle(fontSize: 9)),
-                  const SizedBox(width: 2),
-                  Text(
-                    '웨이팅',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(meta.color),
-                    ),
-                  ),
-                ],
-              )
-            : Text(
-                status,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(meta.color),
-                ),
-              ),
+        child: Text(
+          status,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: Color(meta.color),
+          ),
+        ),
       ),
     );
   }

@@ -149,7 +149,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   }
 
   List<Restaurant> _getSectionList(List<Restaurant> filtered, AppProvider provider) {
-    bool isBusyStatus(Restaurant r) => r.status == '자리없음' || r.status == '웨이팅많음';
+    bool isBusyStatus(Restaurant r) => r.status == '자리없음';
 
     switch (widget.mode) {
       case RestaurantListMode.available:

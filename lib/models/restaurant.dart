@@ -161,10 +161,8 @@ class StatusMeta {
 const Map<String, StatusMeta> statusMetaMap = {
   '여유로움': StatusMeta(label: '여유로움', color: 0xFF4C9C2A, bgColor: 0xFFDAFFCA),
   '약간혼잡': StatusMeta(label: '약간혼잡', color: 0xFFF59E0B, bgColor: 0xFFFEF3C7),
-  // 자리없음: 순수 주황 톤 — 약간혼잡(노란 앰버)과 명확히 구분
-  '자리없음': StatusMeta(label: '자리없음', color: 0xFFF97316, bgColor: 0xFFFFEDD5),
-  // 웨이팅많음: 진한 빨강 — 자리없음(주황빨강)과 별개로 구분
-  '웨이팅많음': StatusMeta(label: '🔥웨이팅', color: 0xFFDC2626, bgColor: 0xFFFEE2E2),
+  // 자리없음: 빨강 — 약간혼잡(노란 앰버)과 명확히 구분
+  '자리없음': StatusMeta(label: '자리없음', color: 0xFFEF4444, bgColor: 0xFFFEE2E2),
   '영업안함': StatusMeta(label: '영업안함', color: 0xFF9CA3AF, bgColor: 0xFFF3F4F6),
   '제보필요': StatusMeta(label: '제보필요', color: 0xFF111827, bgColor: 0xFFF3F4F6),
 };

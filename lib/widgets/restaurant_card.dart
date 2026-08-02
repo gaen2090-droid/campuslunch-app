@@ -101,25 +101,14 @@ class RestaurantCard extends StatelessWidget {
               child: Text.rich(
                 TextSpan(
                   children: [
-                    if (displayStatus == '웨이팅많음') ...[
-                      const TextSpan(text: '🔥', style: TextStyle(fontSize: 9)),
-                      TextSpan(
-                        text: '웨이팅',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: Color(meta.color),
-                        ),
+                    TextSpan(
+                      text: displayStatus,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Color(meta.color),
                       ),
-                    ] else
-                      TextSpan(
-                        text: displayStatus,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: Color(meta.color),
-                        ),
-                      ),
+                    ),
                     if (r.status != '영업안함' && r.hasCrowdUpdate)
                       TextSpan(
                         text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
@@ -186,7 +175,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final isBusy = r.status == '약간혼잡';
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
     const reportTextColor = Color(0xFF111827);
-    final statusLabel = r.status == '웨이팅많음' ? '🔥웨이팅' : r.status;
+    final statusLabel = r.status;
     final meta = crowdStatusMeta(r.status);
 
     return GestureDetector(

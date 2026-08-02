@@ -15,7 +15,7 @@ values ('owner_influence', '80')
 on conflict (key) do nothing;
 
 -- ── crowd_status ──
--- display_level / level: int 1=여유로움, 2=약간혼잡, 3=자리없음, 4=웨이팅많음 (넷 다 독립 동급 단계, UI 한글은 metadata.status / RPC 에만)
+-- display_level / level: int 1=여유로움, 2=약간혼잡, 3=자리없음 (셋 다 독립 동급 단계, UI 한글은 metadata.status / RPC 에만)
 create table if not exists public.crowd_status (
   restaurant_id uuid primary key references public.restaurants(id) on delete cascade,
   display_level int not null default 1,
@@ -42,9 +42,8 @@ returns public.crowd_level
 language sql
 immutable
 as $$
-  select case greatest(1, least(4, coalesce(p_ui_level, 1)))
+  select case greatest(1, least(3, coalesce(p_ui_level, 1)))
     when 1 then 'normal'::public.crowd_level
-    when 2 then 'full'::public.crowd_level
     else 'full'::public.crowd_level
   end;
 $$;
@@ -71,17 +70,15 @@ as $$
     when '1' then 1
     when '2' then 2
     when '3' then 3
-    when '4' then 4
     when '여유로움' then 1
     when '약간혼잡' then 2
     when '자리없음' then 3
-    when '웨이팅많음' then 4
     when 'normal' then 1
     when 'relaxed' then 1
     when 'full' then 2
     when 'moderate' then 2
     when 'closed' then 1
-    else greatest(1, least(4, coalesce(
+    else greatest(1, least(3, coalesce(
       nullif(regexp_replace(trim(coalesce(p_input, '')), '[^0-9]', '', 'g'), '')::int,
       1
     )))
@@ -93,11 +90,10 @@ returns text
 language sql
 immutable
 as $$
-  select case greatest(1, least(4, coalesce(p_level, 1)))
+  select case greatest(1, least(3, coalesce(p_level, 1)))
     when 1 then '여유로움'
     when 2 then '약간혼잡'
-    when 3 then '자리없음'
-    else '웨이팅많음'
+    else '자리없음'
   end;
 $$;
 
@@ -329,7 +325,7 @@ begin
     raise exception '로그인이 필요해요.';
   end if;
 
-  if p_status not in ('여유로움', '약간혼잡', '자리없음', '웨이팅많음') then
+  if p_status not in ('여유로움', '약간혼잡', '자리없음') then
     raise exception '유효하지 않은 혼잡도예요.';
   end if;
 
@@ -419,7 +415,7 @@ grant execute on function public.submit_crowd_report(uuid, text, text, double pr
 comment on function public.submit_crowd_report is
   '유저 제보/사장님 제보. 위치·쿨다운 제한은 클라이언트(앱)에서 검사 (디버그 우회).';
 comment on column public.crowd_status.display_level is
-  '1=여유로움, 2=약간혼잡, 3=자리없음, 4=웨이팅많음 (넷 다 독립된 동급 단계). UI 한글은 level_to_ui_status()로 변환.';
+  '1=여유로움, 2=약간혼잡, 3=자리없음 (셋 다 독립된 동급 단계). UI 한글은 level_to_ui_status()로 변환.';
 comment on table public.crowd_status is
   '매장별 표시 혼잡도. 계산은 crowd_status_v2_compute.sql 의 recalculate_crowd_status.';
 

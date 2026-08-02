@@ -1,14 +1,13 @@
 /// 혼잡도 계산 — 대표 status는 항상 "가장 최신 제보"를 그대로 반영한다.
-/// 1=여유로움, 2=약간혼잡, 3=자리없음, 4=웨이팅많음 (넷 다 독립된 동급 단계)
+/// 1=여유로움, 2=약간혼잡, 3=자리없음 (셋 다 독립된 동급 단계)
 /// 다수결/일치도는 confidence 산정에만 쓰이고, status 결정에는 쓰이지 않는다.
 library;
 
 const crowdLevelRelaxed = 1;
 const crowdLevelModerate = 2;
 const crowdLevelFull = 3;
-const crowdLevelHotWaiting = 4;
 const crowdLevelMin = crowdLevelRelaxed;
-const crowdLevelMax = crowdLevelHotWaiting;
+const crowdLevelMax = crowdLevelFull;
 
 String crowdLevelToStatus(int level) {
   switch (level) {
@@ -18,8 +17,6 @@ String crowdLevelToStatus(int level) {
       return '약간혼잡';
     case crowdLevelFull:
       return '자리없음';
-    case crowdLevelHotWaiting:
-      return '웨이팅많음';
     default:
       return '여유로움';
   }
@@ -33,8 +30,6 @@ int crowdStatusToLevel(String status) {
       return crowdLevelModerate;
     case '자리없음':
       return crowdLevelFull;
-    case '웨이팅많음':
-      return crowdLevelHotWaiting;
     default:
       return crowdLevelRelaxed;
   }

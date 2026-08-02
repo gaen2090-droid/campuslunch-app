@@ -18,17 +18,13 @@ int availableLatestGroup(Restaurant r) {
   return 5;
 }
 
-/// 붐비는 매장(자리없음/웨이팅많음) 최신순 그룹 — 0이 가장 우선
-/// 자리없음 ≤15 → 자리없음 16~30 → 웨이팅 ≤15 → 웨이팅 16~30 → 자리없음 31+ → 웨이팅 31+
+/// 붐비는 매장(자리없음) 최신순 그룹 — 0이 가장 우선
+/// 자리없음 ≤15 → 자리없음 16~30 → 자리없음 31+
 int busyLatestGroup(Restaurant r) {
-  final isFull = r.status == '자리없음';
   final u = r.updated;
-  if (isFull && u <= 15) return 0;
-  if (isFull && u <= 30) return 1;
-  if (!isFull && u <= 15) return 2;
-  if (!isFull && u <= 30) return 3;
-  if (isFull) return 4;
-  return 5;
+  if (u <= 15) return 0;
+  if (u <= 30) return 1;
+  return 2;
 }
 
 int availableSortStatusPriority(String status) => status == '여유로움' ? 0 : 1;
