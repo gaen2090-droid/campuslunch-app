@@ -33,13 +33,35 @@ create policy "users_insert_own" on public.users
   with check (auth.uid() = id);
 
 -- auth.users 가입/소셜 로그인 시 public.users 자동 생성
+-- raw_user_meta_data에 닉네임이 없는 소셜 로그인 신규가입은 고정값 '사용자'가 아니라
+-- 처음부터 최종 랜덤 닉네임(앙대+과일+숫자, nickname_generator.dart와 동일 포맷)을
+-- 생성한다. 고정값을 쓰면 두 번째 신규가입자부터 nickname UNIQUE 인덱스
+-- (users_nickname_lower_unique_idx)에 걸려 "Database error saving new user"로
+-- 가입 자체가 막힌다.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  fruits text[] := array['딸기', '사고', '포도', '수박', '레몬', '망고', '복숭아', '바나나'];
+  v_nickname text;
+  v_from_meta text := new.raw_user_meta_data ->> 'nickname';
 begin
+  if v_from_meta is not null and trim(v_from_meta) <> '' then
+    v_nickname := v_from_meta;
+  else
+    loop
+      v_nickname := '앙대' || fruits[1 + floor(random() * array_length(fruits, 1))::int]
+        || (1000 + floor(random() * 9000))::int;
+      exit when not exists (
+        select 1 from public.users
+        where lower(trim(nickname)) = lower(trim(v_nickname))
+      );
+    end loop;
+  end if;
+
   insert into public.users (
     id,
     email,
@@ -53,7 +75,7 @@ begin
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data ->> 'nickname', '사용자'),
+    v_nickname,
     'user'::public.user_role,
     coalesce(
       new.raw_user_meta_data ->> 'auth_provider',
@@ -66,7 +88,6 @@ begin
   )
   on conflict (id) do update set
     email = coalesce(excluded.email, users.email),
-    nickname = coalesce(excluded.nickname, users.nickname),
     provider = coalesce(excluded.provider, users.provider),
     kakao_user_id = coalesce(excluded.kakao_user_id, users.kakao_user_id),
     avatar_url = coalesce(excluded.avatar_url, users.avatar_url),
