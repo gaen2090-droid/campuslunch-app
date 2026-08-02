@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/crowd_status_label.dart';
 import '../widgets/load_error_view.dart';
 import '../widgets/owner_restaurant_dropdown.dart';
 import '../widgets/owner_verify_sheet.dart';
@@ -24,10 +27,22 @@ class _OwnerScreenState extends State<OwnerScreen> {
   bool _seatSubmitting = false;
   bool _statusSubmitting = false;
   String? _seatSuccessMessage;
+  Timer? _refreshTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    // "n분 전" 표시 갱신 + 최신 혼잡도 상태 동기화 (유저 홈 화면과 동일한 1분 주기)
+    _refreshTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      context.read<AppProvider>().refreshRestaurants();
+    });
+  }
 
   @override
   void dispose() {
     _seatCtrl.dispose();
+    _refreshTicker?.cancel();
     super.dispose();
   }
 
@@ -381,9 +396,10 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                         color: opt.textColor,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                                      child: const Text(
-                                        '현재',
-                                        style: TextStyle(
+                                      child: Text(
+                                        '${restaurant.crowdBaseSource == 'owner' ? '사장님' : '소비자'} · '
+                                        '${formatUpdateAgeFromDateTime(restaurant.updatedAt)}',
+                                        style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
                                           color: Colors.white,

@@ -181,6 +181,11 @@ function mergeRestaurant(
     hasCrowdUpdate,
     updated,
     isActive: row.is_active !== false,
+    menuPhotoUrls: Array.isArray(extra?.menu_photo_urls)
+      ? (extra!.menu_photo_urls as unknown[]).map(String)
+      : [],
+    imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
+    ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
   };
 }
 

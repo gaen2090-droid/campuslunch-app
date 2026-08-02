@@ -65,6 +65,8 @@ begin
   update public.restaurant_verification_codes set claimed_by = null where claimed_by = uid;
 
   -- 탈퇴 회원 익명화: 게시물/댓글은 남기고 표시 정보만 스크럽
+  -- (nickname_change_lock_30d.sql의 30일 제한 트리거를 이 UPDATE에 한해 우회)
+  perform set_config('app.bypass_nickname_lock', '1', true);
   update public.users
   set nickname = '탈퇴한 회원',
       email = null,
@@ -80,6 +82,14 @@ begin
   -- 재가입할 수 있다 — 그때는 새로 만들어질 public.users 행이 별개이므로
   -- 기존에 남아있는 게시물(작성자 표시는 이미 '탈퇴한 회원'으로 익명화됨)과는 무관하다.
   update auth.users set banned_until = now() + interval '30 days' where id = uid;
+
+  -- 다른 기기에 로그인된 세션도 즉시 무효화한다. 안 지우면 그 기기는 만료
+  -- 전까지(기본 ~1시간) 탈퇴한 계정으로 계속 요청을 보낼 수 있고, 서버가
+  -- 이를 거부해도 클라이언트가 "성공"으로 오인해 로컬에만 반영되는 유령
+  -- 상태(제보 등)를 만들 수 있다. refresh_tokens를 먼저 지워야
+  -- sessions 삭제 후 재발급을 막을 수 있다.
+  delete from auth.refresh_tokens where user_id = uid::text;
+  delete from auth.sessions where user_id = uid;
 end;
 $$;
 

@@ -16,15 +16,16 @@ abstract final class AppPermissions {
         const AppPermissionCard(
           id: 'location',
           title: '위치 기반 서비스 약관 동의',
-          required: true,
+          required: false,
+          subtitle: '지도·길찾기·혼잡도 제보에 필요해요.',
           documentBody:
-              '위치(GPS) 권한은 필수 동의 항목입니다.\n\n'
+              '위치(GPS) 권한은 선택 동의 항목입니다.\n\n'
               '지도에서 내 위치 표시, 매장 길찾기, 혼잡도 제보 시 '
               '제보 위치 검증(제보 시 GPS 좌표가 매장 인근인지 확인)에 사용됩니다.\n\n'
               '수집된 위치 정보는 제보 내역에 함께 저장되며, '
               '회원 탈퇴 시 지체 없이 삭제됩니다.\n\n'
-              '위치 권한을 허용하지 않으면 지도·길찾기·혼잡도 제보 기능을 '
-              '이용할 수 없습니다.\n\n'
+              '동의하지 않아도 앱은 이용할 수 있으며, 지도·길찾기·혼잡도 제보 '
+              '기능을 사용하려는 시점에 다시 권한을 요청합니다.\n\n'
               '자세한 내용은 아래 「위치기반서비스 이용약관」 전문에서 확인할 수 있습니다.',
           documentAssetPath: 'assets/legal/LOCATION_TERMS.md',
           documentLinkLabel: '위치기반서비스 이용약관 전문 보기',
@@ -60,11 +61,6 @@ abstract final class AppPermissions {
         ),
       ];
 
-  static const blockedTitle = '위치 권한이 필요해요';
-  static const blockedBody =
-      '혼잡도 제보와 지도 기능을 위해 위치(GPS) 권한이 '
-      '필수입니다. 설정에서 「위치」를 허용한 뒤 '
-      '다시 시도해주세요.';
 }
 
 class AppPermissionCard {

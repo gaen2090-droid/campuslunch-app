@@ -544,10 +544,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
           if (_segment == 1) ...[
             const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _collectionFilterBar(),
-            ),
+            _collectionFilterBar(),
           ],
           if (_segment == 0 && _notice != null) ...[
             const SizedBox(height: 12),
@@ -635,6 +632,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _collectionFilterBar() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           GestureDetector(

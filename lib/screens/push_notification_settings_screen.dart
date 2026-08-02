@@ -17,6 +17,7 @@ class _PushNotificationSettingsScreenState
   late bool _newsPush;
   late bool _communityPush;
   bool _marketingConsent = false;
+  bool _marketingConsentLoaded = false;
   bool _initialized = false;
 
   @override
@@ -36,7 +37,10 @@ class _PushNotificationSettingsScreenState
   Future<void> _loadMarketingConsent() async {
     final agreed = await context.read<AppProvider>().fetchMarketingConsent();
     if (!mounted) return;
-    setState(() => _marketingConsent = agreed);
+    setState(() {
+      _marketingConsent = agreed;
+      _marketingConsentLoaded = true;
+    });
   }
 
   @override
@@ -119,6 +123,7 @@ class _PushNotificationSettingsScreenState
               title: '개인정보 활용 및 마케팅 정보 수신',
               desc: '마케팅 및 프로모션 활동에 대한 개인정보 활용에 동의해요.',
               enabled: _marketingConsent,
+              loading: !_marketingConsentLoaded,
               onToggle: () async {
                 final next = !_marketingConsent;
                 setState(() => _marketingConsent = next);
@@ -156,12 +161,14 @@ class _ToggleRow extends StatelessWidget {
   final String title;
   final String desc;
   final bool enabled;
+  final bool loading;
   final VoidCallback onToggle;
 
   const _ToggleRow({
     required this.title,
     required this.desc,
     required this.enabled,
+    this.loading = false,
     required this.onToggle,
   });
 
@@ -196,11 +203,21 @@ class _ToggleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Switch.adaptive(
-            value: enabled,
-            activeColor: const Color(0xFF111827),
-            onChanged: (_) => onToggle(),
-          ),
+          if (loading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF111827),
+              ),
+            )
+          else
+            Switch.adaptive(
+              value: enabled,
+              activeColor: const Color(0xFF111827),
+              onChanged: (_) => onToggle(),
+            ),
         ],
       ),
     );

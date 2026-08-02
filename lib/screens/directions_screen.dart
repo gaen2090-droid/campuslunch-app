@@ -86,12 +86,15 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
     MapLatLng? origin;
     String? locationError;
     try {
-      final permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        locationError = '위치 권한이 꺼져 있어요.\n설정에서 위치 권한을 허용해주세요.';
+        locationError = '위치 권한이 꺼져 있어요.\n휴대폰 설정에서 위치 권한을 허용해주세요.';
       } else if (!await Geolocator.isLocationServiceEnabled()) {
-        locationError = '기기의 위치 서비스가 꺼져 있어요.\n설정에서 위치(GPS)를 켜주세요.';
+        locationError = '기기의 위치 서비스가 꺼져 있어요.\n휴대폰 설정에서 위치(GPS)를 켜주세요.';
       } else {
         final lastKnown = await Geolocator.getLastKnownPosition();
         if (lastKnown != null &&
@@ -108,7 +111,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
         }
       }
     } on LocationServiceDisabledException {
-      locationError = '기기의 위치 서비스가 꺼져 있어요.\n설정에서 위치(GPS)를 켜주세요.';
+      locationError = '기기의 위치 서비스가 꺼져 있어요.\n휴대폰 설정에서 위치(GPS)를 켜주세요.';
     } on TimeoutException {
       debugPrint('[Directions] location fix timed out');
       locationError = '현재 위치를 확인할 수 없어요.\n신호가 약한 곳이라면 실외에서 다시 시도해주세요.';

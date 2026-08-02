@@ -13,9 +13,13 @@ language plpgsql
 as $$
 begin
   if new.nickname is distinct from old.nickname then
-    if old.nickname_changed_at is not null
-       and now() < old.nickname_changed_at + interval '30 days' then
-      raise exception '닉네임은 변경 후 30일이 지나야 다시 바꿀 수 있어요.';
+    -- delete_own_account() 등 시스템이 강제로 닉네임을 익명화(예: '탈퇴한 회원')할 때는
+    -- 이 세션 변수를 켜서 30일 제한을 우회한다 (사용자가 직접 바꾸는 경우와 구분).
+    if coalesce(current_setting('app.bypass_nickname_lock', true), '') <> '1' then
+      if old.nickname_changed_at is not null
+         and now() < old.nickname_changed_at + interval '30 days' then
+        raise exception '닉네임은 변경 후 30일이 지나야 다시 바꿀 수 있어요.';
+      end if;
     end if;
     new.nickname_changed_at := now();
   end if;

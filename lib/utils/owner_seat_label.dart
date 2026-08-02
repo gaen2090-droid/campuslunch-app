@@ -16,5 +16,9 @@ String ownerSeatMessage(OwnerSeatUpdate update) {
 }
 
 String ownerSeatCardLine(OwnerSeatUpdate update, {DateTime? now}) {
-  return '사장님의 한 마디: ${ownerSeatMessage(update)} (${formatOwnerSeatAge(update.createdAt, now: now)})';
+  final age = formatOwnerSeatAge(update.createdAt, now: now);
+  if (update.availableSeats == 0) {
+    return '입장 가능 인원: 바로 입장 어려움 ($age) (사장님 입력)';
+  }
+  return '입장 가능 인원: ${update.availableSeats}명 ($age) (사장님 입력)';
 }

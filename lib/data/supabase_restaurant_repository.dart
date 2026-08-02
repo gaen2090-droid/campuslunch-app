@@ -664,6 +664,11 @@ class SupabaseRestaurantRepository {
             .toList()
         : <MenuItem>[];
 
+    final menuPhotoList = extra?['menu_photo_urls'];
+    final menuPhotoUrls = menuPhotoList is List
+        ? menuPhotoList.map((e) => e.toString()).toList()
+        : <String>[];
+
     return Restaurant(
       id: id,
       linkNo: (row['link_no'] as num?)?.toInt() ?? 0,
@@ -702,6 +707,10 @@ class SupabaseRestaurantRepository {
           : null,
       ownerUpdatedAt: ownerUpdatedAt,
       isActive: row['is_active'] as bool? ?? true,
+      menuPhotoUrls: menuPhotoUrls,
+      imageSource: extra?['image_source'] as String? ?? 'google',
+      googleImageUrl: extra?['google_image_url'] as String? ?? '',
+      ownerNotice: extra?['owner_notice'] as String? ?? '',
     );
   }
 
@@ -847,7 +856,11 @@ class SupabaseRestaurantRepository {
     }
   }
 
-  Future<String> uploadImage(Uint8List bytes, String ext) async {
+  Future<String> uploadImage(
+    Uint8List bytes,
+    String ext, {
+    bool allowBase64Fallback = true,
+  }) async {
     const bucket = 'restaurant-images';
     final path = 'restaurants/${DateTime.now().millisecondsSinceEpoch}.$ext';
 
@@ -867,10 +880,42 @@ class SupabaseRestaurantRepository {
           );
       return _client.storage.from(bucket).getPublicUrl(path);
     } catch (e) {
+      if (!allowBase64Fallback) rethrow;
       // Storage 실패 시 base64로 DB에 직접 저장
       debugPrint('[Storage] fallback to base64: $e');
       return 'data:image/$ext;base64,${base64Encode(bytes)}';
     }
+  }
+
+  /// 사장님이 매장 관리 탭에서 올리는 사진 전용 — base64 폴백을 쓰면 여러 장의
+  /// 이미지가 restaurants row(description)에 그대로 박혀 fetchAll() 응답이
+  /// 비대해지므로, Storage 업로드가 실패하면 폴백 없이 예외를 던진다.
+  Future<String> uploadOwnerPhoto(Uint8List bytes, String ext) {
+    return uploadImage(bytes, ext, allowBase64Fallback: false);
+  }
+
+  /// 사장님 매장 관리(사진/메뉴/영업시간/공지) — owner_update_restaurant RPC.
+  /// 각 파라미터는 null이면 미변경.
+  Future<void> ownerUpdateRestaurant(
+    String restaurantId, {
+    String? imageUrl,
+    String? imageSource,
+    List<String>? menuPhotoUrls,
+    List<MenuItem>? menu,
+    String? hours,
+    String? hoursDisplay,
+    String? ownerNotice,
+  }) async {
+    await _client.rpc('owner_update_restaurant', params: {
+      'p_restaurant_id': restaurantId,
+      if (imageUrl != null) 'p_image_url': imageUrl,
+      if (imageSource != null) 'p_image_source': imageSource,
+      if (menuPhotoUrls != null) 'p_menu_photo_urls': menuPhotoUrls,
+      if (menu != null) 'p_menu': menu.map((m) => m.toMap()).toList(),
+      if (hours != null) 'p_hours': hours,
+      if (hoursDisplay != null) 'p_hours_display': hoursDisplay,
+      if (ownerNotice != null) 'p_owner_notice': ownerNotice,
+    });
   }
 
   Future<void> updateManualRanks(Map<String, int> rankById) async {

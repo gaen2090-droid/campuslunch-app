@@ -11,6 +11,7 @@ import 'home_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
 import 'owner_my_screen.dart';
+import 'owner_restaurant_manage_screen.dart';
 import 'owner_screen.dart';
 import 'owner_usage_guide_screen.dart';
 
@@ -151,11 +152,11 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) _maybeShowOwnerUsageGuide(hasOwner);
       });
     }
-    // 사장님 모드는 지도 탭이 없는 완전히 별개의 3탭(제보/커뮤니티/마이) 구성이라
+    // 사장님 모드는 지도 탭이 없는 완전히 별개의 4탭(제보/매장관리/커뮤니티/마이) 구성이라
     // mapIndex를 도달 불가능한 값으로 두어 아래 지도 관련 분기를 자연히 우회한다.
-    final index = provider.mainTabIndex.clamp(0, hasOwner ? 2 : 3);
+    final index = provider.mainTabIndex.clamp(0, 3);
     final mapIndex = hasOwner ? -1 : 1;
-    final communityIndex = hasOwner ? 1 : 2;
+    final communityIndex = hasOwner ? 2 : 2;
 
     if (index == mapIndex) {
       _mapMounted = true;
@@ -167,6 +168,7 @@ class _MainScreenState extends State<MainScreen> {
     final nonMapTabs = hasOwner
         ? <Widget>[
             const OwnerScreen(),
+            const OwnerRestaurantManageScreen(),
             if (_communityMounted) const CommunityScreen() else const SizedBox.shrink(),
             const OwnerMyScreen(),
           ]
@@ -277,6 +279,11 @@ class _BottomNav extends StatelessWidget {
               icon: Icons.storefront_outlined,
               activeIcon: Icons.storefront,
               label: '제보',
+            ),
+            _NavItem(
+              icon: Icons.edit_note_outlined,
+              activeIcon: Icons.edit_note,
+              label: '매장관리',
             ),
             _NavItem(
               icon: Icons.forum_outlined,

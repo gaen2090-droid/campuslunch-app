@@ -26,6 +26,8 @@ class _DetailScreenState extends State<DetailScreen> {
   OwnerSeatUpdate? _ownerSeatUpdate;
   List<RecentCrowdReport> _recentReports = [];
   late bool _hasImage;
+  final _photoPageController = PageController();
+  int _photoIndex = 0;
 
   @override
   void initState() {
@@ -54,6 +56,12 @@ class _DetailScreenState extends State<DetailScreen> {
       _loadOwnerSeatUpdate();
       _loadRecentReports();
     });
+  }
+
+  @override
+  void dispose() {
+    _photoPageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadOwnerSeatUpdate() async {
@@ -99,37 +107,92 @@ class _DetailScreenState extends State<DetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── 이미지 + 플로팅 헤더 ──
+            // ── 사진 캐러셀 + 플로팅 헤더 ──
             SizedBox(
               height: _hasImage ? 220 : safeTop + 16 + 36 + 12,
               width: double.infinity,
               child: Stack(
                 children: [
-                  // 전체폭 이미지 (사진 없으면 영역 자체를 접음)
+                  // 대표사진 + 메뉴사진 캐러셀 (사진 0장이면 영역 자체를 접음)
                   if (_hasImage)
-                    SizedBox(
-                      height: 220,
-                      width: double.infinity,
-                      child: RestaurantImage(
-                        url: r.imageUrl,
-                        fallback: () => const RiceBallIcon(size: null),
-                        onFallbackChanged: (hasFallback) {
-                          if (hasFallback == !_hasImage) return;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) setState(() => _hasImage = !hasFallback);
-                          });
-                        },
+                    Builder(builder: (context) {
+                      final photos = <String>[
+                        if (r.imageUrl.isNotEmpty) r.imageUrl,
+                        ...r.menuPhotoUrls,
+                      ];
+                      return SizedBox(
+                        height: 220,
+                        width: double.infinity,
+                        child: PageView.builder(
+                          controller: _photoPageController,
+                          itemCount: photos.length,
+                          onPageChanged: (i) => setState(() => _photoIndex = i),
+                          itemBuilder: (context, i) {
+                            if (i == 0) {
+                              return RestaurantImage(
+                                url: photos[i],
+                                fallback: () => const RiceBallIcon(size: null),
+                                onFallbackChanged: (hasFallback) {
+                                  if (hasFallback == !_hasImage) return;
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    if (mounted) setState(() => _hasImage = !hasFallback);
+                                  });
+                                },
+                              );
+                            }
+                            return RestaurantImage(url: photos[i]);
+                          },
+                        ),
+                      );
+                    }),
+
+                  // 페이지 인디케이터 (사진 2장 이상일 때만)
+                  if (_hasImage && (1 + r.menuPhotoUrls.length) > 1)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(1 + r.menuPhotoUrls.length, (i) {
+                          final active = i == _photoIndex;
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _photoPageController.animateToPage(
+                              i,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: active ? 16 : 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? Colors.white
+                                      : Colors.white.withAlpha(120),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ),
 
-                  // 이미지 출처 (구글 지도 사진 사용 — 우측 하단, 가독성 위해 그림자 적용)
+                  // 이미지 출처 (대표사진: 사장님 등록 여부에 따라 구분, 메뉴사진: 항상 사장님)
                   if (_hasImage)
-                    const Positioned(
+                    Positioned(
                       right: 12,
-                      bottom: 12,
+                      bottom: (1 + r.menuPhotoUrls.length) > 1 ? 24 : 12,
                       child: Text(
-                        '출처: Google Maps',
-                        style: TextStyle(
+                        _photoIndex == 0
+                            ? (r.imageSource == 'owner' ? '출처: 사장님' : '출처: Google Maps')
+                            : '출처: 사장님',
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                           color: Colors.white,
@@ -274,13 +337,18 @@ class _DetailScreenState extends State<DetailScreen> {
 
             BusinessHoursSection(hours: r.hours),
 
+            if (r.ownerNotice.isNotEmpty)
+              _OwnerNoticeBanner(notice: r.ownerNotice),
+
             if (_ownerSeatUpdate != null &&
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
 
-            if (ownerPriorityActive) const _OwnerPriorityWindowCard(),
-
-            if (_recentReports.isNotEmpty) _RecentReportsSection(reports: _recentReports),
+            if (_recentReports.isNotEmpty)
+              _RecentReportsSection(
+                reports: _recentReports,
+                showPriorityNote: ownerPriorityActive,
+              ),
 
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
@@ -312,159 +380,23 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
             ),
 
-            // ── 액션 버튼 (사장님이 자기 매장을 미리보기할 때는 제보 버튼 숨김) ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                children: [
-                  if (!provider.hasOwnerTab) ...[
-                    Opacity(
-                      opacity: r.status == '영업안함' ? 0.4 : 1.0,
-                      child: GestureDetector(
-                      onTap: r.status == '영업안함' ? null : () => ReportSheet.show(
-                        context,
-                        r,
-                        (status) => _submitReport(r.id, status),
-                      ),
-                      child: Container(
-                        height: 52,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF111827),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.edit_outlined,
-                                size: 16, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              '혼잡도 제보하기',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  GestureDetector(
-                    onTap: () => _navigate(r),
-                    child: Container(
-                      height: 52,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF111827), width: 1.5),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.navigation_outlined,
-                              size: 16, color: Color(0xFF111827)),
-                          SizedBox(width: 6),
-                          Text(
-                            '길찾기',
-                            style: TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            if (r.menu.isNotEmpty) _MenuSection(menu: r.menu, formatPrice: _formatPrice),
 
-            // ── 메뉴 ──
-            if (r.menu.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFF3F4F6)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '메뉴',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...r.menu.asMap().entries.map((e) {
-                      final isLast = e.key == r.menu.length - 1;
-                      return Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    e.value.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF374151),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${_formatPrice(e.value.price)}원',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF111827),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (!isLast)
-                            const Divider(
-                                height: 1, color: Color(0xFFF3F1EB)),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ),
-
-            SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+            SizedBox(height: 88 + MediaQuery.paddingOf(context).bottom),
           ],
         ),
       ),
+      floatingActionButton: _ActionButtonBar(
+        showReportButton: !provider.hasOwnerTab,
+        reportEnabled: r.status != '영업안함',
+        onReport: () => ReportSheet.show(
+          context,
+          r,
+          (status) => _submitReport(r.id, status),
+        ),
+        onNavigate: () => _navigate(r),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -490,41 +422,156 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 }
 
-class _OwnerPriorityWindowCard extends StatelessWidget {
-  const _OwnerPriorityWindowCard();
+class _OwnerNoticeBanner extends StatelessWidget {
+  final String notice;
+  const _OwnerNoticeBanner({required this.notice});
+
+  void _showFull(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.campaign_outlined, size: 18, color: Color(0xFF6B7280)),
+                  SizedBox(width: 8),
+                  Text(
+                    '매장 공지',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                notice,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF374151),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: GestureDetector(
+        onTap: () => _showFull(context),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.campaign_outlined, size: 15, color: Color(0xFF6B7280)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  notice,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 16, color: Color(0xFF9CA3AF)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuSection extends StatelessWidget {
+  final List<MenuItem> menu;
+  final String Function(int) formatPrice;
+  const _MenuSection({required this.menu, required this.formatPrice});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.chat_bubble_outline,
-                  size: 18, color: Color(0xFF6B7280)),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                '사장님의 제보가 있는 경우 5분간 혼잡도 상태를 유지해요.',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF374151),
-                  height: 1.4,
-                ),
+            const Text(
+              '메뉴',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
               ),
             ),
+            const SizedBox(height: 10),
+            ...menu.asMap().entries.map((e) {
+              final isLast = e.key == menu.length - 1;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        e.value.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${formatPrice(e.value.price)}원',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -532,9 +579,106 @@ class _OwnerPriorityWindowCard extends StatelessWidget {
   }
 }
 
+class _ActionButtonBar extends StatelessWidget {
+  final bool showReportButton;
+  final bool reportEnabled;
+  final VoidCallback onReport;
+  final VoidCallback onNavigate;
+
+  const _ActionButtonBar({
+    required this.showReportButton,
+    required this.reportEnabled,
+    required this.onReport,
+    required this.onNavigate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final navigateButton = GestureDetector(
+      onTap: onNavigate,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: showReportButton ? Colors.white : const Color(0xFF111827),
+          borderRadius: BorderRadius.circular(14),
+          border: showReportButton
+              ? Border.all(color: const Color(0xFF111827), width: 1.5)
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.navigation_outlined,
+                size: 15,
+                color: showReportButton ? const Color(0xFF111827) : Colors.white),
+            const SizedBox(width: 5),
+            Text(
+              '길찾기',
+              style: TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: showReportButton ? const Color(0xFF111827) : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: showReportButton
+          ? Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Opacity(
+                    opacity: reportEnabled ? 1.0 : 0.4,
+                    child: GestureDetector(
+                      onTap: reportEnabled ? onReport : null,
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111827),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit_outlined, size: 15, color: Colors.white),
+                            SizedBox(width: 5),
+                            Text(
+                              '혼잡도 제보하기',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(flex: 2, child: navigateButton),
+              ],
+            )
+          : navigateButton,
+    );
+  }
+}
+
 class _RecentReportsSection extends StatelessWidget {
   final List<RecentCrowdReport> reports;
-  const _RecentReportsSection({required this.reports});
+  final bool showPriorityNote;
+  const _RecentReportsSection({
+    required this.reports,
+    this.showPriorityNote = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -575,6 +719,18 @@ class _RecentReportsSection extends StatelessWidget {
                 ),
               );
             }),
+            if (showPriorityNote) ...[
+              const SizedBox(height: 4),
+              const Text(
+                '사장님의 제보가 있는 경우 5분간 혼잡도 상태를 유지해요.',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFEF4444),
+                  height: 1.4,
+                ),
+              ),
+            ],
           ],
         ),
       ),

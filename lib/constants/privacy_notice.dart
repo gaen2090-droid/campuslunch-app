@@ -7,12 +7,13 @@ abstract final class PrivacyNotice {
   static const permissionsSummary = [
     PrivacyPermissionItem(
       icon: Icons.location_on_outlined,
-      title: '위치 정보 (필수)',
-      required: true,
+      title: '위치 정보 (선택)',
+      required: false,
       body:
           '지도에서 내 위치 표시, 매장까지 길찾기, 혼잡도 제보 시 '
           '매장 인근 여부 확인에 사용합니다. '
-          '본 서비스의 핵심 기능 제공을 위해 필수적으로 수집·이용됩니다.',
+          '동의하지 않아도 앱 이용에는 제한이 없으며, '
+          '지도·길찾기·혼잡도 제보 기능만 이용할 수 없습니다.',
     ),
     PrivacyPermissionItem(
       icon: Icons.notifications_outlined,
@@ -40,7 +41,7 @@ abstract final class PrivacyNotice {
     PrivacyConsentCheckItem(
       id: 'location',
       label: '위치 정보(GPS) 수집·이용',
-      required: true,
+      required: false,
     ),
     PrivacyConsentCheckItem(
       id: 'analytics',
@@ -86,7 +87,7 @@ abstract final class PrivacyNotice {
       purpose: '매장 인근 제보 확인, 지도·길찾기 기능 제공, 혼잡도 서비스 운영',
       retention:
           '제보·이용 목적 달성 후 즉시 파기, 서버에는 좌표가 포함된 제보 메타데이터로 저장될 수 있음',
-      required: true,
+      required: false,
     ),
     PrivacyCollectionItem(
       category: '서비스 이용 분석',
@@ -110,9 +111,9 @@ abstract final class PrivacyNotice {
 
   static const rightsNotice =
       '귀하는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. '
-      '다만, 필수 항목(위치 정보·서비스 이용 기록 등)에 대한 동의를 '
+      '다만, 필수 항목(서비스 이용 기록 등)에 대한 동의를 '
       '거부하실 경우 회원 가입 및 서비스 이용이 제한될 수 있습니다.\n\n'
-      '선택 항목(알림)은 기기 설정 또는 앱 내 설정에서 '
+      '선택 항목(위치 정보·알림)은 기기 설정 또는 앱 내 설정에서 '
       '언제든지 변경·철회할 수 있습니다.\n\n'
       '개인정보 열람·정정·삭제·처리정지 요청은 앱 내 '
       '「문의·피드백」 또는 운영자 이메일을 통해 요청하실 수 있습니다.';

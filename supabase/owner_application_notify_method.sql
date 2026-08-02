@@ -93,8 +93,9 @@ revoke all on function public.submit_owner_application(uuid, text, text, jsonb, 
 grant execute on function public.submit_owner_application(uuid, text, text, jsonb, boolean, boolean) to authenticated;
 
 -- ── 3. 승인 시 앱 푸시 발송 트리거용 webhook 호출 ──
--- notify_community_comment_push와 동일한 패턴: DB 함수에서 net.http_post로
--- Edge Function을 호출하고, 실패해도 승인 자체는 롤백되지 않도록 예외를 삼킨다.
+-- notify_community_comment_push와 동일한 패턴: push_edge_runtime_config 테이블에서
+-- URL/시크릿을 읽어 net.http_post로 Edge Function을 호출하고, 실패해도 승인 자체는
+-- 롤백되지 않도록 예외를 삼킨다. (app.settings.* GUC는 실제 운영에 설정돼 있지 않음)
 create or replace function public.admin_review_owner_application(
   p_application_id uuid,
   p_approve        boolean,
@@ -147,9 +148,11 @@ begin
 
     if v_app.notify_push then
       begin
-        edge_url := nullif(current_setting('app.settings.edge_community_push_url', true), '');
-        edge_secret := nullif(current_setting('app.settings.edge_push_secret', true), '');
-        if edge_url is not null then
+        select c.community_url, c.push_secret
+          into edge_url, edge_secret
+        from public.push_edge_runtime_config c
+        where c.id = 1;
+        if edge_url is not null and edge_secret is not null then
           perform net.http_post(
             url := edge_url,
             headers := jsonb_build_object(

@@ -46,6 +46,14 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  String? _validateNewPassword(String pw) {
+    if (pw.length < 8) return '비밀번호는 8자 이상이어야 해요.';
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(pw);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(pw);
+    if (!hasLetter || !hasDigit) return '비밀번호는 영문과 숫자를 함께 사용해주세요.';
+    return null;
+  }
+
   Future<void> _submit() async {
     final email = _idCtrl.text.trim();
     final pw = _pwCtrl.text;
@@ -53,7 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_isLogin && !email.contains('@')) {
       setState(() => _error = '이메일 형식으로 입력해주세요.'); return;
     }
-    if (pw.length < 6) { setState(() => _error = '비밀번호는 6자 이상이어야 해요.'); return; }
+    if (_isLogin) {
+      if (pw.length < 6) { setState(() => _error = '비밀번호는 6자 이상이어야 해요.'); return; }
+    } else {
+      final pwError = _validateNewPassword(pw);
+      if (pwError != null) { setState(() => _error = pwError); return; }
+    }
 
     setState(() { _loading = true; _error = ''; });
     final provider = context.read<AppProvider>();
@@ -160,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 10),
                   _PasswordField(
                     controller: _pwCtrl,
-                    hint: '비밀번호 (6자 이상)',
+                    hint: _isLogin ? '비밀번호' : '비밀번호 (영문+숫자 8자 이상)',
                   ),
                   if (!_isLogin) ...[
                     const SizedBox(height: 10),

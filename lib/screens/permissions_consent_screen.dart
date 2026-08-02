@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_permissions.dart';
 import '../providers/app_provider.dart';
@@ -17,7 +16,6 @@ class PermissionsConsentScreen extends StatefulWidget {
 
 class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
   bool _loading = false;
-  bool _locationBlocked = false;
   late Map<String, bool> _agreed;
 
   @override
@@ -59,35 +57,18 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
 
   Future<void> _confirm() async {
     if (_loading || !_canProceed) return;
-    setState(() {
-      _loading = true;
-      _locationBlocked = false;
-    });
+    setState(() => _loading = true);
 
-    final ok =
-        await context.read<AppProvider>().completePermissionsConsent();
+    await context.read<AppProvider>().completePermissionsConsent(
+          requestLocation: _agreed['location'] == true,
+        );
 
     if (!mounted) return;
-    setState(() {
-      _loading = false;
-      if (!ok) _locationBlocked = true;
-    });
-  }
-
-  Future<void> _openSettings() async {
-    await Geolocator.openAppSettings();
+    setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_locationBlocked) {
-      return _LocationBlockedView(
-        loading: _loading,
-        onRetry: _confirm,
-        onOpenSettings: _openSettings,
-      );
-    }
-
     final canProceed = _canProceed && !_loading;
 
     return Scaffold(
@@ -129,129 +110,6 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
               onConfirm: _confirm,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LocationBlockedView extends StatelessWidget {
-  const _LocationBlockedView({
-    required this.loading,
-    required this.onRetry,
-    required this.onOpenSettings,
-  });
-
-  final bool loading;
-  final VoidCallback onRetry;
-  final VoidCallback onOpenSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.location_off_outlined,
-                  size: 40,
-                  color: Color(0xFFEF4444),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                AppPermissions.blockedTitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                AppPermissions.blockedBody,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                  height: 1.65,
-                ),
-              ),
-              const SizedBox(height: 40),
-              GestureDetector(
-                onTap: loading ? null : onOpenSettings,
-                child: Container(
-                  height: 52,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '설정에서 권한 허용하기',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: loading ? null : onRetry,
-                child: Container(
-                  height: 52,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: loading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            '다시 시도',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-                  ],
-                ),
-              ),
-            );
-          },
         ),
       ),
     );

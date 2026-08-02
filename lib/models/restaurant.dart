@@ -43,6 +43,15 @@ class Restaurant {
   final DateTime? ownerUpdatedAt;
   /// DB is_active. 일반 앱 목록은 true 만 로드, 어드민은 false 포함 가능.
   final bool isActive;
+  /// 사장님이 직접 등록한 메뉴 사진 (최대 3장)
+  final List<String> menuPhotoUrls;
+  /// 대표사진(imageUrl) 출처. 'owner' | 'google' (기본값 'google')
+  final String imageSource;
+  /// 사장님이 대표사진을 처음 교체할 때 보존해둔 원본 구글 사진 URL.
+  /// 비어있으면 "구글맵 사진으로 되돌리기"를 보여줄 수 없음(보존값 없음).
+  final String googleImageUrl;
+  /// 사장님이 직접 입력한 매장 공지 (최대 500자)
+  final String ownerNotice;
 
   Restaurant({
     required this.id,
@@ -73,6 +82,10 @@ class Restaurant {
     this.createdAt,
     this.ownerUpdatedAt,
     this.isActive = true,
+    this.menuPhotoUrls = const [],
+    this.imageSource = 'google',
+    this.googleImageUrl = '',
+    this.ownerNotice = '',
   });
 
   Restaurant copyWith({
@@ -83,6 +96,13 @@ class Restaurant {
     String? crowdConfidence,
     bool? hasCrowdUpdate,
     double? distance,
+    String? imageUrl,
+    String? imageSource,
+    String? googleImageUrl,
+    List<String>? menuPhotoUrls,
+    List<MenuItem>? menu,
+    String? hours,
+    String? ownerNotice,
   }) =>
       Restaurant(
         id: id,
@@ -93,7 +113,7 @@ class Restaurant {
         address: address,
         status: status ?? this.status,
         updated: updated ?? this.updated,
-        imageUrl: imageUrl,
+        imageUrl: imageUrl ?? this.imageUrl,
         popularityScore: popularityScore,
         manualRank: manualRank,
         ownerId: ownerId,
@@ -102,10 +122,10 @@ class Restaurant {
         longitude: longitude,
         x: x,
         y: y,
-        hours: hours,
+        hours: hours ?? this.hours,
         hoursPeriods: hoursPeriods,
         reports: reports ?? Map.from(this.reports),
-        menu: menu,
+        menu: menu ?? this.menu,
         crowdBaseSource: crowdBaseSource ?? this.crowdBaseSource,
         crowdConfidence: crowdConfidence ?? this.crowdConfidence,
         hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
@@ -113,6 +133,10 @@ class Restaurant {
         createdAt: createdAt,
         ownerUpdatedAt: ownerUpdatedAt,
         isActive: isActive,
+        menuPhotoUrls: menuPhotoUrls ?? this.menuPhotoUrls,
+        imageSource: imageSource ?? this.imageSource,
+        googleImageUrl: googleImageUrl ?? this.googleImageUrl,
+        ownerNotice: ownerNotice ?? this.ownerNotice,
       );
 
   int get totalReports =>

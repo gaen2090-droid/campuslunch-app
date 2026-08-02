@@ -234,12 +234,12 @@ class AppProvider extends ChangeNotifier {
     );
   }
 
-  /// 사장님 모드: 0=제보, 1=커뮤니티, 2=마이. 일반 모드: 0=홈, 1=지도, 2=커뮤니티, 3=MY.
+  /// 사장님 모드: 0=제보, 1=매장관리, 2=커뮤니티, 3=마이. 일반 모드: 0=홈, 1=지도, 2=커뮤니티, 3=MY.
   int get homeTabIndex => hasOwnerTab ? 0 : 0;
 
-  int get communityTabIndex => hasOwnerTab ? 1 : 2;
+  int get communityTabIndex => hasOwnerTab ? 2 : 2;
 
-  int get myTabIndex => hasOwnerTab ? 2 : 3;
+  int get myTabIndex => hasOwnerTab ? 3 : 3;
 
   String? _pendingCommunityPostId;
   String? get pendingCommunityPostId => _pendingCommunityPostId;
@@ -1570,7 +1570,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setMainTabIndex(int index) {
-    final max = hasOwnerTab ? 2 : 3;
+    final max = 3;
     final next = index.clamp(0, max);
     if (_mainTabIndex == next) return;
     _mainTabIndex = next;
@@ -1612,6 +1612,10 @@ class AppProvider extends ChangeNotifier {
         type == 'community_like' ||
         type == 'community_moderation') {
       openCommunityFromPush(data['post_id'] as String?);
+      return;
+    }
+    if (type == 'owner_approved') {
+      openHomeFromPush();
       return;
     }
     openHomeFromPush(data['restaurant_id'] as String?);
@@ -1796,6 +1800,13 @@ class AppProvider extends ChangeNotifier {
       }
     }
 
+    // repo는 있는데 authUser만 없는 경우 — 세션이 만료/무효화된 상태.
+    // 서버에 반영되지 않으므로 로컬 오버라이드로 조용히 "성공" 처리하면 안 된다
+    // (제보는 성공한 것처럼 보이지만 최근 제보·홈 화면엔 끝내 반영되지 않는 유령 상태가 됨).
+    if (repo != null) {
+      return '로그인이 만료됐어요.\n다시 로그인해주세요.';
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final overridesJson = prefs.getString(_kOverrides);
     final overrides = overridesJson != null
@@ -1820,7 +1831,10 @@ class AppProvider extends ChangeNotifier {
 
   Future<Position?> _currentPosition() async {
     try {
-      final permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         return null;
@@ -2028,20 +2042,26 @@ class AppProvider extends ChangeNotifier {
     return await _postAppStage(prefs);
   }
 
-  /// OS 권한 요청(확인 버튼 시점만). 위치(필수) 거부 시 false.
-  /// 순서: 위치 → 주변 기기(Android만) → 알림
+  /// OS 권한 요청(확인 버튼 시점만). 위치는 선택 동의이며, 체크했을 때만 요청한다
+  /// (동의하지 않은 사람에게 OS 위치 팝업을 띄우지 않기 위함 — 위치정보법).
+  /// 거부/미동의 상태로도 앱 진입은 허용하고, 지도·길찾기·제보 등 위치가
+  /// 필요한 기능에서 그때그때 다시 요청한다.
+  /// 순서: 위치(동의 시만) → 주변 기기(Android만, 위치 동의 시만) → 알림
   ///
   /// iOS 「로컬 네트워크」팝업은 Flutter `flutter run` 디버그 연결이
   /// 앱 시작 시 띄우며, 이 메서드와 무관하다.
-  Future<bool> completePermissionsConsent() async {
+  Future<void> completePermissionsConsent({
+    required bool requestLocation,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     debugPrint('[Permissions] confirm tapped — requesting OS permissions');
 
-    final locationGranted = await requestLocationOsPermission();
-    debugPrint('[Permissions] location granted=$locationGranted');
-    if (!locationGranted) return false;
-
-    await DevicePermissionService.requestAndroidNearbyScanForLocation();
+    var locationGranted = false;
+    if (requestLocation) {
+      locationGranted = await requestLocationOsPermission();
+      debugPrint('[Permissions] location granted=$locationGranted');
+      await DevicePermissionService.requestAndroidNearbyScanForLocation();
+    }
 
     var pushGranted = false;
     try {
@@ -2055,7 +2075,7 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[Permissions] push: $e\n$st');
     }
 
-    _locationMode = true;
+    _locationMode = locationGranted;
     _notificationEnabled = pushGranted;
     _lunchPushEnabled = pushGranted;
     _dinnerPushEnabled = pushGranted;
@@ -2064,7 +2084,7 @@ class AppProvider extends ChangeNotifier {
     _newsPushEnabled = pushGranted;
 
     await prefs.setBool(_kPermissionsConsentSeen, true);
-    await prefs.setBool(_kLocation, true);
+    await prefs.setBool(_kLocation, locationGranted);
     await prefs.setBool(_kPush, pushGranted);
     await prefs.setBool(_kLunchPush, pushGranted);
     await prefs.setBool(_kDinnerPush, pushGranted);
@@ -2081,7 +2101,6 @@ class AppProvider extends ChangeNotifier {
 
     _stage = await _resolveStageAfterSplash(prefs);
     notifyListeners();
-    return true;
   }
 
   Future<void> completeLegalTermsConsent([Map<String, bool>? agreed]) async {
@@ -2597,6 +2616,142 @@ class AppProvider extends ChangeNotifier {
     } catch (e, st) {
       debugPrint('[releaseOwnerRestaurant] sync failed: $e\n$st');
       return '매장 삭제에 실패했어요.';
+    }
+  }
+
+  /// 사장님 매장 관리 공용 에러 매핑
+  String _ownerUpdateErrorMessage(Object e) {
+    if (e is PostgrestException) {
+      final msg = e.message.trim();
+      if (msg.isNotEmpty) return msg;
+    }
+    return '저장에 실패했어요. 잠시 후 다시 시도해주세요.';
+  }
+
+  /// 사장님 대표사진 변경 (Storage 업로드 실패 시 base64 폴백 없이 에러 반환)
+  Future<String?> ownerUpdateRestaurantPhoto(
+    String restaurantId, {
+    required Uint8List bytes,
+    required String ext,
+  }) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      final url = await repo.uploadOwnerPhoto(bytes, ext);
+      await repo.ownerUpdateRestaurant(
+        restaurantId,
+        imageUrl: url,
+        imageSource: 'owner',
+      );
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateRestaurantPhoto] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
+  /// 사장님이 직접 등록한 대표사진을 원래 구글맵 사진으로 되돌림
+  Future<String?> ownerRevertRestaurantPhotoToGoogle(String restaurantId) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      await repo.ownerUpdateRestaurant(restaurantId, imageSource: 'google');
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerRevertRestaurantPhotoToGoogle] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
+  /// 사장님 메뉴 사진(최대 3장) 저장. 기존 유지분(existingUrls) + 신규 업로드분(newImages) 병합.
+  Future<String?> ownerUpdateMenuPhotos(
+    String restaurantId, {
+    required List<String> existingUrls,
+    required List<({Uint8List bytes, String ext})> newImages,
+  }) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      final urls = List<String>.from(existingUrls);
+      for (final img in newImages) {
+        urls.add(await repo.uploadOwnerPhoto(img.bytes, img.ext));
+      }
+      await repo.ownerUpdateRestaurant(restaurantId, menuPhotoUrls: urls);
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateMenuPhotos] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
+  /// 사장님 대표 메뉴(이름+가격) 저장
+  Future<String?> ownerUpdateRestaurantMenu(
+    String restaurantId,
+    List<MenuItem> menu,
+  ) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      await repo.ownerUpdateRestaurant(restaurantId, menu: menu);
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateRestaurantMenu] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
+  /// 사장님 영업시간 저장 (구글 캐시된 요일별 시간은 서버에서 함께 무효화됨)
+  Future<String?> ownerUpdateRestaurantHours(
+    String restaurantId,
+    String hours,
+  ) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      await repo.ownerUpdateRestaurant(
+        restaurantId,
+        hours: hours,
+        hoursDisplay: hours,
+      );
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateRestaurantHours] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
+  /// 사장님 매장 공지(최대 500자) 저장
+  Future<String?> ownerUpdateRestaurantNotice(
+    String restaurantId,
+    String notice,
+  ) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    if (notice.length > 500) return '공지는 500자를 넘을 수 없어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      await repo.ownerUpdateRestaurant(restaurantId, ownerNotice: notice);
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateRestaurantNotice] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
     }
   }
 

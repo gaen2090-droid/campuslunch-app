@@ -25,6 +25,12 @@ export interface AdminRestaurant {
   hasCrowdUpdate: boolean;
   updated: number;
   isActive: boolean;
+  /** 사장님이 직접 등록한 메뉴 사진 (최대 3장) */
+  menuPhotoUrls?: string[];
+  /** 대표사진(imageUrl) 출처. 'owner' | 'google' */
+  imageSource?: string;
+  /** 사장님이 직접 입력한 매장 공지 (최대 500자) */
+  ownerNotice?: string;
 }
 
 export interface RecentCrowdReport {
@@ -49,4 +55,7 @@ export interface RestaurantFormData {
   google_place_id?: string;
   hours_display?: string;
   hours_periods?: Record<string, unknown>[];
+  menu_photo_urls?: string[];
+  image_source?: string;
+  owner_notice?: string;
 }

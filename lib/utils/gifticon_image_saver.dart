@@ -36,7 +36,7 @@ class GifticonImageSaver {
     } on GalException catch (e) {
       debugPrint('[GifticonImageSaver] GalException: $e');
       if (e.type == GalExceptionType.accessDenied) {
-        return '사진 앨범 접근 권한이 필요해요.\n설정에서 허용해 주세요.';
+        return '사진 앨범 접근 권한이 필요해요.\n휴대폰 설정에서 허용해 주세요.';
       }
       return '사진 저장에 실패했어요.';
     } catch (e, st) {
