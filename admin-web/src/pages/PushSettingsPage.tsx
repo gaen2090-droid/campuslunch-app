@@ -6,6 +6,7 @@ import {
   invokePushEdge,
   updatePushNotificationConfig,
 } from "../lib/adminApi";
+import { errorMessage } from "../lib/errors";
 import {
   DEFAULT_PUSH_CONFIG,
   EMPTY_PUSH_OPS,
@@ -119,7 +120,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       onReload();
       await reloadOps();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(errorMessage(err));
     } finally {
       setSavingSection(null);
     }
@@ -175,11 +176,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       }
       await reloadOps();
     } catch (err) {
-      setFormError(
-        err instanceof Error
-          ? `${label} 실패: ${err.message}`
-          : `${label} 실패: ${String(err)}`,
-      );
+      setFormError(`${label} 실패: ${errorMessage(err)}`);
     } finally {
       setActionBusy(null);
     }
@@ -213,7 +210,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       }
       await reloadOps();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(errorMessage(err));
     } finally {
       setNewsSending(false);
     }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Modal } from "../components/Modal";
 import { purgeAdminUserById } from "../lib/adminApi";
+import { errorMessage } from "../lib/errors";
 import { roleLabel, type AdminUser } from "../types/user";
 
 interface Props {
@@ -49,7 +50,7 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
       setDeleteTarget(null);
       onReload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setDeleteBusy(false);
     }

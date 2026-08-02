@@ -6,6 +6,7 @@ import {
   uploadGifticonImage,
 } from "../lib/adminApi";
 import { Modal } from "../components/Modal";
+import { errorMessage } from "../lib/errors";
 import {
   gifticonStatusLabel,
   parseGifticonCsv,
@@ -68,7 +69,7 @@ export function GifticonsPage({
       setShowForm(false);
       onReload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -89,7 +90,7 @@ export function GifticonsPage({
       setFormError(null);
       alert(`CSV로 기프티콘 ${inserted}건 등록했어요.`);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(errorMessage(err));
     } finally {
       setCsvBusy(false);
     }
@@ -104,7 +105,7 @@ export function GifticonsPage({
       setDeleteTarget(null);
       onReload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(errorMessage(err));
     } finally {
       setDeleteBusy(false);
     }

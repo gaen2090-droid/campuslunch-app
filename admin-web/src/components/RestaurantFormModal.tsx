@@ -7,6 +7,7 @@ import {
   uploadRestaurantImage,
 } from "../lib/adminApi";
 import type { AdminRestaurant, MenuItem, RestaurantFormData } from "../types/restaurant";
+import { errorMessage } from "../lib/errors";
 import { Modal } from "./Modal";
 
 interface Props {
@@ -110,7 +111,7 @@ export function RestaurantFormModal({
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSaving(false);
     }

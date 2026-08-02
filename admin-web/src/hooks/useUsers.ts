@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchAdminUsers } from "../lib/adminApi";
+import { errorMessage } from "../lib/errors";
 import type { AdminUser } from "../types/user";
 
 export function useUsers(enabled: boolean) {
@@ -14,7 +15,7 @@ export function useUsers(enabled: boolean) {
     try {
       setUsers(await fetchAdminUsers());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }

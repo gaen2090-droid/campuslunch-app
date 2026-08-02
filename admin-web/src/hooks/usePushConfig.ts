@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchPushNotificationConfig } from "../lib/adminApi";
+import { errorMessage } from "../lib/errors";
 import {
   DEFAULT_PUSH_CONFIG,
   type PushNotificationConfig,
@@ -17,7 +18,7 @@ export function usePushConfig(enabled: boolean) {
     try {
       setConfig(await fetchPushNotificationConfig());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
       setConfig(DEFAULT_PUSH_CONFIG);
     } finally {
       setLoading(false);
