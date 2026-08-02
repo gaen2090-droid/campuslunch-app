@@ -92,6 +92,12 @@ begin
   delete from public.user_push_tokens
   where token = trim(p_token) and user_id <> uid;
 
+  -- 같은 유저·같은 플랫폼의 예전 토큰(값이 바뀐 것) 제거 — 기기당 1개만 유지
+  delete from public.user_push_tokens
+  where user_id = uid
+    and platform = plat
+    and token <> trim(p_token);
+
   insert into public.user_push_tokens (user_id, token, platform, updated_at)
   values (uid, trim(p_token), plat, now())
   on conflict (user_id, token) do update
