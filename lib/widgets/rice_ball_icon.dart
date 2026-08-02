@@ -80,7 +80,7 @@ class AppLauncherIcon extends StatelessWidget {
   }
 }
 
-/// 스탬프 적립 화면 전용 — 브랜드 로고 교체와 무관하게 기존 주먹밥 캐릭터 유지.
+/// 스탬프 적립 화면 전용 아이콘.
 class StampRiceBallIcon extends StatelessWidget {
   final double size;
 
