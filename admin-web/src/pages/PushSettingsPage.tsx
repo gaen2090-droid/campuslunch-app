@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import {
+  cancelScheduledNewsPush,
+  createScheduledNewsPush,
   fetchPushNotificationConfig,
   fetchPushOpsSnapshot,
+  fetchScheduledNewsPush,
   invokeNewsPush,
   invokePushEdge,
   updatePushNotificationConfig,
@@ -16,7 +19,28 @@ import {
   type PeakPushSchedule,
   type PushNotificationConfig,
   type PushOpsSnapshot,
+  type ScheduledNewsPush,
 } from "../types/pushConfig";
+
+function toLocalDatetimeInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+function statusLabel(status: ScheduledNewsPush["status"]): string {
+  switch (status) {
+    case "pending":
+      return "대기중";
+    case "sent":
+      return "발송완료";
+    case "cancelled":
+      return "취소됨";
+    case "failed":
+      return "발송실패";
+  }
+}
 
 interface Props {
   config: PushNotificationConfig | null;
@@ -46,6 +70,11 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     sent: number;
     failed: number;
   } | null>(null);
+  const [scheduledList, setScheduledList] = useState<ScheduledNewsPush[]>([]);
+  const [scheduledLoading, setScheduledLoading] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (config) setForm(config);
@@ -64,6 +93,21 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
 
   useEffect(() => {
     void reloadOps();
+  }, []);
+
+  async function reloadScheduled() {
+    setScheduledLoading(true);
+    try {
+      setScheduledList(await fetchScheduledNewsPush());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setScheduledLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void reloadScheduled();
   }, []);
 
   function patch(partial: Partial<PushNotificationConfig>) {
@@ -215,6 +259,58 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       setFormError(errorMessage(err));
     } finally {
       setNewsSending(false);
+    }
+  }
+
+  async function scheduleNewsPush() {
+    const title = newsTitle.trim();
+    const body = newsBody.trim();
+    if (!title || !body) {
+      setFormError("소식 알림 제목/본문을 입력해주세요.");
+      return;
+    }
+    if (!scheduleAt) {
+      setFormError("발송 시각을 선택해주세요.");
+      return;
+    }
+    const at = new Date(scheduleAt);
+    if (Number.isNaN(at.getTime()) || at.getTime() <= Date.now()) {
+      setFormError("발송 시각은 현재보다 이후여야 해요.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `${at.toLocaleString("ko-KR")}에 소식 알림을 예약할까요?\n\n제목: ${title}\n본문: ${body}`,
+      )
+    ) {
+      return;
+    }
+    setScheduling(true);
+    setFormError(null);
+    setSuccess(null);
+    try {
+      await createScheduledNewsPush(title, body, at);
+      setSuccess("예약했어요. 지정한 시각에 자동으로 발송돼요.");
+      setScheduleAt("");
+      await reloadScheduled();
+    } catch (err) {
+      setFormError(errorMessage(err));
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  async function cancelScheduled(id: string) {
+    if (!window.confirm("이 예약을 취소할까요?")) return;
+    setCancellingId(id);
+    setFormError(null);
+    try {
+      await cancelScheduledNewsPush(id);
+      await reloadScheduled();
+    } catch (err) {
+      setFormError(errorMessage(err));
+    } finally {
+      setCancellingId(null);
     }
   }
 
@@ -606,8 +702,10 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               </label>
             </div>
             <p className="muted sm">
-              업데이트·이벤트 등 운영 소식을 소식 알림에 동의한 전체 유저에게 즉시
-              발송합니다. (별도 저장 없이 바로 나가는 발송이니 신중하게)
+              업데이트·이벤트 등 운영 소식을 소식 알림에 동의한 전체 유저에게
+              보냅니다. 아래 "전체 발송"은 즉시 나가고(별도 저장 없이 바로
+              나가는 발송이니 신중하게), 시각을 지정하면 그때 한 번만 자동
+              발송되는 예약도 가능해요.
             </p>
             <div className="community-fields">
               <label className="field">
@@ -658,6 +756,81 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 <span className="muted sm">
                   최근 발송 성공 {newsResult.sent} · 실패 {newsResult.failed}
                 </span>
+              )}
+            </div>
+
+            <div className="push-section-head row" style={{ marginTop: 16 }}>
+              <h4 style={{ margin: 0 }}>예약 발송 (일회성)</h4>
+            </div>
+            <div className="community-fields">
+              <label className="field">
+                <span className="field-label">발송 시각</span>
+                <input
+                  type="datetime-local"
+                  value={scheduleAt}
+                  min={toLocalDatetimeInputValue(new Date())}
+                  onChange={(e) => setScheduleAt(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="push-ops-actions">
+              <button
+                type="button"
+                className="btn primary sm"
+                disabled={
+                  scheduling || !form.newsFcmEnabled || !newsTitle.trim() ||
+                  !newsBody.trim() || !scheduleAt
+                }
+                onClick={() => void scheduleNewsPush()}
+              >
+                {scheduling ? "예약 중…" : "예약하기"}
+              </button>
+              {!form.newsFcmEnabled && (
+                <span className="muted sm">
+                  소식 FCM이 꺼져 있어 예약할 수 없어요.
+                </span>
+              )}
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              {scheduledLoading ? (
+                <p className="muted sm">불러오는 중…</p>
+              ) : scheduledList.length === 0 ? (
+                <p className="muted sm">예약된 소식 알림이 없어요.</p>
+              ) : (
+                <table className="push-schedule-table">
+                  <thead>
+                    <tr>
+                      <th>발송 시각</th>
+                      <th>제목</th>
+                      <th>본문</th>
+                      <th>상태</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scheduledList.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.scheduledAt.toLocaleString("ko-KR")}</td>
+                        <td>{item.title}</td>
+                        <td>{item.body}</td>
+                        <td>{statusLabel(item.status)}</td>
+                        <td>
+                          {item.status === "pending" && (
+                            <button
+                              type="button"
+                              className="btn sm"
+                              disabled={cancellingId === item.id}
+                              onClick={() => void cancelScheduled(item.id)}
+                            >
+                              {cancellingId === item.id ? "취소 중…" : "취소"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
           </section>

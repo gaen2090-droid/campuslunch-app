@@ -404,11 +404,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           Container(
             width: double.infinity,
             height: MediaQuery.of(context).padding.top,
-            color: const Color(0xFF000000),
+            color: const Color(0xFF2E6B1F),
           ),
           Container(
             width: double.infinity,
-            color: const Color(0xFF000000),
+            color: const Color(0xFF2E6B1F),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
             child: FittedBox(
               fit: BoxFit.scaleDown,

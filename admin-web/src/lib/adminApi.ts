@@ -12,10 +12,12 @@ import {
   DEFAULT_PUSH_CONFIG,
   parsePushConfig,
   parsePushOpsSnapshot,
+  parseScheduledNewsPush,
   schedulesToJson,
   EMPTY_PUSH_OPS,
   type PushNotificationConfig,
   type PushOpsSnapshot,
+  type ScheduledNewsPush,
 } from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
 import {
@@ -850,6 +852,34 @@ export async function invokeNewsPush(
     failed: Number(result.failed ?? 0),
     skipped: typeof result.skipped === "string" ? result.skipped : undefined,
   };
+}
+
+export async function fetchScheduledNewsPush(): Promise<ScheduledNewsPush[]> {
+  const { data, error } = await supabase.rpc("admin_list_scheduled_news_push");
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseScheduledNewsPush(row as Record<string, unknown>));
+}
+
+export async function createScheduledNewsPush(
+  title: string,
+  body: string,
+  scheduledAt: Date,
+): Promise<ScheduledNewsPush> {
+  const { data, error } = await supabase.rpc("admin_create_scheduled_news_push", {
+    p_title: title,
+    p_body: body,
+    p_scheduled_at: scheduledAt.toISOString(),
+  });
+  if (error) throw error;
+  return parseScheduledNewsPush(data as Record<string, unknown>);
+}
+
+export async function cancelScheduledNewsPush(id: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_cancel_scheduled_news_push", {
+    p_id: id,
+  });
+  if (error) throw error;
 }
 
 export async function fetchCommunityReports(): Promise<CommunityReport[]> {

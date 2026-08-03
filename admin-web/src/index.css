@@ -1596,6 +1596,24 @@ code {
   gap: 6px;
 }
 
+.push-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.push-schedule-table th,
+.push-schedule-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.push-schedule-table th {
+  color: #6b7280;
+  font-weight: 500;
+}
+
 @media (max-width: 800px) {
   .push-ops-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

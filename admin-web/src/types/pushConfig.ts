@@ -1,3 +1,25 @@
+export interface ScheduledNewsPush {
+  id: string;
+  title: string;
+  body: string;
+  scheduledAt: Date;
+  status: "pending" | "sent" | "cancelled" | "failed";
+  sentAt: Date | null;
+  createdAt: Date;
+}
+
+export function parseScheduledNewsPush(raw: Record<string, unknown>): ScheduledNewsPush {
+  return {
+    id: String(raw.id ?? ""),
+    title: String(raw.title ?? ""),
+    body: String(raw.body ?? ""),
+    scheduledAt: new Date(String(raw.scheduled_at ?? "")),
+    status: (String(raw.status ?? "pending") as ScheduledNewsPush["status"]),
+    sentAt: raw.sent_at ? new Date(String(raw.sent_at)) : null,
+    createdAt: new Date(String(raw.created_at ?? "")),
+  };
+}
+
 export interface PeakPushSchedule {
   id: string;
   label: string;
