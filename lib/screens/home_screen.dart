@@ -1009,7 +1009,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   // 위쪽 간격만 절반 수준으로 축소 — 필터줄/리스트 자체 패딩과
                   // 합쳐져 과하게 넓어 보인다는 피드백 반영.
                   topPadding: 10,
-                  subText: availableStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
+                  subText: availableStale ? '여기서부터는 30분 이상 지난 제보예요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1077,7 +1077,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '빈자리 조금 있어요',
                   dotColor: const Color(0xFFF59E0B),
                   onMore: () => goTo(RestaurantListMode.slightlyBusy),
-                  subText: slightlyBusyStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
+                  subText: slightlyBusyStale ? '여기서부터는 30분 이상 지난 제보예요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1185,7 +1185,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   title: '붐비고 있어요',
                   dotColor: const Color(0xFFEF4444),
                   onMore: () => goTo(RestaurantListMode.busy),
-                  subText: busyStale ? '여기서부터는 30분 이상 지난 제보예요. 이용에 참고해주세요.' : null,
+                  subText: busyStale ? '여기서부터는 30분 이상 지난 제보예요.' : null,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
