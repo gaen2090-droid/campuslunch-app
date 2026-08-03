@@ -226,7 +226,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
 
     if (_searching) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF111827)),
+        child: CircularProgressIndicator(color: Color(0xFF000000)),
       );
     }
 
@@ -272,7 +272,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
             children: [
               const Text(
                 '최근 검색어',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
               ),
               GestureDetector(
                 onTap: _clearRecentSearches,

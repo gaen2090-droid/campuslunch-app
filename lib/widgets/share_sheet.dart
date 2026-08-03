@@ -50,7 +50,7 @@ class _ShareSheet extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: const Color(0xFF000000),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -122,7 +122,7 @@ class _ShareSheet extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
               ),
             ),
             const SizedBox(height: 16),
@@ -190,7 +190,7 @@ class _ShareOption extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
             ),

@@ -141,6 +141,8 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       communityFcmEnabled: form.communityFcmEnabled,
       communityCommentTitleTemplate: form.communityCommentTitleTemplate,
       communityCommentBodyTemplate: form.communityCommentBodyTemplate,
+      communityReplyTitleTemplate: form.communityReplyTitleTemplate,
+      communityReplyBodyTemplate: form.communityReplyBodyTemplate,
     });
   }
 
@@ -549,6 +551,32 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 />
                 <span className="field-hint">
                   {previewCommunityTemplate(form.communityCommentBodyTemplate)}
+                </span>
+              </label>
+              <label className="field">
+                <span className="field-label">답글 제목</span>
+                <input
+                  type="text"
+                  value={form.communityReplyTitleTemplate}
+                  onChange={(e) =>
+                    patch({ communityReplyTitleTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityReplyTitleTemplate)}
+                </span>
+              </label>
+              <label className="field">
+                <span className="field-label">답글 본문</span>
+                <input
+                  type="text"
+                  value={form.communityReplyBodyTemplate}
+                  onChange={(e) =>
+                    patch({ communityReplyBodyTemplate: e.target.value })
+                  }
+                />
+                <span className="field-hint">
+                  {previewCommunityTemplate(form.communityReplyBodyTemplate)}
                 </span>
               </label>
             </div>

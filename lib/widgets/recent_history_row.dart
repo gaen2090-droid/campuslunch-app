@@ -43,7 +43,7 @@ class RecentHistoryRow extends StatelessWidget {
               child: Text(
                 entry.label,
                 style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                    fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

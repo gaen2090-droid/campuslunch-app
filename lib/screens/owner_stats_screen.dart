@@ -75,7 +75,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('확인', style: TextStyle(color: Color(0xFF111827))),
+            child: const Text('확인', style: TextStyle(color: Color(0xFF000000))),
           ),
         ],
       ),
@@ -92,7 +92,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -102,7 +102,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -119,7 +119,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF111827), Color(0xFF374151)],
+                  colors: [Color(0xFF000000), Color(0xFF374151)],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -153,7 +153,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
 
             const Text(
               '오늘',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
             ),
             const SizedBox(height: 10),
             Row(
@@ -194,7 +194,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
 
             const Text(
               '누적',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
             ),
             const SizedBox(height: 10),
             Row(
@@ -317,7 +317,7 @@ class _StatTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w900,
-              color: valueColor ?? const Color(0xFF111827),
+              color: valueColor ?? const Color(0xFF000000),
             ),
           ),
         ],

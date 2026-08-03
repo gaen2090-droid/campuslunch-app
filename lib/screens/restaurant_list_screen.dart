@@ -230,7 +230,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
     switch (widget.mode) {
       case RestaurantListMode.available: return const Color(0xFF4C9C2A);
       case RestaurantListMode.slightlyBusy: return const Color(0xFFF59E0B);
-      case RestaurantListMode.stamp: return const Color(0xFF111827);
+      case RestaurantListMode.stamp: return const Color(0xFF000000);
       case RestaurantListMode.busy: return const Color(0xFFEF4444);
       case RestaurantListMode.closed: return const Color(0xFF9CA3AF);
     }
@@ -239,7 +239,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   Color get _titleColor {
     switch (widget.mode) {
       case RestaurantListMode.closed: return const Color(0xFF9CA3AF);
-      default: return const Color(0xFF111827);
+      default: return const Color(0xFF000000);
     }
   }
 
@@ -287,7 +287,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: const Icon(Icons.arrow_back_ios_new,
-                              size: 18, color: Color(0xFF111827)),
+                              size: 18, color: Color(0xFF000000)),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -334,10 +334,10 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
-                                color: _bookmarkOnly ? const Color(0xFF111827) : Colors.white,
+                                color: _bookmarkOnly ? const Color(0xFF000000) : Colors.white,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                    color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+                                    color: _bookmarkOnly ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -353,7 +353,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                   Icon(
                                     _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                                     size: 14,
-                                    color: _bookmarkOnly ? Colors.white : const Color(0xFF111827),
+                                    color: _bookmarkOnly ? Colors.white : const Color(0xFF000000),
                                   ),
                                 ],
                               ),
@@ -452,7 +452,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
               // ── 콘텐츠 ──
               Expanded(
                 child: RefreshIndicator(
-                    color: const Color(0xFF111827),
+                    color: const Color(0xFF000000),
                     onRefresh: () => provider.refreshRestaurants(),
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(0, 12, 0, 100),
@@ -499,7 +499,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                             child: Center(
                               child: loading
                                   ? const CircularProgressIndicator(
-                                      color: Color(0xFF111827))
+                                      color: Color(0xFF000000))
                                   : loadFailed
                                       ? LoadErrorView(
                                           onRetry: () =>

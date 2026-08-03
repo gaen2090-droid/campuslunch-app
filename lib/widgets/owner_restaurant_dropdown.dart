@@ -87,7 +87,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
                       fontFamily: 'Pretendard',
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                       letterSpacing: -0.8,
                     ),
                     maxLines: 1,
@@ -97,7 +97,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
                 const SizedBox(width: 4),
                 Transform.translate(
                   offset: Offset(0, arrowOffsetY),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF111827)),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000000)),
                 ),
               ],
             ),
@@ -114,7 +114,7 @@ class OwnerRestaurantDropdown extends StatelessWidget {
             size: 24,
             color: onSettingsTap == null
                 ? Colors.transparent
-                : const Color(0xFF111827),
+                : const Color(0xFF000000),
           ),
         ),
       ],
@@ -193,7 +193,7 @@ class _RestaurantSheetState extends State<_RestaurantSheet> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
             ),
@@ -247,11 +247,11 @@ class _RestaurantSheetState extends State<_RestaurantSheet> {
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: isSelected
-                                  ? const Color(0xFF111827)
+                                  ? const Color(0xFF000000)
                                   : const Color(0xFF6B7280),
                             )),
                         trailing: isSelected
-                            ? const Icon(Icons.check, color: Color(0xFF111827))
+                            ? const Icon(Icons.check, color: Color(0xFF000000))
                             : null,
                         onTap: () {
                           widget.onSelect(r);

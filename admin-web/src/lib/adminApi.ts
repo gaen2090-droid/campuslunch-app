@@ -713,6 +713,8 @@ export async function updatePushNotificationConfig(
       p_community_comment_title_template: config.communityCommentTitleTemplate,
       p_community_comment_body_template: config.communityCommentBodyTemplate,
       p_news_fcm_enabled: config.newsFcmEnabled,
+      p_community_reply_title_template: config.communityReplyTitleTemplate,
+      p_community_reply_body_template: config.communityReplyBodyTemplate,
     },
   );
   if (error) throw error;

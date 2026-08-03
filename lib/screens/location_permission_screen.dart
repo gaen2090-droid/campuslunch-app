@@ -33,7 +33,7 @@ Future<void> showLocationPermissionDialog(
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -64,7 +64,7 @@ Future<void> showLocationPermissionDialog(
                       height: 48,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Center(
@@ -140,7 +140,7 @@ class LocationPermissionScreen extends StatelessWidget {
                     height: 48,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111827),
+                      color: const Color(0xFF000000),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Center(

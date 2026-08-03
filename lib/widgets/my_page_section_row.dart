@@ -40,7 +40,7 @@ class MyPageSectionRow extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
             ),

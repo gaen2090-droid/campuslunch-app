@@ -46,7 +46,7 @@ class CommunityPostCard extends StatelessWidget {
                             child: Text(
                               post.nickname,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
                             ),
                           ),
                           if (post.isAuthorOwner) ...[

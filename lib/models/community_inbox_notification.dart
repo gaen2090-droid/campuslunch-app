@@ -1,6 +1,7 @@
-/// 커뮤니티 인박스 (댓글 + 좋아요 + 관리자 삭제 알림)
+/// 커뮤니티 인박스 (댓글 + 답글 + 좋아요 + 관리자 삭제 알림)
 enum CommunityInboxKind {
   comment,
+  reply,
   like,
   adminPost,
   adminComment,
@@ -16,6 +17,7 @@ class CommunityInboxNotification {
   final String bodyText;
   final DateTime createdAt;
   final bool isRead;
+  final bool isCollection;
 
   const CommunityInboxNotification({
     required this.kind,
@@ -26,11 +28,16 @@ class CommunityInboxNotification {
     required this.bodyText,
     required this.createdAt,
     required this.isRead,
+    this.isCollection = false,
   });
 
-  factory CommunityInboxNotification.fromMap(Map<String, dynamic> map) {
+  factory CommunityInboxNotification.fromMap(
+    Map<String, dynamic> map, {
+    bool isCollection = false,
+  }) {
     final kindRaw = map['kind'] as String? ?? 'comment';
     final kind = switch (kindRaw) {
+      'reply' => CommunityInboxKind.reply,
       'like' => CommunityInboxKind.like,
       'admin_post' => CommunityInboxKind.adminPost,
       'admin_comment' => CommunityInboxKind.adminComment,
@@ -50,6 +57,7 @@ class CommunityInboxNotification {
           '',
       createdAt: DateTime.parse(map['created_at'] as String),
       isRead: map['is_read'] as bool? ?? false,
+      isCollection: isCollection,
     );
   }
 
@@ -63,6 +71,7 @@ class CommunityInboxNotification {
       bodyText: bodyText,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
+      isCollection: isCollection,
     );
   }
 
@@ -71,8 +80,11 @@ class CommunityInboxNotification {
       kind == CommunityInboxKind.adminComment ||
       kind == CommunityInboxKind.adminCollection;
 
-  String get headlineSuffix =>
-      kind == CommunityInboxKind.like ? '님이 좋아요를 눌렀어요' : '님이 댓글을 남겼어요';
+  String get headlineSuffix => switch (kind) {
+        CommunityInboxKind.like => '님이 좋아요를 눌렀어요',
+        CommunityInboxKind.reply => '님이 답글을 남겼어요',
+        _ => '님이 댓글을 남겼어요',
+      };
 
   String get adminHeadline => switch (kind) {
         CommunityInboxKind.adminPost => '운영정책 위반으로 내 글이 삭제됐어요.',

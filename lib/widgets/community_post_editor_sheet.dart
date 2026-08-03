@@ -156,7 +156,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -166,7 +166,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
             fontFamily: 'Pretendard',
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -256,13 +256,29 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     ),
                     const SizedBox(width: 8),
                     if (_selectedRestaurant != null)
-                      Expanded(
-                        child: Chip(
-                          label: Text(
-                            _selectedRestaurant!.name,
-                            overflow: TextOverflow.ellipsis,
+                      Flexible(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickRestaurant,
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF3F4F6),
                           ),
-                          onDeleted: () => setState(() => _selectedRestaurant = null),
+                          icon: const Icon(Icons.storefront_outlined, size: 18),
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _selectedRestaurant!.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              GestureDetector(
+                                onTap: () => setState(() => _selectedRestaurant = null),
+                                child: const Icon(Icons.close, size: 16),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     else
@@ -280,7 +296,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     height: 52,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111827),
+                      color: const Color(0xFF000000),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(

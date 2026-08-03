@@ -250,6 +250,15 @@ class AppProvider extends ChangeNotifier {
     return id;
   }
 
+  String? _pendingCollectionId;
+  String? get pendingCollectionId => _pendingCollectionId;
+
+  String? consumePendingCollectionId() {
+    final id = _pendingCollectionId;
+    _pendingCollectionId = null;
+    return id;
+  }
+
   bool get hasPendingAppLink => _pendingAppLink != null;
 
   bool get locationMode => _locationMode;
@@ -1602,6 +1611,15 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void openCollectionFromPush(String? collectionId) {
+    debugPrint('[AppProvider] openCollectionFromPush collectionId=$collectionId');
+    _mainTabIndex = communityTabIndex;
+    if (collectionId != null && collectionId.isNotEmpty) {
+      _pendingCollectionId = collectionId;
+    }
+    notifyListeners();
+  }
+
   void handleRemotePushData(Map<String, dynamic> data) {
     final type = data['type'] as String?;
     if (type == 'config_refresh') {
@@ -1612,6 +1630,10 @@ class AppProvider extends ChangeNotifier {
         type == 'community_like' ||
         type == 'community_moderation') {
       openCommunityFromPush(data['post_id'] as String?);
+      return;
+    }
+    if (type == 'collection_reply') {
+      openCollectionFromPush(data['collection_id'] as String?);
       return;
     }
     if (type == 'owner_approved') {

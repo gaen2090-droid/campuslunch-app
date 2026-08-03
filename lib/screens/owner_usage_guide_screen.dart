@@ -194,7 +194,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                             width: active ? 22 : 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+                              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -208,7 +208,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -257,7 +257,7 @@ class _GuidePageView extends StatelessWidget {
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             height: 1.3,
             letterSpacing: -0.6,
           ),
@@ -333,13 +333,13 @@ class _OwnerReportMockup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                     letterSpacing: -0.8,
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF111827)),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000000)),
             ],
           ),
           const SizedBox(height: 12),
@@ -412,7 +412,7 @@ class _OwnerReportMockup extends StatelessWidget {
               children: [
                 const Text(
                   '지금 몇 명까지 입장 가능한가요?',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -428,7 +428,7 @@ class _OwnerReportMockup extends StatelessWidget {
                     children: [
                       Text(
                         '8',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
                       ),
                       Text(
                         ' 명',
@@ -466,16 +466,16 @@ class _OwnerCommunityMockup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                     letterSpacing: -0.8,
                   ),
                 ),
               ),
-              Icon(Icons.search, color: Color(0xFF111827), size: 18),
+              Icon(Icons.search, color: Color(0xFF000000), size: 18),
               SizedBox(width: 10),
-              Icon(Icons.notifications_outlined, color: Color(0xFF111827), size: 18),
+              Icon(Icons.notifications_outlined, color: Color(0xFF000000), size: 18),
               SizedBox(width: 10),
-              Icon(Icons.menu, color: Color(0xFF111827), size: 18),
+              Icon(Icons.menu, color: Color(0xFF000000), size: 18),
             ],
           ),
           const SizedBox(height: 12),
@@ -490,7 +490,7 @@ class _OwnerCommunityMockup extends StatelessWidget {
             children: const [
               Text(
                 '$_demoRestaurantName 사장님',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
               ),
               SizedBox(width: 4),
               OwnerBadge(),
@@ -553,7 +553,7 @@ class _MockSegmentTab extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
               width: active ? 2 : 1,
             ),
           ),
@@ -564,7 +564,7 @@ class _MockSegmentTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-            color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+            color: active ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
           ),
         ),
       ),
@@ -586,11 +586,11 @@ class _OwnerStatsMockup extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.arrow_back_ios_new, size: 14, color: Color(0xFF111827)),
+              Icon(Icons.arrow_back_ios_new, size: 14, color: Color(0xFF000000)),
               SizedBox(width: 8),
               Text(
                 '통계',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF000000)),
               ),
             ],
           ),
@@ -602,7 +602,7 @@ class _OwnerStatsMockup extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF111827), Color(0xFF374151)],
+                colors: [Color(0xFF000000), Color(0xFF374151)],
               ),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -667,7 +667,7 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
           ),
         ],
       ),

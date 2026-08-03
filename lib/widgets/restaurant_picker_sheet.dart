@@ -66,7 +66,7 @@ class _RestaurantPickerSheetState extends State<RestaurantPickerSheet> {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                 ),
                 const Spacer(),

@@ -230,7 +230,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                     : Icons.bookmark_border,
                                 size: 16,
                                 color: isBookmarked
-                                    ? const Color(0xFF111827)
+                                    ? const Color(0xFF000000)
                                     : const Color(0xFF6B7280),
                               ),
                             ),
@@ -269,7 +269,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
+                                color: Color(0xFF000000),
                                 letterSpacing: -0.96,
                                 height: 1.15,
                               ),
@@ -448,7 +448,7 @@ class _OwnerNoticeBanner extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                   ),
                 ],
@@ -534,7 +534,7 @@ class _MenuSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
               ),
             ),
             const SizedBox(height: 10),
@@ -598,10 +598,10 @@ class _ActionButtonBar extends StatelessWidget {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: showReportButton ? Colors.white : const Color(0xFF111827),
+          color: showReportButton ? Colors.white : const Color(0xFF000000),
           borderRadius: BorderRadius.circular(14),
           border: showReportButton
-              ? Border.all(color: const Color(0xFF111827), width: 1.5)
+              ? Border.all(color: const Color(0xFF000000), width: 1.5)
               : null,
         ),
         child: Row(
@@ -609,7 +609,7 @@ class _ActionButtonBar extends StatelessWidget {
           children: [
             Icon(Icons.navigation_outlined,
                 size: 15,
-                color: showReportButton ? const Color(0xFF111827) : Colors.white),
+                color: showReportButton ? const Color(0xFF000000) : Colors.white),
             const SizedBox(width: 5),
             Text(
               '길찾기',
@@ -617,7 +617,7 @@ class _ActionButtonBar extends StatelessWidget {
                 fontFamily: 'Pretendard',
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: showReportButton ? const Color(0xFF111827) : Colors.white,
+                color: showReportButton ? const Color(0xFF000000) : Colors.white,
               ),
             ),
           ],
@@ -639,7 +639,7 @@ class _ActionButtonBar extends StatelessWidget {
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF111827),
+                          color: const Color(0xFF000000),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Row(
@@ -699,7 +699,7 @@ class _RecentReportsSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
               ),
             ),
             const SizedBox(height: 10),

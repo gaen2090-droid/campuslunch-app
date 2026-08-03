@@ -298,7 +298,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+                color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
                 width: active ? 2 : 1,
               ),
             ),
@@ -309,7 +309,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
             ),
           ),
         ),
@@ -404,11 +404,11 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           Container(
             width: double.infinity,
             height: MediaQuery.of(context).padding.top,
-            color: const Color(0xFF111827),
+            color: const Color(0xFF000000),
           ),
           Container(
             width: double.infinity,
-            color: const Color(0xFF111827),
+            color: const Color(0xFF000000),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -557,10 +557,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: _bookmarkOnly ? const Color(0xFF111827) : Colors.white,
+                            color: _bookmarkOnly ? const Color(0xFF000000) : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: _bookmarkOnly ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+                                color: _bookmarkOnly ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -576,7 +576,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                               Icon(
                                 _bookmarkOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                                 size: 14,
-                                color: _bookmarkOnly ? Colors.white : const Color(0xFF111827),
+                                color: _bookmarkOnly ? Colors.white : const Color(0xFF000000),
                               ),
                             ],
                           ),
@@ -720,7 +720,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             children: [
               const Text(
                 '최근',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF000000)),
               ),
               GestureDetector(
                 onTap: () async {
@@ -781,7 +781,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827)),
+                    color: Color(0xFF000000)),
               ),
               Text(
                 '${results.length}곳',
@@ -796,7 +796,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         if (results.isEmpty)
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF111827),
+              color: const Color(0xFF000000),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView(
                 children: [
@@ -818,7 +818,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         else
           Expanded(
             child: RefreshIndicator(
-              color: const Color(0xFF111827),
+              color: const Color(0xFF000000),
               onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
@@ -915,7 +915,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                                 fontFamily: 'Pretendard',
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827))),
+                                color: Color(0xFF000000))),
                       ),
                     ],
                   ),
@@ -975,7 +975,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     return GestureDetector(
       onTap: () { if (_openDropdown != null) setState(() => _openDropdown = null); },
       child: RefreshIndicator(
-        color: const Color(0xFF111827),
+        color: const Color(0xFF000000),
         onRefresh: () => context.read<AppProvider>().refreshRestaurants(),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
@@ -986,7 +986,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
                 child: Center(
                   child: loading
-                      ? const CircularProgressIndicator(color: Color(0xFF111827))
+                      ? const CircularProgressIndicator(color: Color(0xFF000000))
                       : LoadErrorView(
                           onRetry: () => context.read<AppProvider>().refreshRestaurants()),
                 ),
@@ -1132,7 +1132,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 children: [
                   sectionHeader(
                     title: '혼잡도를 알려주세요',
-                    dotColor: const Color(0xFF111827),
+                    dotColor: const Color(0xFF000000),
                     onMore: () => goTo(RestaurantListMode.stamp),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1156,7 +1156,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        crowdBadge('제보필요', const Color(0xFFE5E7EB), const Color(0xFF111827)),
+                        crowdBadge('제보필요', const Color(0xFFE5E7EB), const Color(0xFF000000)),
                       ],
                     ),
                   ),
@@ -1286,7 +1286,7 @@ class _SectionButton extends StatelessWidget {
           color: bgColor ?? (highlighted ? const Color(0xFFF3F4F6) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: highlighted ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+              color: highlighted ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withAlpha(8),
@@ -1316,7 +1316,7 @@ class _SectionButton extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827))),
+                      color: Color(0xFF000000))),
             ),
             Text('$count',
                 style: const TextStyle(
@@ -1342,7 +1342,7 @@ class CrowdLevelInfoPopup extends StatelessWidget {
     const items = [
       CrowdLevelInfo(status: '여유로움', description: '바로 앉을 수 있어요'),
       CrowdLevelInfo(status: '약간혼잡', description: '빈자리 조금 있어요'),
-      CrowdLevelInfo(status: '자리없음', description: '조금 기다려야 해요'),
+      CrowdLevelInfo(status: '자리없음', description: '기다려야 해요'),
     ];
 
     return Stack(
@@ -1597,7 +1597,7 @@ class NeedsReportCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1622,7 +1622,7 @@ class NeedsReportCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
             ),
@@ -1646,10 +1646,10 @@ class HomeFilterIconButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF111827) : Colors.white,
+          color: active ? const Color(0xFF000000) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1767,7 +1767,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF000000))),
               ),
               if (_hasActive)
                 GestureDetector(
@@ -1823,10 +1823,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF111827) : Colors.white,
+                    color: on ? const Color(0xFF000000) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
@@ -1873,10 +1873,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF111827) : Colors.white,
+                    color: on ? const Color(0xFF000000) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
@@ -1923,10 +1923,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF111827) : Colors.white,
+                    color: on ? const Color(0xFF000000) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
@@ -1949,7 +1949,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
               height: 52,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF111827),
+                color: const Color(0xFF000000),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
@@ -1980,10 +1980,10 @@ class HomeCafeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF111827) : Colors.white,
+          color: active ? const Color(0xFF000000) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2029,10 +2029,10 @@ class HomeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF111827) : Colors.white,
+          color: on ? const Color(0xFF000000) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF111827) : const Color(0xFFE5E7EB)),
+              color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2116,7 +2116,7 @@ class HomeDropdownGrid extends StatelessWidget {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
                                   color: on
-                                      ? const Color(0xFF111827)
+                                      ? const Color(0xFF000000)
                                       : const Color(0xFF374151),
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -2126,7 +2126,7 @@ class HomeDropdownGrid extends StatelessWidget {
                               const Padding(
                                 padding: EdgeInsets.only(left: 4),
                                 child: Icon(Icons.check,
-                                    size: 14, color: Color(0xFF111827)),
+                                    size: 14, color: Color(0xFF000000)),
                               ),
                           ],
                         ),
@@ -2241,7 +2241,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                     style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF000000))),
               ),
               if (!widget.multiSelect
                   ? !_selected.contains(widget.items.first)
@@ -2294,10 +2294,10 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                              color: on ? const Color(0xFF111827) : const Color(0xFF6B7280))),
+                              color: on ? const Color(0xFF000000) : const Color(0xFF6B7280))),
                     ),
                     if (on)
-                      const Icon(Icons.check_rounded, size: 18, color: Color(0xFF111827)),
+                      const Icon(Icons.check_rounded, size: 18, color: Color(0xFF000000)),
                   ],
                 ),
               ),
@@ -2350,7 +2350,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                     child: Container(
                       height: 52,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Center(

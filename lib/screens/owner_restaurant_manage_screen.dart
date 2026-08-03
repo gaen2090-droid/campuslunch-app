@@ -125,7 +125,7 @@ class _OwnerRestaurantManageScreenState
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827),
+                                  color: Color(0xFF000000),
                                 ),
                               ),
                             ),
@@ -265,7 +265,7 @@ class _Toast extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
+        color: const Color(0xFF000000),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -306,7 +306,7 @@ class _SectionCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: Color(0xFF000000),
             ),
           ),
           if (subtitle != null) ...[
@@ -338,7 +338,7 @@ class _SaveButton extends StatelessWidget {
         width: double.infinity,
         height: 44,
         decoration: BoxDecoration(
-          color: enabled ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+          color: enabled ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -482,7 +482,7 @@ class _MainPhotoSectionState extends State<_MainPhotoSection> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
+                          color: Color(0xFF000000),
                         ),
                       ),
                     ),
@@ -951,7 +951,7 @@ class _HoursSectionState extends State<_HoursSection> {
               Checkbox(
                 value: _alwaysOpen,
                 onChanged: (v) => setState(() => _alwaysOpen = v ?? false),
-                activeColor: const Color(0xFF111827),
+                activeColor: const Color(0xFF000000),
               ),
               const Text('24시간 영업', style: TextStyle(fontSize: 13)),
             ],

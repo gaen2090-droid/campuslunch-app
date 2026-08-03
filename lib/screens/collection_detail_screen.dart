@@ -52,7 +52,7 @@ class CollectionDetailScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -62,7 +62,7 @@ class CollectionDetailScreen extends StatelessWidget {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),

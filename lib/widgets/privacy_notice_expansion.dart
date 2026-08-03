@@ -33,7 +33,7 @@ class _PrivacyNoticeExpansionState extends State<PrivacyNoticeExpansion> {
                   const Icon(
                     Icons.privacy_tip_outlined,
                     size: 18,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                   const SizedBox(width: 8),
                   const Expanded(
@@ -148,7 +148,7 @@ class _CollectionBlock extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: item.required
-                        ? const Color(0xFF111827)
+                        ? const Color(0xFF000000)
                         : const Color(0xFF9CA3AF),
                   ),
                 ),

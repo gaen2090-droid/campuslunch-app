@@ -225,7 +225,7 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('최근',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF111827))),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF000000))),
               GestureDetector(
                 onTap: _clearHistory,
                 child: const Text('전체삭제',

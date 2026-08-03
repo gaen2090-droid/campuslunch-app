@@ -14,6 +14,8 @@ type Cfg = {
   community_comment_body_template?: string;
   community_like_title_template?: string;
   community_like_body_template?: string;
+  community_reply_title_template?: string;
+  community_reply_body_template?: string;
 };
 
 function formatTemplate(
@@ -29,6 +31,8 @@ function formatTemplate(
 
 type Payload =
   | { event: "comment"; commentId: string }
+  | { event: "reply"; commentId: string }
+  | { event: "collection_reply"; commentId: string }
   | { event: "like"; postId: string; likerId: string }
   | { event: "moderation_delete"; kind: "post" | "comment"; userId: string }
   | { event: "owner_approved"; userId: string; restaurantId: string };
@@ -50,6 +54,16 @@ function extractPayload(body: Record<string, unknown>): Payload | null {
     const restaurantId = String(body.restaurant_id ?? "");
     if (!userId || !restaurantId) return null;
     return { event: "owner_approved", userId, restaurantId };
+  }
+
+  // DB 트리거가 event를 명시하는 경우(reply/collection_reply) — 폴백보다 먼저 처리
+  if (eventRaw === "reply" || eventRaw === "collection_reply") {
+    const commentId =
+      typeof body.comment_id === "string"
+        ? body.comment_id
+        : (record && typeof record.id === "string" ? record.id : null);
+    if (!commentId) return null;
+    return { event: eventRaw, commentId };
   }
 
   // Database webhook: INSERT on community_comments
@@ -76,6 +90,11 @@ function extractPayload(body: Record<string, unknown>): Payload | null {
     return { event: "like", postId, likerId };
   }
 
+  // event가 'comment'로 명시됐거나(레거시), event 없이 comment_id만 온 경우(Database webhook)만 폴백.
+  // 그 외 알 수 없는 event 문자열은 조용히 comment로 흡수되지 않도록 여기서 차단한다.
+  if (eventRaw !== undefined && eventRaw !== "comment") {
+    return null;
+  }
   const commentId =
     typeof body.comment_id === "string"
       ? body.comment_id
@@ -262,6 +281,108 @@ Deno.serve(async (req) => {
           data: {
             type: "community_comment",
             post_id: String(row.post_id),
+            comment_id: payload.commentId,
+          },
+        });
+        if (result.ok) sent++;
+        else {
+          failed++;
+          if (
+            result.status === 404 ||
+            result.body.includes("UNREGISTERED") ||
+            result.body.includes("NOT_FOUND")
+          ) {
+            invalidTokens.push(row.token);
+          }
+        }
+      }
+    } else if (payload.event === "reply" && payload.commentId) {
+      const { data: recipients, error } = await supabase.rpc(
+        "list_community_reply_push_recipients",
+        { p_comment_id: payload.commentId },
+      );
+      if (error) throw error;
+      const list = (recipients ?? []) as {
+        user_id: string;
+        token: string;
+        post_id: string;
+        comment_preview: string;
+        nickname: string;
+      }[];
+
+      const titleTpl = cfg.community_reply_title_template ??
+        "{nickname}님이 답글을 남겼어요";
+      const bodyTpl = cfg.community_reply_body_template ?? "{content}";
+
+      for (const row of list) {
+        const title = formatTemplate(titleTpl, {
+          nickname: row.nickname,
+          content: row.comment_preview,
+          post_preview: row.comment_preview,
+        });
+        const text = formatTemplate(bodyTpl, {
+          nickname: row.nickname,
+          content: row.comment_preview,
+          post_preview: row.comment_preview,
+        });
+        const result = await sendFcmMessage(sa, access, {
+          token: row.token,
+          title,
+          body: text,
+          data: {
+            type: "community_comment",
+            post_id: String(row.post_id),
+            comment_id: payload.commentId,
+          },
+        });
+        if (result.ok) sent++;
+        else {
+          failed++;
+          if (
+            result.status === 404 ||
+            result.body.includes("UNREGISTERED") ||
+            result.body.includes("NOT_FOUND")
+          ) {
+            invalidTokens.push(row.token);
+          }
+        }
+      }
+    } else if (payload.event === "collection_reply" && payload.commentId) {
+      const { data: recipients, error } = await supabase.rpc(
+        "list_collection_reply_push_recipients",
+        { p_comment_id: payload.commentId },
+      );
+      if (error) throw error;
+      const list = (recipients ?? []) as {
+        user_id: string;
+        token: string;
+        collection_id: string;
+        comment_preview: string;
+        nickname: string;
+      }[];
+
+      const titleTpl = cfg.community_reply_title_template ??
+        "{nickname}님이 답글을 남겼어요";
+      const bodyTpl = cfg.community_reply_body_template ?? "{content}";
+
+      for (const row of list) {
+        const title = formatTemplate(titleTpl, {
+          nickname: row.nickname,
+          content: row.comment_preview,
+          post_preview: row.comment_preview,
+        });
+        const text = formatTemplate(bodyTpl, {
+          nickname: row.nickname,
+          content: row.comment_preview,
+          post_preview: row.comment_preview,
+        });
+        const result = await sendFcmMessage(sa, access, {
+          token: row.token,
+          title,
+          body: text,
+          data: {
+            type: "collection_reply",
+            collection_id: String(row.collection_id),
             comment_id: payload.commentId,
           },
         });

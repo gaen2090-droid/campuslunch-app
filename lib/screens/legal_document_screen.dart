@@ -49,7 +49,7 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -59,7 +59,7 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -69,7 +69,7 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF111827)),
+              child: CircularProgressIndicator(color: Color(0xFF000000)),
             );
           }
           if (snapshot.hasError || !snapshot.hasData) {
@@ -119,7 +119,7 @@ class _LegalMarkdownBody extends StatelessWidget {
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: Color(0xFF000000),
               height: 1.35,
             ),
           ),
@@ -134,7 +134,7 @@ class _LegalMarkdownBody extends StatelessWidget {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: Color(0xFF000000),
               height: 1.4,
             ),
           ),

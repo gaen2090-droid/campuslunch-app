@@ -82,7 +82,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: const Color(0xFF000000),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -100,7 +100,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
         backgroundColor: const Color(0xFFF3F8F0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -110,7 +110,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -124,14 +124,14 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                   )
                 : Icon(
                     Icons.download_rounded,
                     size: 22,
                     color: _hasImage
-                        ? const Color(0xFF111827)
+                        ? const Color(0xFF000000)
                         : const Color(0xFFD1D5DB),
                   ),
           ),
@@ -156,7 +156,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
                 height: 1.3,
               ),
             ),
@@ -170,7 +170,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                     ? const SizedBox(
                         height: 420,
                         child: Center(
-                          child: CircularProgressIndicator(color: Color(0xFF111827)),
+                          child: CircularProgressIndicator(color: Color(0xFF000000)),
                         ),
                       )
                     : (_freshImageUrl?.isNotEmpty == true
@@ -191,7 +191,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _hasImage && !_downloading
-                      ? const Color(0xFF111827)
+                      ? const Color(0xFF000000)
                       : const Color(0xFFE5E7EB),
                   borderRadius: BorderRadius.circular(16),
                 ),

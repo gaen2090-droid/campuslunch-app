@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/map_pin_painter.dart';
+
 class RiceBallIcon extends StatelessWidget {
   final double? size;
 
@@ -39,7 +41,7 @@ class RiceBallIcon extends StatelessWidget {
         errorBuilder: (_, __, ___) => Icon(
           Icons.rice_bowl_outlined,
           size: renderSize,
-          color: const Color(0xFF111827),
+          color: const Color(0xFF000000),
         ),
       ),
     );
@@ -73,39 +75,28 @@ class AppLauncherIcon extends StatelessWidget {
         errorBuilder: (_, __, ___) => Icon(
           Icons.rice_bowl_outlined,
           size: size,
-          color: const Color(0xFF111827),
+          color: const Color(0xFF000000),
         ),
       ),
     );
   }
 }
 
-/// 스탬프 적립 화면 전용 아이콘.
+/// 스탬프 적립 화면 전용 아이콘 — 지도 '제보필요' 마커와 같은 별 모양.
+/// 배지 원은 호출부 Container가 이미 그리므로 별만 그림.
 class StampRiceBallIcon extends StatelessWidget {
   final double size;
+  final Color color;
 
-  const StampRiceBallIcon({super.key, this.size = 22});
-
-  static const assetPath = 'assets/images/rice_ball.png';
+  const StampRiceBallIcon({super.key, this.size = 22, this.color = Colors.white});
 
   @override
   Widget build(BuildContext context) {
-    final cachePx = (size * MediaQuery.devicePixelRatioOf(context))
-        .round()
-        .clamp(48, 256);
-    return Image.asset(
-      assetPath,
+    return SizedBox(
       width: size,
       height: size,
-      fit: BoxFit.contain,
-      cacheWidth: cachePx,
-      cacheHeight: cachePx,
-      gaplessPlayback: true,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (_, __, ___) => Icon(
-        Icons.rice_bowl_outlined,
-        size: size,
-        color: const Color(0xFF5E8C4A),
+      child: CustomPaint(
+        painter: StarOnlyPainter(color: color),
       ),
     );
   }

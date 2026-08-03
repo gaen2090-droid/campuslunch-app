@@ -67,7 +67,7 @@ class MapMarkerIcons {
       return await _starMarkerBytesFromCanvas();
     } catch (e, st) {
       debugPrint('[MapMarkerIcons] canvas star failed, using fallback: $e\n$st');
-      return _fallbackPinPng(const Color(0xFF111827));
+      return _fallbackPinPng(const Color(0xFF000000));
     }
   }
 

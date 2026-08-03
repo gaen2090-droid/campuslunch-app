@@ -66,7 +66,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -76,7 +76,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -98,7 +98,7 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.fetchMyReward(),
-        color: const Color(0xFF111827),
+        color: const Color(0xFF000000),
         child: provider.rewardLoadFailed && gifticons.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -290,7 +290,7 @@ class _GifticonTileState extends State<_GifticonTile> {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

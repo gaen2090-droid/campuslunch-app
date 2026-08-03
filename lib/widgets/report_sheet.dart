@@ -57,7 +57,7 @@ class ReportSheet extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.8,
-              color: Color(0xFF111827),
+              color: Color(0xFF000000),
             ),
           ),
           const SizedBox(height: 4),
@@ -185,7 +185,7 @@ const reportOptions = [
   ),
   ReportOption(
     label: '자리가 없어요',
-    subtitle: '조금 기다려야 해요',
+    subtitle: '기다려야 해요',
     status: '자리없음',
     icon: Icons.groups,
     borderColor: Color(0xFFFECACA),

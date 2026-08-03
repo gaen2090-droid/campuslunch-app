@@ -48,7 +48,7 @@ class _CommunityGuidelineSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                 ),
               ),
@@ -71,7 +71,7 @@ class _CommunityGuidelineSheet extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
+                    color: const Color(0xFF000000),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Center(

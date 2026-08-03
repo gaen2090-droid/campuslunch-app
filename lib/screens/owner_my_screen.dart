@@ -105,7 +105,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111827),
+                      color: const Color(0xFF000000),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -170,7 +170,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '통계',
                     icon: const Icon(Icons.bar_chart_rounded,
-                        size: 20, color: Color(0xFF111827)),
+                        size: 20, color: Color(0xFF000000)),
                     onTap: restaurant == null
                         ? () {}
                         : () => Navigator.push(
@@ -183,7 +183,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '홍보',
                     icon: const Icon(Icons.campaign_outlined,
-                        size: 20, color: Color(0xFF111827)),
+                        size: 20, color: Color(0xFF000000)),
                     showBottomBorder: false,
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(
@@ -215,19 +215,19 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                   MyPageSectionRow(
                     label: '사장님 이용 가이드',
                     icon: const Icon(Icons.help_rounded,
-                        size: 20, color: Color(0xFF111827)),
+                        size: 20, color: Color(0xFF000000)),
                     onTap: () => _showToast('준비 중이에요. 곧 만나요!'),
                   ),
                   MyPageSectionRow(
                     label: '개선 제안',
                     icon: const Icon(Icons.lightbulb_outline,
-                        size: 20, color: Color(0xFF111827)),
+                        size: 20, color: Color(0xFF000000)),
                     onTap: () => showFeedbackSheet(context),
                   ),
                   MyPageSectionRow(
                     label: '약관 및 정책',
                     icon: const Icon(Icons.description_outlined,
-                        size: 20, color: Color(0xFF111827)),
+                        size: 20, color: Color(0xFF000000)),
                     showBottomBorder: false,
                     onTap: () => Navigator.push(
                       context,
@@ -249,7 +249,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111827),
+                  color: const Color(0xFF000000),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -308,7 +308,7 @@ class _OwnerCardSection extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
             ),

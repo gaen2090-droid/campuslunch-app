@@ -70,7 +70,7 @@ class CollectionSection extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827),
+                          color: Color(0xFF000000),
                         ),
                       ),
                       if (collection.subtitle != null && collection.subtitle!.isNotEmpty) ...[

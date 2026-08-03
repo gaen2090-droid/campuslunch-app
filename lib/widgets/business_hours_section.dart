@@ -78,7 +78,7 @@ class _BusinessHoursSectionState extends State<BusinessHoursSection> {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827),
+                            color: Color(0xFF000000),
                           ),
                         ),
                         Icon(
@@ -86,7 +86,7 @@ class _BusinessHoursSectionState extends State<BusinessHoursSection> {
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
                           size: 18,
-                          color: const Color(0xFF111827),
+                          color: const Color(0xFF000000),
                         ),
                       ],
                     ),

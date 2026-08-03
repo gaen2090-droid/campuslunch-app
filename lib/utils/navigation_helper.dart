@@ -19,7 +19,7 @@ Future<void> openInAppDirections(
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: const Color(0xFF000000),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

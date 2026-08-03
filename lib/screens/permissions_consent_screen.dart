@@ -87,7 +87,7 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF000000),
                         letterSpacing: -0.8,
                         height: 1.3,
                       ),
@@ -152,7 +152,7 @@ class _BottomBar extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 color: canConfirm
-                    ? const Color(0xFF111827)
+                    ? const Color(0xFF000000)
                     : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
               ),

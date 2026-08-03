@@ -110,7 +110,7 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -120,7 +120,7 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -174,7 +174,7 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
                     decoration: BoxDecoration(
                       color: code.isEmpty
                           ? const Color(0xFFE5E7EB)
-                          : const Color(0xFF111827),
+                          : const Color(0xFF000000),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: code.isEmpty
                           ? null
@@ -238,7 +238,7 @@ class _InvitedFriendsSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                   letterSpacing: -0.3,
                 ),
               ),
@@ -249,7 +249,7 @@ class _InvitedFriendsSection extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
                 letterSpacing: -0.3,
               ),
             ),
@@ -284,7 +284,7 @@ class _MyReferralCodeSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.3,
           ),
         ),
@@ -297,7 +297,7 @@ class _MyReferralCodeSection extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                   letterSpacing: 2,
                 ),
               ),
@@ -313,14 +313,14 @@ class _MyReferralCodeSection extends StatelessWidget {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.copy_rounded, size: 15, color: Color(0xFF111827)),
+                    Icon(Icons.copy_rounded, size: 15, color: Color(0xFF000000)),
                     SizedBox(width: 6),
                     Text(
                       '복사',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF000000),
                       ),
                     ),
                   ],

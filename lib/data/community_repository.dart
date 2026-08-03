@@ -54,18 +54,48 @@ class CommunityRepository {
         .toList();
   }
 
-  Future<void> addCollectionComment(String collectionId, String content) async {
+  Future<void> addCollectionComment(
+    String collectionId,
+    String content, {
+    String? parentCommentId,
+  }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('NOT_AUTHENTICATED');
-    await _client.from('collection_comments').insert({
-      'collection_id': collectionId,
-      'user_id': uid,
-      'content': content,
+    await _client.rpc('add_collection_comment', params: {
+      'p_collection_id': collectionId,
+      'p_content': content,
+      'p_parent_comment_id': parentCommentId,
     });
   }
 
   Future<void> deleteCollectionComment(String commentId) async {
     await _client.from('collection_comments').delete().eq('id', commentId);
+  }
+
+  Future<void> toggleCollectionCommentLike(String commentId, bool currentlyLiked) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('NOT_AUTHENTICATED');
+    if (currentlyLiked) {
+      await _client
+          .from('collection_comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', uid);
+    } else {
+      await _client.from('collection_comment_likes').insert({
+        'comment_id': commentId,
+        'user_id': uid,
+      });
+    }
+  }
+
+  Future<void> reportCollectionComment(String commentId, {String? reason}) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('NOT_AUTHENTICATED');
+    await _client.rpc('report_collection_comment', params: {
+      'p_comment_id': commentId,
+      'p_reason': reason,
+    });
   }
 
   Future<void> createPost({
@@ -314,10 +344,22 @@ class CommunityRepository {
   }
 
   Future<List<CommunityInboxNotification>> fetchInboxNotifications() async {
-    final rows = await _client.rpc('community_inbox_notifications');
-    return (rows as List<dynamic>)
+    final results = await Future.wait([
+      _client.rpc('community_inbox_notifications'),
+      _client.rpc('collection_inbox_notifications'),
+    ]);
+    final communityRows = (results[0] as List<dynamic>)
         .map((e) => CommunityInboxNotification.fromMap(e as Map<String, dynamic>))
         .toList();
+    final collectionRows = (results[1] as List<dynamic>)
+        .map((e) => CommunityInboxNotification.fromMap(
+              e as Map<String, dynamic>,
+              isCollection: true,
+            ))
+        .toList();
+    final merged = [...communityRows, ...collectionRows]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return merged;
   }
 
   Future<bool> hasUnreadInboxNotifications() async {

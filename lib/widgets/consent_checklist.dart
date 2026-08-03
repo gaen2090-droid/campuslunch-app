@@ -181,7 +181,7 @@ class _ConsentRow extends StatelessWidget {
                         fontSize: emphasized ? 15 : 14,
                         fontWeight:
                             emphasized ? FontWeight.w800 : FontWeight.w500,
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                       ),
                     ),
                     if (subtitle != null) ...[
@@ -220,10 +220,10 @@ class _CheckBox extends StatelessWidget {
       width: emphasized ? 24 : 22,
       height: emphasized ? 24 : 22,
       decoration: BoxDecoration(
-        color: checked ? const Color(0xFF111827) : Colors.white,
+        color: checked ? const Color(0xFF000000) : Colors.white,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: checked ? const Color(0xFF111827) : const Color(0xFFD1D5DB),
+          color: checked ? const Color(0xFF000000) : const Color(0xFFD1D5DB),
           width: 1.5,
         ),
       ),

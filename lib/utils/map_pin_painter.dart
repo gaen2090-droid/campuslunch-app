@@ -116,7 +116,7 @@ class StarPinPainter extends CustomPainter {
       4.0,
       false,
     );
-    canvas.drawCircle(center, radius, Paint()..color = const Color(0xFF111827));
+    canvas.drawCircle(center, radius, Paint()..color = const Color(0xFF000000));
     canvas.drawCircle(
       center,
       radius,
@@ -126,41 +126,63 @@ class StarPinPainter extends CustomPainter {
         ..strokeWidth = 1.5,
     );
 
-    final starPath = _starPath(
+    final starPath = starPath5(
       center: center,
       outerRadius: radius * 0.55,
       innerRadiusRatio: 0.45,
-      points: 5,
     );
     canvas.drawPath(starPath, Paint()..color = Colors.white);
   }
 
-  static Path _starPath({
-    required Offset center,
-    required double outerRadius,
-    required double innerRadiusRatio,
-    required int points,
-  }) {
-    final innerRadius = outerRadius * innerRadiusRatio;
-    final path = Path();
-    final step = math.pi / points;
-    for (var i = 0; i < points * 2; i++) {
-      final radius = i.isEven ? outerRadius : innerRadius;
-      final angle = -math.pi / 2 + i * step;
-      final point = Offset(
-        center.dx + radius * math.cos(angle),
-        center.dy + radius * math.sin(angle),
-      );
-      if (i == 0) {
-        path.moveTo(point.dx, point.dy);
-      } else {
-        path.lineTo(point.dx, point.dy);
-      }
+  @override
+  bool shouldRepaint(StarPinPainter old) => false;
+}
+
+/// 별 도형(5각) 경로 — [StarPinPainter]와 [StarOnlyPainter]가 공유.
+Path starPath5({
+  required Offset center,
+  required double outerRadius,
+  required double innerRadiusRatio,
+  int points = 5,
+}) {
+  final innerRadius = outerRadius * innerRadiusRatio;
+  final path = Path();
+  final step = math.pi / points;
+  for (var i = 0; i < points * 2; i++) {
+    final radius = i.isEven ? outerRadius : innerRadius;
+    final angle = -math.pi / 2 + i * step;
+    final point = Offset(
+      center.dx + radius * math.cos(angle),
+      center.dy + radius * math.sin(angle),
+    );
+    if (i == 0) {
+      path.moveTo(point.dx, point.dy);
+    } else {
+      path.lineTo(point.dx, point.dy);
     }
-    path.close();
-    return path;
+  }
+  path.close();
+  return path;
+}
+
+/// 스탬프 셀 전용 — 배지 원은 호출부(Container)가 그리므로 별만 그림.
+class StarOnlyPainter extends CustomPainter {
+  final Color color;
+
+  const StarOnlyPainter({this.color = Colors.white});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = math.min(size.width, size.height) / 2;
+    final path = starPath5(
+      center: center,
+      outerRadius: outerRadius,
+      innerRadiusRatio: 0.45,
+    );
+    canvas.drawPath(path, Paint()..color = color);
   }
 
   @override
-  bool shouldRepaint(StarPinPainter old) => false;
+  bool shouldRepaint(StarOnlyPainter old) => color != old.color;
 }

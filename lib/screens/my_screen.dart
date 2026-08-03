@@ -89,7 +89,7 @@ class _MyScreenState extends State<MyScreen> {
                           fontFamily: 'Pretendard',
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
+                          color: Color(0xFF000000),
                           letterSpacing: -0.8,
                         ),
                       ),
@@ -101,7 +101,7 @@ class _MyScreenState extends State<MyScreen> {
                             builder: (_) => const SettingsScreen()),
                       ),
                       icon: const Icon(Icons.settings_outlined,
-                          size: 24, color: Color(0xFF111827)),
+                          size: 24, color: Color(0xFF000000)),
                     ),
                   ],
                 ),
@@ -139,7 +139,7 @@ class _MyScreenState extends State<MyScreen> {
                               style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111827)),
+                                  color: Color(0xFF000000)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -186,7 +186,7 @@ class _MyScreenState extends State<MyScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: _QuickAction(
-                            icon: Icons.stars_rounded,
+                            icon: Icons.menu_book_rounded,
                             label: '스탬프북',
                             onTap: () => Navigator.push(
                               context,
@@ -224,7 +224,7 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '친구 초대하고 함께 스탬프 받기',
                       icon: const Icon(Icons.card_giftcard_outlined,
-                          size: 20, color: Color(0xFF111827)),
+                          size: 20, color: Color(0xFF000000)),
                       showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
@@ -246,7 +246,7 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '캠퍼스런치 이용 가이드',
                       icon: const Icon(Icons.help_rounded,
-                          size: 20, color: Color(0xFF111827)),
+                          size: 20, color: Color(0xFF000000)),
                       onTap: () => launchUrl(
                         Uri.parse(
                             'https://sheer-parent-7ed.notion.site/385c273f6bec80eda925df4945c021b7?source=copy_link'),
@@ -256,13 +256,13 @@ class _MyScreenState extends State<MyScreen> {
                     MyPageSectionRow(
                       label: '개선 제안',
                       icon: const Icon(Icons.lightbulb_outline,
-                          size: 20, color: Color(0xFF111827)),
+                          size: 20, color: Color(0xFF000000)),
                       onTap: () => showFeedbackSheet(context),
                     ),
                     MyPageSectionRow(
                       label: '약관 및 정책',
                       icon: const Icon(Icons.description_outlined,
-                          size: 20, color: Color(0xFF111827)),
+                          size: 20, color: Color(0xFF000000)),
                       showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
@@ -285,7 +285,7 @@ class _MyScreenState extends State<MyScreen> {
                       MyPageSectionRow(
                         label: '내 가게 등록',
                         icon: const Icon(Icons.storefront_outlined,
-                            size: 20, color: Color(0xFF111827)),
+                            size: 20, color: Color(0xFF000000)),
                         showBottomBorder: false,
                         onTap: () => OwnerVerifyScreen.show(context),
                       ),
@@ -314,7 +314,7 @@ class _MyScreenState extends State<MyScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF111827),
+                            color: Color(0xFF000000),
                           ),
                         ),
                       ),
@@ -371,7 +371,7 @@ class _MyScreenState extends State<MyScreen> {
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827)),
+                                  color: Color(0xFF000000)),
                             ),
                             const SizedBox(height: 16),
                             Container(
@@ -489,7 +489,7 @@ class _MyScreenState extends State<MyScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 14),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF111827),
+                                          color: const Color(0xFF000000),
                                           borderRadius:
                                               BorderRadius.circular(16),
                                         ),
@@ -561,7 +561,7 @@ class _MyCardSection extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                 ),
               )
@@ -605,7 +605,7 @@ class _QuickAction extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, size: 22, color: const Color(0xFF111827)),
+                Icon(icon, size: 22, color: const Color(0xFF000000)),
                 if (showDot)
                   Positioned(
                     right: -4,
@@ -680,7 +680,7 @@ class _RewardCard extends StatelessWidget {
                     width: 16,
                     height: 16,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.star_rounded,
@@ -694,7 +694,7 @@ class _RewardCard extends StatelessWidget {
                         fontFamily: 'Pretendard',
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF000000),
                       ),
                     ),
                   ),
@@ -710,7 +710,7 @@ class _RewardCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF000000),
                       ),
                     ),
                   ),
@@ -723,7 +723,7 @@ class _RewardCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                 ),
               ],
@@ -738,23 +738,18 @@ class _RewardCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(3, (i) {
                         final filled = i < today.clamp(0, 3);
-                        return Container(
-                          width: cellSize,
-                          height: cellSize,
-                          decoration: BoxDecoration(
-                            color: filled
-                                ? const Color(0xFFD1D5DB)
-                                : const Color(0xFFE5E7EB),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: filled
-                                ? StampRiceBallIcon(size: cellSize * 0.55)
-                                : Opacity(
-                                    opacity: 0.45,
-                                    child: StampRiceBallIcon(
-                                        size: cellSize * 0.55),
-                                  ),
+                        return Opacity(
+                          opacity: filled ? 1.0 : 0.2,
+                          child: Container(
+                            width: cellSize,
+                            height: cellSize,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF000000),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: StampRiceBallIcon(size: cellSize * 0.55),
+                            ),
                           ),
                         );
                       }),

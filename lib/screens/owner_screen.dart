@@ -165,7 +165,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111827),
+                      color: const Color(0xFF000000),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
@@ -196,7 +196,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF000000),
                       ),
                     ),
                   ),
@@ -437,7 +437,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
+                                color: Color(0xFF000000),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -451,7 +451,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827),
+                                color: Color(0xFF000000),
                               ),
                               onChanged: (_) => setState(() {
                                 _seatSuccessMessage = null;
@@ -490,7 +490,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: const BorderSide(
-                                    color: Color(0xFF111827),
+                                    color: Color(0xFF000000),
                                     width: 1.5,
                                   ),
                                 ),
@@ -530,7 +530,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 decoration: BoxDecoration(
                                   color: _seatSubmitting
                                       ? const Color(0xFF9CA3AF)
-                                      : const Color(0xFF111827),
+                                      : const Color(0xFF000000),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Center(
@@ -586,7 +586,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
+                    color: const Color(0xFF000000),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

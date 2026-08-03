@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/community_repository.dart';
 import '../models/community_inbox_notification.dart';
 import '../utils/time_ago.dart';
+import '../widgets/collection_comments_sheet.dart';
 import 'community_post_detail_screen.dart';
 
 class CommunityNotificationsScreen extends StatefulWidget {
@@ -61,6 +62,16 @@ class _CommunityNotificationsScreenState
       unawaited(_repo.markInboxNotificationRead(n.eventId));
     }
     if (n.isAdminNotice || n.postId == null) return;
+
+    if (n.isCollection) {
+      await CollectionCommentsSheet.show(
+        context,
+        collectionId: n.postId!,
+        collectionTitle: '컬렉션',
+      );
+      return;
+    }
+
     final post = await _repo.fetchPostById(n.postId!);
     if (!mounted) return;
     if (post == null) {
@@ -83,7 +94,7 @@ class _CommunityNotificationsScreenState
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -93,7 +104,7 @@ class _CommunityNotificationsScreenState
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -101,7 +112,7 @@ class _CommunityNotificationsScreenState
       ),
       body: RefreshIndicator(
         onRefresh: _load,
-        color: const Color(0xFF111827),
+        color: const Color(0xFF000000),
         child: _buildBody(),
       ),
     );
@@ -109,7 +120,7 @@ class _CommunityNotificationsScreenState
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111827)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF000000)));
     }
     if (_error != null) {
       return ListView(
@@ -151,7 +162,7 @@ class _CommunityNotificationsScreenState
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF000000),
                 ),
               ),
               subtitle: subtitleLines.isEmpty
@@ -182,12 +193,12 @@ class _CommunityNotificationsScreenState
                     text: n.actorNickname,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                   ),
                   TextSpan(
                     text: n.headlineSuffix,
-                    style: const TextStyle(color: Color(0xFF111827)),
+                    style: const TextStyle(color: Color(0xFF000000)),
                   ),
                 ],
               ),

@@ -341,13 +341,13 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
           backgroundColor: const Color(0xFFF9FAFB),
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+            icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
             onPressed: () => Navigator.pop(context, _deleted || _changed),
           ),
           titleSpacing: 0,
           title: const Text(
             '게시글',
-            style: TextStyle(fontFamily: 'Pretendard', fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827), letterSpacing: -0.5),
+            style: TextStyle(fontFamily: 'Pretendard', fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF000000), letterSpacing: -0.5),
           ),
           centerTitle: false,
           actions: [
@@ -356,11 +356,11 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                 onPressed: _toggleSubscription,
                 icon: Icon(
                   _subscribed ? Icons.notifications_active : Icons.notifications_off_outlined,
-                  color: _subscribed ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+                  color: _subscribed ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
                 ),
               ),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Color(0xFF111827)),
+              icon: const Icon(Icons.more_vert, color: Color(0xFF000000)),
               offset: const Offset(0, 44),
               onSelected: (v) {
                 if (v == 'edit') _editPost();
@@ -390,7 +390,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                         child: Text(
                           _post.nickname,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
                         ),
                       ),
                       if (_post.isAuthorOwner) ...[
@@ -476,13 +476,13 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                   const Divider(height: 32, color: Color(0xFFE5E7EB)),
                   Text(
                     '댓글 ${_comments.length}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
                   ),
                   const SizedBox(height: 12),
                   if (_loadingComments)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator(color: Color(0xFF111827))),
+                      child: Center(child: CircularProgressIndicator(color: Color(0xFF000000))),
                     )
                   else if (_comments.isEmpty)
                     const Padding(
@@ -558,9 +558,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111827)),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF000000)),
                               )
-                            : const Icon(Icons.send, color: Color(0xFF111827)),
+                            : const Icon(Icons.send, color: Color(0xFF000000)),
                       ),
                     ],
                   ),
@@ -608,7 +608,7 @@ class _CommentTile extends StatelessWidget {
                       child: Text(
                         comment.nickname,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF000000)),
                       ),
                     ),
                     if (comment.isAuthorOwner) ...[
@@ -637,7 +637,7 @@ class _CommentTile extends StatelessWidget {
                           Icon(
                             comment.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
                             size: 16,
-                            color: comment.likedByMe ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+                            color: comment.likedByMe ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
                           ),
                           if (comment.likeCount > 0) ...[
                             const SizedBox(width: 4),

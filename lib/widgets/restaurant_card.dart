@@ -57,7 +57,7 @@ class RestaurantCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -174,7 +174,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final hasImage = !_isFallback;
     final isBusy = r.status == '약간혼잡';
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
-    const reportTextColor = Color(0xFF111827);
+    const reportTextColor = Color(0xFF000000);
     final statusLabel = r.status;
     final meta = crowdStatusMeta(r.status);
 

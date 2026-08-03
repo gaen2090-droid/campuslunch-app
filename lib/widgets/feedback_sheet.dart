@@ -66,7 +66,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
           ),
-          backgroundColor: const Color(0xFF111827),
+          backgroundColor: const Color(0xFF000000),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
@@ -89,7 +89,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -99,7 +99,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -136,7 +136,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFF111827)
+                          ? const Color(0xFF000000)
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -184,7 +184,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111827),
+                  backgroundColor: const Color(0xFF000000),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

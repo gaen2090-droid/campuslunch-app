@@ -249,16 +249,13 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                         children: [
                           const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
                           const SizedBox(width: 8),
-                          Transform.translate(
-                            offset: const Offset(0, -1),
-                            child: const Text(
-                              '매장명, 위치, 음식종류 검색',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF9CA3AF),
-                                height: 1.0,
-                              ),
+                          const Text(
+                            '매장명, 위치, 음식종류 검색',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF9CA3AF),
+                              height: 1.0,
                             ),
                           ),
                         ],
@@ -442,7 +439,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827),
+                          color: Color(0xFF000000),
                         ),
                       ),
                     ),
@@ -469,7 +466,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isRefreshing ? const Color(0xFF111827) : Colors.white,
+                  color: _isRefreshing ? const Color(0xFF000000) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -511,7 +508,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -621,7 +618,7 @@ class _StampCriteriaSheet extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
               ),
             ),
             const SizedBox(height: 16),
@@ -636,7 +633,7 @@ class _StampCriteriaSheet extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111827),
+                  color: const Color(0xFF000000),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Center(
@@ -747,9 +744,7 @@ class _CrowdLegend extends StatelessWidget {
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFFBBF24), label: '약간혼잡'),
           SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFF97316), label: '자리없음'),
-          SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFDC2626), label: '웨이팅'),
+          _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
         ],
       ),
     );
@@ -954,7 +949,7 @@ class _MapFilterChip extends StatelessWidget {
     final on = active || open;
     final restBg = restingBg ?? Colors.white;
     final restText = restingText ?? const Color(0xFF374151);
-    final bgColor = on ? (activeBg ?? const Color(0xFF111827)) : restBg;
+    final bgColor = on ? (activeBg ?? const Color(0xFF000000)) : restBg;
     final textColor = on ? (activeText ?? Colors.white) : restText;
     return GestureDetector(
       onTap: onTap,
@@ -997,7 +992,7 @@ class _MapFilterChip extends StatelessWidget {
               Icon(
                 open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                 size: 12,
-                color: on ? const Color(0xFF111827) : restText,
+                color: on ? const Color(0xFF000000) : restText,
               ),
             ],
           ],
@@ -1080,7 +1075,7 @@ class _SelectedCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827)),
+                              color: Color(0xFF000000)),
                         ),
                       ),
                     ),
@@ -1096,7 +1091,7 @@ class _SelectedCard extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF111827))),
+                                color: Color(0xFF000000))),
                         const SizedBox(height: 2),
                         Row(children: [
                           Flexible(
@@ -1131,7 +1126,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF111827), width: 1.5),
+                        border: Border.all(color: const Color(0xFF000000), width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -1139,13 +1134,13 @@ class _SelectedCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.navigation_outlined,
-                                size: 16, color: Color(0xFF111827)),
+                                size: 16, color: Color(0xFF000000)),
                             SizedBox(width: 6),
                             Text('길찾기',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF111827))),
+                                    color: Color(0xFF000000))),
                           ],
                         ),
                       ),
@@ -1161,7 +1156,7 @@ class _SelectedCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF111827),
+                          color: const Color(0xFF000000),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(

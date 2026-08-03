@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                       height: 1.25,
                       letterSpacing: -1.2,
                     ),
@@ -201,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -336,7 +336,7 @@ class _TabBtn extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
-                color: active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+                color: active ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
               ),
             ),
           ),
@@ -355,7 +355,7 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF000000)),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFFD1D5DB), fontWeight: FontWeight.w500),
@@ -370,7 +370,7 @@ class _Field extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFF111827), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF000000), width: 1.5)),
       ),
     );
   }
@@ -393,7 +393,7 @@ class _PasswordFieldState extends State<_PasswordField> {
     return TextField(
       controller: widget.controller,
       obscureText: !_show,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF000000)),
       decoration: InputDecoration(
         hintText: widget.hint,
         hintStyle: const TextStyle(color: Color(0xFFD1D5DB), fontWeight: FontWeight.w500),
@@ -413,7 +413,7 @@ class _PasswordFieldState extends State<_PasswordField> {
             borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: Color(0xFF111827), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF000000), width: 1.5)),
       ),
     );
   }
@@ -546,7 +546,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   ),
                   child: const Center(
                     child: Icon(Icons.pin_outlined,
-                        size: 36, color: Color(0xFF111827)),
+                        size: 36, color: Color(0xFF000000)),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -555,7 +555,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                     letterSpacing: -1.0,
                   ),
                 ),
@@ -582,7 +582,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 12,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                   decoration: InputDecoration(
                     hintText: List.filled(emailSignupOtpLength, '0').join(),
@@ -607,7 +607,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                          color: Color(0xFF111827), width: 1.5),
+                          color: Color(0xFF000000), width: 1.5),
                     ),
                   ),
                 ),
@@ -632,7 +632,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                       color: _resendMsg!.contains('실패') ||
                               _resendMsg!.contains('없')
                           ? const Color(0xFFEF4444)
-                          : const Color(0xFF111827),
+                          : const Color(0xFF000000),
                     ),
                   ),
                 ],
@@ -643,7 +643,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: Color(0xFF000000),
                     ),
                   ),
                 ],
@@ -662,7 +662,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                         color: (_verifying ||
                                 _otpCtrl.text.length != emailSignupOtpLength)
                             ? const Color(0xFF9CA3AF)
-                            : const Color(0xFF111827),
+                            : const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -719,7 +719,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _verified
-                          ? const Color(0xFF111827)
+                          ? const Color(0xFF000000)
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(18),
                     ),

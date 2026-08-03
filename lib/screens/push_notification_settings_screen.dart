@@ -51,7 +51,7 @@ class _PushNotificationSettingsScreenState
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,
@@ -61,7 +61,7 @@ class _PushNotificationSettingsScreenState
             fontFamily: 'Pretendard',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
         ),
@@ -187,7 +187,7 @@ class _ToggleRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF000000),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -209,13 +209,13 @@ class _ToggleRow extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Color(0xFF111827),
+                color: Color(0xFF000000),
               ),
             )
           else
             Switch.adaptive(
               value: enabled,
-              activeColor: const Color(0xFF111827),
+              activeColor: const Color(0xFF000000),
               onChanged: (_) => onToggle(),
             ),
         ],

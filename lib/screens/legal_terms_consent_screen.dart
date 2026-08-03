@@ -78,7 +78,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Color(0xFF000000),
                             letterSpacing: -0.8,
                             height: 1.3,
                           ),
@@ -130,7 +130,7 @@ class _LegalTermsConsentScreenState extends State<LegalTermsConsentScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: canProceed
-                                ? const Color(0xFF111827)
+                                ? const Color(0xFF000000)
                                 : const Color(0xFFE5E7EB),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: canProceed

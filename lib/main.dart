@@ -116,7 +116,7 @@ class CampusLunchApp extends StatelessWidget {
           seedColor: Colors.grey.shade900,
           brightness: Brightness.light,
         ).copyWith(
-          primary: const Color(0xFF111827),
+          primary: const Color(0xFF000000),
           onPrimary: Colors.white,
         ),
         fontFamily: 'Pretendard',
@@ -159,6 +159,19 @@ class CampusLunchApp extends StatelessWidget {
           labelSmall:  TextStyle(fontFamily: 'Pretendard', letterSpacing: -0.5),
         ),
       ),
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        // 좁은 화면(375~390pt) 기준 레이아웃이 넓은 화면에서 상대적으로
+        // 작아 보이는 것을 보정 — 기존 textScaler(OS 접근성 설정)에 곱해서 적용.
+        const baseWidth = 390.0;
+        final factor = (mq.size.width / baseWidth).clamp(1.0, 1.15);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: TextScaler.linear(mq.textScaler.scale(1.0) * factor),
+          ),
+          child: child!,
+        );
+      },
       home: const _Root(),
       navigatorObservers: [appRouteObserver],
     );

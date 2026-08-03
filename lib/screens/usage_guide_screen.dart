@@ -192,7 +192,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                             width: active ? 22 : 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: active ? const Color(0xFF111827) : const Color(0xFFE5E7EB),
+                              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -206,7 +206,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: const Color(0xFF000000),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -255,7 +255,7 @@ class _GuidePageView extends StatelessWidget {
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
+            color: Color(0xFF000000),
             height: 1.3,
             letterSpacing: -0.6,
           ),
@@ -480,7 +480,7 @@ class _ReportMockup extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.4,
-              color: Color(0xFF111827),
+              color: Color(0xFF000000),
             ),
           ),
           const SizedBox(height: 2),
@@ -536,7 +536,7 @@ class _StampMockup extends StatelessWidget {
             children: [
               Text(
                 '14',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF111827), height: 1),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF000000), height: 1),
               ),
               Text(
                 ' / 20',
@@ -551,7 +551,7 @@ class _StampMockup extends StatelessWidget {
               value: 14 / 20,
               minHeight: 6,
               backgroundColor: Color(0xFFF3F4F6),
-              valueColor: AlwaysStoppedAnimation(Color(0xFF111827)),
+              valueColor: AlwaysStoppedAnimation(Color(0xFF000000)),
             ),
           ),
           const SizedBox(height: 6),
@@ -585,22 +585,20 @@ class _StampCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: filled ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1.5,
+    return Opacity(
+      opacity: filled ? 1.0 : 0.2,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF000000),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: const Color(0xFFE5E7EB),
+            width: 1.5,
+          ),
         ),
-      ),
-      child: Center(
-        child: filled
-            ? const StampRiceBallIcon(size: 18)
-            : const Opacity(
-                opacity: 0.35,
-                child: StampRiceBallIcon(size: 18),
-              ),
+        child: const Center(
+          child: StampRiceBallIcon(size: 18),
+        ),
       ),
     );
   }
