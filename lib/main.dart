@@ -161,10 +161,11 @@ class CampusLunchApp extends StatelessWidget {
       ),
       builder: (context, child) {
         final mq = MediaQuery.of(context);
-        // 좁은 화면(375~390pt) 기준 레이아웃이 넓은 화면에서 상대적으로
-        // 작아 보이는 것을 보정 — 기존 textScaler(OS 접근성 설정)에 곱해서 적용.
-        const baseWidth = 390.0;
-        final factor = (mq.size.width / baseWidth).clamp(1.0, 1.15);
+        // 아이폰 15(393pt)를 디자인 기준 화면으로 삼는다. 그보다 좁은 화면은
+        // 확대하지 않고, 넓은 화면(17 Pro 등 대형 기기)만 393pt 대비 커진
+        // 비율만큼 텍스트를 확대해 15에서 보던 밀도에 맞춘다.
+        const baseWidth = 393.0;
+        final factor = (mq.size.width / baseWidth).clamp(1.0, double.infinity);
         return MediaQuery(
           data: mq.copyWith(
             textScaler: TextScaler.linear(mq.textScaler.scale(1.0) * factor),
