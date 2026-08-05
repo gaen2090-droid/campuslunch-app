@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../constants/brand_assets.dart';
 import '../data/push_token_repository.dart';
 import '../firebase_options.dart';
 import 'push_notification_service.dart';
@@ -220,6 +221,7 @@ class FcmPushService {
           channelDescription: '서버(FCM)에서 보내는 알림',
           importance: Importance.high,
           priority: Priority.high,
+          icon: BrandAssets.androidNotificationIcon,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

@@ -533,6 +533,7 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
           TextField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
             onChanged: (_) => setState(() {}),
             decoration: _fieldDecoration('010-1234-5678'),
           ),
@@ -542,6 +543,9 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () =>
+                FocusManager.instance.primaryFocus?.unfocus(),
             onChanged: (_) => setState(() {}),
             decoration: _fieldDecoration('example@email.com'),
           ),

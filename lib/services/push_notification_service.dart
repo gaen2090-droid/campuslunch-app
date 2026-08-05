@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../constants/brand_assets.dart';
 import '../data/analytics_repository.dart';
 import '../models/push_notification_config.dart';
 import '../models/restaurant.dart';
@@ -190,6 +191,7 @@ class PushNotificationService {
           channelDescription: '피크 시간대 추천 매장 알림',
           importance: Importance.high,
           priority: Priority.high,
+          icon: BrandAssets.androidNotificationIcon,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -305,6 +307,7 @@ class PushNotificationService {
           channelDescription: '평일 점심·저녁 피크 시간대 추천 매장 알림',
           importance: Importance.high,
           priority: Priority.high,
+          icon: BrandAssets.androidNotificationIcon,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

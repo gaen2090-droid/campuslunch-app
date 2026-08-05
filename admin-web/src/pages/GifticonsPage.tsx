@@ -30,6 +30,7 @@ export function GifticonsPage({
   const [showForm, setShowForm] = useState(false);
   const [brand, setBrand] = useState("");
   const [productName, setProductName] = useState("");
+  const [faceValue, setFaceValue] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,13 +59,21 @@ export function GifticonsPage({
     setFormError(null);
     try {
       const path = await uploadGifticonImage(imageFile);
+      const parsedFace = faceValue.trim()
+        ? Number.parseInt(faceValue.replace(/,/g, ""), 10)
+        : undefined;
+      if (parsedFace != null && (!Number.isFinite(parsedFace) || parsedFace < 0)) {
+        throw new Error("액수(원)는 0 이상 숫자로 입력해 주세요.");
+      }
       await registerGifticon({
         brand: brand.trim(),
         productName: productName.trim(),
         imageUrl: path,
+        ...(parsedFace != null ? { faceValue: parsedFace } : {}),
       });
       setBrand("");
       setProductName("");
+      setFaceValue("");
       onPickImage(null);
       setShowForm(false);
       onReload();
@@ -145,7 +154,8 @@ export function GifticonsPage({
       )}
 
       <p className="muted xs">
-        CSV 헤더: brand, product_name, image_url, expires_at, coupon_code
+        CSV 헤더: brand, product_name, image_url, expires_at, coupon_code,
+        face_value(액수·원)
       </p>
 
       {showForm && (
@@ -165,6 +175,17 @@ export function GifticonsPage({
               placeholder="예: 아메리카노"
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">액수(원)</span>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              placeholder="예: 5000"
+              value={faceValue}
+              onChange={(e) => setFaceValue(e.target.value)}
             />
           </label>
           <label className="field">
@@ -204,6 +225,11 @@ export function GifticonsPage({
               <div className="gifticon-row-body">
                 <strong>{g.brand}</strong>
                 <p className="muted sm">{g.productName}</p>
+                {g.faceValue != null && g.faceValue > 0 && (
+                  <p className="muted xs">
+                    {g.faceValue.toLocaleString("ko-KR")}원
+                  </p>
+                )}
                 <span className={`badge ${g.status}`}>
                   {gifticonStatusLabel(g.status)}
                 </span>

@@ -26,9 +26,11 @@
 --  10. supabase/crowd_status_v2_compute.sql (v2 계산·트리거·백필)
 --  11. supabase/push_analytics.sql
 --  12. supabase/owner_seat_updates.sql
+--  12b. supabase/hotfix_owner_seat_gps_50m.sql (입장가능인원도 50m GPS)
 --  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환)
 --  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
 --  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
+--  13c. supabase/hotfix_gifticon_face_value_and_spend_report.sql (액면가·리워드 지출 리포트)
 --  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
 --  15. supabase/deploy_prelaunch_security.sql (배포 전 보안 패치)
 --

@@ -1,4 +1,4 @@
-// 일회성 유틸: 알림 전용 아이콘 생성 (흰 배경 제거 + 여백 크롭 + 흰색 실루엣 + 검정 배경)
+// 일회성 유틸: 알림 전용 아이콘 생성 (흰 배경 제거 + 여백 크롭 + 흰색 실루엣 + 투명 배경)
 // 실행: dart run tool/gen_notification_icon.dart
 import 'dart:io';
 import 'package:image/image.dart' as img;
@@ -52,14 +52,15 @@ void main() {
       interpolation: img.Interpolation.average,
     );
 
-    // 검정 배경 + 흰색 실루엣 (배경이 아닌 픽셀만 흰색으로)
+    // Android 알림 small icon: 흰색 실루엣 + 투명 배경 (검정 배경은 시스템이 잘못 렌더링함)
     final out = img.Image(width: size, height: size, numChannels: 4);
-    img.fill(out, color: img.ColorRgba8(0, 0, 0, 255));
     for (int y = 0; y < size; y++) {
       for (int x = 0; x < size; x++) {
         final p = resized.getPixel(x, y);
         if (!isBackground(p)) {
           out.setPixel(x, y, img.ColorRgba8(255, 255, 255, 255));
+        } else {
+          out.setPixel(x, y, img.ColorRgba8(0, 0, 0, 0));
         }
       }
     }

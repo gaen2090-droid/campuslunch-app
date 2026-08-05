@@ -37,3 +37,16 @@ class KeyboardDismissScroll extends StatelessWidget {
     );
   }
 }
+
+/// iOS 숫자 키패드에는 Done이 없어, 필드에서 키보드를 닫을 수 있게 한다.
+Widget keyboardHideButton() {
+  return IconButton(
+    tooltip: '키보드 닫기',
+    icon: const Icon(
+      Icons.keyboard_hide_outlined,
+      size: 20,
+      color: Color(0xFF6B7280),
+    ),
+    onPressed: () => FocusManager.instance.primaryFocus?.unfocus(),
+  );
+}

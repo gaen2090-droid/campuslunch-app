@@ -8,6 +8,8 @@ export interface Gifticon {
   assignedUserId: string | null;
   assignedAt: Date | null;
   createdAt: Date;
+  /** 액면가(원). 미입력 시 null */
+  faceValue: number | null;
 }
 
 export function gifticonStatusLabel(status: string): string {
@@ -36,6 +38,11 @@ const HEADER_ALIASES: Record<string, string> = {
   couponcode: "coupon_code",
   coupon: "coupon_code",
   code: "coupon_code",
+  facevalue: "face_value",
+  amount: "face_value",
+  price: "face_value",
+  액수: "face_value",
+  금액: "face_value",
 };
 
 function stripBom(text: string): string {
@@ -107,6 +114,7 @@ export function parseGifticonCsv(text: string): Array<{
   image_url: string;
   expires_at?: string;
   coupon_code?: string;
+  face_value?: number;
 }> {
   const lines = stripBom(text)
     .split(/\r?\n/)
@@ -127,6 +135,7 @@ export function parseGifticonCsv(text: string): Array<{
   }
   const expiresIdx = idx("expires_at");
   const codeIdx = idx("coupon_code");
+  const faceIdx = idx("face_value");
 
   const rows: Array<{
     brand: string;
@@ -134,6 +143,7 @@ export function parseGifticonCsv(text: string): Array<{
     image_url: string;
     expires_at?: string;
     coupon_code?: string;
+    face_value?: number;
   }> = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -144,6 +154,9 @@ export function parseGifticonCsv(text: string): Array<{
     const product_name = cell(productIdx);
     const image_url = cell(imageIdx);
     if (!brand || !product_name || !image_url) continue;
+    const faceRaw = faceIdx >= 0 ? cell(faceIdx).replace(/,/g, "") : "";
+    const face_value =
+      faceRaw !== "" ? Number.parseInt(faceRaw, 10) : undefined;
     rows.push({
       brand,
       product_name,
@@ -154,7 +167,23 @@ export function parseGifticonCsv(text: string): Array<{
       ...(codeIdx >= 0 && cell(codeIdx)
         ? { coupon_code: cell(codeIdx) }
         : {}),
+      ...(face_value != null && Number.isFinite(face_value)
+        ? { face_value }
+        : {}),
     });
   }
   return rows;
+}
+
+/** face_value 우선, 없으면 상품명의 "4,000원" / "5000원" 패턴 */
+export function resolveGifticonFaceValueKrw(
+  faceValue: number | null | undefined,
+  productName: string,
+): number {
+  if (typeof faceValue === "number" && Number.isFinite(faceValue) && faceValue > 0) {
+    return Math.trunc(faceValue);
+  }
+  const m = productName.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
+  if (!m?.[1]) return 0;
+  return Number.parseInt(m[1].replace(/,/g, ""), 10) || 0;
 }

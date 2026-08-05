@@ -6,6 +6,7 @@ import type {
   RestaurantFormData,
 } from "../types/restaurant";
 import type { Gifticon } from "../types/gifticon";
+import { resolveGifticonFaceValueKrw } from "../types/gifticon";
 import type { OwnerApplication } from "../types/ownerApplication";
 import { parseAdminUser, type AdminUser } from "../types/user";
 import {
@@ -593,6 +594,12 @@ export async function fetchGifticons(): Promise<Gifticon[]> {
       createdAt: raw.created_at
         ? new Date(String(raw.created_at))
         : new Date(),
+      faceValue:
+        typeof raw.face_value === "number"
+          ? raw.face_value
+          : raw.face_value != null
+            ? Number.parseInt(String(raw.face_value), 10) || null
+            : null,
     });
   }
   return list;
@@ -603,14 +610,18 @@ export async function registerGifticon(params: {
   productName: string;
   imageUrl: string;
   expiresAt?: Date;
+  faceValue?: number;
 }): Promise<void> {
-  const payload: Record<string, string> = {
+  const payload: Record<string, string | number> = {
     p_brand: params.brand,
     p_product_name: params.productName,
     p_image_url: params.imageUrl,
   };
   if (params.expiresAt) {
     payload.p_expires_at = params.expiresAt.toISOString().slice(0, 10);
+  }
+  if (params.faceValue != null && Number.isFinite(params.faceValue)) {
+    payload.p_face_value = Math.trunc(params.faceValue);
   }
   const { error } = await supabase.rpc("admin_register_gifticon", payload);
   if (error) throw error;
@@ -628,7 +639,7 @@ export async function uploadGifticonImage(file: File): Promise<string> {
 }
 
 export async function bulkRegisterGifticons(
-  rows: Array<Record<string, string>>,
+  rows: Array<Record<string, string | number>>,
 ): Promise<number> {
   const { data, error } = await supabase.rpc("admin_bulk_register_gifticons", {
     p_rows: rows,
@@ -639,6 +650,101 @@ export async function bulkRegisterGifticons(
       ? Number((data as Record<string, unknown>).inserted ?? 0)
       : 0;
   return inserted;
+}
+
+export interface RewardSpendUserRow {
+  userId: string;
+  nickname: string;
+  email: string;
+  rewardCount: number;
+  amountKrw: number;
+}
+
+export interface RewardSpendReport {
+  totalRewardCount: number;
+  totalAmountKrw: number;
+  attributedCount: number;
+  unattributedCount: number;
+  missingFaceValueCount: number;
+  users: RewardSpendUserRow[];
+}
+
+export async function fetchRewardSpendReport(): Promise<RewardSpendReport> {
+  const { data, error } = await supabase.rpc("admin_reward_spend_report");
+  if (error) throw error;
+  const map =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  const giftsRaw = Array.isArray(map.gifts) ? map.gifts : [];
+
+  type Agg = {
+    userId: string;
+    nickname: string;
+    email: string;
+    rewardCount: number;
+    amountKrw: number;
+  };
+  const byUser = new Map<string, Agg>();
+  let totalRewardCount = 0;
+  let totalAmountKrw = 0;
+  let attributedCount = 0;
+  let unattributedCount = 0;
+  let missingFaceValueCount = 0;
+
+  for (const item of giftsRaw) {
+    if (!item || typeof item !== "object") continue;
+    const raw = item as Record<string, unknown>;
+    const productName = String(raw.product_name ?? "");
+    const faceRaw =
+      typeof raw.face_value === "number"
+        ? raw.face_value
+        : raw.face_value != null
+          ? Number.parseInt(String(raw.face_value), 10)
+          : null;
+    if (faceRaw == null || !Number.isFinite(faceRaw) || faceRaw <= 0) {
+      missingFaceValueCount += 1;
+    }
+    const amount = resolveGifticonFaceValueKrw(
+      Number.isFinite(faceRaw as number) ? (faceRaw as number) : null,
+      productName,
+    );
+    totalRewardCount += 1;
+    totalAmountKrw += amount;
+
+    const userId = raw.user_id ? String(raw.user_id) : "";
+    if (!userId) {
+      unattributedCount += 1;
+      continue;
+    }
+    attributedCount += 1;
+    const prev = byUser.get(userId);
+    if (prev) {
+      prev.rewardCount += 1;
+      prev.amountKrw += amount;
+    } else {
+      byUser.set(userId, {
+        userId,
+        nickname: String(raw.nickname ?? ""),
+        email: String(raw.email ?? ""),
+        rewardCount: 1,
+        amountKrw: amount,
+      });
+    }
+  }
+
+  const users = [...byUser.values()].sort(
+    (a, b) => b.rewardCount - a.rewardCount || b.amountKrw - a.amountKrw,
+  );
+
+  return {
+    totalRewardCount,
+    totalAmountKrw,
+    attributedCount,
+    unattributedCount,
+    missingFaceValueCount,
+    users,
+  };
 }
 
 export async function deleteGifticon(id: string): Promise<void> {

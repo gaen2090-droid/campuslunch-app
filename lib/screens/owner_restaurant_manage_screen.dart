@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/business_hours.dart';
+import '../widgets/keyboard_safe.dart';
 import '../widgets/load_error_view.dart';
 import '../widgets/owner_restaurant_dropdown.dart';
 import 'detail_screen.dart';
@@ -102,7 +103,7 @@ class _OwnerRestaurantManageScreenState
         bottom: false,
         child: Stack(
           children: [
-            SingleChildScrollView(
+            KeyboardDismissScroll(
               padding: const EdgeInsets.only(bottom: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,12 +814,20 @@ class _MenuSectionState extends State<_MenuSection> {
                     flex: 3,
                     child: TextField(
                       controller: _rows[i].nameCtrl,
-                      decoration: const InputDecoration(
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).nextFocus(),
+                      decoration: InputDecoration(
                         hintText: '메뉴명',
                         isDense: true,
                         contentPadding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        border: OutlineInputBorder(),
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: keyboardHideButton(),
+                        suffixIconConstraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -829,12 +838,20 @@ class _MenuSectionState extends State<_MenuSection> {
                     child: TextField(
                       controller: _rows[i].priceCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      textInputAction: TextInputAction.done,
+                      onEditingComplete: () =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      decoration: InputDecoration(
                         hintText: '가격',
                         isDense: true,
                         contentPadding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        border: OutlineInputBorder(),
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: keyboardHideButton(),
+                        suffixIconConstraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -1084,11 +1101,15 @@ class _NoticeSectionState extends State<_NoticeSection> {
             controller: _ctrl,
             maxLength: _maxLength,
             maxLines: 4,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () =>
+                FocusManager.instance.primaryFocus?.unfocus(),
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: '예) 8월 15일은 광복절로 휴무입니다.',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
               isDense: true,
+              suffixIcon: keyboardHideButton(),
             ),
             style: const TextStyle(fontSize: 13),
           ),

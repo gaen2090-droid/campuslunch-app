@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
+import '../widgets/keyboard_safe.dart';
 import '../widgets/load_error_view.dart';
 import '../widgets/owner_restaurant_dropdown.dart';
 import '../widgets/owner_verify_sheet.dart';
@@ -220,12 +221,9 @@ class _OwnerScreenState extends State<OwnerScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         bottom: false,
-        child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusScope.of(context).unfocus(),
         child: Stack(
         children: [
-          SingleChildScrollView(
+          KeyboardDismissScroll(
             padding: const EdgeInsets.only(bottom: 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,14 +438,26 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 color: Color(0xFF000000),
                               ),
                             ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              '매장 근처(GPS)에서만 반영할 수 있어요.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
                             const SizedBox(height: 14),
                             TextField(
                               controller: _seatCtrl,
                               keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.done,
                               textAlign: TextAlign.center,
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                               ],
+                              onEditingComplete: () =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -463,11 +473,23 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFFD1D5DB),
                                 ),
-                                suffixText: '명',
-                                suffixStyle: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.grey.shade700,
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '명',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    keyboardHideButton(),
+                                  ],
+                                ),
+                                suffixIconConstraints: const BoxConstraints(
+                                  minWidth: 0,
+                                  minHeight: 0,
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFFF9FAFB),
@@ -519,10 +541,14 @@ class _OwnerScreenState extends State<OwnerScreen> {
                             GestureDetector(
                               onTap: _seatSubmitting
                                   ? null
-                                  : () => _submitSeatUpdate(
+                                  : () {
+                                      FocusManager.instance.primaryFocus
+                                          ?.unfocus();
+                                      _submitSeatUpdate(
                                         provider,
                                         restaurant.id.toString(),
-                                      ),
+                                      );
+                                    },
                               child: Container(
                                 width: double.infinity,
                                 padding:
@@ -602,7 +628,6 @@ class _OwnerScreenState extends State<OwnerScreen> {
               ),
             ),
         ],
-      ),
       ),
       ),
     );

@@ -2523,17 +2523,64 @@ class AppProvider extends ChangeNotifier {
     if (repo == null) {
       return '서버에 연결할 수 없어요.';
     }
+
+    double lat;
+    double lng;
+    // 혼잡도 제보와 동일: 디버그는 매장 좌표, 릴리즈는 실제 GPS + 50m
+    if (kDebugMode) {
+      final restaurant = _restaurants.firstWhere(
+        (r) => r.id == restaurantId,
+        orElse: () => _restaurants.first,
+      );
+      lat = restaurant.latitude;
+      lng = restaurant.longitude;
+    } else {
+      final pos = await _currentPosition();
+      if (pos == null) {
+        return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
+      }
+      lat = pos.latitude;
+      lng = pos.longitude;
+
+      final restaurant = _restaurants.firstWhere(
+        (r) => r.id == restaurantId,
+        orElse: () => _restaurants.first,
+      );
+      if (restaurant.latitude.abs() > 0.0001 &&
+          restaurant.longitude.abs() > 0.0001) {
+        final dist = Geolocator.distanceBetween(
+          pos.latitude,
+          pos.longitude,
+          restaurant.latitude,
+          restaurant.longitude,
+        );
+        if (dist > 50) {
+          return '매장 근처에서만 입장 가능 인원을 입력할 수 있어요.';
+        }
+      }
+    }
+
     try {
-      await repo.submitOwnerSeatUpdate(restaurantId, availableSeats);
+      await repo.submitOwnerSeatUpdate(
+        restaurantId,
+        availableSeats,
+        latitude: lat,
+        longitude: lng,
+      );
       return null;
     } on PostgrestException catch (e) {
       debugPrint('[Supabase] submitOwnerSeatUpdate: ${e.message}');
-      if (e.message.contains('본인 매장')) {
+      final msg = e.message.trim();
+      if (msg.contains('본인 매장')) {
         return '본인 매장만 입력할 수 있어요.';
       }
-      if (e.message.contains('0 이상')) {
+      if (msg.contains('0 이상')) {
         return '0 이상의 숫자만 입력할 수 있어요.';
       }
+      if (msg.contains('위치') || msg.contains('근처')) {
+        return msg;
+      }
+      if (msg.isNotEmpty) return msg;
       return '반영에 실패했어요. 잠시 후 다시 시도해주세요.';
     } catch (e, st) {
       debugPrint('[Supabase] submitOwnerSeatUpdate failed: $e\n$st');

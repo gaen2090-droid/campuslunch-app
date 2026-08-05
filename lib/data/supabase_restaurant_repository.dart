@@ -778,13 +778,17 @@ class SupabaseRestaurantRepository {
 
   Future<void> submitOwnerSeatUpdate(
     String restaurantId,
-    int availableSeats,
-  ) async {
+    int availableSeats, {
+    double? latitude,
+    double? longitude,
+  }) async {
     await _client.rpc(
       'submit_owner_seat_update',
       params: {
         'p_restaurant_id': restaurantId,
         'p_available_seats': availableSeats,
+        'p_lat': latitude,
+        'p_lng': longitude,
       },
     );
   }
