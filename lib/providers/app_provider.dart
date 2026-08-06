@@ -1742,42 +1742,13 @@ class AppProvider extends ChangeNotifier {
             return '방금 제보한 매장이에요.\n잠시 후 다시 제보해주세요.';
           }
         }
-        double? lat;
-        double? lng;
-        // 위치 제한은 사장님 제보에도 동일하게 적용 (5분 쿨다운만 사장님 예외).
-        // 서버(submit_crowd_report)는 클라이언트의 디버그 여부를 알 수 없어
-        // 항상 50m 거리 검증을 하므로, 디버그 빌드에서는 실제 GPS 대신 매장
-        // 좌표를 그대로 보내 서버측 거리 계산이 0m로 항상 통과하게 만든다.
-        if (kDebugMode) {
-          final restaurant = _restaurants.firstWhere(
-            (r) => r.id == restaurantId,
-            orElse: () => _restaurants.first,
-          );
-          lat = restaurant.latitude;
-          lng = restaurant.longitude;
-        } else {
-          final pos = await _currentPosition();
-          if (pos == null) {
-            return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
-          }
-          lat = pos.latitude;
-          lng = pos.longitude;
-
-          final restaurant = _restaurants.firstWhere(
-            (r) => r.id == restaurantId,
-            orElse: () => _restaurants.first,
-          );
-          if (restaurant.latitude.abs() > 0.0001 &&
-              restaurant.longitude.abs() > 0.0001) {
-            final dist = Geolocator.distanceBetween(
-              pos.latitude, pos.longitude,
-              restaurant.latitude, restaurant.longitude,
-            );
-            if (dist > 50) {
-              return '매장 근처에서만 혼잡도를 제보할 수 있어요.';
-            }
-          }
-        }
+        // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
+        // 디버그(flutter run)는 50m 우회 — _resolveVenueGps 참고.
+        final (coords, gpsErr) = await _resolveVenueGps(
+          restaurantId,
+          tooFarMessage: '매장 근처에서만 혼잡도를 제보할 수 있어요.',
+        );
+        if (gpsErr != null) return gpsErr;
 
         final stampResult = await repo.reportStatusWithStamp(
           restaurantId,
@@ -1785,8 +1756,8 @@ class AppProvider extends ChangeNotifier {
           source: source,
           userId: authUser.id,
           nickname: _nickname,
-          latitude: lat,
-          longitude: lng,
+          latitude: coords!.lat,
+          longitude: coords.lng,
         );
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
@@ -1875,6 +1846,59 @@ class AppProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  /// 제보·입장가능인원용 GPS.
+  ///
+  /// - **디버그(`flutter run`)**: 50m 제한 없음. 서버도 50m를 검사하므로
+  ///   실제 GPS 대신 매장 좌표를 보내 거리=0m로 통과시킨다.
+  /// - **릴리즈/프로파일/IPA**: 실제 GPS + 클라이언트·서버 50m 검증.
+  ///
+  /// 실패 시 `(null, 사용자 메시지)`, 성공 시 `((lat,lng), null)`.
+  Future<(({double lat, double lng})? coords, String? error)> _resolveVenueGps(
+    String restaurantId, {
+    required String tooFarMessage,
+  }) async {
+    Restaurant? restaurant;
+    for (final r in _restaurants) {
+      if (r.id == restaurantId) {
+        restaurant = r;
+        break;
+      }
+    }
+    if (restaurant == null) {
+      return (null, '매장 정보를 찾을 수 없어요.');
+    }
+    if (!restaurant.hasMapLocation) {
+      return (null, '식당 위치 정보가 없어요.');
+    }
+
+    // assert/kDebugMode: flutter run(debug)에서만 true. release·profile·IPA는 false.
+    if (kDebugMode) {
+      debugPrint(
+        '[GPS] debug bypass 50m — using restaurant coords '
+        'id=$restaurantId lat=${restaurant.latitude} lng=${restaurant.longitude}',
+      );
+      return (
+        (lat: restaurant.latitude, lng: restaurant.longitude),
+        null,
+      );
+    }
+
+    final pos = await _currentPosition();
+    if (pos == null) {
+      return (null, '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.');
+    }
+    final dist = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      restaurant.latitude,
+      restaurant.longitude,
+    );
+    if (dist > 50) {
+      return (null, tooFarMessage);
+    }
+    return ((lat: pos.latitude, lng: pos.longitude), null);
   }
 
   Future<void> loadOwnerInfluence() async {
@@ -2524,48 +2548,18 @@ class AppProvider extends ChangeNotifier {
       return '서버에 연결할 수 없어요.';
     }
 
-    double lat;
-    double lng;
-    // 혼잡도 제보와 동일: 디버그는 매장 좌표, 릴리즈는 실제 GPS + 50m
-    if (kDebugMode) {
-      final restaurant = _restaurants.firstWhere(
-        (r) => r.id == restaurantId,
-        orElse: () => _restaurants.first,
-      );
-      lat = restaurant.latitude;
-      lng = restaurant.longitude;
-    } else {
-      final pos = await _currentPosition();
-      if (pos == null) {
-        return '현재 위치를 확인할 수 없어요.\n위치 권한을 확인해주세요.';
-      }
-      lat = pos.latitude;
-      lng = pos.longitude;
-
-      final restaurant = _restaurants.firstWhere(
-        (r) => r.id == restaurantId,
-        orElse: () => _restaurants.first,
-      );
-      if (restaurant.latitude.abs() > 0.0001 &&
-          restaurant.longitude.abs() > 0.0001) {
-        final dist = Geolocator.distanceBetween(
-          pos.latitude,
-          pos.longitude,
-          restaurant.latitude,
-          restaurant.longitude,
-        );
-        if (dist > 50) {
-          return '매장 근처에서만 입장 가능 인원을 입력할 수 있어요.';
-        }
-      }
-    }
+    final (coords, gpsErr) = await _resolveVenueGps(
+      restaurantId,
+      tooFarMessage: '매장 근처에서만 입장 가능 인원을 입력할 수 있어요.',
+    );
+    if (gpsErr != null) return gpsErr;
 
     try {
       await repo.submitOwnerSeatUpdate(
         restaurantId,
         availableSeats,
-        latitude: lat,
-        longitude: lng,
+        latitude: coords!.lat,
+        longitude: coords.lng,
       );
       return null;
     } on PostgrestException catch (e) {
