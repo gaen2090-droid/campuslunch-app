@@ -38,15 +38,41 @@ class KeyboardDismissScroll extends StatelessWidget {
   }
 }
 
-/// iOS 숫자 키패드에는 Done이 없어, 필드에서 키보드를 닫을 수 있게 한다.
-Widget keyboardHideButton() {
-  return IconButton(
-    tooltip: '키보드 닫기',
-    icon: const Icon(
-      Icons.keyboard_hide_outlined,
-      size: 20,
-      color: Color(0xFF6B7280),
-    ),
-    onPressed: () => FocusManager.instance.primaryFocus?.unfocus(),
-  );
+/// 숫자 키패드 등 키보드에 완료가 없을 때, 키보드 바로 위에 표시한다.
+/// [Stack]의 자식으로 둔다.
+class KeyboardDoneBar extends StatelessWidget {
+  const KeyboardDoneBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    if (bottom <= 0) return const SizedBox.shrink();
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: bottom,
+      child: Material(
+        elevation: 1,
+        color: const Color(0xFFF2F2F7),
+        child: SizedBox(
+          height: 44,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: const Text(
+                '완료',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF007AFF),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

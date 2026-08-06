@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-Regular.otf"); font-weight: 400; }
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-Medium.otf"); font-weight: 500; }
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-SemiBold.otf"); font-weight: 600; }
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-Bold.otf"); font-weight: 700; }
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-ExtraBold.otf"); font-weight: 800; }
+  @font-face { font-family: "Pretendard"; src: url("../../assets/fonts/Pretendard-Black.otf"); font-weight: 900; }
+
+  :root {
+    --bg: #fafafa;
+    --ink: #111111;
+    --muted: #6b6b6b;
+    --line: #d4d4d4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 2000px;
+    height: 1480px;
+    background: var(--bg);
+    font-family: "Pretendard", sans-serif;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .canvas { position: relative; width: 2000px; height: 1480px; }
+
+  .head { position: absolute; left: 56px; top: 46px; }
+  .eyebrow {
+    display: inline-block;
+    font-size: 17px; font-weight: 800; color: #fff;
+    background: var(--ink); border-radius: 999px;
+    padding: 8px 18px;
+  }
+  .title { margin-top: 14px; font-size: 54px; font-weight: 900; line-height: 1.1; }
+  .sub { margin-top: 8px; font-size: 19px; font-weight: 500; color: var(--muted); }
+
+  .legend { position: absolute; right: 56px; top: 58px; text-align: right; }
+  .legend-row { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 11px; }
+  .legend-row span { font-size: 17px; font-weight: 700; color: var(--muted); }
+  .swatch { width: 54px; height: 0; border-top: 3px solid var(--ink); }
+  .swatch.dash { border-top: 3px dashed var(--ink); }
+
+  .node {
+    position: absolute; background: #fff;
+    border: 3px solid var(--ink); border-radius: 24px;
+    box-shadow: 8px 8px 0 var(--ink);
+    padding: 26px 28px; z-index: 3;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .node .tag {
+    display: inline-block; align-self: flex-start;
+    font-size: 14px; font-weight: 800;
+    color: var(--muted); border: 2px solid var(--line);
+    border-radius: 999px; padding: 4px 13px; margin-bottom: 12px;
+  }
+  .node h3 { font-size: 38px; font-weight: 900; line-height: 1.15; }
+  .node p { margin-top: 10px; font-size: 16px; font-weight: 500; color: var(--muted); line-height: 1.5; }
+
+  .hub {
+    position: absolute; background: var(--ink); color: #fff;
+    border: 3px solid var(--ink); border-radius: 30px;
+    box-shadow: 12px 12px 0 var(--line);
+    padding: 30px 32px; z-index: 3;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hub .tag {
+    display: inline-block; align-self: flex-start;
+    font-size: 14px; font-weight: 800;
+    color: var(--ink); background: #fff; border-radius: 999px;
+    padding: 5px 14px; margin-bottom: 14px;
+  }
+  .hub h3 { font-size: 50px; font-weight: 900; line-height: 1.1; }
+  .hub p { margin-top: 12px; font-size: 17px; font-weight: 500; color: #c9c9c9; line-height: 1.55; }
+
+  .lbl {
+    position: absolute; z-index: 4;
+    background: #fff; border: 2.5px solid var(--ink); border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 16px; font-weight: 600; line-height: 1.55;
+    transform: translate(-50%, -50%);
+    text-align: left;
+  }
+  .lbl.money { background: var(--ink); color: #fff; }
+  .lbl ul { list-style: none; margin: 0; padding: 0; }
+  .lbl li { position: relative; padding-left: 15px; white-space: nowrap; }
+  .lbl li::before {
+    content: "·";
+    position: absolute; left: 0; top: -1px;
+    font-weight: 900; font-size: 19px;
+  }
+
+  svg { position: absolute; inset: 0; z-index: 1; }
+
+  .foot {
+    position: absolute; left: 56px; right: 320px; bottom: 38px;
+    font-size: 16px; font-weight: 600; color: #8a8a8a; line-height: 1.5;
+  }
+  .foot-brand {
+    position: absolute; right: 56px; bottom: 42px;
+    font-size: 16px; font-weight: 800; color: var(--ink);
+  }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="head">
+    <div class="eyebrow">CAMPUS LUNCH ECOSYSTEM</div>
+    <div class="title">캠퍼스런치 참여 주체 관계도</div>
+    <div class="sub">화살표 방향 = 제공하는 가치 · 데이터 · 수익</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-row"><span>가치 · 정보 · 데이터</span><div class="swatch"></div></div>
+    <div class="legend-row"><span>수익 흐름</span><div class="swatch dash"></div></div>
+  </div>
+
+  <svg width="2000" height="1480">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5"
+              markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#111111"/>
+      </marker>
+    </defs>
+    <g stroke="#111111" stroke-width="3.5" fill="none" marker-end="url(#ah)">
+      <!-- 협업기업 ↔ 캠퍼스런치 -->
+      <path d="M 900 405 L 900 620" stroke-dasharray="10 8"/>
+      <path d="M 1080 620 L 1080 405"/>
+
+      <!-- 점주 ↔ 캠퍼스런치 -->
+      <path d="M 430 880 L 740 880" stroke-dasharray="10 8"/>
+      <path d="M 740 700 L 430 700"/>
+
+      <!-- 캠퍼스런치 ↔ 유저 -->
+      <path d="M 1240 700 L 1550 700"/>
+      <path d="M 1550 880 L 1240 880"/>
+
+      <!-- 점주 ↔ 유저 직접 -->
+      <path d="M 340 930 L 340 1180 L 1660 1180 L 1660 930"/>
+      <path d="M 1830 930 L 1830 1310 L 190 1310 L 190 930" stroke-dasharray="10 8"/>
+    </g>
+  </svg>
+
+  <!-- 노드 -->
+  <div class="hub" style="left:740px; top:620px; width:500px; height:330px;">
+    <span class="tag">PLATFORM</span>
+    <h3>캠퍼스런치</h3>
+    <p>제보·점주 입력을 검증해<br>실시간 혼잡도로 가공하고<br>리워드·커뮤니티를 운영하는 주체</p>
+  </div>
+
+  <div class="node" style="left:50px; top:640px; width:380px; height:290px;">
+    <span class="tag">공급</span>
+    <h3>점주</h3>
+    <p>대학가 식당 운영자<br>혼잡도·좌석·매장 정보 제공</p>
+  </div>
+
+  <div class="node" style="left:1550px; top:640px; width:400px; height:290px;">
+    <span class="tag">수요</span>
+    <h3>유저 (학생)</h3>
+    <p>점심시간 대학생 이용자<br>제보·커뮤니티·컬렉션 참여</p>
+  </div>
+
+  <div class="node" style="left:780px; top:195px; width:420px; height:210px;">
+    <span class="tag">파트너</span>
+    <h3>협업 기업</h3>
+    <p>기프티콘 · 프로모션 제휴사<br>리워드 재고 · 마케팅 협찬</p>
+  </div>
+
+  <!-- 라벨: 협업기업 ↔ 캠퍼스런치 (화살표 위 배치) -->
+  <div class="lbl money" style="left:900px; top:470px;">
+    <ul>
+      <li>기프티콘 협찬·공급</li>
+      <li>제휴 마케팅비</li>
+    </ul>
+  </div>
+  <div class="lbl" style="left:1080px; top:565px;">
+    <ul>
+      <li>대학생 타깃 브랜드 노출</li>
+      <li>캠페인 반응·이용 데이터</li>
+    </ul>
+  </div>
+
+  <!-- 라벨: 점주 ↔ 캠퍼스런치 -->
+  <div class="lbl" style="left:585px; top:700px;">
+    <ul>
+      <li>빈 좌석 고객 유입</li>
+      <li>매장 홍보·노출</li>
+      <li>방문·관심 통계</li>
+      <li>매장 콘텐츠 관리 채널</li>
+      <li>사장님 커뮤니티 배지</li>
+    </ul>
+  </div>
+  <div class="lbl money" style="left:585px; top:880px;">
+    <ul>
+      <li>광고·홍보비</li>
+      <li>실시간 혼잡도 입력</li>
+      <li>입장 가능 인원 입력</li>
+      <li>사진·메뉴·영업시간·공지</li>
+    </ul>
+  </div>
+
+  <!-- 라벨: 캠퍼스런치 ↔ 유저 -->
+  <div class="lbl" style="left:1395px; top:700px;">
+    <ul>
+      <li>실시간 혼잡도·매장 추천</li>
+      <li>맛집 컬렉션 큐레이션</li>
+      <li>커뮤니티(게시판·댓글)</li>
+      <li>스탬프·기프티콘 리워드</li>
+      <li>피크 푸시·길찾기·즐겨찾기</li>
+    </ul>
+  </div>
+  <div class="lbl" style="left:1395px; top:880px;">
+    <ul>
+      <li>현장 혼잡도 제보</li>
+      <li>이용·관심 행동 데이터</li>
+      <li>커뮤니티 UGC·신고</li>
+      <li>컬렉션 기여</li>
+    </ul>
+  </div>
+
+  <!-- 점주 ↔ 유저 -->
+  <div class="lbl" style="left:1000px; top:1180px;">
+    <ul>
+      <li>남는 좌석 즉시 입장</li>
+      <li>쿠폰·프로모션 혜택</li>
+    </ul>
+  </div>
+  <div class="lbl money" style="left:1000px; top:1310px;">
+    <ul>
+      <li>방문·매출</li>
+    </ul>
+  </div>
+
+  <div class="foot">협업 기업의 기프티콘 협찬 → 학생 제보·커뮤니티 참여 유도 → 검증된 실시간 정보가 점주 유입·홍보로 환원되는 순환 구조</div>
+  <div class="foot-brand">HUNGRIES · CAMPUS LUNCH</div>
+
+</div>
+</body>
+</html>

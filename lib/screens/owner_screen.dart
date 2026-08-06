@@ -438,15 +438,6 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 color: Color(0xFF000000),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              '매장 근처(GPS)에서만 반영할 수 있어요.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF9CA3AF),
-                              ),
-                            ),
                             const SizedBox(height: 14),
                             TextField(
                               controller: _seatCtrl,
@@ -473,23 +464,11 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFFD1D5DB),
                                 ),
-                                suffixIcon: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '명',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    keyboardHideButton(),
-                                  ],
-                                ),
-                                suffixIconConstraints: const BoxConstraints(
-                                  minWidth: 0,
-                                  minHeight: 0,
+                                suffixText: '명',
+                                suffixStyle: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.grey.shade700,
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFFF9FAFB),
@@ -627,6 +606,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 ),
               ),
             ),
+          const KeyboardDoneBar(),
         ],
       ),
       ),

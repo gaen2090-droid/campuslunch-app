@@ -211,6 +211,7 @@ class _OwnerRestaurantManageScreenState
                 bottom: 24,
                 child: _Toast(message: _toast!),
               ),
+            const KeyboardDoneBar(),
           ],
         ),
       ),
@@ -823,11 +824,6 @@ class _MenuSectionState extends State<_MenuSection> {
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         border: const OutlineInputBorder(),
-                        suffixIcon: keyboardHideButton(),
-                        suffixIconConstraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -847,11 +843,6 @@ class _MenuSectionState extends State<_MenuSection> {
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         border: const OutlineInputBorder(),
-                        suffixIcon: keyboardHideButton(),
-                        suffixIconConstraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -1109,7 +1100,6 @@ class _NoticeSectionState extends State<_NoticeSection> {
               hintText: '예) 8월 15일은 광복절로 휴무입니다.',
               border: const OutlineInputBorder(),
               isDense: true,
-              suffixIcon: keyboardHideButton(),
             ),
             style: const TextStyle(fontSize: 13),
           ),
