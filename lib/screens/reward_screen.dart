@@ -58,7 +58,7 @@ class _RewardScreenState extends State<RewardScreen> {
         color: const Color(0xFF000000),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
