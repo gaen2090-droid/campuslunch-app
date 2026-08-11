@@ -14,6 +14,7 @@ create unique index if not exists users_nickname_lower_unique_idx
     and lower(trim(nickname)) <> '탈퇴한 회원';
 
 -- 가입 전·자동 닉네임 생성용 (anon 허용 — 캠퍼스 앱 닉네임 중복 확인)
+-- is_reserved_nickname()은 rpc_nickname_available.sql(#6, 이 파일보다 먼저 실행)에서 정의.
 create or replace function public.is_nickname_taken(p_nickname text)
 returns boolean
 language sql
@@ -21,11 +22,13 @@ security definer
 set search_path = public
 stable
 as $$
-  select exists (
-    select 1
-    from public.users u
-    where lower(trim(u.nickname)) = lower(trim(p_nickname))
-  );
+  select
+    public.is_reserved_nickname(p_nickname)
+    or exists (
+      select 1
+      from public.users u
+      where lower(trim(u.nickname)) = lower(trim(p_nickname))
+    );
 $$;
 
 revoke all on function public.is_nickname_taken(text) from public;

@@ -8,7 +8,13 @@ String generateNickname() {
 
 bool isPlaceholderNickname(String? nickname) {
   if (nickname == null || nickname.trim().isEmpty) return true;
-  return nickname == '사용자' || nickname == '카카오 사용자';
+  // '탈퇴한 회원'은 delete_own_account()의 의도된 익명화 값이라 여기 포함하지 않는다 —
+  // 포함하면 탈퇴 계정이 로그인할 때마다 랜덤 닉네임으로 되돌아가버린다.
+  return nickname == '사용자' ||
+      nickname == '카카오 사용자' ||
+      nickname == '구글 사용자' ||
+      nickname == '애플 사용자' ||
+      nickname == '탈퇴한 사용자';
 }
 
 /// [isTaken] 이 true 면 재시도. RPC 미배포(null)면 최대 시도 후 마지막 후보 반환.
