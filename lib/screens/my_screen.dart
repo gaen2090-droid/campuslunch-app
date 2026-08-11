@@ -64,13 +64,21 @@ class _MyScreenState extends State<MyScreen> {
     final provider = context.watch<AppProvider>();
     final hasOwner = provider.hasOwnerTab;
 
+    if (provider.pendingOwnerRejectionPush) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AppProvider>().consumePendingOwnerRejectionPush();
+        OwnerVerifyScreen.show(context);
+      });
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
       children: [
         SingleChildScrollView(
           padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16, bottom: 100),
+              top: MediaQuery.of(context).padding.top + 8, bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

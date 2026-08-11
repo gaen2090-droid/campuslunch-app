@@ -184,15 +184,41 @@ class AppProvider extends ChangeNotifier {
   String homeFilterSortBy = '최신순';
   Set<String> homeFilterRegions = {'전체'};
   Set<String> homeFilterCuisines = {'전체'};
+  bool homeFilterBookmarkOnly = false;
 
   void setHomeFilter({
     required String sortBy,
     required Set<String> regions,
     required Set<String> cuisines,
+    required bool bookmarkOnly,
   }) {
     homeFilterSortBy = sortBy;
     homeFilterRegions = regions;
     homeFilterCuisines = cuisines;
+    homeFilterBookmarkOnly = bookmarkOnly;
+    notifyListeners();
+  }
+
+  // ── 지도 탭 필터 (세션 내 유지) ──
+  // MapScreen은 main_screen.dart에서 IndexedStack 밖에 조건부로 마운트되므로
+  // (PlatformView가 비활성 IndexedStack 자식에 있으면 iOS 터치가 막히는 문제 회피),
+  // 탭을 벗어났다 돌아오기만 해도 위젯 State가 완전히 새로 생성된다. 홈 필터와
+  // 마찬가지로 provider에 백업해야 탭 이동 후에도 유지된다.
+  Set<String> mapFilterRegions = {'전체'};
+  Set<String> mapFilterCuisines = {'전체'};
+  bool mapFilterBookmarkOnly = false;
+  String mapFilterReport = '전체';
+
+  void setMapFilter({
+    required Set<String> regions,
+    required Set<String> cuisines,
+    required bool bookmarkOnly,
+    required String report,
+  }) {
+    mapFilterRegions = regions;
+    mapFilterCuisines = cuisines;
+    mapFilterBookmarkOnly = bookmarkOnly;
+    mapFilterReport = report;
     notifyListeners();
   }
 
@@ -260,6 +286,15 @@ class AppProvider extends ChangeNotifier {
     final id = _pendingCollectionId;
     _pendingCollectionId = null;
     return id;
+  }
+
+  bool _pendingOwnerRejectionPush = false;
+  bool get pendingOwnerRejectionPush => _pendingOwnerRejectionPush;
+
+  bool consumePendingOwnerRejectionPush() {
+    final v = _pendingOwnerRejectionPush;
+    _pendingOwnerRejectionPush = false;
+    return v;
   }
 
   bool get hasPendingAppLink => _pendingAppLink != null;
@@ -1668,6 +1703,26 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 사장님 인증 반려 푸시 탭 → 마이 탭으로 이동, 반려 사유가 뜨는
+  /// 사장님 인증 화면으로 랜딩 (OwnerVerifyScreen이 자체적으로 상태 재조회).
+  void openOwnerRejectionFromPush() {
+    debugPrint('[AppProvider] openOwnerRejectionFromPush');
+    _mainTabIndex = myTabIndex;
+    _pendingOwnerRejectionPush = true;
+    notifyListeners();
+  }
+
+  /// 사장님 인증 승인 푸시 탭 → 소유 매장 목록을 먼저 갱신해 사장님 탭셋으로
+  /// 전환한 뒤 제보 홈(0번 탭)으로 랜딩한다. 갱신 전에 openHomeFromPush를 쓰면
+  /// hasOwnerTab이 아직 false라 일반 유저 홈으로 잘못 랜딩된다.
+  Future<void> openOwnerApprovalFromPush() async {
+    debugPrint('[AppProvider] openOwnerApprovalFromPush');
+    await _syncOwnerRestaurantIdsFromDb();
+    await refreshRestaurants();
+    _mainTabIndex = homeTabIndex;
+    notifyListeners();
+  }
+
   void handleRemotePushData(Map<String, dynamic> data) {
     if (_bootstrapping || _stage != 'app' || !_isLoggedIn) {
       _pendingRemotePushData = data;
@@ -1703,7 +1758,11 @@ class AppProvider extends ChangeNotifier {
       return;
     }
     if (type == 'owner_approved') {
-      openHomeFromPush();
+      unawaited(openOwnerApprovalFromPush());
+      return;
+    }
+    if (type == 'owner_rejected') {
+      openOwnerRejectionFromPush();
       return;
     }
     openHomeFromPush(data['restaurant_id'] as String?);

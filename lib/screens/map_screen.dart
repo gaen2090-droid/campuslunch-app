@@ -35,6 +35,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   Set<String> _regions = {_allLabel};
   Set<String> _cuisines = {_allLabel};
   bool _bookmarkOnly = false;
+  bool _mapFilterLoaded = false;
 
   static const _cuisineOpts = [
     _allLabel,
@@ -58,6 +59,23 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
       _route = route;
       appRouteObserver.subscribe(this, route);
     }
+    if (!_mapFilterLoaded) {
+      _mapFilterLoaded = true;
+      final p = context.read<AppProvider>();
+      _regions = Set.from(p.mapFilterRegions);
+      _cuisines = Set.from(p.mapFilterCuisines);
+      _bookmarkOnly = p.mapFilterBookmarkOnly;
+      _reportFilter = p.mapFilterReport;
+    }
+  }
+
+  void _saveMapFilter() {
+    context.read<AppProvider>().setMapFilter(
+      regions: Set.from(_regions),
+      cuisines: Set.from(_cuisines),
+      bookmarkOnly: _bookmarkOnly,
+      report: _reportFilter,
+    );
   }
 
   @override
@@ -177,7 +195,9 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
         all.any((r) => r.status != '영업안함' && !r.hasCrowdUpdate);
     if (!hasNeedsReportRestaurant && _reportFilter == '제보없음') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _reportFilter = _allLabel);
+        if (!mounted) return;
+        setState(() => _reportFilter = _allLabel);
+        _saveMapFilter();
       });
     }
     final safeTop = MediaQuery.of(context).padding.top;
@@ -292,6 +312,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                             setState(() {
                               _cuisines = isActive ? {_allLabel} : {'카페'};
                             });
+                            _saveMapFilter();
                           },
                         ),
                         const SizedBox(width: 8),
@@ -303,7 +324,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                           trailingIcon: _bookmarkOnly
                               ? Icons.bookmark_rounded
                               : Icons.bookmark_border_rounded,
-                          onTap: () => setState(() => _bookmarkOnly = !_bookmarkOnly),
+                          onTap: () {
+                            setState(() => _bookmarkOnly = !_bookmarkOnly);
+                            _saveMapFilter();
+                          },
                         ),
                         if (!_isAllFilter(_cuisines) ||
                             !_isAllFilter(_regions) ||
@@ -316,14 +340,17 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                                 _regions = {_allLabel};
                                 _bookmarkOnly = false;
                               });
+                              _saveMapFilter();
                               _bumpCameraFit();
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                                borderRadius: BorderRadius.all(Radius.circular(20)),
+                                boxShadow: [
+                                  BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
+                                ],
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -358,6 +385,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                                 }
                                 _bumpCameraFit();
                               });
+                              _saveMapFilter();
                             },
                           ),
                         )),
@@ -369,8 +397,14 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                             title: '음식종류',
                             items: _cuisineOpts,
                             selected: Set.from(_cuisines),
-                            onApply: (v) => setState(() => _cuisines = v),
-                            onReset: () => setState(() { _cuisines = {_allLabel}; }),
+                            onApply: (v) {
+                              setState(() => _cuisines = v);
+                              _saveMapFilter();
+                            },
+                            onReset: () {
+                              setState(() { _cuisines = {_allLabel}; });
+                              _saveMapFilter();
+                            },
                           ),
                         ),
                       ],

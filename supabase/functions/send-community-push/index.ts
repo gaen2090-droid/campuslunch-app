@@ -35,7 +35,8 @@ type Payload =
   | { event: "collection_reply"; commentId: string }
   | { event: "like"; postId: string; likerId: string }
   | { event: "moderation_delete"; kind: "post" | "comment"; userId: string }
-  | { event: "owner_approved"; userId: string; restaurantId: string };
+  | { event: "owner_approved"; userId: string; restaurantId: string }
+  | { event: "owner_rejected"; userId: string };
 
 function extractPayload(body: Record<string, unknown>): Payload | null {
   const eventRaw = body.event ?? body.type;
@@ -54,6 +55,12 @@ function extractPayload(body: Record<string, unknown>): Payload | null {
     const restaurantId = String(body.restaurant_id ?? "");
     if (!userId || !restaurantId) return null;
     return { event: "owner_approved", userId, restaurantId };
+  }
+
+  if (eventRaw === "owner_rejected") {
+    const userId = String(body.user_id ?? "");
+    if (!userId) return null;
+    return { event: "owner_rejected", userId };
   }
 
   // DB 트리거가 event를 명시하는 경우(reply/collection_reply) — 폴백보다 먼저 처리
@@ -222,6 +229,44 @@ Deno.serve(async (req) => {
           data: {
             type: "owner_approved",
             restaurant_id: payload.restaurantId,
+          },
+        });
+        if (result.ok) sent++;
+        else {
+          failed++;
+          if (
+            result.status === 404 ||
+            result.body.includes("UNREGISTERED") ||
+            result.body.includes("NOT_FOUND")
+          ) {
+            invalidTokens.push(row.token);
+          }
+        }
+      }
+      await flushInvalid();
+      return jsonResponse({
+        ok: true,
+        event: payload.event,
+        sent,
+        failed,
+      });
+    }
+
+    if (payload.event === "owner_rejected") {
+      const { data: tokens, error } = await supabase.rpc(
+        "list_owner_approval_push_tokens",
+        { p_user_id: payload.userId },
+      );
+      if (error) throw error;
+      const list = (tokens ?? []) as { token: string }[];
+
+      for (const row of list) {
+        const result = await sendFcmMessage(sa, access, {
+          token: row.token,
+          title: "사장님 인증 심사가 반려됐어요.",
+          body: "사유를 확인해보세요.",
+          data: {
+            type: "owner_rejected",
           },
         });
         if (result.ok) sent++;

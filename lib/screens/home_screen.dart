@@ -114,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _sortBy = p.homeFilterSortBy;
       _regions = Set.from(p.homeFilterRegions);
       _cuisines = Set.from(p.homeFilterCuisines);
+      _bookmarkOnly = p.homeFilterBookmarkOnly;
     }
   }
 
@@ -122,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       sortBy: _sortBy,
       regions: Set.from(_regions),
       cuisines: Set.from(_cuisines),
+      bookmarkOnly: _bookmarkOnly,
     );
   }
 
