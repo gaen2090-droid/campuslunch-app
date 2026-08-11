@@ -748,17 +748,7 @@ class _RewardCard extends StatelessWidget {
                         final filled = i < today.clamp(0, 3);
                         return Opacity(
                           opacity: filled ? 1.0 : 0.2,
-                          child: Container(
-                            width: cellSize,
-                            height: cellSize,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF000000),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: StampRiceBallIcon(size: cellSize * 0.55),
-                            ),
-                          ),
+                          child: StampRiceBallIcon(size: cellSize),
                         );
                       }),
                     ),

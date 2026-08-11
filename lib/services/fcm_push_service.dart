@@ -231,6 +231,7 @@ class FcmPushService {
           importance: Importance.high,
           priority: Priority.high,
           icon: BrandAssets.androidNotificationIcon,
+          color: const Color(0xFF000000),
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

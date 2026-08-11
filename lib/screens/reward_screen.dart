@@ -341,22 +341,10 @@ class _StampCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
       opacity: filled ? 1.0 : 0.2,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: const Color(0xFF000000),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: const Color(0xFFE5E7EB),
-            width: 1.5,
-          ),
-        ),
-        child: const Center(
-          child: StampRiceBallIcon(size: 30),
-        ),
-      ),
+      child: const StampRiceBallIcon(size: 44),
     );
   }
 }

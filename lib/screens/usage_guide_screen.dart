@@ -587,17 +587,9 @@ class _StampCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: filled ? 1.0 : 0.2,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF000000),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: const Color(0xFFE5E7EB),
-            width: 1.5,
-          ),
-        ),
-        child: const Center(
-          child: StampRiceBallIcon(size: 18),
+      child: LayoutBuilder(
+        builder: (context, constraints) => StampRiceBallIcon(
+          size: constraints.biggest.shortestSide,
         ),
       ),
     );

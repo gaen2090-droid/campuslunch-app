@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -192,6 +193,7 @@ class PushNotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: BrandAssets.androidNotificationIcon,
+          color: const Color(0xFF000000),
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -308,6 +310,7 @@ class PushNotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: BrandAssets.androidNotificationIcon,
+          color: const Color(0xFF000000),
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

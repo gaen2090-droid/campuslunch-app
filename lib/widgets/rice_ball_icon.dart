@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../utils/map_pin_painter.dart';
-
 class RiceBallIcon extends StatelessWidget {
   final double? size;
 
@@ -82,21 +80,33 @@ class AppLauncherIcon extends StatelessWidget {
   }
 }
 
-/// 스탬프 적립 화면 전용 아이콘 — 지도 '제보필요' 마커와 같은 별 모양.
-/// 배지 원은 호출부 Container가 이미 그리므로 별만 그림.
+/// 스탬프 적립 화면 전용 아이콘. stamp.png 자체에 원 배경이 포함되어 있으므로
+/// 호출부에서 별도 원(BoxDecoration circle)을 그리면 안 된다 — 이중 원 방지.
 class StampRiceBallIcon extends StatelessWidget {
   final double size;
-  final Color color;
 
-  const StampRiceBallIcon({super.key, this.size = 22, this.color = Colors.white});
+  const StampRiceBallIcon({super.key, this.size = 22});
+
+  static const assetPath = 'assets/images/stamp.png';
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final cachePx = (size * MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(48, 512);
+    return Image.asset(
+      assetPath,
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: StarOnlyPainter(color: color),
+      fit: BoxFit.contain,
+      cacheWidth: cachePx,
+      cacheHeight: cachePx,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => Icon(
+        Icons.rice_bowl_outlined,
+        size: size,
+        color: const Color(0xFF000000),
       ),
     );
   }
