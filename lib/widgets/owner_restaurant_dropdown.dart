@@ -24,7 +24,7 @@ class OwnerHeaderSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: OwnerRestaurantDropdown(
         ownedList: ownedList,
         selected: selected,
