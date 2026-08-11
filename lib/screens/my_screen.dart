@@ -748,7 +748,13 @@ class _RewardCard extends StatelessWidget {
                         final filled = i < today.clamp(0, 3);
                         return Opacity(
                           opacity: filled ? 1.0 : 0.2,
-                          child: StampRiceBallIcon(size: cellSize),
+                          // 원 크기(cellSize)는 3칸 배치라 스탬프북(44)보다 훨씬
+                          // 크다 — 로고는 스탬프북 시각 크기 기준에서 0.30 정도
+                          // 더 키운 크기로 표시.
+                          child: StampRiceBallIcon(
+                            size: cellSize,
+                            markHeight: 44 * (0.56 + 0.30),
+                          ),
                         );
                       }),
                     ),
