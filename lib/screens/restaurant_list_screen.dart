@@ -55,6 +55,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
       _sortBy = p.listFilterSortBy(_modeKey);
       _regions = Set.from(p.listFilterRegions(_modeKey));
       _cuisines = Set.from(p.listFilterCuisines(_modeKey));
+      _bookmarkOnly = p.listFilterBookmarkOnly(_modeKey);
     }
   }
 
@@ -64,6 +65,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
       sortBy: _sortBy,
       regions: Set.from(_regions),
       cuisines: Set.from(_cuisines),
+      bookmarkOnly: _bookmarkOnly,
     );
   }
 
@@ -120,6 +122,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
         regions: Set.from(_regions),
         cuisines: Set.from(_cuisines),
         locationMode: locationMode,
+        mainTab: widget.mainTab,
         onApply: (sortBy, regions, cuisines) {
           setState(() {
             _sortBy = sortBy;

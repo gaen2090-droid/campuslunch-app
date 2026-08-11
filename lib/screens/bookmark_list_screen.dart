@@ -52,6 +52,8 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
       sortBy: _sortBy,
       regions: Set.from(_regions),
       cuisines: Set.from(_cuisines),
+      // 이 화면 자체가 즐겨찾기 목록이라 별도 즐겨찾기 필터가 없음.
+      bookmarkOnly: false,
     );
   }
 

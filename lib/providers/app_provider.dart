@@ -226,19 +226,23 @@ class AppProvider extends ChangeNotifier {
   final Map<String, String> _listFilterSortBy = {};
   final Map<String, Set<String>> _listFilterRegions = {};
   final Map<String, Set<String>> _listFilterCuisines = {};
+  final Map<String, bool> _listFilterBookmarkOnly = {};
 
   String listFilterSortBy(String mode) => _listFilterSortBy[mode] ?? '최신순';
   Set<String> listFilterRegions(String mode) => _listFilterRegions[mode] ?? {'전체'};
   Set<String> listFilterCuisines(String mode) => _listFilterCuisines[mode] ?? {'전체'};
+  bool listFilterBookmarkOnly(String mode) => _listFilterBookmarkOnly[mode] ?? false;
 
   void setListFilter(String mode, {
     required String sortBy,
     required Set<String> regions,
     required Set<String> cuisines,
+    required bool bookmarkOnly,
   }) {
     _listFilterSortBy[mode] = sortBy;
     _listFilterRegions[mode] = regions;
     _listFilterCuisines[mode] = cuisines;
+    _listFilterBookmarkOnly[mode] = bookmarkOnly;
     notifyListeners();
   }
 

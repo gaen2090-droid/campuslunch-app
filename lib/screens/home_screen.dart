@@ -43,7 +43,13 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _allLabel = '전체';
   String _sortBy = '최신순';
   Set<String> _regions = {'전체'};
-  Set<String> _cuisines = {'전체'};
+  // 음식종류 필터는 식당/카페 탭이 서로 다른 값을 기억한다 — 카페 탭에는
+  // 애초에 세부 음식종류 개념이 없어서(카페 자체가 이미 카테고리), 식당
+  // 탭에서 고른 값을 그대로 공유하면 카페 탭에서 결과가 전부 안 보이는
+  // 문제가 있었다. 위치/정렬은 탭과 무관한 개념이라 계속 공유한다.
+  final Map<int, Set<String>> _cuisinesByTab = {0: {'전체'}, 1: {'전체'}};
+  Set<String> get _cuisines => _cuisinesByTab[_mainTab]!;
+  set _cuisines(Set<String> v) => _cuisinesByTab[_mainTab] = v;
   String? _openDropdown; // 'sort' | 'region' | 'cuisine' | null
   bool _searchActive = false;
   static const _historyStore = RecentHistoryStore('home');
@@ -113,7 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final p = context.read<AppProvider>();
       _sortBy = p.homeFilterSortBy;
       _regions = Set.from(p.homeFilterRegions);
-      _cuisines = Set.from(p.homeFilterCuisines);
+      // 저장된 음식종류 필터는 식당 탭(0) 것으로 취급 — 카페 탭은 세부
+      // 음식종류 개념이 없어 항상 '전체'로 시작한다.
+      _cuisinesByTab[0] = Set.from(p.homeFilterCuisines);
       _bookmarkOnly = p.homeFilterBookmarkOnly;
     }
   }
@@ -122,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<AppProvider>().setHomeFilter(
       sortBy: _sortBy,
       regions: Set.from(_regions),
-      cuisines: Set.from(_cuisines),
+      // 카페 탭은 세부 음식종류가 없으므로 저장 대상은 항상 식당 탭(0) 값.
+      cuisines: Set.from(_cuisinesByTab[0]!),
       bookmarkOnly: _bookmarkOnly,
     );
   }
@@ -265,6 +274,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         regions: Set.from(_regions),
         cuisines: Set.from(_cuisines),
         locationMode: context.read<AppProvider>().locationMode,
+        mainTab: _mainTab,
         onApply: (sortBy, regions, cuisines) {
           setState(() {
             _sortBy = sortBy;
@@ -653,25 +663,28 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                           isActive: !_isAll(_regions),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      HomeFilterChip(
-                        label: _isAll(_cuisines) || _cuisines.isEmpty
-                            ? '음식종류'
-                            : _cuisines.length == 1
-                                ? _cuisines.first
-                                : '${_cuisines.first} 외 ${_cuisines.length - 1}',
-                        active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
-                        open: false,
-                        onTap: () => _openSimpleSheet(
-                          title: '음식종류',
-                          items: _cuisineOpts,
-                          selected: Set.from(_cuisines),
-                          multiSelect: true,
-                          onApply: (v) { setState(() => _cuisines = v); _saveFilter(); },
-                          onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
-                          isActive: !_isAll(_cuisines),
+                      // 카페 탭은 세부 음식종류 개념이 없음(카페 자체가 이미 카테고리).
+                      if (_mainTab == 0) ...[
+                        const SizedBox(width: 8),
+                        HomeFilterChip(
+                          label: _isAll(_cuisines) || _cuisines.isEmpty
+                              ? '음식종류'
+                              : _cuisines.length == 1
+                                  ? _cuisines.first
+                                  : '${_cuisines.first} 외 ${_cuisines.length - 1}',
+                          active: !_isAll(_cuisines) && _cuisines.isNotEmpty,
+                          open: false,
+                          onTap: () => _openSimpleSheet(
+                            title: '음식종류',
+                            items: _cuisineOpts,
+                            selected: Set.from(_cuisines),
+                            multiSelect: true,
+                            onApply: (v) { setState(() => _cuisines = v); _saveFilter(); },
+                            onReset: () { setState(() => _cuisines = {_allLabel}); _saveFilter(); },
+                            isActive: !_isAll(_cuisines),
+                          ),
                         ),
-                      ),
+                      ],
                 ],
               ),
             ),
@@ -1679,6 +1692,8 @@ class HomeFilterSheet extends StatefulWidget {
   final Set<String> regions;
   final Set<String> cuisines;
   final bool locationMode;
+  /// 카페 탭(1)은 세부 음식종류 개념이 없어 그 섹션을 숨긴다.
+  final int mainTab;
   final void Function(String sortBy, Set<String> regions, Set<String> cuisines) onApply;
   final VoidCallback onRequestLocation;
 
@@ -1687,6 +1702,7 @@ class HomeFilterSheet extends StatefulWidget {
     required this.regions,
     required this.cuisines,
     required this.locationMode,
+    this.mainTab = 0,
     required this.onApply,
     required this.onRequestLocation,
   });
@@ -1889,56 +1905,59 @@ class _FilterSheetState extends State<HomeFilterSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          // 카페 탭은 세부 음식종류 개념이 없음(카페 자체가 이미 카테고리).
+          if (widget.mainTab == 0) ...[
+            const SizedBox(height: 24),
 
-          // 음식종류
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Flexible(
-                child: Text('음식종류',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF6B7280))),
-              ),
-              if (!_isAll(_cuisines))
-                GestureDetector(
-                  onTap: () => setState(() => _cuisines = {_allLabel}),
-                  child: const Text('초기화',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF9CA3AF))),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _cuisineOpts.map((opt) {
-              final on = _cuisines.contains(opt);
-              return GestureDetector(
-                onTap: () => setState(() => _toggleMulti(_cuisines, opt)),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: on ? const Color(0xFF000000) : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
-                  ),
-                  child: Text(opt,
+            // 음식종류
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Flexible(
+                  child: Text('음식종류',
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: on ? Colors.white : const Color(0xFF374151))),
+                          color: Color(0xFF6B7280))),
                 ),
-              );
-            }).toList(),
-          ),
+                if (!_isAll(_cuisines))
+                  GestureDetector(
+                    onTap: () => setState(() => _cuisines = {_allLabel}),
+                    child: const Text('초기화',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF9CA3AF))),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _cuisineOpts.map((opt) {
+                final on = _cuisines.contains(opt);
+                return GestureDetector(
+                  onTap: () => setState(() => _toggleMulti(_cuisines, opt)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: on ? const Color(0xFF000000) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                    ),
+                    child: Text(opt,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: on ? Colors.white : const Color(0xFF374151))),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 28),
 
           // 적용 버튼
