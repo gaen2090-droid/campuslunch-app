@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/korean_particle.dart';
 import '../widgets/feedback_sheet.dart';
 import '../widgets/my_page_section_row.dart';
 import '../widgets/owner_restaurant_dropdown.dart';
@@ -112,7 +113,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${restaurant.name}은 오늘',
+                          '${restaurant.name}${eunNeun(restaurant.name)} 오늘',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
