@@ -91,7 +91,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
     final isLast = _page == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF3FBEE),
       body: Stack(
         children: [
           SafeArea(
@@ -293,14 +293,14 @@ class _PreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(30),
-            blurRadius: 36,
-            offset: const Offset(0, 18),
+            color: Colors.black.withAlpha(18),
+            blurRadius: 48,
+            offset: const Offset(0, 14),
           ),
           BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withAlpha(10),
+            blurRadius: 24,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
