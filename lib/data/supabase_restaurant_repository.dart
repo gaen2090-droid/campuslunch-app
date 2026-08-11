@@ -628,10 +628,13 @@ class SupabaseRestaurantRepository {
     // 이번 세션에 제보가 없어도 "업데이트됨"으로 잘못 판정되는 문제가 있었음.
     if (hasReports) {
       finalStatus = computed.displayStatus;
-      // 업데이트 시간: 이번 세션 제보 중 가장 최신 시각 기준
-      final latestReportTime = sessionReports
-          .map((r) => DateTime.parse(r['created_at'] as String).toLocal())
-          .reduce((a, b) => a.isAfter(b) ? a : b);
+      // 업데이트 시간: 실제로 표시 상태를 결정한 제보(사장님 5분 우선권 적용 후) 시각 기준.
+      // 세션 내 최신 제보를 그냥 쓰면, 사장님 우선권으로 상태는 유지되는데 그 이후
+      // 유저 제보 시각으로 "N분 전"이 바뀌어버리는 버그가 생긴다.
+      final latestReportTime = computed.adoptedAt ??
+          sessionReports
+              .map((r) => DateTime.parse(r['created_at'] as String).toLocal())
+              .reduce((a, b) => a.isAfter(b) ? a : b);
       updated = at.difference(latestReportTime).inMinutes.clamp(0, 99999);
       updatedAt = latestReportTime;
       hasCrowdUpdate = true;

@@ -89,6 +89,9 @@ void main() {
       );
       expect(r.displayStatus, '여유로움');
       expect(r.baseSource, 'owner');
+      // status뿐 아니라 표시 시각도 사장님 제보 시각을 유지해야 한다 — 우선권으로
+      // status는 유지되는데 시각만 더 최신인 유저 제보로 앞당겨지면 안 됨.
+      expect(r.adoptedAt, _r(1, 3).at);
     });
 
     test('사장님 1분 전 여유로움, 유저 5분 전 자리없음 → 여유로움', () {

@@ -54,6 +54,9 @@ class CrowdStatusResult {
   final String confidence;
   final int reportCount;
   final bool refreshUpdatedAt;
+  /// displayLevel을 결정한 제보(사장님 5분 우선권 적용 후)의 시각. 계산 대상 제보가
+  /// 전혀 없을 때만 null.
+  final DateTime? adoptedAt;
 
   const CrowdStatusResult({
     required this.displayLevel,
@@ -61,6 +64,7 @@ class CrowdStatusResult {
     required this.confidence,
     required this.reportCount,
     this.refreshUpdatedAt = false,
+    this.adoptedAt,
   });
 
   String get displayStatus => crowdLevelToStatus(displayLevel);
@@ -239,6 +243,7 @@ CrowdStatusResult computeCrowdStatus(CrowdStatusComputeParams params) {
     confidence: confidence,
     reportCount: users.length,
     refreshUpdatedAt: changed,
+    adoptedAt: latest.at,
   );
 }
 
