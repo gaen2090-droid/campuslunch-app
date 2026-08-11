@@ -96,4 +96,4 @@ $$;
 
 revoke all on function public.grant_stamp(uuid, int) from public;
 revoke all on function public.grant_stamp(uuid, int) from anon;
-grant execute on function public.grant_stamp(uuid, int) to authenticated;
+revoke all on function public.grant_stamp(uuid, int) from authenticated;

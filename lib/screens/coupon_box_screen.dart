@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
-import '../services/supabase_service.dart';
 import '../widgets/load_error_view.dart';
 import 'gifticon_detail_screen.dart';
 
@@ -188,17 +187,15 @@ class _GifticonTileState extends State<_GifticonTile> {
   @override
   void initState() {
     super.initState();
-    _resolveThumb();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resolveThumb());
   }
 
   Future<void> _resolveThumb() async {
     final raw = widget.gifticon.imageUrl;
     if (raw.isEmpty) return;
-    if (!raw.startsWith('http') && SupabaseService.isReady) {
+    if (!raw.startsWith('http')) {
       try {
-        final url = await SupabaseService.client.storage
-            .from('gifticons')
-            .createSignedUrl(raw, 3600);
+        final url = await context.read<AppProvider>().resolveGifticonImageUrl(raw);
         if (mounted) setState(() => _thumbUrl = url);
         return;
       } catch (_) {}

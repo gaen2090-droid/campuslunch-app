@@ -695,11 +695,8 @@ class SupabaseRestaurantRepository {
       ownerId: row['owner_id'] as String?,
       crowdBaseSource: crowdMetaString(crowdStatus, 'base_source') ?? '',
       crowdConfidence: crowdMetaString(crowdStatus, 'confidence') ?? '',
-      // 좌석 업데이트(사장님의 한마디)는 상세 페이지 전용 — 혼잡도 뱃지 시간(updated)과는 무관
-      hasCrowdUpdate: hasCrowdUpdate ||
-          (ownerUpdatedAt != null &&
-              sessionStart != null &&
-              ownerUpdatedAt.isAfter(sessionStart)),
+      // 좌석 업데이트는 상세 카드 전용. 혼잡도 뱃지(hasCrowdUpdate)와 섞지 않는다.
+      hasCrowdUpdate: hasCrowdUpdate,
       updated: updated,
       updatedAt: updatedAt,
       createdAt: row['created_at'] != null

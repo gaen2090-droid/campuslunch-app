@@ -9,8 +9,14 @@ import '../models/community_post.dart';
 import '../services/supabase_service.dart';
 
 class CommunityRepository {
-  CommunityRepository({SupabaseClient? client})
-      : _client = client ?? SupabaseService.client;
+  static CommunityRepository? _shared;
+
+  factory CommunityRepository({SupabaseClient? client}) {
+    if (client != null) return CommunityRepository._(client);
+    return _shared ??= CommunityRepository._(SupabaseService.client);
+  }
+
+  CommunityRepository._(this._client);
 
   final SupabaseClient _client;
 

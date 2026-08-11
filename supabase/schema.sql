@@ -22,20 +22,26 @@
 --   6b. supabase/users_nickname_unique.sql
 --   7. supabase/rpc_oauth_login_email_check.sql
 --   8. supabase/analytics_events.sql
---   9. supabase/crowd_status.sql          (스키마·헬퍼·submit_crowd_report)
+--   9. supabase/crowd_status.sql          (스키마·헬퍼. 제보 RPC 없음)
 --  10. supabase/crowd_status_v2_compute.sql (v2 계산·트리거·백필)
 --  11. supabase/push_analytics.sql
 --  12. supabase/owner_seat_updates.sql
 --  12b. supabase/hotfix_owner_seat_gps_50m.sql (입장가능인원도 50m GPS)
---  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환)
+--  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환. 제보 RPC 없음)
 --  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
 --  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
 --  13c. supabase/hotfix_gifticon_face_value_and_spend_report.sql (액면가·리워드 지출 리포트)
 --  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
 --  15. supabase/deploy_prelaunch_security.sql (배포 전 보안 패치)
+--  16. supabase/stamp_hours_10_to_19.sql
+--  17. supabase/rewards_daily_cap_to_3.sql
+--  18. supabase/submit_crowd_report.sql   (제보 RPC 정본 — 스탬프+50m)
+--  19. supabase/hotfix_prelaunch_audit_fixes.sql
+--      (출시 직전 필수: grant_stamp 등 클라이언트 실행 금지,
+--       crowd_reports RLS, has_required_legal_consents,
+--       커뮤니티/리워드 푸시는 push_edge_runtime_config 만 사용)
 --
--- 타입 오류 hotfix (level/source enum):
---   supabase/hotfix_crowd_report_types.sql
+-- 옛 제보 RPC·일회성 핫픽스: supabase/archive/  (재실행 금지)
 --
 -- 이메일 가입 OTP 메일: supabase/email_templates/ → Dashboard Confirm signup
 --   docs/EMAIL_OTP_SETUP.md

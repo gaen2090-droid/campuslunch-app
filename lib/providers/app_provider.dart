@@ -13,6 +13,7 @@ import '../utils/nickname_generator.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/community_repository.dart';
+import '../data/feedback_repository.dart';
 import '../data/legal_consent_repository.dart';
 import '../data/profile_repository.dart';
 import '../data/push_config_repository.dart';
@@ -90,6 +91,8 @@ class AppProvider extends ChangeNotifier {
     _activeOwnerRestaurantId = restaurantId;
     notifyListeners();
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kActiveOwnerRestaurantId, restaurantId);
       await CommunityRepository().setActiveOwnerRestaurant(restaurantId);
     } catch (e, st) {
       debugPrint('[setCommunityActiveOwnerRestaurant] failed: $e\n$st');
@@ -357,6 +360,10 @@ class AppProvider extends ChangeNotifier {
   static const _kHiddenGifticons = 'cl_hidden_gifticon_ids';
   static const _kReferralPromptPendingUsers = 'cl_referral_prompt_pending_users';
   static const _kReferralCodeFromInviteLink = 'cl_referral_code_from_invite';
+  static const _kActiveOwnerRestaurantId = 'cl_community_active_owner_restaurant';
+
+  String? _pendingSignupPasswordMem;
+  String? _pendingSignupNicknameMem;
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -381,6 +388,8 @@ class AppProvider extends ChangeNotifier {
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
   final PushConfigRepository _pushConfigRepo = PushConfigRepository();
   final LegalConsentRepository _legalConsentRepo = LegalConsentRepository();
+  final FeedbackRepository _feedbackRepo = FeedbackRepository();
+  Map<String, dynamic>? _pendingRemotePushData;
 
   @override
   void dispose() {
@@ -402,6 +411,7 @@ class AppProvider extends ChangeNotifier {
       final queued = _queuedIncomingUri;
       _queuedIncomingUri = null;
       if (queued != null) handleIncomingUri(queued);
+      _flushPendingRemotePush();
     });
     // 파이프라인이 유휴 상태면 post-frame 콜백이 예약만 되고 실행되지 않을 수 있어
     // (스플래시가 끝나지 않는 버그의 원인) 프레임을 명시적으로 요청해 즉시 flush한다.
@@ -445,17 +455,26 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// 추천인 코드 입력 화면에서 1회 소비
-  Future<String?> consumeReferralCodeFromInviteLink() async {
+  /// 추천인 코드 입력 화면에 미리 채움 (아직 소비하지 않음)
+  Future<String?> peekReferralCodeFromInviteLink() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final code = prefs.getString(_kReferralCodeFromInviteLink)?.trim();
       if (code == null || code.isEmpty) return null;
-      await prefs.remove(_kReferralCodeFromInviteLink);
       return code;
     } catch (e, st) {
-      debugPrint('[AppLink] consume invite referral failed: $e\n$st');
+      debugPrint('[AppLink] peek invite referral failed: $e\n$st');
       return null;
+    }
+  }
+
+  /// 추천인 코드 적용 성공 후 1회 소비
+  Future<void> consumeReferralCodeFromInviteLink() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kReferralCodeFromInviteLink);
+    } catch (e, st) {
+      debugPrint('[AppLink] consume invite referral failed: $e\n$st');
     }
   }
 
@@ -506,6 +525,7 @@ class AppProvider extends ChangeNotifier {
     _bootstrapping = true;
     _splashStartedAt = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kPendingSignupPassword);
 
     _useAlgorithmRanking = prefs.getBool(_kUseAlgorithmRanking) ?? true;
     _hiddenGifticonIds =
@@ -799,7 +819,7 @@ class AppProvider extends ChangeNotifier {
       case OAuthLoginEmailStatus.invalid:
         return '이메일을 확인할 수 없어요. 다른 계정으로 시도해주세요.';
       default:
-        return '이 이메일로는 Google 로그인을 할 수 없어요.';
+        return '이 이메일로는 소셜 로그인을 할 수 없어요.';
     }
   }
 
@@ -807,12 +827,16 @@ class AppProvider extends ChangeNotifier {
     required String password,
     required String nickname,
   }) async {
+    _pendingSignupPasswordMem = password;
+    _pendingSignupNicknameMem = nickname;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPendingSignupPassword, password);
+    await prefs.remove(_kPendingSignupPassword);
     await prefs.setString(_kPendingSignupNickname, nickname);
   }
 
   Future<void> _clearPendingSignupCredentials() async {
+    _pendingSignupPasswordMem = null;
+    _pendingSignupNicknameMem = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kPendingSignupPassword);
     await prefs.remove(_kPendingSignupNickname);
@@ -886,8 +910,9 @@ class AppProvider extends ChangeNotifier {
       if (user == null) return '인증에 실패했어요.';
 
       final prefs = await SharedPreferences.getInstance();
-      final pendingPassword = prefs.getString(_kPendingSignupPassword);
-      final pendingNickname = prefs.getString(_kPendingSignupNickname);
+      final pendingPassword = _pendingSignupPasswordMem;
+      final pendingNickname = _pendingSignupNicknameMem ??
+          prefs.getString(_kPendingSignupNickname);
       if (pendingPassword != null && pendingPassword.length >= 6) {
         final data = <String, dynamic>{};
         if (pendingNickname != null && pendingNickname.isNotEmpty) {
@@ -901,6 +926,7 @@ class AppProvider extends ChangeNotifier {
         );
       }
 
+      _pendingSignupCompleteMessage = true;
       await prefs.remove(_kAwaitingEmailConfirm);
       await _clearPendingSignupCredentials();
       await _onSupabaseSignedIn(user, isNewSignup: true);
@@ -970,6 +996,10 @@ class AppProvider extends ChangeNotifier {
             SupabaseService.client.auth.currentUser?.id == user.id) {
           return;
         }
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
+          return;
+        }
         await _onSupabaseSignedIn(user);
       }
     });
@@ -982,11 +1012,8 @@ class AppProvider extends ChangeNotifier {
     bool notify = true,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_kAwaitingEmailConfirm) ?? false) {
-      // 약관 동의 + 추천인 코드 입력까지 끝나고 홈 진입 직전(_finishReferralPrompt)에
-      // 축하 메시지를 띄우도록 미룬다 — 여기서 바로 세팅하면 동의 화면 진입 전에 뜸.
-      _pendingSignupCompleteMessage = true;
-      await prefs.remove(_kAwaitingEmailConfirm);
+    if (!isNewSignup && (prefs.getBool(_kAwaitingEmailConfirm) ?? false)) {
+      return;
     }
 
     final profile = await _profileRepo.fetch(user.id);
@@ -1037,6 +1064,21 @@ class AppProvider extends ChangeNotifier {
       await _markReferralPromptPending(prefs, user.id);
     }
 
+    var needsLegal = _needsLegalTermsConsent(
+      prefs,
+      user.id,
+      isNewSignup: isNewSignup,
+    );
+    final serverConsent = await _legalConsentRepo.fetchHasRequiredConsents();
+    if (serverConsent == true) {
+      await _markLegalTermsAccepted(prefs, user.id);
+      await _clearPendingLegalTerms(prefs, user.id);
+      needsLegal = false;
+    } else if (serverConsent == false) {
+      await _markPendingLegalTerms(prefs, user.id);
+      needsLegal = true;
+    }
+
     await _saveSession(
       prefs,
       Account(
@@ -1048,11 +1090,7 @@ class AppProvider extends ChangeNotifier {
       ),
       authProvider: authProvider,
       supabaseUserId: user.id,
-      needsLegalTerms: _needsLegalTermsConsent(
-        prefs,
-        user.id,
-        isNewSignup: isNewSignup,
-      ),
+      needsLegalTerms: needsLegal,
       updateStage: updateStage,
       notify: notify,
     );
@@ -1113,6 +1151,7 @@ class AppProvider extends ChangeNotifier {
       _mainTabIndex = 0;
     }
     if (notify) notifyListeners();
+    _flushPendingRemotePush();
   }
 
   Future<void> logout() async {
@@ -1214,6 +1253,8 @@ class AppProvider extends ChangeNotifier {
         isNewSignup: _isLikelyNewAccount(user),
       );
       return null;
+    } on GoogleEmailBlocked catch (e) {
+      return _oauthLoginBlockedMessage(e.status);
     } on AuthException catch (e) {
       if (e.message.contains('Unacceptable audience in id_token')) {
         return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
@@ -1345,6 +1386,13 @@ class AppProvider extends ChangeNotifier {
     // 매장이 1개뿐이면 선택 UI 없이 그 매장을 커뮤니티 활동 매장으로 서버에도 자동 반영.
     if (_ownerRestaurantIds.length == 1) {
       unawaited(setCommunityActiveOwnerRestaurant(_ownerRestaurantIds.first));
+    } else {
+      final saved = p.getString(_kActiveOwnerRestaurantId);
+      if (saved != null &&
+          saved.isNotEmpty &&
+          _ownerRestaurantIds.contains(saved)) {
+        _activeOwnerRestaurantId = saved;
+      }
     }
   }
 
@@ -1621,6 +1669,24 @@ class AppProvider extends ChangeNotifier {
   }
 
   void handleRemotePushData(Map<String, dynamic> data) {
+    if (_bootstrapping || _stage != 'app' || !_isLoggedIn) {
+      _pendingRemotePushData = data;
+      return;
+    }
+    _routeRemotePushData(data);
+  }
+
+  void _flushPendingRemotePush() {
+    final data = _pendingRemotePushData;
+    if (data == null) return;
+    if (_bootstrapping || _stage != 'app' || !_isLoggedIn) return;
+    _pendingRemotePushData = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _routeRemotePushData(data);
+    });
+  }
+
+  void _routeRemotePushData(Map<String, dynamic> data) {
     final type = data['type'] as String?;
     if (type == 'config_refresh') {
       unawaited(refreshPushSchedulesFromRemote());
@@ -1800,6 +1866,10 @@ class AppProvider extends ChangeNotifier {
       return '로그인이 만료됐어요.\n다시 로그인해주세요.';
     }
 
+    if (!kDebugMode) {
+      return '서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.';
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final overridesJson = prefs.getString(_kOverrides);
     final overrides = overridesJson != null
@@ -1831,11 +1901,6 @@ class AppProvider extends ChangeNotifier {
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         return null;
-      }
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null &&
-          DateTime.now().difference(lastKnown.timestamp).inMinutes < 5) {
-        return lastKnown;
       }
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -1956,6 +2021,20 @@ class AppProvider extends ChangeNotifier {
     return accepted.contains(userId);
   }
 
+  Future<void> _markLegalTermsAccepted(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final accepted = List<String>.from(
+      prefs.getStringList(_kLegalTermsAcceptedUsers) ?? const [],
+    );
+    if (!accepted.contains(userId)) {
+      accepted.add(userId);
+      await prefs.setStringList(_kLegalTermsAcceptedUsers, accepted);
+    }
+  }
+
   bool _isPendingLegalTerms(SharedPreferences prefs, String userId) {
     if (userId.isEmpty) return false;
     final pending = prefs.getStringList(_kPendingLegalTermsUsers) ?? [];
@@ -2050,11 +2129,18 @@ class AppProvider extends ChangeNotifier {
     if (!_hasPermissionsConsent(prefs)) return 'permissions_consent';
     if (_isLoggedIn) {
       final userId = _sessionUserId(prefs);
-      if (_needsLegalTermsConsent(
-        prefs,
-        userId,
-        isNewSignup: false,
-      )) {
+      final serverConsent = await _legalConsentRepo.fetchHasRequiredConsents();
+      if (serverConsent == true) {
+        await _markLegalTermsAccepted(prefs, userId);
+        await _clearPendingLegalTerms(prefs, userId);
+        return 'app';
+      }
+      if (serverConsent == false ||
+          _needsLegalTermsConsent(
+            prefs,
+            userId,
+            isNewSignup: false,
+          )) {
         return 'legal_terms_consent';
       }
       return 'app';
@@ -2158,13 +2244,7 @@ class AppProvider extends ChangeNotifier {
       return;
     }
 
-    final accepted = List<String>.from(
-      prefs.getStringList(_kLegalTermsAcceptedUsers) ?? const [],
-    );
-    if (!accepted.contains(userId)) {
-      accepted.add(userId);
-      await prefs.setStringList(_kLegalTermsAcceptedUsers, accepted);
-    }
+    await _markLegalTermsAccepted(prefs, userId);
     await _clearPendingLegalTerms(prefs, userId);
 
     if (agreed != null) {
@@ -2988,6 +3068,31 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<String> resolveGifticonImageUrl(String? raw) async {
+    final repo = _rewardRepo;
+    if (repo == null) return raw ?? '';
+    return repo.resolveGifticonImageUrl(raw);
+  }
+
+  Future<String?> submitAppFeedback({
+    required String category,
+    required String content,
+  }) async {
+    if (!SupabaseService.isReady) {
+      return '서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.';
+    }
+    if (SupabaseService.client.auth.currentUser == null) {
+      return '로그인 후 피드백을 보낼 수 있어요.';
+    }
+    try {
+      await _feedbackRepo.submit(category: category, content: content);
+      return null;
+    } catch (e) {
+      debugPrint('[Feedback] submitAppFeedback: $e');
+      return '전송에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
   Future<void> fetchMyReward() async {
     final repo = _rewardRepo;
     if (repo == null) return;
@@ -3025,6 +3130,7 @@ class AppProvider extends ChangeNotifier {
     final (status, message) = await repo.applyReferralCode(trimmed);
     switch (status) {
       case 'ok':
+        await consumeReferralCodeFromInviteLink();
         await fetchMyReward();
         await _finishReferralPrompt();
         return null;
@@ -3054,6 +3160,7 @@ class AppProvider extends ChangeNotifier {
     _stage = 'app';
     if (hasOwnerTab) _mainTabIndex = 0;
     notifyListeners();
+    _flushPendingRemotePush();
   }
 
   Future<String?> markGifticonUsed(String gifticonId) async {

@@ -109,6 +109,6 @@ $$;
 
 revoke all on function public.grant_stamp(uuid, int) from public;
 revoke all on function public.grant_stamp(uuid, int) from anon;
-grant execute on function public.grant_stamp(uuid, int) to authenticated;
+revoke all on function public.grant_stamp(uuid, int) from authenticated;
 
 select 'stamp_hours_10_to_19.sql ok' as status;

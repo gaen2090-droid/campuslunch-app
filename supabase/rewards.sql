@@ -169,7 +169,7 @@ begin
 end;
 $$;
 
--- 6. 스탬프 지급 함수 (submit_crowd_report trigger에서 호출)
+-- 6. 스탬프 지급 함수 (submit_crowd_report.sql 이 내부 호출)
 --    source='user' 제보 성공 시 호출됨
 --    KST 기준 하루 최대 999개 (디버깅·테스트용)
 --    누적 20개 도달 시 _perform_gifticon_redeem으로 기프티콘 자동 배정
@@ -239,122 +239,10 @@ begin
 end;
 $$;
 
--- 7. submit_crowd_report를 returns jsonb로 변경 (스탬프 결과 포함)
-create or replace function public.submit_crowd_report(
-  p_restaurant_id uuid,
-  p_status        text,
-  p_source        text default 'user',
-  p_lat           double precision default null,
-  p_lng           double precision default null
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_uid        uuid := auth.uid();
-  v_level      public.crowd_level;
-  v_source     public.crowd_source;
-  v_ui_level   int;
-  v_stamp_result jsonb;
-  v_description jsonb;
-  v_session_start timestamptz;
-  v_had_report_this_session boolean;
-  v_stamp_count int;
-begin
-  if v_uid is null then
-    raise exception '로그인이 필요해요.';
-  end if;
+-- 7. 제보 RPC 는 이 파일에 두지 않는다.
+-- 정본: supabase/submit_crowd_report.sql (grant_stamp 호출 포함)
+-- 여기에 CREATE OR REPLACE submit_crowd_report 를 다시 넣지 말 것.
 
-  if p_status not in ('여유로움', '약간혼잡', '자리없음') then
-    raise exception '유효하지 않은 혼잡도예요.';
-  end if;
-
-  v_ui_level := public.ui_status_to_level(p_status);
-
-  if p_source not in ('user', 'owner') then
-    raise exception '유효하지 않은 제보 유형이에요.';
-  end if;
-
-  v_level  := public.ui_level_to_crowd_level(v_ui_level);
-  v_source := public.text_to_crowd_source(p_source);
-
-  if p_source = 'owner' then
-    if not exists (
-      select 1 from public.restaurants r
-      where r.id = p_restaurant_id
-        and r.is_active = true
-        and r.owner_id = v_uid
-    ) then
-      raise exception '본인 매장만 변경할 수 있어요.';
-    end if;
-  end if;
-
-  -- 위치 제한은 클라이언트(앱)에서 검사한다. (디버그 빌드는 우회)
-  -- 쿨다운(같은 매장 5분 재제보 금지)은 서버에서도 검사한다 — 클라이언트 체크는 메모리상 값이라
-  -- 앱 재시작 등으로 쉽게 우회되므로, 디버그 빌드 우회와 무관하게 서버가 최종 방어선 역할을 함.
-  if p_source = 'user' then
-    if exists (
-      select 1
-      from public.crowd_reports cr
-      where cr.restaurant_id = p_restaurant_id
-        and cr.user_id = v_uid
-        and cr.source = 'user'::public.crowd_source
-        and cr.created_at >= now() - interval '5 minutes'
-    ) then
-      raise exception E'방금 제보한 식당이에요.\n잠시 후 다시 제보해주세요.';
-    end if;
-  end if;
-
-  -- 영업 시작(이번 세션) 이후 기존 제보가 있었는지 확인 (최초 제보 보너스 판단)
-  if p_source = 'user' then
-    select r.description into v_description
-    from public.restaurants r
-    where r.id = p_restaurant_id;
-
-    v_session_start := public.restaurant_current_session_start(v_description, now());
-
-    select exists (
-      select 1 from public.crowd_reports cr
-      where cr.restaurant_id = p_restaurant_id
-        and cr.created_at >= coalesce(v_session_start, '-infinity'::timestamptz)
-    ) into v_had_report_this_session;
-  end if;
-
-  insert into public.crowd_reports (
-    restaurant_id, level, source, user_id, metadata
-  ) values (
-    p_restaurant_id,
-    v_level,
-    v_source,
-    v_uid,
-    jsonb_build_object(
-      'status', p_status,
-      'user_id', v_uid::text,
-      'lat', p_lat,
-      'lng', p_lng
-    )
-  );
-
-  -- 사용자 제보에만 스탬프 지급. 영업 시작 후 최초 제보면 2개, 그 외엔 1개.
-  if p_source = 'user' then
-    v_stamp_count := case when v_had_report_this_session then 1 else 2 end;
-    v_stamp_result := public.grant_stamp(v_uid, v_stamp_count);
-  else
-    v_stamp_result := jsonb_build_object(
-      'granted', false,
-      'today_stamps', 0,
-      'total_stamps', 0
-    );
-  end if;
-
-  return v_stamp_result;
-end;
-$$;
-
-grant execute on function public.submit_crowd_report(uuid, text, text, double precision, double precision)
-  to authenticated;
 revoke all on function public.grant_stamp(uuid, int) from public;
 revoke all on function public.grant_stamp(uuid, int) from anon;
 revoke all on function public.grant_stamp(uuid, int) from authenticated;

@@ -30,7 +30,7 @@ create policy "users_update_own" on public.users
 drop policy if exists "users_insert_own" on public.users;
 create policy "users_insert_own" on public.users
   for insert to authenticated
-  with check (auth.uid() = id);
+  with check (auth.uid() = id and role = 'user'::public.user_role);
 
 -- auth.users 가입/소셜 로그인 시 public.users 자동 생성
 -- raw_user_meta_data에 닉네임이 없는 소셜 로그인 신규가입은 고정값 '사용자'가 아니라
@@ -107,7 +107,10 @@ insert into public.users (id, email, nickname, role, provider, last_login_at)
 select
   au.id,
   au.email,
-  coalesce(au.raw_user_meta_data ->> 'nickname', '사용자'),
+  coalesce(
+    nullif(trim(au.raw_user_meta_data ->> 'nickname'), ''),
+    '앙대유저' || substr(replace(au.id::text, '-', ''), 1, 6)
+  ),
   'user'::public.user_role,
   coalesce(au.raw_app_meta_data ->> 'provider', 'email'),
   now()

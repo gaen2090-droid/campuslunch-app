@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/reward.dart';
-import '../services/supabase_service.dart';
+import '../providers/app_provider.dart';
 import '../utils/gifticon_image_saver.dart';
 
 class GifticonDetailScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshImageUrl();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshImageUrl());
   }
 
   Future<void> _refreshImageUrl() async {
@@ -33,11 +34,9 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
       });
       return;
     }
-    if (!raw.startsWith('http') && SupabaseService.isReady) {
+    if (!raw.startsWith('http')) {
       try {
-        final url = await SupabaseService.client.storage
-            .from('gifticons')
-            .createSignedUrl(raw, 3600);
+        final url = await context.read<AppProvider>().resolveGifticonImageUrl(raw);
         if (mounted) {
           setState(() {
             _freshImageUrl = url;

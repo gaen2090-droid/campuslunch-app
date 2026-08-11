@@ -4,8 +4,10 @@ class MenuItem {
 
   const MenuItem({required this.name, required this.price});
 
-  factory MenuItem.fromMap(Map<String, dynamic> m) =>
-      MenuItem(name: m['name'] as String, price: m['price'] as int);
+  factory MenuItem.fromMap(Map<String, dynamic> m) => MenuItem(
+        name: m['name'] as String? ?? '',
+        price: (m['price'] as num?)?.round() ?? 0,
+      );
 
   Map<String, dynamic> toMap() => {'name': name, 'price': price};
 }

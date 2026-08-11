@@ -20,7 +20,7 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final code =
-          await context.read<AppProvider>().consumeReferralCodeFromInviteLink();
+          await context.read<AppProvider>().peekReferralCodeFromInviteLink();
       if (!mounted || code == null || code.isEmpty) return;
       _controller.text = code;
     });

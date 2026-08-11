@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../constants/brand_assets.dart';
@@ -21,6 +22,7 @@ class FcmPushService {
 
   bool _firebaseReady = false;
   String? _currentToken;
+  RemoteMessage? _stashedInitialMessage;
 
   /// 탭 시 라우팅
   void Function(Map<String, dynamic> data)? onMessageOpened;
@@ -65,7 +67,14 @@ class FcmPushService {
 
     final initial = await _messaging.getInitialMessage();
     if (initial != null) {
-      _handleOpenedMessage(initial);
+      _stashedInitialMessage = initial;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future<void>.delayed(const Duration(milliseconds: 400), () {
+          final msg = _stashedInitialMessage;
+          _stashedInitialMessage = null;
+          if (msg != null) _handleOpenedMessage(msg);
+        });
+      });
     }
 
     _messaging.onTokenRefresh.listen((token) async {

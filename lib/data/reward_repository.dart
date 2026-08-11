@@ -97,6 +97,8 @@ class RewardRepository {
   }
 
   /// image_url이 storage path면 signed URL로 변환, 아니면 그대로 반환
+  Future<String> resolveGifticonImageUrl(String? raw) => _resolveImageUrl(raw);
+
   Future<String> _resolveImageUrl(String? raw) async {
     if (raw == null || raw.isEmpty) return '';
     // storage path 형식: "gifticons/filename.jpg" (http로 시작하지 않음)

@@ -368,12 +368,16 @@ def build(pdf: GuidePDF) -> None:
 
     pdf.section("5.6 리워드", 2)
     pdf.code(
-        "제보 성공 -> submit_crowd_report (rewards.sql) -> 스탬프 JSON\n"
+        "제보 성공 -> submit_crowd_report.sql -> 스탬프 JSON\n"
         "  -> AppProvider.lastStampResult, UserReward 로컬 갱신\n"
         "  -> RewardScreen (MY 탭), redeem_gifticon RPC\n"
         "  lib/data/reward_repository.dart, lib/models/reward.dart\n"
         "\n"
-        "스탬프 일일 한도: grant_stamp 하루 최대 3 (KST). 출시 SQL: rewards_daily_cap_to_3.sql"
+        "스탬프 일일 한도: grant_stamp 하루 최대 3 (KST 10–19시).\n"
+        "grant_stamp / _perform_gifticon_redeem / grant_referral_stamp 는\n"
+        "  클라이언트 execute 금지 (SECURITY DEFINER 내부 전용).\n"
+        "정본 제보 RPC: supabase/submit_crowd_report.sql 만 CREATE OR REPLACE.\n"
+        "  (jsonb 스탬프 + 50m + advisory lock). 옛 본문은 supabase/archive/."
     )
 
     pdf.section("5.7 APK 테스트·소셜 로그인", 2)
@@ -405,16 +409,18 @@ def build(pdf: GuidePDF) -> None:
         "6.  rpc_nickname_available.sql\n"
         "7.  rpc_oauth_login_email_check.sql\n"
         "8.  analytics_events.sql\n"
-        "9.  crowd_status.sql          헬퍼 + submit_crowd_report\n"
+        "9.  crowd_status.sql          헬퍼 (제보 RPC 없음)\n"
         "10. crowd_status_v2_compute.sql  v2 계산 + 트리거\n"
         "11. push_analytics.sql\n"
-        "12. fcm_push.sql (토큰·선호·피크/커뮤니티 FCM RPC)\n"
-        "12. owner_seat_updates.sql    입장 인원\n"
-        "13. rewards.sql               스탬프·기프티콘 (submit_crowd_report 재정의)\n"
+        "12. fcm_push.sql / owner_seat_updates.sql\n"
+        "13. rewards.sql               스탬프·기프티콘 (제보 RPC 없음)\n"
+        "14. stamp_hours_10_to_19.sql / rewards_daily_cap_to_3.sql\n"
+        "15. submit_crowd_report.sql   제보 RPC 정본\n"
+        "16. hotfix_prelaunch_audit_fixes.sql  grant 회수·약관·푸시\n"
         "\n"
         "crowd_status.sql 하단: Realtime publication 추가 블록 (재실행)\n"
-        "hotfix_crowd_report_types.sql — enum 타입 오류 시 one-shot\n"
-        "schema.sql — 문서용 (실행 X)"
+        "schema.sql — 문서용 (실행 X)\n"
+        "supabase/archive/ — 일회성 핫픽스. 재실행 금지"
     )
     pdf.body(
         "주요 테이블: users, restaurants, crowd_reports, crowd_status, "
@@ -476,8 +482,14 @@ def build(pdf: GuidePDF) -> None:
         "                        RPC: is_nickname_available, delete_own_account\n"
         "AuthRepository          RPC: email_signup_status,\n"
         "                             oauth_login_email_check\n"
+        "LegalConsentRepository  RPC: record_legal_consent,\n"
+        "                             has_required_legal_consents,\n"
+        "                             fetch_marketing_consent\n"
+        "CommunityRepository     싱글톤. RPC: community_feed 등\n"
+        "FeedbackRepository      app_feedback INSERT\n"
         "AnalyticsRepository     analytics_events (INSERT)\n"
-        "RewardRepository        gifticons, RPC: redeem_gifticon\n"
+        "RewardRepository        gifticons, RPC: redeem_gifticon,\n"
+        "                        storage signed URL\n"
         "Push (간접)             RPC: record_push_event"
     )
 
@@ -485,7 +497,11 @@ def build(pdf: GuidePDF) -> None:
     pdf.body(
         "anon key는 클라이언트에 노출되므로, 접근 제어는 RLS + SECURITY DEFINER RPC로 합니다.\n"
         "• users: 본인 row만 SELECT/UPDATE (auth.uid() = id)\n"
-        "• crowd_reports: INSERT는 RPC submit_crowd_report 경유 (소유·GPS·쿨다운 검증)\n"
+        "• crowd_reports: INSERT는 RPC submit_crowd_report 경유 (소유·GPS 50m·쿨다운).\n"
+        "  RLS: user_id=auth.uid(), owner source는 is_restaurant_owner 만.\n"
+        "• grant_stamp / _perform_gifticon_redeem / grant_referral_stamp:\n"
+        "  authenticated 실행 금지. 푸시 시크릿은 push_edge_runtime_config 만.\n"
+        "• 필수 약관: has_required_legal_consents() (로컬 prefs는 캐시).\n"
         "• restaurants: owner_id 변경은 claim_owner_by_code RPC만\n"
         "• admin CRUD: is_admin() 함수 + JWT role=admin\n"
         "Secret key(.env.secrets)는 앱에 넣지 않음 — tool/ 시드·관리 스크립트 전용."
@@ -559,6 +575,8 @@ def build(pdf: GuidePDF) -> None:
         (
             "로컬 저장",
             "SharedPreferences: 세션, 북마크, 푸시 설정, owner IDs. "
+            "가입 비밀번호는 메모리만 (prefs에 평문 저장 금지). "
+            "필수 약관은 서버 has_required_legal_consents가 정본, 로컬은 캐시. "
             "Supabase 로드 성공 시 cl_restaurant_overrides는 쓰지 않음. "
             "키 이름은 AppProvider 상단 _k* 상수로 관리.",
         ),
@@ -657,7 +675,8 @@ def build(pdf: GuidePDF) -> None:
         "[제보 실패]\n"
         "  1) 콘솔 AuthException / RPC error message\n"
         "  2) submit_crowd_report 배포 + enum 타입\n"
-        "  3) user: GPS 150m + 5분 쿨다운 (AppProvider, kDebugMode 우회)\n"
+        "  3) user/owner: GPS 50m + user 5분 쿨다운 (AppProvider, kDebugMode 우회)\n"
+        "     lastKnownPosition 사용 금지 — getCurrentPosition 만\n"
         "  4) owner: _ownsRestaurant + role=owner\n"
         "\n"
         "[사장님 인증]\n"
@@ -673,8 +692,9 @@ def build(pdf: GuidePDF) -> None:
         "profiles 테이블 없음 — public.users 사용",
         "영업시간: 앱은 description JSON hours_periods, SQL은 hours 문자열만 — "
         "영업안함 판정 불일치 가능",
-        "rewards.sql 실행 시 submit_crowd_report 함수 재정의 — 순서 주의",
-        "스탬프 일일 한도 3 — supabase/rewards_daily_cap_to_3.sql 적용",
+        "제보 RPC는 submit_crowd_report.sql 만 수정. archive/ 및 옛 hotfix 재실행 금지",
+        "스탬프 일일 한도 3 + KST 10–19시. grant_stamp 클라이언트 실행 금지",
+        "푸시 Edge 시크릿을 SQL에 하드코딩하지 말 것 (push_edge_runtime_config)",
         "APK 소셜 로그인 실패 -> signingReport / 카카오 릴리스 키 해시 등록",
         "Supabase 미설정 시 Realtime·RPC 전부 스킵, 로컬만 동작",
     ])
@@ -690,7 +710,7 @@ def build(pdf: GuidePDF) -> None:
 
     pdf.section("11. 증상별 디버깅 체크리스트", 1)
     checks = [
-        "혼잡도 제보 실패 -> submit_crowd_report RPC 배포? crowd_level/crowd_source enum?",
+        "혼잡도 제보 실패 -> submit_crowd_report.sql 적용? 50m GPS? enum?",
         "사장님 '본인 매장만' -> owner_id 연결? 로그인 후 코드 재인증?",
         "표시가 이상함 -> Realtime 갱신 vs 로컬 override(cl_restaurant_overrides) 잔존?",
         "영업안함 vs 여유로움 -> business_hours / hours_periods 불일치 (앱 vs SQL)?",
@@ -708,6 +728,8 @@ def build(pdf: GuidePDF) -> None:
         "  Realtime publication SQL, 스탬프 일일 한도 3 (rewards_daily_cap_to_3.sql)\n"
         "[48dd69d] Android 릴리스 서명 key.properties\n"
         "[4d4bdb3] 리워드 시스템 (RewardScreen, rewards.sql)\n"
+        "[출시 감사] hotfix_prelaunch_audit_fixes.sql — RPC grant 회수, 약관 서버 게이트,\n"
+        "  카카오 OAuth 이메일 체크, FCM 콜드스타트, 비밀번호 prefs 제거, 푸시 시크릿 테이블화\n"
         "[이전] 홈 필터/정렬, Realtime 구독, 사장님 MainScreen 탭, owner enum 수정"
     )
 

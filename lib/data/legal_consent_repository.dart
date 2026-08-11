@@ -30,6 +30,20 @@ class LegalConsentRepository {
     }
   }
 
+  /// 서버에 필수 약관 5종이 동의로 남아 있으면 true.
+  /// RPC 실패 시 null (로컬 폴백).
+  Future<bool?> fetchHasRequiredConsents() async {
+    if (!SupabaseService.isReady) return null;
+    if (_client.auth.currentUser == null) return false;
+    try {
+      final result = await _client.rpc('has_required_legal_consents');
+      return result as bool? ?? false;
+    } catch (e, st) {
+      debugPrint('[LegalConsent] fetchHasRequiredConsents: $e\n$st');
+      return null;
+    }
+  }
+
   Future<bool> fetchMarketingConsent() async {
     if (!SupabaseService.isReady) return false;
     if (_client.auth.currentUser == null) return false;

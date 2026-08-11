@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../services/supabase_service.dart';
+import '../providers/app_provider.dart';
 
 const _categories = [
   '버그가 있어요',
@@ -44,20 +45,15 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
     setState(() => _submitting = true);
     try {
-      final user = SupabaseService.client.auth.currentUser;
-      if (user == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인 후 피드백을 보낼 수 있어요.')),
-        );
+      final err = await context.read<AppProvider>().submitAppFeedback(
+            category: _category,
+            content: content,
+          );
+      if (!mounted) return;
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
         return;
       }
-      await SupabaseService.client.from('app_feedback').insert({
-        'category': _category,
-        'content': content,
-        'user_id': user.id,
-      });
-      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

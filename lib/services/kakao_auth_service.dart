@@ -3,6 +3,8 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
+import '../data/auth_repository.dart';
+import 'google_auth_service.dart';
 import 'supabase_service.dart';
 
 class KakaoAuthResult {
@@ -58,6 +60,32 @@ class KakaoAuthService {
         '카카오 OpenID 토큰이 없습니다. 카카오 개발자 콘솔에서 OpenID Connect를 켜고 '
         'Supabase Auth에 Kakao 제공자를 설정해주세요.',
       );
+    }
+
+    try {
+      final me = await UserApi.instance.me();
+      final email = me.kakaoAccount?.email ?? '';
+      if (email.isNotEmpty) {
+        final status =
+            await AuthRepository().checkOAuthLoginEmail(email, 'kakao');
+        switch (status) {
+          case OAuthLoginEmailStatus.available:
+          case OAuthLoginEmailStatus.sameProvider:
+          case OAuthLoginEmailStatus.unknown:
+            break;
+          case OAuthLoginEmailStatus.blockedEmail:
+          case OAuthLoginEmailStatus.blockedOther:
+          case OAuthLoginEmailStatus.pending:
+          case OAuthLoginEmailStatus.withdrawn:
+          case OAuthLoginEmailStatus.invalid:
+            await UserApi.instance.logout();
+            throw GoogleEmailBlocked(status);
+        }
+      }
+    } on GoogleEmailBlocked {
+      rethrow;
+    } catch (e) {
+      debugPrint('[Kakao] pre-auth email check: $e');
     }
 
     final authRes = await SupabaseService.client.auth.signInWithIdToken(
