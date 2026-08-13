@@ -591,6 +591,7 @@ class _StampCell extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) => StampRiceBallIcon(
           size: constraints.biggest.shortestSide,
+          shadowAlpha: 60,
         ),
       ),
     );

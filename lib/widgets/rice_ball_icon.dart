@@ -91,8 +91,16 @@ class StampRiceBallIcon extends StatelessWidget {
   /// 스탬프)에서 로고가 과도하게 커 보이므로, 원 크기와 무관하게 시각적
   /// 로고 크기를 다른 화면과 맞추고 싶을 때 사용한다.
   final double? markHeight;
+  /// 그림자 강도(불투명도, 0~255). 기본은 은은한 20 — 배경이 밝아 잘 안
+  /// 보이는 화면(예: 온보딩 미리보기)에서는 더 진하게 지정할 수 있다.
+  final int shadowAlpha;
 
-  const StampRiceBallIcon({super.key, this.size = 22, this.markHeight});
+  const StampRiceBallIcon({
+    super.key,
+    this.size = 22,
+    this.markHeight,
+    this.shadowAlpha = 20,
+  });
 
   static const assetPath = 'assets/images/stamp_mark.png';
 
@@ -115,7 +123,7 @@ class StampRiceBallIcon extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(20),
+            color: Colors.black.withAlpha(shadowAlpha),
             blurRadius: size * 0.25,
             offset: Offset(0, size * 0.06),
           ),
