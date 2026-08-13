@@ -446,9 +446,9 @@ class _RewardCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 10),
                   const Icon(Icons.arrow_forward_ios,
-                      size: 12, color: Color(0xFF000000)),
+                      size: 16, color: Color(0xFF9CA3AF)),
                 ],
               ),
               if (loadFailed) ...[
