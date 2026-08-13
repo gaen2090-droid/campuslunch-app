@@ -53,32 +53,55 @@ class _MyScreenState extends State<MyScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          text:
-                              '${provider.nickname.isEmpty ? '앙대 학생' : provider.nickname}님',
-                          style: const TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF26BC7D),
-                            letterSpacing: -0.8,
-                          ),
-                          children: const [
-                            TextSpan(
-                              text: ' 맛점하세요!',
-                              style: TextStyle(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              provider.nickname.isEmpty ? '앙대 학생' : provider.nickname,
+                              style: const TextStyle(
                                 fontFamily: 'Pretendard',
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF000000),
+                                color: Color(0xFF26BC7D),
                                 letterSpacing: -0.8,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          ),
+                          Text.rich(
+                            const TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '님',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF26BC7D),
+                                    letterSpacing: -0.8,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' 맛점하세요!',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF000000),
+                                    letterSpacing: -0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.visible,
+                            softWrap: false,
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
