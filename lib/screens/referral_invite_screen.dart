@@ -4,6 +4,7 @@ import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_links.dart';
 import '../providers/app_provider.dart';
 
@@ -174,7 +175,7 @@ class _ReferralInviteScreenState extends State<ReferralInviteScreen> {
                     decoration: BoxDecoration(
                       color: code.isEmpty
                           ? const Color(0xFFE5E7EB)
-                          : const Color(0xFF000000),
+                          : AppColors.primaryCta,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: code.isEmpty
                           ? null

@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import 'package:provider/provider.dart';
@@ -402,7 +403,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case '여유로움': return const Color(0xFF4C9C2A);
+      case '여유로움': return const Color(0xFF26BC7D);
       case '약간혼잡': return const Color(0xFFF59E0B);
       case '자리없음': return const Color(0xFFEF4444);
       default: return const Color(0xFF9CA3AF);
@@ -441,7 +442,7 @@ class _OwnerNoticeBanner extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.campaign_outlined, size: 18, color: Color(0xFF6B7280)),
+                  Icon(Icons.campaign, size: 18, color: Color(0xFF26BC7D)),
                   SizedBox(width: 8),
                   Text(
                     '매장 공지',
@@ -480,12 +481,13 @@ class _OwnerNoticeBanner extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
+            color: const Color(0xFFE6F3EC),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFCDE9DC)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.campaign_outlined, size: 15, color: Color(0xFF6B7280)),
+              const Icon(Icons.campaign, size: 19, color: Color(0xFF26BC7D)),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -598,10 +600,10 @@ class _ActionButtonBar extends StatelessWidget {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: showReportButton ? Colors.white : const Color(0xFF000000),
+          color: showReportButton ? Colors.white : AppColors.primaryCta,
           borderRadius: BorderRadius.circular(14),
           border: showReportButton
-              ? Border.all(color: const Color(0xFF000000), width: 1.5)
+              ? Border.all(color: AppColors.primaryCta, width: 1.5)
               : null,
         ),
         child: Row(
@@ -609,7 +611,7 @@ class _ActionButtonBar extends StatelessWidget {
           children: [
             Icon(Icons.navigation_outlined,
                 size: 15,
-                color: showReportButton ? const Color(0xFF000000) : Colors.white),
+                color: showReportButton ? AppColors.primaryCta : Colors.white),
             const SizedBox(width: 5),
             Text(
               '길찾기',
@@ -617,7 +619,7 @@ class _ActionButtonBar extends StatelessWidget {
                 fontFamily: 'Pretendard',
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: showReportButton ? const Color(0xFF000000) : Colors.white,
+                color: showReportButton ? AppColors.primaryCta : Colors.white,
               ),
             ),
           ],
@@ -639,7 +641,7 @@ class _ActionButtonBar extends StatelessWidget {
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF000000),
+                          color: AppColors.primaryCta,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Row(
@@ -704,16 +706,31 @@ class _RecentReportsSection extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             ...reports.map((r) {
-              final prefix = r.isOwner ? '사장님 · ' : '';
               final statusLabel = r.status;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '$prefix$statusLabel · ${formatUpdateAgeWithTime(r.createdAt)}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      if (r.isOwner)
+                        const TextSpan(
+                          text: '사장님 · ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      TextSpan(
+                        text:
+                            '$statusLabel · ${formatUpdateAgeWithTime(r.createdAt)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );

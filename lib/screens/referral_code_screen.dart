@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../providers/app_provider.dart';
 
 /// 회원가입 완료 후, 홈 진입 직전 — 추천인 코드 입력(선택)
@@ -123,7 +124,7 @@ class _ReferralCodeScreenState extends State<ReferralCodeScreen> {
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
+                    color: AppColors.primaryCta,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(

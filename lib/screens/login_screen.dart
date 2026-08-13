@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../constants/email_auth.dart';
 import '../providers/app_provider.dart';
 import '../widgets/keyboard_safe.dart';
@@ -141,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
+                      color: Color(0xFF26BC7D),
                       height: 1.25,
                       letterSpacing: -1.2,
                     ),
@@ -201,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 52,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
+                        color: AppColors.primaryCta,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -662,7 +663,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                         color: (_verifying ||
                                 _otpCtrl.text.length != emailSignupOtpLength)
                             ? const Color(0xFF9CA3AF)
-                            : const Color(0xFF000000),
+                            : AppColors.primaryCta,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Center(
@@ -719,7 +720,7 @@ class _EmailVerifyScreenState extends State<_EmailVerifyScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _verified
-                          ? const Color(0xFF000000)
+                          ? AppColors.primaryCta
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(18),
                     ),

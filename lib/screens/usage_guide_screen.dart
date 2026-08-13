@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../data/restaurants.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -89,7 +90,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
     final isLast = _page == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3FBEE),
+      backgroundColor: const Color(0xFFE6F3EC),
       body: Stack(
         children: [
           SafeArea(
@@ -206,7 +207,7 @@ class _UsageGuideScreenState extends State<UsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
+                        color: AppColors.primaryCta,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -339,7 +340,7 @@ class _CrowdListMockup extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF4C9C2A),
+                  color: Color(0xFF26BC7D),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -422,7 +423,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFDAFFCA),
+              color: const Color(0xFFE6F3EC),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text.rich(
@@ -431,7 +432,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF4C9C2A),
+                  color: Color(0xFF26BC7D),
                 ),
                 children: [
                   TextSpan(

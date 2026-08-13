@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../screens/directions_screen.dart';
 
@@ -19,7 +20,7 @@ Future<void> openInAppDirections(
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF000000),
+        backgroundColor: AppColors.primaryCta,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

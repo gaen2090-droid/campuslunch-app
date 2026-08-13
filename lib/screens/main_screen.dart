@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/coach_mark_step.dart';
 import '../providers/app_provider.dart';
 import '../widgets/coach_mark_overlay.dart';
+import '../constants/app_colors.dart';
 import '../constants/app_links.dart';
 import 'community_screen.dart';
 import 'coupon_box_screen.dart';
@@ -53,7 +54,7 @@ class _MainScreenState extends State<MainScreen> {
                 color: Colors.white,
               ),
             ),
-            backgroundColor: const Color(0xFF000000),
+            backgroundColor: AppColors.primaryCta,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),

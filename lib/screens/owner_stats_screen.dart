@@ -119,7 +119,7 @@ class _OwnerStatsScreenState extends State<OwnerStatsScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF000000), Color(0xFF374151)],
+                  colors: [Color(0xFF26BC7D), Color(0xFF1B8F5D)],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),

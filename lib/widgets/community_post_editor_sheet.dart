@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/community_post.dart';
 import '../utils/profanity_filter.dart';
@@ -164,8 +165,8 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
           isEditing ? '글 수정하기' : '글쓰기',
           style: const TextStyle(
             fontFamily: 'Pretendard',
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF000000),
             letterSpacing: -0.5,
           ),
@@ -251,6 +252,9 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                   children: [
                     OutlinedButton.icon(
                       onPressed: _totalImageCount >= _maxImages ? null : _pickImages,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF000000),
+                      ),
                       icon: const Icon(Icons.image_outlined, size: 18),
                       label: Text('사진 ($_totalImageCount/$_maxImages)'),
                     ),
@@ -260,7 +264,9 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                         child: OutlinedButton.icon(
                           onPressed: _pickRestaurant,
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF3F4F6),
+                            backgroundColor: const Color(0xFFE6F3EC),
+                            foregroundColor: const Color(0xFF26BC7D),
+                            side: const BorderSide(color: Color(0xFFE6F3EC)),
                           ),
                           icon: const Icon(Icons.storefront_outlined, size: 18),
                           label: Row(
@@ -284,6 +290,9 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     else
                       OutlinedButton.icon(
                         onPressed: _pickRestaurant,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF000000),
+                        ),
                         icon: const Icon(Icons.storefront_outlined, size: 18),
                         label: const Text('관련 매장'),
                       ),
@@ -296,7 +305,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     height: 52,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
+                      color: AppColors.primaryCta,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(

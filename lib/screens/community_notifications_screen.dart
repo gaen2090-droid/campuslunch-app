@@ -182,7 +182,7 @@ class _CommunityNotificationsScreenState
           );
         }
         return Container(
-          color: n.isRead ? Colors.white : const Color(0xFFEAF7E6),
+          color: n.isRead ? Colors.white : const Color(0xFFE6F3EC),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             onTap: () => _openPost(n),

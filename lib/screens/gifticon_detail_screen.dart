@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../models/reward.dart';
 import '../providers/app_provider.dart';
 import '../utils/gifticon_image_saver.dart';
@@ -81,7 +82,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF000000),
+        backgroundColor: AppColors.primaryCta,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -190,7 +191,7 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _hasImage && !_downloading
-                      ? const Color(0xFF000000)
+                      ? AppColors.primaryCta
                       : const Color(0xFFE5E7EB),
                   borderRadius: BorderRadius.circular(16),
                 ),

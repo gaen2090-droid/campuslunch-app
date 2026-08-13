@@ -32,9 +32,9 @@ class _RewardScreenState extends State<RewardScreen> {
     final remaining = target - total;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F4F6),
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
@@ -164,7 +164,7 @@ class _StampSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFE6F3EC),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
@@ -176,7 +176,7 @@ class _StampSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('🎯', style: TextStyle(fontSize: 18)),
+              const Icon(Icons.flag_rounded, size: 18, color: Color(0xFF26BC7D)),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -185,14 +185,14 @@ class _StampSummaryCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
+                  color: const Color(0xFF26BC7D),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '오늘 $today / ${RewardLimits.dailyStampCap}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF000000)),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
             ],
@@ -203,7 +203,7 @@ class _StampSummaryCard extends StatelessWidget {
             children: [
               Text(
                 '$total',
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF000000), height: 1),
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Color(0xFF26BC7D), height: 1),
               ),
               const Text(
                 ' / 20',
@@ -218,7 +218,7 @@ class _StampSummaryCard extends StatelessWidget {
               value: (total / 20).clamp(0.0, 1.0),
               minHeight: 8,
               backgroundColor: const Color(0xFFF3F4F6),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF000000)),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF26BC7D)),
             ),
           ),
           const SizedBox(height: 12),
@@ -312,7 +312,7 @@ class _StampGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFE6F3EC),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [

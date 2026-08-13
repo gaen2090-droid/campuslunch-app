@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import 'community_rules_summary.dart';
 
 Future<void> showCommunityGuidelineSheet(BuildContext context) {
@@ -71,7 +72,7 @@ class _CommunityGuidelineSheet extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
+                    color: AppColors.primaryCta,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Center(

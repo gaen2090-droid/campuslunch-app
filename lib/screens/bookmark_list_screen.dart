@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/load_error_view.dart';
@@ -358,12 +359,12 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                                     margin: const EdgeInsets.only(right: 10),
                                     decoration: BoxDecoration(
                                       color: _selectedIds.contains(r.id)
-                                          ? const Color(0xFF000000)
+                                          ? AppColors.primaryCta
                                           : Colors.white,
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: _selectedIds.contains(r.id)
-                                            ? const Color(0xFF000000)
+                                            ? AppColors.primaryCta
                                             : const Color(0xFFD1D5DB),
                                         width: 2,
                                       ),
@@ -448,7 +449,7 @@ class _BookmarkListScreenState extends State<BookmarkListScreen> {
                         child: Container(
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF000000),
+                            color: AppColors.primaryCta,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(

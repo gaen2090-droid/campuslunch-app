@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../constants/app_permissions.dart';
 import '../providers/app_provider.dart';
 import '../widgets/consent_checklist.dart';
@@ -152,7 +153,7 @@ class _BottomBar extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 color: canConfirm
-                    ? const Color(0xFF000000)
+                    ? AppColors.primaryCta
                     : const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(16),
               ),

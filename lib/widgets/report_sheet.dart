@@ -170,9 +170,9 @@ const reportOptions = [
     subtitle: '바로 앉을 수 있어요',
     status: '여유로움',
     icon: Icons.sentiment_satisfied_alt,
-    borderColor: Color(0xFFBFE0B0),
-    bgColor: Color(0xFFF3F8F0),
-    textColor: Color(0xFF4C9C2A),
+    borderColor: Color(0xFFCDE9DC),
+    bgColor: Color(0xFFEDF7F2),
+    textColor: Color(0xFF26BC7D),
   ),
   ReportOption(
     label: '약간 혼잡해요',

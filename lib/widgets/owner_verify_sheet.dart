@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../services/fcm_push_service.dart';
@@ -197,7 +198,7 @@ class _RejectedStep extends StatelessWidget {
             child: Container(
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF000000),
+                color: AppColors.primaryCta,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
@@ -586,7 +587,7 @@ class _ApplicationFormStepState extends State<_ApplicationFormStep> {
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000000),
+                  color: AppColors.primaryCta,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
@@ -653,7 +654,7 @@ class _NotifyMethodCheckbox extends StatelessWidget {
           color: checked ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: checked ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
+            color: checked ? AppColors.primaryCta : const Color(0xFFE5E7EB),
           ),
         ),
         child: Row(
@@ -668,7 +669,7 @@ class _NotifyMethodCheckbox extends StatelessWidget {
               Icon(
                 checked ? Icons.check_box : Icons.check_box_outline_blank,
                 size: 20,
-                color: checked ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
+                color: checked ? AppColors.primaryCta : const Color(0xFF9CA3AF),
               ),
             const SizedBox(width: 10),
             Text(

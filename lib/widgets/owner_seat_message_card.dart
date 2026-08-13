@@ -18,12 +18,13 @@ class OwnerSeatMessageCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: const Color(0xFFE6F3EC),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFCDE9DC)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.event_seat_outlined, size: 15, color: Color(0xFF6B7280)),
+            const Icon(Icons.event_seat, size: 19, color: Color(0xFF26BC7D)),
             const SizedBox(width: 6),
             Expanded(
               child: Text(

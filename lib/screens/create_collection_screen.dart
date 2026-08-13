@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/collection.dart';
 import '../models/restaurant.dart';
@@ -250,7 +251,7 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
                           subtitle: Text('${r.area} · ${r.category}', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
                           trailing: Icon(
                             isSelected ? Icons.check_circle : Icons.add_circle_outline,
-                            color: isSelected ? const Color(0xFF000000) : const Color(0xFFD1D5DB),
+                            color: isSelected ? AppColors.primaryCta : const Color(0xFFD1D5DB),
                           ),
                           onTap: () => _toggle(r),
                         );
@@ -271,7 +272,7 @@ class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  color: _submitting ? const Color(0xFFE5E7EB) : const Color(0xFF000000),
+                  color: _submitting ? const Color(0xFFE5E7EB) : AppColors.primaryCta,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(

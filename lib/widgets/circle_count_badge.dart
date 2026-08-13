@@ -13,7 +13,7 @@ class CircleCountBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        color: Color(0xFF5E8C4A),
+        color: Color(0xFF26BC7D),
         shape: BoxShape.circle,
       ),
       child: Center(

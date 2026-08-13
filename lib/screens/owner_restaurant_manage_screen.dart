@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/business_hours.dart';
@@ -122,11 +123,11 @@ class _OwnerRestaurantManageScreenState
                           children: [
                             const Expanded(
                               child: Text(
-                                '매장 관리',
+                                '매장 상세페이지를 관리할 수 있어요',
                                 style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF000000),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF6B7280),
                                 ),
                               ),
                             ),
@@ -141,22 +142,22 @@ class _OwnerRestaurantManageScreenState
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
+                                  color: const Color(0xFFE6F3EC),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  border: Border.all(color: const Color(0xFFCDE9DC)),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.visibility_outlined,
-                                        size: 13, color: Color(0xFF374151)),
+                                        size: 13, color: Color(0xFF26BC7D)),
                                     SizedBox(width: 4),
                                     Text(
                                       '소비자 화면 보기',
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w900,
-                                        color: Color(0xFF374151),
+                                        color: Color(0xFF26BC7D),
                                       ),
                                     ),
                                   ],
@@ -164,14 +165,6 @@ class _OwnerRestaurantManageScreenState
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '사진·메뉴·영업시간·공지를 직접 관리할 수 있어요.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF9CA3AF),
-                          ),
                         ),
                       ],
                     ),
@@ -267,7 +260,7 @@ class _Toast extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF000000),
+        color: AppColors.primaryCta,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -340,7 +333,7 @@ class _SaveButton extends StatelessWidget {
         width: double.infinity,
         height: 44,
         decoration: BoxDecoration(
-          color: enabled ? const Color(0xFF000000) : const Color(0xFFE5E7EB),
+          color: enabled ? AppColors.primaryCta : const Color(0xFFE5E7EB),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -959,7 +952,7 @@ class _HoursSectionState extends State<_HoursSection> {
               Checkbox(
                 value: _alwaysOpen,
                 onChanged: (v) => setState(() => _alwaysOpen = v ?? false),
-                activeColor: const Color(0xFF000000),
+                activeColor: AppColors.primaryCta,
               ),
               const Text('24시간 영업', style: TextStyle(fontSize: 13)),
             ],
@@ -1084,7 +1077,7 @@ class _NoticeSectionState extends State<_NoticeSection> {
   Widget build(BuildContext context) {
     return _SectionCard(
       title: '매장 공지',
-      subtitle: '유저 화면에는 한 줄로 보이고, 탭하면 전체를 볼 수 있어요.',
+      subtitle: '소비자 화면에는 한 줄로 보이고, 탭하면 전체를 볼 수 있어요.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

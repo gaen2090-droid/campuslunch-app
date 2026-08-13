@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../utils/map_pin_painter.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/navigation_helper.dart';
@@ -500,7 +501,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _isRefreshing ? const Color(0xFF000000) : Colors.white,
+                  color: _isRefreshing ? AppColors.primaryCta : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x21000000), blurRadius: 18, offset: Offset(0, 0)),
@@ -542,7 +543,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                 child: Icon(
                   Icons.my_location,
                   size: 20,
-                  color: _isLocated ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
+                  color: _isLocated ? AppColors.primaryCta : const Color(0xFF9CA3AF),
                 ),
               ),
             ),
@@ -667,7 +668,7 @@ class _StampCriteriaSheet extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000000),
+                  color: AppColors.primaryCta,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Center(
@@ -774,9 +775,9 @@ class _CrowdLegend extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LegendItem(color: Color(0xFF4C9C2A), label: '여유로움'),
+          _LegendItem(color: Color(0xFF26BC7D), label: '여유로움'),
           SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFFBBF24), label: '약간혼잡'),
+          _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
         ],
@@ -983,7 +984,7 @@ class _MapFilterChip extends StatelessWidget {
     final on = active || open;
     final restBg = restingBg ?? Colors.white;
     final restText = restingText ?? const Color(0xFF374151);
-    final bgColor = on ? (activeBg ?? const Color(0xFF000000)) : restBg;
+    final bgColor = on ? (activeBg ?? AppColors.primaryCta) : restBg;
     final textColor = on ? (activeText ?? Colors.white) : restText;
     return GestureDetector(
       onTap: onTap,
@@ -1026,7 +1027,7 @@ class _MapFilterChip extends StatelessWidget {
               Icon(
                 open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                 size: 12,
-                color: on ? const Color(0xFF000000) : restText,
+                color: textColor,
               ),
             ],
           ],
@@ -1160,7 +1161,7 @@ class _SelectedCard extends StatelessWidget {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF000000), width: 1.5),
+                        border: Border.all(color: AppColors.primaryCta, width: 1.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -1168,13 +1169,13 @@ class _SelectedCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.navigation_outlined,
-                                size: 16, color: Color(0xFF000000)),
+                                size: 16, color: AppColors.primaryCta),
                             SizedBox(width: 6),
                             Text('길찾기',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF000000))),
+                                    color: AppColors.primaryCta)),
                           ],
                         ),
                       ),
@@ -1190,7 +1191,7 @@ class _SelectedCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF000000),
+                          color: AppColors.primaryCta,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(

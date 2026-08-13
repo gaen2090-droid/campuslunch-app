@@ -9,9 +9,11 @@ import '../models/restaurant.dart';
 import 'map_pin_painter.dart';
 
 /// 지도(마커·범례)에서만 statusMetaMap과 다른 색을 쓰는 경우의 오버라이드.
-/// 약간혼잡: 지도 위에서는 더 밝은 노랑으로 — 카드 뱃지 색(statusMetaMap)은 그대로 유지.
+/// 카드 뱃지 색(statusMetaMap)과는 별개로 지도 마커 전용 브랜드 컬러를 사용.
 const Map<String, int> mapStatusColorOverrides = {
-  '약간혼잡': 0xFFFBBF24,
+  '여유로움': 0xFF26BC7D,
+  '약간혼잡': 0xFFFFBF00,
+  '자리없음': 0xFFEF4444,
 };
 
 int mapStatusColor(String status) =>

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'constants/app_colors.dart';
 import 'config/env.dart';
 import 'firebase_options.dart';
 import 'providers/app_provider.dart';
@@ -116,7 +117,7 @@ class CampusLunchApp extends StatelessWidget {
           seedColor: Colors.grey.shade900,
           brightness: Brightness.light,
         ).copyWith(
-          primary: const Color(0xFF000000),
+          primary: AppColors.primaryCta,
           onPrimary: Colors.white,
         ),
         fontFamily: 'Pretendard',

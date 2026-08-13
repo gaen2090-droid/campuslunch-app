@@ -21,44 +21,6 @@ class MyScreen extends StatefulWidget {
 }
 
 class _MyScreenState extends State<MyScreen> {
-  bool _showEditSheet = false;
-  String _editNickname = '';
-  final _nicknameCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _nicknameCtrl.dispose();
-    super.dispose();
-  }
-
-  void _openEdit(String current) {
-    _nicknameCtrl.value = TextEditingValue(
-      text: current,
-      selection: TextSelection.collapsed(offset: current.length),
-    );
-    setState(() {
-      _editNickname = current;
-      _showEditSheet = true;
-    });
-  }
-
-  Future<void> _saveNickname() async {
-    final trimmed = _editNickname.trim();
-    if (trimmed.isEmpty) {
-      setState(() => _showEditSheet = false);
-      return;
-    }
-    final err = await context.read<AppProvider>().updateNickname(trimmed);
-    if (!mounted) return;
-    if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err)),
-      );
-      return;
-    }
-    setState(() => _showEditSheet = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -82,24 +44,41 @@ class _MyScreenState extends State<MyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── 페이지 타이틀 ──
+              // ── 페이지 타이틀: 닉네임 인사말 (커뮤니티 헤더와 동일 위치/크기) ──
               Padding(
                 // IconButton의 접근성 최소 탭 영역(48x48)은 그대로 두고, 그
                 // 내장 여백만큼 우측 마진을 줄여 시각적으로 화면 끝(커뮤니티
                 // 헤더 아이콘과 동일 위치)에 가깝게 붙인다.
-                padding: const EdgeInsets.fromLTRB(20, 0, 14, 20),
+                padding: const EdgeInsets.fromLTRB(20, 0, 14, 16),
                 child: Row(
                   children: [
-                    const Expanded(
-                      child: Text(
-                        '마이페이지',
-                        style: TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF000000),
-                          letterSpacing: -0.8,
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          text:
+                              '${provider.nickname.isEmpty ? '앙대 학생' : provider.nickname}님',
+                          style: const TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF26BC7D),
+                            letterSpacing: -0.8,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: ' 맛점하세요!',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF000000),
+                                letterSpacing: -0.8,
+                              ),
+                            ),
+                          ],
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
@@ -115,108 +94,49 @@ class _MyScreenState extends State<MyScreen> {
                 ),
               ),
 
-              // ══ 카드 1: 프로필 + 오늘의 스탬프 + 바로가기 3버튼 ══
+              // ── 오늘의 스탬프 (초록 키컬러 카드, 독립 배치) ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _RewardCard(
+                  reward: provider.reward,
+                  loadFailed: provider.rewardLoadFailed,
+                  onRetry: () => provider.fetchMyReward(),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ══ 카드 1: 즐겨찾기 / 내 쿠폰함 ══
               _MyCardSection(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    // ── 프로필 ──
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _openEdit(provider.nickname),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFFF3F4F6), shape: BoxShape.circle),
-                            child: const Center(
-                                child: Icon(Icons.person,
-                                    size: 22, color: Color(0xFF9CA3AF))),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              provider.nickname.isEmpty
-                                  ? '앙대 학생'
-                                  : provider.nickname,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF000000)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Text('닉네임 수정',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF6B7280))),
-                          const SizedBox(width: 5),
-                          const Icon(Icons.arrow_forward_ios,
-                              size: 9, color: Color(0xFF6B7280)),
-                          const SizedBox(width: 8),
-                        ],
+                    Expanded(
+                      child: _QuickAction(
+                        icon: Icons.bookmark,
+                        label: '즐겨찾기',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const BookmarkListScreen()),
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 21),
-
-                    // ── 오늘의 스탬프 (초록 키컬러 카드) ──
-                    _RewardCard(
-                      reward: provider.reward,
-                      loadFailed: provider.rewardLoadFailed,
-                      onRetry: () => provider.fetchMyReward(),
+                    Container(
+                      width: 1,
+                      height: 32,
+                      color: const Color(0xFFE5E7EB),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // ── 즐겨찾기 / 스탬프북 / 내 쿠폰함 ──
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.bookmark,
-                            label: '즐겨찾기',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const BookmarkListScreen()),
-                            ),
-                          ),
+                    Expanded(
+                      child: _QuickAction(
+                        icon: Icons.card_giftcard_rounded,
+                        label: '내 쿠폰함',
+                        showDot: provider.hasUnseenCoupon,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CouponBoxScreen()),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.menu_book_rounded,
-                            label: '스탬프북',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const RewardScreen()),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.card_giftcard_rounded,
-                            label: '내 쿠폰함',
-                            showDot: provider.hasUnseenCoupon,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const CouponBoxScreen()),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -333,198 +253,6 @@ class _MyScreenState extends State<MyScreen> {
           ),
         ),
 
-        // ── 닉네임 수정 시트 ──
-        if (_showEditSheet)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => setState(() => _showEditSheet = false),
-              child: Container(
-                color: Colors.black.withAlpha(76),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {}, // absorb taps
-                      child: Container(
-                        width: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(28)),
-                        ),
-                        padding: EdgeInsets.fromLTRB(
-                            20,
-                            20,
-                            20,
-                            MediaQuery.of(context).padding.bottom +
-                                MediaQuery.of(context).viewInsets.bottom +
-                                24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(
-                              child: Container(
-                                width: 40,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE5E7EB),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              '닉네임 수정',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF000000)),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4F6),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      autofocus: true,
-                                      controller: _nicknameCtrl,
-                                      onChanged: (v) {
-                                        if (v.length > 20) {
-                                          _nicknameCtrl.value =
-                                              TextEditingValue(
-                                            text: v.substring(0, 20),
-                                            selection:
-                                                const TextSelection.collapsed(
-                                                    offset: 20),
-                                          );
-                                        }
-                                        setState(() =>
-                                            _editNickname = _nicknameCtrl.text);
-                                      },
-                                      onSubmitted: (_) => _saveNickname(),
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF1F2937)),
-                                      decoration: const InputDecoration(
-                                        hintText: '닉네임을 입력하세요',
-                                        hintStyle: TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xFF9CA3AF)),
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${_editNickname.length}/20',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFFD1D5DB)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  const TextSpan(
-                                    text: '※ 닉네임을 설정하면 ',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF9CA3AF),
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '30일간 변경할 수 없습니다.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.red.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () =>
-                                        setState(() => _showEditSheet = false),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 14),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: const Center(
-                                        child: Text(
-                                          '취소',
-                                          style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xFF374151)),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: _editNickname.trim().isEmpty
-                                        ? null
-                                        : _saveNickname,
-                                    child: AnimatedOpacity(
-                                      opacity: _editNickname.trim().isEmpty
-                                          ? 0.3
-                                          : 1.0,
-                                      duration:
-                                          const Duration(milliseconds: 150),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF000000),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            '저장',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
       ],
       ),
     );
@@ -603,11 +331,7 @@ class _QuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(
           children: [
             Stack(
@@ -629,7 +353,7 @@ class _QuickAction extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
@@ -673,7 +397,7 @@ class _RewardCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: const Color(0xFFE6F3EC),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
@@ -710,7 +434,7 @@ class _RewardCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E7EB),
+                      color: const Color(0xFF26BC7D),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -718,10 +442,13 @@ class _RewardCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF000000),
+                        color: Colors.white,
                       ),
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.arrow_forward_ios,
+                      size: 12, color: Color(0xFF000000)),
                 ],
               ),
               if (loadFailed) ...[

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/community_comment.dart';
 import '../models/community_post.dart';
@@ -356,7 +357,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                 onPressed: _toggleSubscription,
                 icon: Icon(
                   _subscribed ? Icons.notifications_active : Icons.notifications_off_outlined,
-                  color: _subscribed ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
+                  color: _subscribed ? AppColors.primaryCta : const Color(0xFF9CA3AF),
                 ),
               ),
             PopupMenuButton<String>(
@@ -637,7 +638,7 @@ class _CommentTile extends StatelessWidget {
                           Icon(
                             comment.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
                             size: 16,
-                            color: comment.likedByMe ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
+                            color: comment.likedByMe ? AppColors.primaryCta : const Color(0xFF9CA3AF),
                           ),
                           if (comment.likeCount > 0) ...[
                             const SizedBox(width: 4),

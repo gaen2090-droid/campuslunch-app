@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/community_comment.dart';
 import '../services/supabase_service.dart';
@@ -419,7 +420,7 @@ class _CollectionCommentTile extends StatelessWidget {
                           Icon(
                             comment.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
                             size: 16,
-                            color: comment.likedByMe ? const Color(0xFF000000) : const Color(0xFF9CA3AF),
+                            color: comment.likedByMe ? AppColors.primaryCta : const Color(0xFF9CA3AF),
                           ),
                           if (comment.likeCount > 0) ...[
                             const SizedBox(width: 4),

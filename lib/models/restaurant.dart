@@ -161,7 +161,7 @@ class StatusMeta {
 }
 
 const Map<String, StatusMeta> statusMetaMap = {
-  '여유로움': StatusMeta(label: '여유로움', color: 0xFF4C9C2A, bgColor: 0xFFDAFFCA),
+  '여유로움': StatusMeta(label: '여유로움', color: 0xFF26BC7D, bgColor: 0xFFE6F3EC),
   '약간혼잡': StatusMeta(label: '약간혼잡', color: 0xFFF59E0B, bgColor: 0xFFFEF3C7),
   // 자리없음: 빨강 — 약간혼잡(노란 앰버)과 명확히 구분
   '자리없음': StatusMeta(label: '자리없음', color: 0xFFEF4444, bgColor: 0xFFFEE2E2),

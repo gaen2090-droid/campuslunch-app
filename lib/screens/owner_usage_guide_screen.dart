@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../providers/app_provider.dart';
 import '../widgets/owner_badge.dart';
 import '../widgets/report_sheet.dart';
@@ -91,7 +92,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
     final isLast = _page == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3FBEE),
+      backgroundColor: const Color(0xFFE6F3EC),
       body: Stack(
         children: [
           SafeArea(
@@ -208,7 +209,7 @@ class _OwnerUsageGuideScreenState extends State<OwnerUsageGuideScreen> {
                     child: Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
+                        color: AppColors.primaryCta,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -507,17 +508,17 @@ class _OwnerCommunityMockup extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+              color: const Color(0xFFE6F3EC),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.storefront_outlined, size: 13, color: Color(0xFF374151)),
+                Icon(Icons.storefront_outlined, size: 13, color: Color(0xFF26BC7D)),
                 SizedBox(width: 4),
                 Text(
                   _demoRestaurantName,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF26BC7D)),
                 ),
               ],
             ),
@@ -602,7 +603,7 @@ class _OwnerStatsMockup extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF000000), Color(0xFF374151)],
+                colors: [Color(0xFF26BC7D), Color(0xFF1B8F5D)],
               ),
               borderRadius: BorderRadius.circular(14),
             ),

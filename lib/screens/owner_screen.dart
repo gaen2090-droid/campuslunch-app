@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
@@ -166,7 +167,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
+                      color: AppColors.primaryCta,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
@@ -260,22 +261,22 @@ class _OwnerScreenState extends State<OwnerScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F4F6),
+                            color: const Color(0xFFE6F3EC),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            border: Border.all(color: const Color(0xFFCDE9DC)),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.visibility_outlined,
-                                  size: 13, color: Color(0xFF374151)),
+                                  size: 13, color: Color(0xFF26BC7D)),
                               SizedBox(width: 4),
                               Text(
                                 '소비자 화면 보기',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF374151),
+                                  color: Color(0xFF26BC7D),
                                 ),
                               ),
                             ],
@@ -535,7 +536,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 decoration: BoxDecoration(
                                   color: _seatSubmitting
                                       ? const Color(0xFF9CA3AF)
-                                      : const Color(0xFF000000),
+                                      : AppColors.primaryCta,
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Center(
@@ -591,7 +592,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
+                    color: AppColors.primaryCta,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

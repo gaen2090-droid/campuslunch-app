@@ -173,8 +173,8 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final r = widget.restaurant;
     final hasImage = !_isFallback;
     final isBusy = r.status == '약간혼잡';
-    final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFF9ECA8B);
-    const reportTextColor = Color(0xFF000000);
+    final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFFCDE9DC);
+    const reportTextColor = Color(0xFF26BC7D);
     final statusLabel = r.status;
     final meta = crowdStatusMeta(r.status);
 
@@ -337,7 +337,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                             child: Container(
                               height: 40,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: const Color(0xFFE6F3EC),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Center(

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../providers/app_provider.dart';
 
 class NotificationPermissionScreen extends StatelessWidget {
@@ -86,7 +87,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                               ),
-                              backgroundColor: const Color(0xFF000000),
+                              backgroundColor: AppColors.primaryCta,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
@@ -100,7 +101,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                           height: 56,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF000000),
+                            color: AppColors.primaryCta,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Center(

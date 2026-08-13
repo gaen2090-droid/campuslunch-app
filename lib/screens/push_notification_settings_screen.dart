@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../providers/app_provider.dart';
 
 class PushNotificationSettingsScreen extends StatefulWidget {
@@ -215,7 +216,7 @@ class _ToggleRow extends StatelessWidget {
           else
             Switch.adaptive(
               value: enabled,
-              activeColor: const Color(0xFF000000),
+              activeColor: AppColors.primaryCta,
               onChanged: (_) => onToggle(),
             ),
         ],

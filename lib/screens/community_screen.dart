@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/collection.dart';
 import '../models/community_notice.dart';
@@ -364,7 +365,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       floatingActionButton: _segment == 0
           ? FloatingActionButton(
               onPressed: () => _openEditor(),
-              backgroundColor: const Color(0xFF000000),
+              backgroundColor: AppColors.primaryCta,
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
           : null,
@@ -411,7 +412,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          color: const Color(0xFFF3F4F6),
+          color: const Color(0xFFE6F3EC),
           child: Row(
             children: [
               const Text('🏪', style: TextStyle(fontSize: 11)),
@@ -716,10 +717,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF000000) : Colors.white,
+          color: active ? AppColors.primaryCta : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+              color: active ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
         ),
         child: Text(
           '#$tag',

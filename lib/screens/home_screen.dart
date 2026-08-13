@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../constants/reward_limits.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -420,7 +421,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           ),
           Container(
             width: double.infinity,
-            color: const Color(0xFF000000),
+            color: AppColors.primaryCta,
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -569,10 +570,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: _bookmarkOnly ? const Color(0xFF000000) : Colors.white,
+                            color: _bookmarkOnly ? AppColors.primaryCta : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: _bookmarkOnly ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                                color: _bookmarkOnly ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -913,38 +914,45 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8, height: 8,
-                        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(title,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onMore,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8, height: 8,
+                          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(title,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF000000))),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 28, color: Color(0xFF9CA3AF)),
+                      ],
+                    ),
+                    if (subText != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3, left: 16),
+                        child: Text(subText,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF000000))),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF9CA3AF))),
                       ),
-                    ],
-                  ),
-                  if (subText != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3, left: 16),
-                      child: Text(subText,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF9CA3AF))),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (trailing != null) ...[
@@ -955,26 +963,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         ),
       );
     }
-
-    Widget moreButton(VoidCallback onTap) => GestureDetector(
-          onTap: onTap,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4B4B4B),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: Text('더보기',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-            ),
-          ),
-        );
 
     Widget emptyCard() => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -1018,7 +1006,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               children: [
                 sectionHeader(
                   title: '바로 입장 가능해요',
-                  dotColor: const Color(0xFF4C9C2A),
+                  dotColor: const Color(0xFF26BC7D),
                   onMore: () => goTo(RestaurantListMode.available),
                   // 필터줄 바로 아래 첫 섹션이라 다른 섹션(top 20 유지)보다
                   // 위쪽 간격만 절반 수준으로 축소 — 필터줄/리스트 자체 패딩과
@@ -1049,7 +1037,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       const SizedBox(width: 6),
                       KeyedSubtree(
                         key: HomeScreen.availableBadgeKey,
-                        child: crowdBadge('여유로움', const Color(0xFFDAFFCA), const Color(0xFF4C9C2A)),
+                        child: crowdBadge('여유로움', const Color(0xFFE6F3EC), const Color(0xFF26BC7D)),
                       ),
                     ],
                   ),
@@ -1078,7 +1066,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         ),
                       ),
                     ),
-                  moreButton(() => goTo(RestaurantListMode.available)),
                 ],
               ],
             ),
@@ -1090,7 +1077,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               children: [
                 sectionHeader(
                   title: '빈자리 조금 있어요',
-                  dotColor: const Color(0xFFF59E0B),
+                  dotColor: const Color(0xFFFFBF00),
                   onMore: () => goTo(RestaurantListMode.slightlyBusy),
                   subText: slightlyBusyStale ? '여기서부터는 30분 이상 지난 제보예요.' : null,
                   trailing: Row(
@@ -1134,7 +1121,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         ),
                       ),
                     ),
-                  moreButton(() => goTo(RestaurantListMode.slightlyBusy)),
                 ],
               ],
             ),
@@ -1187,7 +1173,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         ),
                       ),
                     ),
-                  moreButton(() => goTo(RestaurantListMode.stamp)),
                 ],
               ),
 
@@ -1242,7 +1227,6 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         ),
                       ),
                     ),
-                  moreButton(() => goTo(RestaurantListMode.busy)),
                 ],
               ],
             ),
@@ -1301,7 +1285,7 @@ class _SectionButton extends StatelessWidget {
           color: bgColor ?? (highlighted ? const Color(0xFFF3F4F6) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: highlighted ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+              color: highlighted ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withAlpha(8),
@@ -1661,10 +1645,10 @@ class HomeFilterIconButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF000000) : Colors.white,
+          color: active ? AppColors.primaryCta : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+              color: active ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1841,10 +1825,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF000000) : Colors.white,
+                    color: on ? AppColors.primaryCta : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                        color: on ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
@@ -1891,10 +1875,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: on ? const Color(0xFF000000) : Colors.white,
+                    color: on ? AppColors.primaryCta : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                        color: on ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(opt,
                       style: TextStyle(
@@ -1943,10 +1927,10 @@ class _FilterSheetState extends State<HomeFilterSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: on ? const Color(0xFF000000) : Colors.white,
+                      color: on ? AppColors.primaryCta : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                          color: on ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
                     ),
                     child: Text(opt,
                         style: TextStyle(
@@ -1970,7 +1954,7 @@ class _FilterSheetState extends State<HomeFilterSheet> {
               height: 52,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF000000),
+                color: AppColors.primaryCta,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
@@ -2001,10 +1985,10 @@ class HomeCafeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF000000) : Colors.white,
+          color: active ? AppColors.primaryCta : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+              color: active ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2050,10 +2034,10 @@ class HomeFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFF000000) : Colors.white,
+          color: on ? AppColors.primaryCta : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: on ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+              color: on ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2371,7 +2355,7 @@ class _SimpleFilterSheetState extends State<SimpleFilterSheet> {
                     child: Container(
                       height: 52,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
+                        color: AppColors.primaryCta,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Center(

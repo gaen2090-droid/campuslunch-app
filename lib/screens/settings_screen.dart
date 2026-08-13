@@ -12,6 +12,44 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _showEditSheet = false;
+  String _editNickname = '';
+  final _nicknameCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nicknameCtrl.dispose();
+    super.dispose();
+  }
+
+  void _openEdit(String current) {
+    _nicknameCtrl.value = TextEditingValue(
+      text: current,
+      selection: TextSelection.collapsed(offset: current.length),
+    );
+    setState(() {
+      _editNickname = current;
+      _showEditSheet = true;
+    });
+  }
+
+  Future<void> _saveNickname() async {
+    final trimmed = _editNickname.trim();
+    if (trimmed.isEmpty) {
+      setState(() => _showEditSheet = false);
+      return;
+    }
+    final err = await context.read<AppProvider>().updateNickname(trimmed);
+    if (!mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
+      return;
+    }
+    setState(() => _showEditSheet = false);
+  }
+
   void _confirmWithdraw(BuildContext context) {
     showDialog(
       context: context,
@@ -91,10 +129,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: false,
       ),
-      body: ListView(
+      body: Stack(
+        children: [
+        ListView(
         padding: EdgeInsets.fromLTRB(
             20, 8, 20, MediaQuery.of(context).padding.bottom + 32),
         children: [
+          if (!provider.hasOwnerTab)
+            GestureDetector(
+              onTap: () => _openEdit(provider.nickname),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      '내 닉네임',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        provider.nickname.isEmpty ? '앙대 학생' : provider.nickname,
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Icon(Icons.arrow_forward_ios,
+                        size: 12, color: Color(0xFF9CA3AF)),
+                  ],
+                ),
+              ),
+            ),
           if (email.isNotEmpty) ...[
             Container(
               width: double.infinity,
@@ -204,6 +284,201 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+        ),
+
+        // ── 닉네임 수정 시트 ──
+        if (_showEditSheet)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _showEditSheet = false),
+              child: Container(
+                color: Colors.black.withAlpha(76),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () {}, // absorb taps
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(28)),
+                        ),
+                        padding: EdgeInsets.fromLTRB(
+                            20,
+                            20,
+                            20,
+                            MediaQuery.of(context).padding.bottom +
+                                MediaQuery.of(context).viewInsets.bottom +
+                                24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Container(
+                                width: 40,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5E7EB),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              '닉네임 수정',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF000000)),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      autofocus: true,
+                                      controller: _nicknameCtrl,
+                                      onChanged: (v) {
+                                        if (v.length > 20) {
+                                          _nicknameCtrl.value =
+                                              TextEditingValue(
+                                            text: v.substring(0, 20),
+                                            selection:
+                                                const TextSelection.collapsed(
+                                                    offset: 20),
+                                          );
+                                        }
+                                        setState(() =>
+                                            _editNickname = _nicknameCtrl.text);
+                                      },
+                                      onSubmitted: (_) => _saveNickname(),
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1F2937)),
+                                      decoration: const InputDecoration(
+                                        hintText: '닉네임을 입력하세요',
+                                        hintStyle: TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF9CA3AF)),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_editNickname.length}/20',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFD1D5DB)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: '※ 닉네임을 설정하면 ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '30일간 변경할 수 없습니다.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        setState(() => _showEditSheet = false),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: const Center(
+                                        child: Text(
+                                          '취소',
+                                          style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF374151)),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: _editNickname.trim().isEmpty
+                                        ? null
+                                        : _saveNickname,
+                                    child: AnimatedOpacity(
+                                      opacity: _editNickname.trim().isEmpty
+                                          ? 0.3
+                                          : 1.0,
+                                      duration:
+                                          const Duration(milliseconds: 150),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF26BC7D),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '저장',
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
       ),
     );
   }

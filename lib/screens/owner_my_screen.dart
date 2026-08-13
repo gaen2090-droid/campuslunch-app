@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/korean_particle.dart';
@@ -106,7 +107,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
+                      color: AppColors.primaryCta,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -250,7 +251,7 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000000),
+                  color: AppColors.primaryCta,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

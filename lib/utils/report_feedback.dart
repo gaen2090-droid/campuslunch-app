@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/reward_limits.dart';
 import '../providers/app_provider.dart';
 
@@ -67,7 +68,7 @@ Future<void> submitCrowdReportFeedback(
           color: Colors.white,
         ),
       ),
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: AppColors.primaryCta,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
@@ -92,7 +93,7 @@ Future<void> submitCrowdReportFeedback(
           color: Colors.white,
         ),
       ),
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: AppColors.primaryCta,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),

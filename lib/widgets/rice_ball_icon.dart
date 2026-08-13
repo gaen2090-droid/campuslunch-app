@@ -110,9 +110,16 @@ class StampRiceBallIcon extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFF000000),
+      decoration: BoxDecoration(
+        color: Colors.white,
         shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(20),
+            blurRadius: size * 0.25,
+            offset: Offset(0, size * 0.06),
+          ),
+        ],
       ),
       child: Center(
         child: Image.asset(
@@ -126,7 +133,7 @@ class StampRiceBallIcon extends StatelessWidget {
           errorBuilder: (_, __, ___) => Icon(
             Icons.rice_bowl_outlined,
             size: markHeight,
-            color: Colors.white,
+            color: const Color(0xFF000000),
           ),
         ),
       ),

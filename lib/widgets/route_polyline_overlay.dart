@@ -17,8 +17,8 @@ class RoutePolylineOverlay extends StatefulWidget {
     super.key,
     required this.controller,
     required this.points,
-    this.color = const Color(0xFF4C9C2A),
-    this.borderColor = const Color(0xFF2D6A1E),
+    this.color = const Color(0xFF26BC7D),
+    this.borderColor = const Color(0xFF1B8F5D),
     this.strokeWidth = 5,
   });
 
