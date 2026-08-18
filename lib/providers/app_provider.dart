@@ -399,6 +399,7 @@ class AppProvider extends ChangeNotifier {
   static const _kAuthProvider = 'cl_auth_provider';
   static const _kHiddenGifticons = 'cl_hidden_gifticon_ids';
   static const _kReferralPromptPendingUsers = 'cl_referral_prompt_pending_users';
+  static const _kReferralPromptDoneUsers = 'cl_referral_prompt_done_users';
   static const _kReferralCodeFromInviteLink = 'cl_referral_code_from_invite';
   static const _kActiveOwnerRestaurantId = 'cl_community_active_owner_restaurant';
 
@@ -2189,11 +2190,35 @@ class AppProvider extends ChangeNotifier {
     return pending.contains(userId);
   }
 
+  bool _isReferralPromptDone(SharedPreferences prefs, String userId) {
+    if (userId.isEmpty) return false;
+    final done = prefs.getStringList(_kReferralPromptDoneUsers) ?? [];
+    return done.contains(userId);
+  }
+
+  Future<void> _markReferralPromptDone(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    if (userId.isEmpty) return;
+    final done = List<String>.from(
+      prefs.getStringList(_kReferralPromptDoneUsers) ?? const [],
+    );
+    if (!done.contains(userId)) {
+      done.add(userId);
+      await prefs.setStringList(_kReferralPromptDoneUsers, done);
+    }
+  }
+
   Future<void> _markReferralPromptPending(
     SharedPreferences prefs,
     String userId,
   ) async {
     if (userId.isEmpty) return;
+    // 건너뛰기/등록완료로 이미 한 번 처리한 유저는 다시 대기중으로 되돌리지 않는다.
+    // (재로그인 시점에도 isNewSignup이 여전히 true일 수 있어서, 이 플래그가
+    // 없으면 로그아웃 후 재로그인할 때마다 프롬프트가 다시 뜬다.)
+    if (_isReferralPromptDone(prefs, userId)) return;
     final pending = List<String>.from(
       prefs.getStringList(_kReferralPromptPendingUsers) ?? const [],
     );
@@ -3268,6 +3293,7 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final userId = _sessionUserId(prefs);
     await _clearReferralPromptPending(prefs, userId);
+    await _markReferralPromptDone(prefs, userId);
     if (_pendingSignupCompleteMessage) {
       _pendingSignupCompleteMessage = false;
       _showSignupCompleteMessage = true;
