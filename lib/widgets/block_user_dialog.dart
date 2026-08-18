@@ -13,7 +13,7 @@ Future<bool> confirmBlockUser(BuildContext context, String nickname) async {
         '$nickname님을 차단할까요?\n\n'
         '차단하면 이 사용자의 게시글과 댓글이 바로 보이지 않고, '
         '운영자에게 신고가 함께 접수돼요. '
-        '차단은 커뮤니티 더보기 → 차단 관리에서 해제할 수 있어요.',
+        '차단은 커뮤니티 메뉴 → 차단 관리에서 해제할 수 있어요.',
         style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF374151)),
       ),
       actions: [
