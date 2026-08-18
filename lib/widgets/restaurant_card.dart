@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../utils/crowd_status_label.dart';
 import 'restaurant_image.dart';
@@ -196,7 +197,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
               // 배경 이미지 (없으면 브랜드 그린 배경)
               RestaurantImage(
                 url: r.imageUrl,
-                fallback: () => Container(color: const Color(0xFF9ECA8B)),
+                fallback: () => Container(color: AppColors.primaryCta),
                 onFallbackChanged: _setFallback,
               ),
 
