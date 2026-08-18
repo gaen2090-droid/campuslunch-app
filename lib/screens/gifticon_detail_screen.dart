@@ -115,27 +115,6 @@ class _GifticonDetailScreenState extends State<GifticonDetailScreen> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          IconButton(
-            onPressed: _hasImage && !_downloading ? _downloadImage : null,
-            icon: _downloading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF000000),
-                    ),
-                  )
-                : Icon(
-                    Icons.download_rounded,
-                    size: 22,
-                    color: _hasImage
-                        ? const Color(0xFF000000)
-                        : const Color(0xFFD1D5DB),
-                  ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 32),

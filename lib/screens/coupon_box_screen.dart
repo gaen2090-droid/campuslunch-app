@@ -221,81 +221,83 @@ class _GifticonTileState extends State<_GifticonTile> {
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: const Color(0xFFFFFBEB),
-                    child: _thumbUrl != null && _thumbUrl!.isNotEmpty
-                        ? Image.network(
-                            _thumbUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
-                          )
-                        : const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
-                  ),
-                  if (widget.editMode)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(color: Colors.white, width: 2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(17),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: const Color(0xFFFFFBEB),
+                      child: _thumbUrl != null && _thumbUrl!.isNotEmpty
+                          ? Image.network(
+                              _thumbUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
+                            )
+                          : const Center(child: Text('🎁', style: TextStyle(fontSize: 32))),
+                    ),
+                    if (widget.editMode)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: widget.removing
+                              ? const Padding(
+                                  padding: EdgeInsets.all(5),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFEF4444),
+                                  ),
+                                )
+                              : const Icon(Icons.remove, size: 16, color: Color(0xFFEF4444)),
                         ),
-                        child: widget.removing
-                            ? const Padding(
-                                padding: EdgeInsets.all(5),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFFEF4444),
-                                ),
-                              )
-                            : const Icon(Icons.remove, size: 16, color: Color(0xFFEF4444)),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    g.brand,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF9CA3AF),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      g.brand,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    g.productName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF000000),
+                    const SizedBox(height: 2),
+                    Text(
+                      g.productName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF000000),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
