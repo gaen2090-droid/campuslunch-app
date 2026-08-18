@@ -82,14 +82,17 @@ class _CouponBoxScreenState extends State<CouponBoxScreen> {
         centerTitle: false,
         actions: [
           if (gifticons.isNotEmpty)
-            TextButton(
-              onPressed: () => setState(() => _editMode = !_editMode),
-              child: Text(
-                _editMode ? '완료' : '편집',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFFEF4444),
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: GestureDetector(
+                onTap: () => setState(() => _editMode = !_editMode),
+                child: Text(
+                  _editMode ? '완료' : '편집',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                  ),
                 ),
               ),
             ),
