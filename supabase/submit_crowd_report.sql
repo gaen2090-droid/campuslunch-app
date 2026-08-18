@@ -1,9 +1,11 @@
 -- 제보 RPC 정본 (Dashboard → SQL Editor → Run)
--- 스탬프 + user/owner 공통 50m + 5분 쿨다운 + advisory lock
+-- 스탬프 + user/owner 공통 50m + 5분 쿨다운 + advisory lock + 제보 정지 체크
 --
 -- 이 파일만 submit_crowd_report 를 CREATE OR REPLACE 한다.
 -- crowd_status.sql / rewards.sql 을 다시 돌려도 이 함수는 덮이지 않는다.
 -- 이후 제보 규칙을 바꿀 때도 여기만 수정할 것.
+--
+-- user_suspension.sql을 먼저 실행해 is_report_suspended()가 있어야 한다.
 
 create or replace function public.submit_crowd_report(
   p_restaurant_id uuid,
@@ -33,6 +35,10 @@ declare
 begin
   if v_uid is null then
     raise exception '로그인이 필요해요.';
+  end if;
+
+  if p_source = 'user' and public.is_report_suspended(v_uid) then
+    raise exception '제보 기능 이용이 일시적으로 제한됐어요.';
   end if;
 
   perform pg_advisory_xact_lock(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
+import 'community_suspension_history_screen.dart';
 import 'push_notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -96,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return switch (authProvider) {
       'kakao' => '카카오 로그인',
       'google' => '구글 로그인',
+      'apple' => '애플 로그인',
       _ => '',
     };
   }
@@ -118,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         titleSpacing: 0,
         title: const Text(
-          '설정',
+          '내 계정',
           style: TextStyle(
             fontFamily: 'Pretendard',
             fontSize: 18,
@@ -242,6 +244,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                     builder: (_) => const PushNotificationSettingsScreen()),
+              ),
+            ),
+            _SettingsButton(
+              label: '이용 제한 내역',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const CommunitySuspensionHistoryScreen()),
               ),
             ),
             const SizedBox(height: 8),

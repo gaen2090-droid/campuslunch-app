@@ -18,7 +18,8 @@ returns table (
   actor_nickname text,
   body_text text,
   created_at timestamptz,
-  is_read boolean
+  is_read boolean,
+  suspended_until timestamptz
 )
 language sql
 stable
@@ -102,7 +103,8 @@ as $$
       base.actor_nickname,
       base.body_text,
       base.created_at,
-      (r.event_id is not null) as is_read
+      (r.event_id is not null) as is_read,
+      null::timestamptz as suspended_until
     from base
     left join public.community_inbox_reads r
       on r.event_id = base.event_id and r.user_id = auth.uid()
@@ -110,14 +112,19 @@ as $$
   union all
   (
     select
-      ('admin_' || n.target_kind)::text as kind,
+      case
+        when n.target_kind in ('post', 'comment', 'collection')
+          then ('admin_' || n.target_kind)
+        else n.target_kind
+      end::text as kind,
       n.id::text as event_id,
       null::uuid as post_id,
       coalesce(n.content_excerpt, '')::text as post_content,
       '캠런관리자'::text as actor_nickname,
       coalesce(n.reason, '')::text as body_text,
       n.created_at,
-      false as is_read
+      false as is_read,
+      n.suspended_until
     from public.admin_moderation_notifications n
     where n.recipient_user_id = auth.uid()
   )
@@ -135,6 +142,7 @@ grant execute on function public.community_inbox_notifications() to authenticate
 -- CommunityInboxNotification 모델을 그대로 재사용한다.
 -- post_id 자리엔 collection_id를 담아 반환(앱에서 컬렉션 댓글 시트를 열 때 사용).
 
+drop function if exists public.collection_inbox_notifications();
 create or replace function public.collection_inbox_notifications()
 returns table (
   kind text,
@@ -144,7 +152,8 @@ returns table (
   actor_nickname text,
   body_text text,
   created_at timestamptz,
-  is_read boolean
+  is_read boolean,
+  suspended_until timestamptz
 )
 language sql
 stable
@@ -179,7 +188,8 @@ as $$
     base.actor_nickname,
     base.body_text,
     base.created_at,
-    (r.event_id is not null) as is_read
+    (r.event_id is not null) as is_read,
+    null::timestamptz as suspended_until
   from base
   left join public.community_inbox_reads r
     on r.event_id = base.event_id and r.user_id = auth.uid()

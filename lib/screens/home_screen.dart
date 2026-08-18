@@ -17,6 +17,7 @@ import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/recent_history_row.dart';
 import '../widgets/report_sheet.dart';
+import '../widgets/suspension_popup_dialog.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
 import 'restaurant_list_screen.dart';
@@ -82,6 +83,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // 스탬프 제공 시간대(10~19시) 경계를 넘어갈 때 배너가 자동으로 갱신되도록 주기적 rebuild.
     _stampHoursTicker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!context.read<AppProvider>().isLoggedIn) return;
+      SuspensionPopupDialog.checkAndShow(context);
     });
   }
 

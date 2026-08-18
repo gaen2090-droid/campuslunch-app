@@ -89,9 +89,9 @@ class _CommunityNotificationsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
@@ -154,7 +154,11 @@ class _CommunityNotificationsScreenState
             if (reasonText != null) reasonText,
           ];
           return Container(
-            color: const Color(0xFFFDF0F3),
+            color: n.isActiveSuspensionNotice
+                ? const Color(0xFFFDF0F3)
+                : n.isSuspensionNotice
+                    ? const Color(0xFFE6F3EC)
+                    : const Color(0xFFFDF0F3),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               title: Text(

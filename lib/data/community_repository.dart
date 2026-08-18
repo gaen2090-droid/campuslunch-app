@@ -401,6 +401,53 @@ class CommunityRepository {
     return merged;
   }
 
+  /// 커뮤니티 메뉴 → 이용 제한 내역. 알림창과 같은 모델을 재사용하기 위해
+  /// my_suspension_history()의 컬럼을 CommunityInboxNotification.fromMap이
+  /// 기대하는 형태로 맞춰서 넘긴다.
+  Future<List<CommunityInboxNotification>> fetchSuspensionHistory() async {
+    final rows = await _client.rpc('my_suspension_history') as List<dynamic>;
+    return rows.map((e) {
+      final row = e as Map<String, dynamic>;
+      return CommunityInboxNotification.fromMap({
+        'kind': row['kind'],
+        'event_id': row['event_id'],
+        'post_id': null,
+        'post_content': null,
+        'actor_nickname': '캠런관리자',
+        'body_text': row['reason'] ?? '',
+        'created_at': row['created_at'],
+        'is_read': true,
+        'suspended_until': row['suspended_until'],
+      });
+    }).toList();
+  }
+
+  /// 홈 화면 진입 시 "정지/해제 이후 아직 팝업으로 확인 안 한" 알림 1건.
+  /// 없으면 null.
+  Future<CommunityInboxNotification?> fetchPendingSuspensionPopup() async {
+    final rows =
+        await _client.rpc('my_pending_suspension_popup') as List<dynamic>;
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    return CommunityInboxNotification.fromMap({
+      'kind': row['kind'],
+      'event_id': row['event_id'],
+      'post_id': null,
+      'post_content': null,
+      'actor_nickname': '캠런관리자',
+      'body_text': row['reason'] ?? '',
+      'created_at': row['created_at'],
+      'is_read': false,
+      'suspended_until': row['suspended_until'],
+    });
+  }
+
+  Future<void> markSuspensionPopupSeen(String eventId) async {
+    await _client.rpc('mark_suspension_popup_seen', params: {
+      'p_event_id': eventId,
+    });
+  }
+
   Future<bool> hasUnreadInboxNotifications() async {
     final result = await _client.rpc('community_inbox_has_unread');
     return result as bool? ?? false;

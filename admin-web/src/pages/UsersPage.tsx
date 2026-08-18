@@ -1,8 +1,14 @@
 import { useMemo, useState } from "react";
 import { Modal } from "../components/Modal";
-import { purgeAdminUserById } from "../lib/adminApi";
+import {
+  purgeAdminUserById,
+  setCommunitySuspension,
+  setReportSuspension,
+} from "../lib/adminApi";
 import { errorMessage } from "../lib/errors";
-import { roleLabel, type AdminUser } from "../types/user";
+import { isSuspensionActive, roleLabel, type AdminUser } from "../types/user";
+
+type SuspensionKind = "community" | "report";
 
 interface Props {
   users: AdminUser[];
@@ -29,6 +35,14 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const [suspendTarget, setSuspendTarget] = useState<{
+    user: AdminUser;
+    kind: SuspensionKind;
+  } | null>(null);
+  const [suspendDays, setSuspendDays] = useState("7");
+  const [suspendReason, setSuspendReason] = useState("");
+  const [suspendBusy, setSuspendBusy] = useState(false);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
@@ -53,6 +67,56 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
       setActionError(errorMessage(err));
     } finally {
       setDeleteBusy(false);
+    }
+  }
+
+  function openSuspend(user: AdminUser, kind: SuspensionKind) {
+    setActionError(null);
+    setSuccess(null);
+    setSuspendDays("7");
+    setSuspendReason("");
+    setSuspendTarget({ user, kind });
+  }
+
+  async function confirmSuspend() {
+    if (!suspendTarget) return;
+    const days = Number.parseInt(suspendDays, 10);
+    if (!Number.isFinite(days) || days <= 0) {
+      setActionError("정지 기간(일)을 1 이상으로 입력해주세요.");
+      return;
+    }
+    setSuspendBusy(true);
+    setActionError(null);
+    try {
+      const fn =
+        suspendTarget.kind === "community"
+          ? setCommunitySuspension
+          : setReportSuspension;
+      await fn(suspendTarget.user.id, days, suspendReason.trim());
+      const label = suspendTarget.kind === "community" ? "커뮤니티" : "제보";
+      setSuccess(
+        `${suspendTarget.user.nickname}님의 ${label} 이용을 ${days}일간 정지했어요.`,
+      );
+      setSuspendTarget(null);
+      onReload();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setSuspendBusy(false);
+    }
+  }
+
+  async function unsuspend(user: AdminUser, kind: SuspensionKind) {
+    setActionError(null);
+    setSuccess(null);
+    try {
+      const fn = kind === "community" ? setCommunitySuspension : setReportSuspension;
+      await fn(user.id, 0, "");
+      const label = kind === "community" ? "커뮤니티" : "제보";
+      setSuccess(`${user.nickname}님의 ${label} 정지를 해제했어요.`);
+      onReload();
+    } catch (err) {
+      setActionError(errorMessage(err));
     }
   }
 
@@ -107,6 +171,16 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
                   <strong>{u.nickname}</strong>
                   <span className={`badge role-${u.role}`}>{roleLabel(u.role)}</span>
                   {u.isOwner && <span className="badge owner">매장 소유</span>}
+                  {isSuspensionActive(u.communitySuspendedUntil) && (
+                    <span className="badge danger-text">
+                      커뮤니티 정지 ~{formatDate(u.communitySuspendedUntil)}
+                    </span>
+                  )}
+                  {isSuspensionActive(u.reportSuspendedUntil) && (
+                    <span className="badge danger-text">
+                      제보 정지 ~{formatDate(u.reportSuspendedUntil)}
+                    </span>
+                  )}
                 </div>
                 <p className="user-email">{u.email ?? "(이메일 없음)"}</p>
                 <p className="muted sm mono">{u.id}</p>
@@ -119,17 +193,53 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
                 </div>
               </div>
               {u.role !== "admin" && (
-                <button
-                  type="button"
-                  className="btn danger sm"
-                  onClick={() => {
-                    setSuccess(null);
-                    setActionError(null);
-                    setDeleteTarget(u);
-                  }}
-                >
-                  완전 삭제
-                </button>
+                <div className="user-row-actions" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {isSuspensionActive(u.communitySuspendedUntil) ? (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => void unsuspend(u, "community")}
+                    >
+                      커뮤니티 정지 해제
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => openSuspend(u, "community")}
+                    >
+                      커뮤니티 정지
+                    </button>
+                  )}
+                  {isSuspensionActive(u.reportSuspendedUntil) ? (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => void unsuspend(u, "report")}
+                    >
+                      제보 정지 해제
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => openSuspend(u, "report")}
+                    >
+                      제보 정지
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn danger sm"
+                    onClick={() => {
+                      setSuccess(null);
+                      setActionError(null);
+                      setDeleteTarget(u);
+                    }}
+                  >
+                    완전 삭제
+                  </button>
+                </div>
               )}
             </li>
           ))}
@@ -165,6 +275,64 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
               onClick={() => void confirmDelete()}
             >
               {deleteBusy ? "삭제 중…" : "삭제"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {suspendTarget && (
+        <Modal
+          title={
+            suspendTarget.kind === "community" ? "커뮤니티 이용 정지" : "제보 이용 정지"
+          }
+          onClose={() => !suspendBusy && setSuspendTarget(null)}
+        >
+          <p>
+            <strong>{suspendTarget.user.nickname}</strong>
+            {" "}
+            (
+            {suspendTarget.user.email ?? "이메일 없음"}
+            )
+          </p>
+          <p className="muted sm">
+            {suspendTarget.kind === "community"
+              ? "정지 기간 동안 게시글·댓글 작성이 막혀요."
+              : "정지 기간 동안 혼잡도 제보가 막혀요."}
+          </p>
+          <label className="field">
+            <span className="field-label">정지 기간(일)</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={suspendDays}
+              onChange={(e) => setSuspendDays(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">사유 (선택)</span>
+            <input
+              placeholder="예: 반복 신고 누적"
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+            />
+          </label>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={suspendBusy}
+              onClick={() => setSuspendTarget(null)}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              className="btn danger"
+              disabled={suspendBusy}
+              onClick={() => void confirmSuspend()}
+            >
+              {suspendBusy ? "처리 중…" : "정지"}
             </button>
           </div>
         </Modal>
