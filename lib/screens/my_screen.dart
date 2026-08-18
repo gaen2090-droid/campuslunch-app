@@ -110,7 +110,7 @@ class _MyScreenState extends State<MyScreen> {
                         MaterialPageRoute(
                             builder: (_) => const SettingsScreen()),
                       ),
-                      icon: const Icon(Icons.settings_outlined,
+                      icon: const Icon(Icons.manage_accounts_outlined,
                           size: 24, color: Color(0xFF000000)),
                     ),
                   ],
