@@ -98,9 +98,9 @@ class _CommunityBlockedUsersScreenState
         Navigator.pop(context, _changed);
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFF9FAFB),
+          backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
@@ -146,7 +146,7 @@ class _CommunityBlockedUsersScreenState
           SizedBox(height: 120),
           Center(
             child: Text(
-              '차단한 사용자가 없어요.\n게시글·댓글의 ⋮ 메뉴에서 차단할 수 있어요.',
+              '차단한 사용자가 없어요.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Color(0xFF9CA3AF), height: 1.5),
             ),

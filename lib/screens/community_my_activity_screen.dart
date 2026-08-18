@@ -101,9 +101,9 @@ class _CommunityMyActivityScreenState extends State<CommunityMyActivityScreen> {
   Widget build(BuildContext context) {
     final title = widget.mode == MyActivityMode.myPosts ? '내가 쓴 글' : '댓글 단 글';
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Color(0xFF000000)),
