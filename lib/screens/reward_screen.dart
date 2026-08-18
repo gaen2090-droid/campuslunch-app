@@ -319,17 +319,26 @@ class _StampGrid extends StatelessWidget {
           BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 1,
-        ),
-        itemCount: target,
-        itemBuilder: (_, i) => _StampCell(filled: i < filled),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const crossAxisCount = 5;
+          const spacing = 10.0;
+          final cellSize =
+              (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                  crossAxisCount;
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: List.generate(
+              target,
+              (i) => SizedBox(
+                width: cellSize,
+                height: cellSize,
+                child: _StampCell(filled: i < filled),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
