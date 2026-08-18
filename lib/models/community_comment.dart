@@ -1,5 +1,8 @@
 class CommunityComment {
   final String id;
+
+  /// 작성자 user id. 차단 기능에서 사용.
+  final String? authorId;
   final String content;
   final String nickname;
   final DateTime createdAt;
@@ -11,6 +14,7 @@ class CommunityComment {
 
   const CommunityComment({
     required this.id,
+    this.authorId,
     required this.content,
     required this.nickname,
     required this.createdAt,
@@ -24,6 +28,7 @@ class CommunityComment {
   factory CommunityComment.fromMap(Map<String, dynamic> map) {
     return CommunityComment(
       id: map['id'] as String,
+      authorId: map['author_id'] as String?,
       content: map['content'] as String,
       nickname: map['nickname'] as String? ?? '탈퇴한 사용자',
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -41,6 +46,7 @@ class CommunityComment {
   }) {
     return CommunityComment(
       id: id,
+      authorId: authorId,
       content: content,
       nickname: nickname,
       createdAt: createdAt,

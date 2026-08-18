@@ -6,6 +6,7 @@ import '../models/community_comment.dart';
 import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
+import '../widgets/block_user_dialog.dart';
 import '../widgets/owner_badge.dart';
 
 class CollectionCommentsSheet extends StatefulWidget {
@@ -134,6 +135,27 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
     }
   }
 
+  Future<void> _block(CommunityComment comment) async {
+    final authorId = comment.authorId;
+    if (authorId == null) return;
+    if (!await confirmBlockUser(context, comment.nickname)) return;
+    try {
+      // 컬렉션 댓글은 community_reports가 아닌 collection_comment_reports에
+      // 기록되므로, 운영자 통지를 위해 신고를 따로 남긴다.
+      await _repo.reportCollectionComment(comment.id, reason: '사용자 차단');
+      await _repo.blockUser(authorId, reason: '컬렉션 댓글 작성자 차단');
+      await _load();
+      if (!mounted) return;
+      widget.onCountChanged?.call(_comments.length);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${comment.nickname}님을 차단했어요.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = '차단에 실패했어요.');
+    }
+  }
+
   Future<void> _toggleCommentLike(CommunityComment comment) async {
     if (comment.isOwner) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,6 +212,9 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
         comment: parent,
         onDelete: parent.isOwner ? () => _delete(parent) : null,
         onReport: parent.isOwner ? null : () => _report(parent),
+        onBlock: parent.isOwner || parent.authorId == null
+            ? null
+            : () => _block(parent),
         onLike: () => _toggleCommentLike(parent),
         onReply: () => _startReply(parent),
       ));
@@ -201,6 +226,9 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
             comment: reply,
             onDelete: reply.isOwner ? () => _delete(reply) : null,
             onReport: reply.isOwner ? null : () => _report(reply),
+            onBlock: reply.isOwner || reply.authorId == null
+                ? null
+                : () => _block(reply),
             onLike: () => _toggleCommentLike(reply),
             onReply: () => _startReply(parent),
           ),
@@ -363,6 +391,7 @@ class _CollectionCommentTile extends StatelessWidget {
   final CommunityComment comment;
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
+  final VoidCallback? onBlock;
   final VoidCallback onLike;
   final VoidCallback onReply;
 
@@ -372,6 +401,7 @@ class _CollectionCommentTile extends StatelessWidget {
     required this.onReply,
     this.onDelete,
     this.onReport,
+    this.onBlock,
   });
 
   @override
@@ -442,17 +472,29 @@ class _CollectionCommentTile extends StatelessWidget {
               ],
             ),
           ),
-          if (onDelete != null || onReport != null)
+          if (onDelete != null || onReport != null || onBlock != null)
             PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.more_vert, size: 16, color: Color(0xFF9CA3AF)),
               onSelected: (v) {
                 if (v == 'delete') onDelete?.call();
                 if (v == 'report') onReport?.call();
+                if (v == 'block') onBlock?.call();
               },
               itemBuilder: (ctx) => onDelete != null
                   ? const [PopupMenuItem(value: 'delete', child: Text('삭제'))]
-                  : const [PopupMenuItem(value: 'report', child: Text('신고'))],
+                  : [
+                      if (onReport != null)
+                        const PopupMenuItem(value: 'report', child: Text('신고')),
+                      if (onBlock != null)
+                        const PopupMenuItem(
+                          value: 'block',
+                          child: Text(
+                            '이 사용자 차단',
+                            style: TextStyle(color: Color(0xFFEF4444)),
+                          ),
+                        ),
+                    ],
             ),
         ],
       ),

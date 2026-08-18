@@ -152,5 +152,5 @@
 
 ## 제17조 (문의)
 
-- **이메일:** campuslunch2026@gmail.com
+- **이메일:** hungreez@hungreez.site
 - **앱 내:** 마이페이지 → 개선 제안

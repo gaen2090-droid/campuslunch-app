@@ -25,6 +25,7 @@ import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../models/reward.dart';
 import '../data/reward_repository.dart';
+import '../services/apple_auth_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/kakao_auth_service.dart';
 import '../services/supabase_service.dart';
@@ -1015,9 +1016,13 @@ class AppProvider extends ChangeNotifier {
   bool _isSupabaseSessionRestorable(User user) {
     if (user.emailConfirmedAt != null) return true;
     final provider = user.appMetadata['provider'] as String?;
-    if (provider == 'google' || provider == 'kakao') return true;
+    if (provider == 'google' || provider == 'kakao' || provider == 'apple') {
+      return true;
+    }
     for (final identity in user.identities ?? const []) {
-      if (identity.provider == 'google' || identity.provider == 'kakao') {
+      if (identity.provider == 'google' ||
+          identity.provider == 'kakao' ||
+          identity.provider == 'apple') {
         return true;
       }
     }
@@ -1374,6 +1379,53 @@ class AppProvider extends ChangeNotifier {
       }
       if (msg.contains('developer_error') || msg.contains('apiexception: 10')) {
         return '구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+      return '로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
+  /// Apple 로그인 (iOS 네이티브 → Supabase Auth + public.users)
+  Future<String?> loginWithApple() async {
+    if (!SupabaseService.isReady) {
+      return '서버 연결에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+    if (!await AppleAuthService.isAvailable) {
+      return '이 기기에서는 Apple 로그인을 사용할 수 없어요.';
+    }
+
+    try {
+      final result = await AppleAuthService.signInWithSupabase();
+      final user = result.user;
+      await _onSupabaseSignedIn(
+        user,
+        isNewSignup: _isLikelyNewAccount(user),
+      );
+      return null;
+    } on AppleSignInCancelled {
+      return _oauthCancelledMessage();
+    } on GoogleEmailBlocked catch (e) {
+      return _oauthLoginBlockedMessage(e.status);
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('already') ||
+          msg.contains('registered') ||
+          msg.contains('exists')) {
+        return '이 이메일은 이미 다른 방법으로 가입되어 있어요.\n'
+            '기존 로그인 수단으로 로그인해주세요.';
+      }
+      if (msg.contains('nonce') || msg.contains('audience')) {
+        return 'Apple 로그인 인증에 실패했어요.\n'
+            '앱을 완전히 종료한 뒤 다시 시도해주세요.';
+      }
+      if (msg.contains('banned') || msg.contains('suspended')) {
+        return _withdrawnCooldownMessage;
+      }
+      return e.message;
+    } catch (e) {
+      debugPrint('[Apple] loginWithApple: $e');
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel') || msg.contains('canceled')) {
+        return _oauthCancelledMessage();
       }
       return '로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
     }

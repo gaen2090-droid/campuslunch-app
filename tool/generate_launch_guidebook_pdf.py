@@ -20,7 +20,7 @@ PACKAGE = "com.campuslunch.app"
 SUPABASE_REF = "vkacsvoknnlmcyplprft"
 AUTH_CALLBACK = f"https://{SUPABASE_REF}.supabase.co/auth/v1/callback"
 APP_SCHEME = "campuslunch://login-callback"
-CONTACT = "campuslunch2026@gmail.com"
+CONTACT = "hungreez@hungreez.site"
 
 
 def _wrap_line(pdf: FPDF, text: str, width: float, size: float) -> list[str]:
@@ -635,7 +635,7 @@ def build() -> None:
     pdf.code_line("flutter build ipa")
     pdf.ln(4)
     pdf.note_box(
-        "문의: campuslunch2026@gmail.com\n"
+        "문의: hungreez@hungreez.site\n"
         "상세 설정은 docs/ 하위 개별 가이드를 함께 보세요.\n"
         "이 가이드북 재생성: python3 tool/generate_launch_guidebook_pdf.py"
     )

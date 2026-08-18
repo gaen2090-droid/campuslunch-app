@@ -16,6 +16,7 @@ import '../widgets/community_post_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/community_rules_summary.dart';
 import 'collection_detail_screen.dart';
+import 'community_blocked_users_screen.dart';
 import 'community_my_activity_screen.dart';
 import 'community_notifications_screen.dart';
 import 'community_post_detail_screen.dart';
@@ -320,6 +321,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
+  /// 차단 해제 시 해당 사용자의 글이 다시 보여야 하므로 피드를 새로고침한다.
+  Future<void> _openBlockedUsers() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const CommunityBlockedUsersScreen()),
+    );
+    if (!mounted || changed != true) return;
+    _loadFeed();
+    _loadPinned();
+  }
+
   Future<void> _openNotifications() async {
     await Navigator.push(
       context,
@@ -553,6 +565,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   itemBuilder: (ctx) => [
                     const PopupMenuItem(value: MyActivityMode.myPosts, child: Text('내가 쓴 글')),
                     const PopupMenuItem(value: MyActivityMode.commentedPosts, child: Text('댓글 단 글')),
+                    PopupMenuItem(
+                      onTap: () => Future.microtask(_openBlockedUsers),
+                      child: const Text('차단 관리'),
+                    ),
                     PopupMenuItem(
                       onTap: () {
                         Future.microtask(

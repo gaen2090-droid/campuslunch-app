@@ -1,9 +1,13 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/email_auth.dart';
 import '../providers/app_provider.dart';
+import '../services/apple_auth_service.dart';
 import '../widgets/keyboard_safe.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -123,6 +127,22 @@ class _LoginScreenState extends State<LoginScreen> {
       if (err != null) _error = err;
     });
   }
+
+  Future<void> _loginWithApple() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+    final err = await context.read<AppProvider>().loginWithApple();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (err != null) _error = err;
+    });
+  }
+
+  bool get _showAppleLogin =>
+      !kIsWeb && Platform.isIOS;
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +320,44 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+
+                  // Apple — iOS만 (App Store 가이드라인 4.8). 앱에 Client ID 불필요.
+                  if (_showAppleLogin) ...[
+                    const SizedBox(height: 10),
+                    FutureBuilder<bool>(
+                      future: AppleAuthService.isAvailable,
+                      builder: (context, snap) {
+                        if (snap.data != true) {
+                          return const SizedBox.shrink();
+                        }
+                        return GestureDetector(
+                          onTap: _loading ? null : _loginWithApple,
+                          child: Container(
+                            height: 52,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000000),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Positioned(left: 16, child: _AppleIcon()),
+                                Text(
+                                  'Apple로 ${_isLogin ? '계속하기' : '시작하기'}',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -442,6 +500,14 @@ class _GoogleIcon extends StatelessWidget {
           border: Border.all(color: const Color(0xFFDADCE0)), shape: BoxShape.circle),
       child: const Center(child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontSize: 11, fontWeight: FontWeight.w900))),
     );
+  }
+}
+
+class _AppleIcon extends StatelessWidget {
+  const _AppleIcon();
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.apple, size: 22, color: Colors.white);
   }
 }
 

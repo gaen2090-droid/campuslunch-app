@@ -111,7 +111,7 @@ class LegalPDF(FPDF):
             self._write(title, size=12, h=7)
         self.ln(8)
         self._write(
-            "문의: campuslunch2026@gmail.com",
+            "문의: hungreez@hungreez.site",
             size=10,
             h=5,
             color=(107, 114, 128),
@@ -252,7 +252,7 @@ def _privacy(pdf: LegalPDF) -> None:
     pdf.bullets(["열람·정정·삭제·처리정지", "앱 내 회원 탈퇴"])
 
     pdf.h2("6. 문의")
-    pdf.body("이메일: campuslunch2026@gmail.com\n앱 내: 문의·피드백")
+    pdf.body("이메일: hungreez@hungreez.site\n앱 내: 문의·피드백")
 
 
 def _terms(pdf: LegalPDF) -> None:
@@ -407,7 +407,7 @@ def _community_policy(pdf: LegalPDF) -> None:
     pdf.h2("8. 방침 변경·문의")
     pdf.body(
         f"개정 시 앱 내 공지 등으로 알립니다. "
-        f"문의: campuslunch2026@gmail.com / 앱 내 문의·피드백\n"
+        f"문의: hungreez@hungreez.site / 앱 내 문의·피드백\n"
         f"부칙 — 본 방침은 {EFFECTIVE_COMMUNITY}부터 시행합니다."
     )
 
@@ -490,7 +490,7 @@ def _reward_policy(pdf: LegalPDF) -> None:
         ]
     )
     pdf.h2("5. 문의")
-    pdf.body("campuslunch2026@gmail.com / 앱 내 문의·피드백")
+    pdf.body("hungreez@hungreez.site / 앱 내 문의·피드백")
 
 
 def main() -> None:

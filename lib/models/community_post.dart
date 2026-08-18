@@ -1,5 +1,9 @@
 class CommunityPost {
   final String id;
+
+  /// 작성자 user id. 차단 기능에서 사용.
+  /// community_my_posts 등 아직 author_id를 반환하지 않는 RPC 경로에서는 null.
+  final String? authorId;
   final String content;
   final List<String> imageUrls;
   final String nickname;
@@ -16,6 +20,7 @@ class CommunityPost {
 
   const CommunityPost({
     required this.id,
+    this.authorId,
     required this.content,
     required this.imageUrls,
     required this.nickname,
@@ -34,6 +39,7 @@ class CommunityPost {
   factory CommunityPost.fromMap(Map<String, dynamic> map) {
     return CommunityPost(
       id: map['id'] as String,
+      authorId: map['author_id'] as String?,
       content: map['content'] as String,
       imageUrls: (map['image_urls'] as List<dynamic>? ?? const [])
           .map((e) => e as String)
@@ -60,6 +66,7 @@ class CommunityPost {
   }) {
     return CommunityPost(
       id: id,
+      authorId: authorId,
       content: content,
       imageUrls: imageUrls,
       nickname: nickname,

@@ -10,6 +10,7 @@ import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
+import '../widgets/block_user_dialog.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/owner_badge.dart';
 import 'detail_screen.dart';
@@ -176,6 +177,30 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     }
   }
 
+  Future<void> _blockCommentAuthor(CommunityComment comment) async {
+    final authorId = comment.authorId;
+    if (authorId == null) return;
+    if (!await confirmBlockUser(context, comment.nickname)) return;
+    try {
+      await _repo.blockUser(
+        authorId,
+        reason: '댓글 작성자 차단',
+        commentId: comment.id,
+      );
+      _changed = true;
+      await _loadComments();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${comment.nickname}님을 차단했어요.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('차단에 실패했어요.')),
+      );
+    }
+  }
+
   Future<void> _toggleCommentLike(CommunityComment comment) async {
     if (comment.isOwner) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,6 +257,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
         comment: parent,
         onDelete: parent.isOwner ? () => _deleteComment(parent) : null,
         onReport: parent.isOwner ? null : () => _reportComment(parent),
+        onBlock: parent.isOwner || parent.authorId == null
+            ? null
+            : () => _blockCommentAuthor(parent),
         onLike: () => _toggleCommentLike(parent),
         onReply: () => _startReply(parent),
       ));
@@ -243,6 +271,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
             comment: reply,
             onDelete: reply.isOwner ? () => _deleteComment(reply) : null,
             onReport: reply.isOwner ? null : () => _reportComment(reply),
+            onBlock: reply.isOwner || reply.authorId == null
+                ? null
+                : () => _blockCommentAuthor(reply),
             onLike: () => _toggleCommentLike(reply),
             onReply: () => _startReply(parent),
           ),
@@ -309,6 +340,31 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     }
   }
 
+  /// 차단 후에는 이 게시글이 피드에서 즉시 사라져야 하므로 상세 화면을 닫고
+  /// 목록을 새로고침시킨다.
+  Future<void> _blockPostAuthor() async {
+    final authorId = _post.authorId;
+    if (authorId == null) return;
+    if (!await confirmBlockUser(context, _post.nickname)) return;
+    try {
+      await _repo.blockUser(
+        authorId,
+        reason: '게시글 작성자 차단',
+        postId: _post.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_post.nickname}님을 차단했어요.')),
+      );
+      Navigator.pop(context, true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('차단에 실패했어요.')),
+      );
+    }
+  }
+
   void _openRestaurant() {
     final restaurantId = _post.restaurantId;
     if (restaurantId == null) return;
@@ -367,14 +423,23 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                 if (v == 'edit') _editPost();
                 if (v == 'delete') _deletePost();
                 if (v == 'report') _reportPost();
+                if (v == 'block') _blockPostAuthor();
               },
               itemBuilder: (ctx) => _post.isOwner
                   ? const [
                       PopupMenuItem(value: 'edit', child: Text('수정')),
                       PopupMenuItem(value: 'delete', child: Text('삭제')),
                     ]
-                  : const [
-                      PopupMenuItem(value: 'report', child: Text('신고')),
+                  : [
+                      const PopupMenuItem(value: 'report', child: Text('신고')),
+                      if (_post.authorId != null)
+                        const PopupMenuItem(
+                          value: 'block',
+                          child: Text(
+                            '이 사용자 차단',
+                            style: TextStyle(color: Color(0xFFEF4444)),
+                          ),
+                        ),
                     ],
             ),
           ],
@@ -581,6 +646,7 @@ class _CommentTile extends StatelessWidget {
   final CommunityComment comment;
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
+  final VoidCallback? onBlock;
   final VoidCallback onLike;
   final VoidCallback onReply;
 
@@ -590,6 +656,7 @@ class _CommentTile extends StatelessWidget {
     required this.onReply,
     this.onDelete,
     this.onReport,
+    this.onBlock,
   });
 
   @override
@@ -660,17 +727,29 @@ class _CommentTile extends StatelessWidget {
               ],
             ),
           ),
-          if (onDelete != null || onReport != null)
+          if (onDelete != null || onReport != null || onBlock != null)
             PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.more_vert, size: 16, color: Color(0xFF9CA3AF)),
               onSelected: (v) {
                 if (v == 'delete') onDelete?.call();
                 if (v == 'report') onReport?.call();
+                if (v == 'block') onBlock?.call();
               },
               itemBuilder: (ctx) => onDelete != null
                   ? const [PopupMenuItem(value: 'delete', child: Text('삭제'))]
-                  : const [PopupMenuItem(value: 'report', child: Text('신고'))],
+                  : [
+                      if (onReport != null)
+                        const PopupMenuItem(value: 'report', child: Text('신고')),
+                      if (onBlock != null)
+                        const PopupMenuItem(
+                          value: 'block',
+                          child: Text(
+                            '이 사용자 차단',
+                            style: TextStyle(color: Color(0xFFEF4444)),
+                          ),
+                        ),
+                    ],
             ),
         ],
       ),

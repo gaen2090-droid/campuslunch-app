@@ -69,7 +69,7 @@ abstract final class PrivacyNotice {
   static const collectionItems = [
     PrivacyCollectionItem(
       category: '회원 가입·로그인',
-      items: '이메일, 닉네임, 소셜 로그인 식별정보(카카오·Google 제공 시)',
+      items: '이메일, 닉네임, 소셜 로그인 식별정보(카카오·Google·Apple 제공 시)',
       purpose: '회원 식별, 계정 관리, 고객 문의 대응',
       retention: '회원 탈퇴 시 지체 없이 파기 (관련 법령에 따른 보관 예외 제외)',
       required: true,

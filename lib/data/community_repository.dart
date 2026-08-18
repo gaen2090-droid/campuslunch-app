@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/blocked_user.dart';
 import '../models/collection.dart';
 import '../models/community_comment.dart';
 import '../models/community_inbox_notification.dart';
@@ -198,6 +199,38 @@ class CommunityRepository {
       'comment_id': commentId,
       'reason': reason,
     });
+  }
+
+  /// 사용자 차단. 차단 즉시 해당 사용자의 글·댓글이 피드에서 사라지고
+  /// (RPC 안에서) 운영자에게 신고가 접수된다. 신고 기록에는 글 또는 댓글 id가
+  /// 있어야 하므로, 차단을 실행한 화면의 대상 id를 함께 넘긴다.
+  Future<void> blockUser(
+    String userId, {
+    String? reason,
+    String? postId,
+    String? commentId,
+  }) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('NOT_AUTHENTICATED');
+    await _client.rpc('block_user', params: {
+      'p_user_id': userId,
+      'p_reason': reason,
+      'p_post_id': postId,
+      'p_comment_id': commentId,
+    });
+  }
+
+  Future<void> unblockUser(String userId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('NOT_AUTHENTICATED');
+    await _client.rpc('unblock_user', params: {'p_user_id': userId});
+  }
+
+  Future<List<BlockedUser>> fetchBlockedUsers() async {
+    final rows = await _client.rpc('my_blocked_users');
+    return (rows as List<dynamic>)
+        .map((e) => BlockedUser.fromMap(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<String> uploadImage(Uint8List bytes, String ext) async {

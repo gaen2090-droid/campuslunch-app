@@ -7,7 +7,7 @@ abstract final class LegalTerms {
 
   static const agreeAllLabel = '전체 동의합니다';
   static const confirmLabel = '동의하고 시작하기';
-  static const contactEmail = 'campuslunch2026@gmail.com';
+  static const contactEmail = 'hungreez@hungreez.site';
 
   static const checkItems = [
     LegalTermsCheckItem(

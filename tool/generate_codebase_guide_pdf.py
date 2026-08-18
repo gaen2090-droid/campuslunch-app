@@ -394,6 +394,8 @@ def build(pdf: GuidePDF) -> None:
         "Kakao: developers.kakao.com Android 키 해시\n"
         "  dart run tool/print_kakao_android_key_hash.dart\n"
         "  dart run tool/print_kakao_android_key_hash.dart --release\n"
+        "Apple(iOS): Developer Sign in with Apple + Supabase Provider\n"
+        "  앱 .env Client ID 불필요 — docs/APPLE_SUPABASE_SETUP.md\n"
         "\n"
         "「로그인이 취소되었어요」= SDK가 설정 오류를 cancel로 반환하는 경우 많음"
     )
@@ -417,6 +419,7 @@ def build(pdf: GuidePDF) -> None:
         "14. stamp_hours_10_to_19.sql / rewards_daily_cap_to_3.sql\n"
         "15. submit_crowd_report.sql   제보 RPC 정본\n"
         "16. hotfix_prelaunch_audit_fixes.sql  grant 회수·약관·푸시\n"
+        "17. community_block.sql       차단 테이블·피드/댓글 필터\n"
         "\n"
         "crowd_status.sql 하단: Realtime publication 추가 블록 (재실행)\n"
         "schema.sql — 문서용 (실행 X)\n"
@@ -424,7 +427,8 @@ def build(pdf: GuidePDF) -> None:
     )
     pdf.body(
         "주요 테이블: users, restaurants, crowd_reports, crowd_status, "
-        "owner_seat_updates, analytics_events, gifticons, system_settings."
+        "owner_seat_updates, analytics_events, gifticons, system_settings, "
+        "community_blocks."
     )
 
     pdf.add_page()
@@ -485,7 +489,9 @@ def build(pdf: GuidePDF) -> None:
         "LegalConsentRepository  RPC: record_legal_consent,\n"
         "                             has_required_legal_consents,\n"
         "                             fetch_marketing_consent\n"
-        "CommunityRepository     싱글톤. RPC: community_feed 등\n"
+        "CommunityRepository     싱글톤. RPC: community_feed,\n"
+        "                        block_user / unblock_user /\n"
+        "                        my_blocked_users (차단 관리)\n"
         "FeedbackRepository      app_feedback INSERT\n"
         "AnalyticsRepository     analytics_events (INSERT)\n"
         "RewardRepository        gifticons, RPC: redeem_gifticon,\n"
@@ -502,6 +508,10 @@ def build(pdf: GuidePDF) -> None:
         "• grant_stamp / _perform_gifticon_redeem / grant_referral_stamp:\n"
         "  authenticated 실행 금지. 푸시 시크릿은 push_edge_runtime_config 만.\n"
         "• 필수 약관: has_required_legal_consents() (로컬 prefs는 캐시).\n"
+        "• community_blocks: 본인(blocker_id)만 SELECT/INSERT/DELETE.\n"
+        "  피드·댓글 RPC는 is_blocked_with()로 양방향 차단 필터.\n"
+        "  block_user는 community_reports에 운영자 통지용 신고를 함께 남김.\n"
+        "  정본 SQL: supabase/community_block.sql\n"
         "• restaurants: owner_id 변경은 claim_owner_by_code RPC만\n"
         "• admin CRUD: is_admin() 함수 + JWT role=admin\n"
         "Secret key(.env.secrets)는 앱에 넣지 않음 — tool/ 시드·관리 스크립트 전용."
@@ -535,7 +545,7 @@ def build(pdf: GuidePDF) -> None:
         "\n"
         "UserProfile           public.users\n"
         "  role: user | owner | admin\n"
-        "  provider: email | kakao | google"
+        "  provider: email | kakao | google | apple"
     )
 
     pdf.add_page()

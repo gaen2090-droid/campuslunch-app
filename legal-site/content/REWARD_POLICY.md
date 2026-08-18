@@ -110,5 +110,5 @@
 
 ## 제13조 (문의)
 
-- **이메일:** campuslunch2026@gmail.com
+- **이메일:** hungreez@hungreez.site
 - **앱 내:** 마이 → 개선 제안

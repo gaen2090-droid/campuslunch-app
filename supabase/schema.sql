@@ -40,6 +40,9 @@
 --      (출시 직전 필수: grant_stamp 등 클라이언트 실행 금지,
 --       crowd_reports RLS, has_required_legal_consents,
 --       커뮤니티/리워드 푸시는 push_edge_runtime_config 만 사용)
+--  20. supabase/community_block.sql
+--      (커뮤니티 사용자 차단·피드/댓글 필터·차단 관리.
+--       community_feed 등 RPC 정본 — 옛 community_*.sql 재실행 금지)
 --
 -- 옛 제보 RPC·일회성 핫픽스: supabase/archive/  (재실행 금지)
 --
