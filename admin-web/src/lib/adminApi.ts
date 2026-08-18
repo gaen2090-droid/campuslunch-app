@@ -538,13 +538,20 @@ export async function persistGooglePhoto(photoUrl: string): Promise<string | nul
   }
 }
 
+// from("gifticons")가 이미 버킷을 지정하므로, image_url("gifticons/<name>")에서
+// 접두사를 뗀 버킷 내부 객체 key만 storage API에 넘겨야 한다.
+function gifticonObjectKey(raw: string): string {
+  return raw.startsWith("gifticons/") ? raw.slice("gifticons/".length) : raw;
+}
+
 async function resolveGifticonImageUrl(raw: string | null | undefined): Promise<string> {
   if (!raw) return "";
   if (raw.startsWith("http")) return raw;
+  const objectKey = gifticonObjectKey(raw);
   try {
     const { data, error } = await supabase.storage
       .from("gifticons")
-      .createSignedUrl(raw, 3600);
+      .createSignedUrl(objectKey, 3600);
     if (error) return "";
     return data.signedUrl;
   } catch {
@@ -627,15 +634,24 @@ export async function registerGifticon(params: {
   if (error) throw error;
 }
 
+let uploadSeq = 0;
+
 export async function uploadGifticonImage(file: File): Promise<string> {
-  const uniqueName = `${Date.now()}_${file.name}`;
-  const path = `gifticons/${uniqueName}`;
+  const ext = file.name.match(/\.[a-zA-Z0-9]+$/)?.[0]?.toLowerCase() || "";
+  const uniqueName = `${Date.now()}_${uploadSeq++}_${crypto.randomUUID()}${ext}`;
+  // storage.objects RLS는 image_url을 "bucket_id || '/' || name" 형태로 비교하므로,
+  // DB에는 gifticons/<name>을 저장하되 upload() 호출 자체엔 버킷 내부 상대경로(name)만 넘긴다.
+  // from("gifticons")가 이미 버킷을 지정하므로 여기에 다시 "gifticons/"를 붙이면
+  // 객체가 gifticons/gifticons/<name>에 저장되어 RLS의 image_url 매칭이 깨진다.
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const { error } = await supabase.storage.from("gifticons").upload(path, bytes, {
-    upsert: false,
-  });
+  const { error } = await supabase.storage
+    .from("gifticons")
+    .upload(uniqueName, bytes, {
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+    });
   if (error) throw error;
-  return path;
+  return `gifticons/${uniqueName}`;
 }
 
 export async function bulkRegisterGifticons(
@@ -759,11 +775,25 @@ export async function deleteGifticon(id: string): Promise<void> {
   if (imageUrl && !imageUrl.startsWith("http")) {
     const { error: storageErr } = await supabase.storage
       .from("gifticons")
-      .remove([imageUrl]);
+      .remove([gifticonObjectKey(imageUrl)]);
     if (storageErr) {
       console.warn("[Admin] gifticon storage remove failed:", storageErr.message);
     }
   }
+}
+
+/** 여러 기프티콘을 한 번에 삭제. 실패한 건은 건너뛰고 성공 개수만 반환한다. */
+export async function bulkDeleteGifticons(ids: string[]): Promise<number> {
+  let deleted = 0;
+  for (const id of ids) {
+    try {
+      await deleteGifticon(id);
+      deleted++;
+    } catch (err) {
+      console.warn("[Admin] bulkDeleteGifticons failed for", id, err);
+    }
+  }
+  return deleted;
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {

@@ -103,10 +103,14 @@ class RewardRepository {
     if (raw == null || raw.isEmpty) return '';
     // storage path 형식: "gifticons/filename.jpg" (http로 시작하지 않음)
     if (raw.startsWith('http')) return raw;
+    // from('gifticons')가 이미 버킷을 지정하므로, 버킷 내부 객체 key만 넘겨야 한다.
+    // raw에 "gifticons/" 접두사가 그대로 있으면 gifticons/gifticons/... 로 잘못 찾게 된다.
+    final objectKey =
+        raw.startsWith('gifticons/') ? raw.substring('gifticons/'.length) : raw;
     try {
       return await _client.storage
           .from('gifticons')
-          .createSignedUrl(raw, 3600); // 1시간 유효
+          .createSignedUrl(objectKey, 3600); // 1시간 유효
     } catch (e) {
       debugPrint('[Reward] createSignedUrl failed: $e');
       return '';
