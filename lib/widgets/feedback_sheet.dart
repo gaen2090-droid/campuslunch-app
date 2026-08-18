@@ -204,6 +204,17 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                       ),
               ),
             ),
+            const SizedBox(height: 10),
+            const Center(
+              child: Text(
+                '보다 자세한 문의는 hungreez@hungreez.site로 부탁드려요',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ),
           ],
         ),
       ),
