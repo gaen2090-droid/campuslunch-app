@@ -24,6 +24,34 @@ https://vkacsvoknnlmcyplprft.supabase.co/auth/v1/callback
 
 **동의항목**: 닉네임, 프로필 사진(선택)
 
+### 제품 링크 + 스토어 URL (카카오톡 공유 → 앱 미설치 시 App Store) **필수**
+
+카카오 콘솔 UI 개편(2024~2025) 이후 **스토어 URL은「제품 링크」가 아닌「플랫폼 키」** 에 있습니다.
+
+#### ① 제품 링크 관리 (웹 도메인만)
+
+카카오 개발자 콘솔 → **앱** → **제품 링크 관리**:
+
+| 항목 | 값 |
+|------|-----|
+| **웹 도메인** | `https://campuslunch.shop` |
+| **기본 네이티브 앱 스킴** | 네이티브 앱 키의 `kakao4365f2a2…` 스킴 선택 |
+
+#### ② 플랫폼 키 → 네이티브 앱 키 (스토어 URL 여기!)
+
+**앱** → **플랫폼 키** → **네이티브 앱 키** (`4365f2a2…`) 클릭 → 아래 입력:
+
+| 항목 | 값 |
+|------|-----|
+| **Android 패키지명** | `com.campuslunch.app` |
+| **Android 스토어 URL** | `https://play.google.com/store/apps/details?id=com.campuslunch.app` |
+| **iOS 번들 ID** | `com.campuslunch.app` |
+| **iOS 스토어 URL** | `https://apps.apple.com/app/id6795425369` (+ 버튼으로 iPhone/iPad 각각 가능) |
+
+카톡 「앱에서 열기」 버튼은 앱 미설치 시 **②의 스토어 URL** 로 보냅니다 (토스와 동일).
+
+참고: [앱 설정 문서](https://developers.kakao.com/docs/ko/app-setting/app) · [앱 키 변경 안내](https://developers.kakao.com/docs/ko/getting-started/app-key-migration)
+
 ## 2. Supabase Dashboard
 
 **Authentication → Sign In / Providers** (또는 **Providers**) → **Kakao** 펼치기
@@ -39,6 +67,23 @@ https://vkacsvoknnlmcyplprft.supabase.co/auth/v1/callback
 - 위 키 입력: `4365f2a2d44f911f29d65544f88b8cc6` (`.env`와 동일한 **네이티브 앱 키**)
 - **Client Secret** 항목이 없으면 비워 두면 됨 (네이티브 `signInWithIdToken`만 쓸 때)
 - **Save**
+
+### Native ID 토큰 issuer (`kauth.kakao.com`)
+
+앱은 카카오 SDK → `signInWithIdToken`만 쓴다. 웹 브라우저 OAuth로 넘기지 않는다.
+
+`API request is blocked … Only Apple, Google, Firebase issuer allowed` 가 나면 Auth가 Kakao issuer를 아직 허용하지 않은 상태다.
+
+1. 위 Kakao provider가 **Enabled**인지 다시 저장
+2. Dashboard에 **Allowed ID token issuers** / Third-party Auth 칸이 있으면 `https://kauth.kakao.com` 추가
+3. 칸이 없으면 [Support](https://supabase.com/dashboard/support/new)에 아래를 요청:
+
+```text
+Please add https://kauth.kakao.com to GOTRUE_EXTERNAL_ALLOWED_ID_TOKEN_ISSUERS
+for native Kakao signInWithIdToken (provider=kakao).
+```
+
+카카오 공식 issuer만 추가하면 된다. 임의의 URL을 넣지 말 것.
 
 > Flutter 앱은 카카오 SDK 로그인 → ID 토큰 `aud` = **네이티브 앱 키**. REST API 키만 넣으면 `Unacceptable audience in id_token` 발생.
 
@@ -144,3 +189,4 @@ dart run tool/print_kakao_android_key_hash.dart --release
 | `Unacceptable audience in id_token:[4365f2a2d44f911f29d65544f88b8cc6]` | Supabase에 REST API 키만 넣음 | Kakao → **Native App Key**(또는 REST API Key 칸)에 **네이티브 앱 키** 입력 |
 | `카카오 OpenID 토큰이 없습니다` | 카카오 콘솔 OpenID Connect 미활성 | 카카오 개발자 → 카카오 로그인 → OpenID Connect ON |
 | 카톡 인증 후 **앱으로 안 돌아옴** | Android `kakao{네이티브앱키}://oauth` 미등록 | `AndroidManifest.xml`에 AuthCodeCustomTabsActivity·MainActivity intent-filter 확인 후 재빌드 |
+| **`API request is blocked … Only Apple, Google, Firebase issuer allowed`** | Auth가 Kakao OIDC issuer를 허용하지 않음 | 위 §2 Native ID 토큰 issuer. `https://kauth.kakao.com` 만 추가 |

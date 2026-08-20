@@ -396,6 +396,10 @@ def build(pdf: GuidePDF) -> None:
         "  dart run tool/print_kakao_android_key_hash.dart --release\n"
         "Apple(iOS): Developer Sign in with Apple + Supabase Provider\n"
         "  앱 .env Client ID 불필요 — docs/APPLE_SUPABASE_SETUP.md\n"
+        "iOS 카카오톡: kakao{KEY}://oauth 는 SceneDelegate가 AppDelegate로 전달.\n"
+        "  AppDelegate는 카카오 OAuth URL을 Flutter 딥링크(supabase PKCE)로 넘기지 않음.\n"
+        "  Native signInWithIdToken. issuer 차단 시 Dashboard Kakao Enabled +\n"
+        "  Native App Key. 그래도 실패면 Auth 게이트웨이 issuer 허용 필요.\n"
         "\n"
         "「로그인이 취소되었어요」= SDK가 설정 오류를 cancel로 반환하는 경우 많음"
     )
@@ -706,6 +710,10 @@ def build(pdf: GuidePDF) -> None:
         "스탬프 일일 한도 3 + KST 10–19시. grant_stamp 클라이언트 실행 금지",
         "푸시 Edge 시크릿을 SQL에 하드코딩하지 말 것 (push_edge_runtime_config)",
         "APK 소셜 로그인 실패 -> signingReport / 카카오 릴리스 키 해시 등록",
+        "iOS 카카오톡 첫 로그인 「API 응답이 없습니다」: UIScene이 "
+        "kakao{KEY}://oauth 를 google_sign_in_ios가 가로챌 수 있음. "
+        "SceneDelegate가 OAuth URL만 AppDelegate로 전달하고, "
+        "KakaoAuthService는 Talk 1회 재시도 후 Account 폴백",
         "Supabase 미설정 시 Realtime·RPC 전부 스킵, 로컬만 동작",
     ])
 
@@ -728,6 +736,7 @@ def build(pdf: GuidePDF) -> None:
         "Auth 문제 -> public.users row 존재? email 미인증?",
         "Admin CRUD 실패 -> is_admin() / JWT role / RLS",
         "APK 카카오/구글 -> 로그인 취소? -> 릴리스 SHA-1·키 해시 콘솔 등록",
+        "iOS 카카오톡 첫 로그인 API 응답 없음 -> SceneDelegate oauth 전달 / Talk 재시도",
     ]
     pdf.bullets(checks)
 

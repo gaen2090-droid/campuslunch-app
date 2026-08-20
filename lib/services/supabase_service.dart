@@ -23,8 +23,14 @@ class SupabaseService {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
+      // 카카오톡 OAuth 복귀 URL(`kakao{KEY}://oauth?code=`)도 `code`를 포함해
+      // supabase_flutter 기본 딥링크 처리와 충돌한다. 이메일 매직링크는
+      // AppLinkService에서 campuslunch://login-callback 만 수동 처리한다.
+      authOptions: const FlutterAuthClientOptions(
+        detectSessionInUri: false,
+      ),
     );
     _initialized = true;
-    debugPrint('[Supabase] initialized (email OTP auth)');
+    debugPrint('[Supabase] initialized (auth deeplink via AppLinkService)');
   }
 }

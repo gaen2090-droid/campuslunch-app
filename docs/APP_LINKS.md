@@ -79,7 +79,7 @@ SQL 미실행 시 **「번호 미배정」** 으로 보입니다.
     │       → MainScreen에서 화면 이동
     │
     └─ 앱 미설치 / 검증 실패
-            → share-web (Vercel) — 안내 문구 (스토어 리다이렉트는 추후)
+            → share-web (Vercel) — iOS App Store / Android Play Store 로 302 리다이렉트
 ```
 
 ### 코드 위치
@@ -100,7 +100,7 @@ SQL 미실행 시 **「번호 미배정」** 으로 보입니다.
 |------|------|
 | `public/.well-known/assetlinks.json` | Android 도메인 검증 |
 | `public/.well-known/apple-app-site-association` | iOS Universal Links |
-| `api/link.js` | 앱 미설치 시 안내(또는 스토어 리다이렉트) |
+| `api/link.js` | 앱 미설치 시 App Store / Play Store 302 리다이렉트 |
 | `vercel.json` | `/r/:no`, `/coupons`, `/home`, `/invite` 라우팅 |
 
 도메인 `campuslunch.shop` 을 **share-web Vercel 프로젝트**에 연결해야 `.well-known` 이 HTTPS로 제공됩니다.  
@@ -130,6 +130,8 @@ Android는 `android/app/build.gradle.kts` 가 이 값을 manifest placeholder `A
 - [ ] Vercel **share-web** 프로젝트에 `campuslunch.shop` 도메인 추가
 - [ ] Gabia DNS에 Vercel이 안내하는 A/CNAME 설정
 - [ ] share-web **Production** 배포
+- [ ] 앱 미설치 테스트: Safari에서 `https://campuslunch.shop/r/1` → App Store로 이동하는지 확인
+- [ ] (선택) Vercel env `STORE_URL_IOS` / `STORE_URL_ANDROID` — 기본값이 코드에 있어 없어도 동작
 - [ ] 아래 URL이 JSON 그대로 열리는지 확인:
   - `https://campuslunch.shop/.well-known/assetlinks.json`
   - `https://campuslunch.shop/.well-known/apple-app-site-association`
@@ -150,6 +152,19 @@ cd android && ./gradlew :app:signingReport
 - SHA-256은 `AA:BB:CC:…` 형식(콜론 포함)으로 JSON에 넣습니다.
 
 `package_name`: `com.campuslunch.app` (고정)
+
+#### 앱 미설치 시 스토어 리다이렉트
+
+공유 링크(`https://campuslunch.shop/r/{번호}`, `/invite?ref=…`)를 앱이 없는 기기에서 열면
+`share-web/api/link.js`가 **302**로 스토어로 보냅니다.
+
+| 플랫폼 | 기본 URL |
+|--------|----------|
+| iOS | `https://apps.apple.com/app/id6795425369` |
+| Android | `https://play.google.com/store/apps/details?id=com.campuslunch.app` |
+
+Vercel 환경 변수 `STORE_URL_IOS` / `STORE_URL_ANDROID`로 덮어쓸 수 있습니다.
+정의: `share-web/lib/store.js`
 
 #### iOS `apple-app-site-association`
 
@@ -205,7 +220,7 @@ adb shell pm get-app-links com.campuslunch.app
 
 | 증상 | 확인 |
 |------|------|
-| **카카오톡에서 링크 탭해도 앱이 안 열림** | 일반 HTTPS 텍스트 링크는 카톡 인앱 브라우저로 감. **친구 초대는 카카오 공유 SDK「앱에서 열기」버튼**(`kakaolink`) 사용. 메모·Safari로 Universal Link 별도 확인 |
+| **카카오톡에서 링크 탭해도 앱이 안 열림** | 「앱에서 열기」미설치 시 → **플랫폼 키 > 네이티브 앱 키**에 iOS/Android 스토어 URL 설정 (`docs/KAKAO_SUPABASE_SETUP.md`) |
 | 링크가 브라우저만 열림 / 찾을 수 없음 | Gabia DNS(A/CNAME), Vercel 도메인 연결, AASA URL 200 확인 |
 | 매장 링크가 홈으로만 감 | `restaurant_link_no.sql` 실행 여부, `link_no > 0` 인지 |
 | 공유 링크가 `/r/0` 또는 홈 URL | DB에 `link_no` 없음 → SQL 실행 후 매장 재조회 |

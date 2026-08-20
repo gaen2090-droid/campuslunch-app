@@ -1292,7 +1292,7 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final result = await KakaoAuthService.signInWithSupabase();
-      final user = result.user!;
+      final user = result.user;
       await _onSupabaseSignedIn(
         user,
         isNewSignup: _isLikelyNewAccount(user),
@@ -1301,8 +1301,15 @@ class AppProvider extends ChangeNotifier {
     } on GoogleEmailBlocked catch (e) {
       return _oauthLoginBlockedMessage(e.status);
     } on AuthException catch (e) {
+      debugPrint(
+        '[Kakao] loginWithKakao AuthException: ${e.message} '
+        'status=${e.statusCode} code=${e.code}',
+      );
       if (e.message.contains('Unacceptable audience in id_token')) {
         return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
+      }
+      if (_isKakaoIdTokenIssuerBlocked(e.message)) {
+        return '카카오 로그인에 실패했어요. Supabase에서 Kakao issuer 허용이 필요해요.';
       }
       if (e.message.toLowerCase().contains('banned') ||
           e.message.toLowerCase().contains('suspended')) {
@@ -1321,8 +1328,18 @@ class AppProvider extends ChangeNotifier {
           msg.contains('misconfigured')) {
         return '카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
+      if (_isKakaoIdTokenIssuerBlocked(msg)) {
+        return '카카오 로그인에 실패했어요. Supabase에서 Kakao issuer 허용이 필요해요.';
+      }
       return '로그인에 실패했어요. 잠시 후 다시 시도해주세요.';
     }
+  }
+
+  bool _isKakaoIdTokenIssuerBlocked(String message) {
+    final msg = message.toLowerCase();
+    return msg.contains('api request is blocked') ||
+        msg.contains('issuer allow') ||
+        (msg.contains('custom oidc provider') && msg.contains('not allowed'));
   }
 
   /// Google 로그인 (Supabase Auth + public.users)

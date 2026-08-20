@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,6 +22,19 @@ class KakaoAuthResult {
 class KakaoAuthService {
   static bool get isConfigured => Env.isKakaoConfigured;
   static bool _initialized = false;
+  static Future<KakaoAuthResult>? _signInInFlight;
+
+  static void _logIdTokenClaims(String idToken) {
+    if (!kDebugMode) return;
+    try {
+      final parts = idToken.split('.');
+      if (parts.length < 2) return;
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      debugPrint('[Kakao] id_token claims: $payload');
+    } catch (e) {
+      debugPrint('[Kakao] id_token decode skipped: $e');
+    }
+  }
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -45,6 +60,22 @@ class KakaoAuthService {
   /// 카카오 로그인 → Supabase Auth 세션 (로그인 유지는 Supabase가 처리)
   /// 닉네임은 AppProvider에서 앙대+과일+숫자 형식으로 생성
   static Future<KakaoAuthResult> signInWithSupabase() async {
+    if (_signInInFlight != null) {
+      debugPrint('[Kakao] signInWithSupabase already in progress — waiting');
+      return _signInInFlight!;
+    }
+    final future = _signInWithSupabaseImpl();
+    _signInInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_signInInFlight, future)) {
+        _signInInFlight = null;
+      }
+    }
+  }
+
+  static Future<KakaoAuthResult> _signInWithSupabaseImpl() async {
     if (!isConfigured) {
       throw Exception('카카오 로그인을 사용할 수 없어요.');
     }
@@ -61,13 +92,18 @@ class KakaoAuthService {
         'Supabase Auth에 Kakao 제공자를 설정해주세요.',
       );
     }
+    debugPrint('[Kakao] signInWithIdToken start');
+    _logIdTokenClaims(idToken);
 
     try {
+      debugPrint('[Kakao] me() start');
       final me = await UserApi.instance.me();
       final email = me.kakaoAccount?.email ?? '';
+      debugPrint('[Kakao] me() ok (email=${email.isNotEmpty})');
       if (email.isNotEmpty) {
         final status =
             await AuthRepository().checkOAuthLoginEmail(email, 'kakao');
+        debugPrint('[Kakao] oauth_login_email_check=$status');
         switch (status) {
           case OAuthLoginEmailStatus.available:
           case OAuthLoginEmailStatus.sameProvider:
@@ -88,48 +124,68 @@ class KakaoAuthService {
       debugPrint('[Kakao] pre-auth email check: $e');
     }
 
-    final authRes = await SupabaseService.client.auth.signInWithIdToken(
-      provider: OAuthProvider.kakao,
-      idToken: idToken,
-      accessToken: token.accessToken,
-    );
-    final user = authRes.user;
-    if (user == null) {
-      throw Exception('Supabase 로그인에 실패했습니다.');
+    try {
+      debugPrint('[Kakao] supabase signInWithIdToken request');
+      final authRes = await SupabaseService.client.auth.signInWithIdToken(
+        provider: OAuthProvider.kakao,
+        idToken: idToken,
+        accessToken: token.accessToken,
+      );
+      debugPrint('[Kakao] signInWithIdToken ok (user=${authRes.user?.id})');
+      final user = authRes.user;
+      if (user == null) {
+        throw Exception('Supabase 로그인에 실패했습니다.');
+      }
+
+      final kakaoProfile = await _fetchKakaoProfile();
+
+      await SupabaseService.client.auth.updateUser(
+        UserAttributes(
+          data: {
+            'auth_provider': 'kakao',
+            if (kakaoProfile.kakaoUserId != null)
+              'kakao_user_id': kakaoProfile.kakaoUserId,
+            if (kakaoProfile.profileImageUrl != null)
+              'avatar_url': kakaoProfile.profileImageUrl,
+          },
+        ),
+      );
+
+      final refreshed = SupabaseService.client.auth.currentUser ?? user;
+      return KakaoAuthResult(
+        user: refreshed,
+        profileImageUrl: kakaoProfile.profileImageUrl,
+      );
+    } on AuthException catch (e, st) {
+      debugPrint(
+        '[Kakao] signInWithIdToken AuthException: ${e.message} '
+        'status=${e.statusCode} code=${e.code}\n$st',
+      );
+      rethrow;
     }
-
-    final kakaoProfile = await _fetchKakaoProfile();
-
-    await SupabaseService.client.auth.updateUser(
-      UserAttributes(
-        data: {
-          'auth_provider': 'kakao',
-          if (kakaoProfile.kakaoUserId != null)
-            'kakao_user_id': kakaoProfile.kakaoUserId,
-          if (kakaoProfile.profileImageUrl != null)
-            'avatar_url': kakaoProfile.profileImageUrl,
-        },
-      ),
-    );
-
-    final refreshed = SupabaseService.client.auth.currentUser ?? user;
-    return KakaoAuthResult(
-      user: refreshed,
-      profileImageUrl: kakaoProfile.profileImageUrl,
-    );
   }
 
   static Future<OAuthToken> _loginWithKakao() async {
     final talkInstalled = await isKakaoTalkInstalled();
+    debugPrint('[Kakao] login start (talkInstalled=$talkInstalled)');
     if (talkInstalled) {
       try {
-        return await UserApi.instance.loginWithKakaoTalk();
+        final token = await UserApi.instance.loginWithKakaoTalk();
+        debugPrint(
+          '[Kakao] talk login ok (idToken=${token.idToken != null && token.idToken!.isNotEmpty})',
+        );
+        return token;
       } catch (e) {
         if (_isUserCancelled(e)) rethrow;
         debugPrint('[Kakao] Talk login failed, fallback to account: $e');
       }
     }
-    return await UserApi.instance.loginWithKakaoAccount();
+    debugPrint('[Kakao] account login start');
+    final token = await UserApi.instance.loginWithKakaoAccount();
+    debugPrint(
+      '[Kakao] account login ok (idToken=${token.idToken != null && token.idToken!.isNotEmpty})',
+    );
+    return token;
   }
 
   static Future<({
@@ -160,7 +216,6 @@ class KakaoAuthService {
     }
   }
 
-  /// 회원 탈퇴: 카카오 연결 해제
   static bool _isUserCancelled(Object e) {
     final m = e.toString().toLowerCase();
     return m.contains('cancel') ||

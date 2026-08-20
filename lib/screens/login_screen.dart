@@ -103,6 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginWithKakao() async {
+    if (_loading) return;
     setState(() {
       _loading = true;
       _error = '';
@@ -140,6 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (err != null) _error = err;
     });
   }
+
+  /// Supabase issuer 허용 후 true로 변경하면 카카오 버튼 복원.
+  static const _showKakaoLogin = false;
 
   bool get _showAppleLogin =>
       !kIsWeb && Platform.isIOS;
@@ -264,35 +268,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 16),
 
-                  // 카카오
-                  GestureDetector(
-                    onTap: _loading ? null : _loginWithKakao,
-                    child: Container(
-                      height: 52,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE500),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Positioned(
-                            left: 16,
-                            child: _KakaoIcon(),
-                          ),
-                          Text(
-                            '카카오로 ${_isLogin ? '계속하기' : '시작하기'}',
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF191919)),
-                          ),
-                        ],
+                  if (_showKakaoLogin) ...[
+                    GestureDetector(
+                      onTap: _loading ? null : _loginWithKakao,
+                      child: Container(
+                        height: 52,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE500),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            const Positioned(
+                              left: 16,
+                              child: _KakaoIcon(),
+                            ),
+                            Text(
+                              '카카오로 ${_isLogin ? '계속하기' : '시작하기'}',
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF191919)),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+                  ],
 
                   // Google
                   GestureDetector(

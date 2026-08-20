@@ -4,8 +4,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>캠퍼스런치</title>
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      var ios = 'https://apps.apple.com/app/id6795425369';
+      var android = 'https://play.google.com/store/apps/details?id=com.campuslunch.app';
+      if (/iPhone|iPad|iPod/i.test(ua)) {
+        location.replace(ios);
+      } else if (/Android/i.test(ua)) {
+        location.replace(android);
+      }
+    })();
+  </script>
 </head>
 <body style="font-family: sans-serif; text-align: center; padding: 60px 20px; color: #6B7280;">
-  <p>캠퍼스런치 앱에서 열어주세요.</p>
+  <p>캠퍼스런치 앱으로 이동 중이에요…</p>
+  <p style="font-size: 14px; margin-top: 24px;">
+    자동 이동이 안 되면
+    <a href="https://apps.apple.com/app/id6795425369">App Store</a>
+    또는
+    <a href="https://play.google.com/store/apps/details?id=com.campuslunch.app">Play Store</a>
+    에서 설치해주세요.
+  </p>
 </body>
 </html>
