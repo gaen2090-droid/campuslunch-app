@@ -13,6 +13,7 @@ import '../services/osrm_directions_service.dart';
 import '../utils/kakao_map_ready.dart';
 import '../utils/kakao_route_line.dart';
 import '../utils/map_camera_fit.dart';
+import '../utils/map_marker_icons.dart';
 
 /// OSRM 도보 경로 + 카카오맵 SDK (polyline은 네이티브 Shape API)
 class DirectionsScreen extends StatefulWidget {
@@ -215,8 +216,15 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
         final originStyle =
             KakaoMarkerLayer.styleIdOrNull(controller, 'pin_my_location');
+        final r = widget.restaurant;
+        final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+        final destStyleId = r.status == '영업안함'
+            ? MapMarkerIcons.styleIdForStatus('영업안함')
+            : noReport
+                ? 'pin_no_report'
+                : MapMarkerIcons.styleIdForStatus(r.status);
         final destStyle =
-            KakaoMarkerLayer.styleIdOrNull(controller, 'pin_destination');
+            KakaoMarkerLayer.styleIdOrNull(controller, destStyleId);
 
         await controller.addMarker(
           markerOption: MarkerOption(

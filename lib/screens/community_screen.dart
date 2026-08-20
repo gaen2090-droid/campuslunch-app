@@ -686,10 +686,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: _savedCollectionsOnly ? const Color(0xFF000000) : Colors.white,
+                color: _savedCollectionsOnly ? AppColors.primaryCta : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: _savedCollectionsOnly ? const Color(0xFF000000) : const Color(0xFFE5E7EB)),
+                    color: _savedCollectionsOnly ? AppColors.primaryCta : const Color(0xFFE5E7EB)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

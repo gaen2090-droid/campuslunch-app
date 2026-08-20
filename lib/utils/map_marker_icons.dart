@@ -362,10 +362,6 @@ class MapMarkerIcons {
       styleId: 'pin_my_location',
       bytes: await _myLocationMarkerBytes(),
     ));
-    styles.add(MarkerStyleBundle(
-      styleId: 'pin_destination',
-      bytes: await _pinMarkerBytes(const Color(0xFFF04452)),
-    ));
     return styles;
   }
 }

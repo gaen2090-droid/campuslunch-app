@@ -268,7 +268,8 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
 
     final hasFilter = _sortBy != '최신순' ||
         (!_isAll(_regions) && _regions.isNotEmpty) ||
-        (!_isAll(_cuisines) && _cuisines.isNotEmpty);
+        (!_isAll(_cuisines) && _cuisines.isNotEmpty) ||
+        _bookmarkOnly;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F7),
@@ -371,6 +372,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                 _sortBy = '최신순';
                                 _regions = {_allLabel};
                                 _cuisines = {_allLabel};
+                                _bookmarkOnly = false;
                               });
                               _saveFilter();
                             },

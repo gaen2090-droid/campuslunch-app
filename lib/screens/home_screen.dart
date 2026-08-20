@@ -604,13 +604,15 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       const SizedBox(width: 8),
                       if (_sortBy != '최신순' ||
                           (!_isAll(_regions) && _regions.isNotEmpty) ||
-                          (!_isAll(_cuisines) && _cuisines.isNotEmpty)) ...[
+                          (!_isAll(_cuisines) && _cuisines.isNotEmpty) ||
+                          _bookmarkOnly) ...[
                         GestureDetector(
                           onTap: () {
                             setState(() {
                               _sortBy = '최신순';
                               _regions = {_allLabel};
                               _cuisines = {_allLabel};
+                              _bookmarkOnly = false;
                             });
                             _saveFilter();
                           },
