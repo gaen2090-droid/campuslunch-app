@@ -721,8 +721,11 @@ class KakaoMapController: NSObject, FlutterPlatformView, MapControllerDelegate, 
                 let styleId = markerData["styleId"] as? String ?? "__default__"
                 let poiOption = PoiOptions(styleID: styleId, poiID: id)
                 poiOption.clickable = true
-                poiOption.rank = args["rank"] as? Int ?? 0
-                
+                poiOption.rank = markerData["rank"] as? Int ?? args["rank"] as? Int ?? 0
+                if let poiText = markerData["text"] as? String {
+                    poiOption.addText(PoiText(text: poiText, styleIndex: 0))
+                }
+
                 poiOptions.append(poiOption)
                 poiPositions.append(
                     MapPoint(longitude: longitude, latitude: latitude)

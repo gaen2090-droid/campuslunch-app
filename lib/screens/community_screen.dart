@@ -620,7 +620,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Row(
         children: [
           const SizedBox(width: 20),
-          const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF000000)),
+          const Icon(Icons.campaign_rounded, size: 20, color: Color(0xFF26BC7D)),
           const SizedBox(width: 10),
           Expanded(
             child: ClipRect(
@@ -649,9 +649,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: const Color(0xFFE6F3EC),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Row(
           children: [
@@ -668,7 +667,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(Icons.chevron_right, size: 16, color: Color(0xFF9CA3AF)),
+            const Icon(Icons.chevron_right, size: 16, color: Color(0xFF26BC7D)),
           ],
         ),
       ),
@@ -753,13 +752,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _noticeBox(CommunityNotice notice) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Text(
             '안내',
@@ -767,18 +767,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: Color(0xFFEF4444),
-              height: 1.3,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               notice.content,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF374151),
-                height: 1.3,
               ),
             ),
           ),
