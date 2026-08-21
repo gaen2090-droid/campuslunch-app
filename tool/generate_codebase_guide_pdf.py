@@ -370,6 +370,9 @@ def build(pdf: GuidePDF) -> None:
     pdf.code(
         "제보 성공 -> submit_crowd_report.sql -> 스탬프 JSON\n"
         "  -> AppProvider.lastStampResult, UserReward 로컬 갱신\n"
+        "스토어 리뷰 유도 (report_feedback + store_review.requestNativeStoreReview):\n"
+        "  커스텀 다이얼로그 없음. 계정 첫 제보 / 기프티콘 auto_redeem 시 StoreKit·Play 시트\n"
+        "  「안 함」감지 불가 → 영구 종료 없음. 같은 계정 재제보 스킵, 기프티콘·타계정 첫 제보 재요청\n"
         "  -> RewardScreen (MY 탭), redeem_gifticon RPC\n"
         "  lib/data/reward_repository.dart, lib/models/reward.dart\n"
         "\n"

@@ -402,9 +402,14 @@ class AppProvider extends ChangeNotifier {
   static const _kReferralPromptDoneUsers = 'cl_referral_prompt_done_users';
   static const _kReferralCodeFromInviteLink = 'cl_referral_code_from_invite';
   static const _kActiveOwnerRestaurantId = 'cl_community_active_owner_restaurant';
+  /// 계정별 첫 제보 시 StoreKit/Play 리뷰 요청을 이미 했는지
+  static const _kStoreReviewFirstReportAccounts =
+      'cl_store_review_first_report_accounts';
 
   String? _pendingSignupPasswordMem;
   String? _pendingSignupNicknameMem;
+
+  final Set<String> _storeReviewFirstReportAccounts = {};
 
   static const _sessionDuration = Duration(days: 30);
 
@@ -573,6 +578,9 @@ class AppProvider extends ChangeNotifier {
         Set<String>.from(prefs.getStringList(_kHiddenGifticons) ?? const []);
     _seenGifticonIds =
         Set<String>.from(prefs.getStringList(_kSeenGifticons) ?? const []);
+    _storeReviewFirstReportAccounts
+      ..clear()
+      ..addAll(prefs.getStringList(_kStoreReviewFirstReportAccounts) ?? const []);
 
     _restaurants = [];
     unawaited(_loadRestaurantsFromSupabase());
@@ -2256,6 +2264,24 @@ class AppProvider extends ChangeNotifier {
     if (pending.remove(userId)) {
       await prefs.setStringList(_kReferralPromptPendingUsers, pending);
     }
+  }
+
+  /// 이 계정 첫 성공 제보에서 네이티브 리뷰 시트를 아직 요청하지 않았는지.
+  /// StoreKit「안 함」은 감지 불가 → 영구 종료 없음. 같은 계정 재제보에는 안 뜨고,
+  /// 기프티콘 수령·다른 계정 첫 제보 때 다시 요청한다.
+  bool shouldPromptStoreReviewForFirstReport() {
+    if (_accountId.isEmpty) return false;
+    return !_storeReviewFirstReportAccounts.contains(_accountId);
+  }
+
+  Future<void> markStoreReviewFirstReportPrompted() async {
+    if (_accountId.isEmpty) return;
+    if (!_storeReviewFirstReportAccounts.add(_accountId)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _kStoreReviewFirstReportAccounts,
+      _storeReviewFirstReportAccounts.toList(),
+    );
   }
 
   bool _isLikelyNewAccount(User user) {

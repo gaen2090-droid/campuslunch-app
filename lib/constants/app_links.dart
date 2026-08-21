@@ -38,6 +38,12 @@ class AppLinks {
   static const playStoreUrl =
       'https://play.google.com/store/apps/details?id=com.campuslunch.app';
 
+  /// 인앱 리뷰 유도 → 스토어 리뷰 작성 화면
+  static const appStoreWriteReviewUrl =
+      'https://apps.apple.com/app/id6795425369?action=write-review';
+  static const playStoreWriteReviewUrl =
+      'https://play.google.com/store/apps/details?id=com.campuslunch.app&showAllReviews=true';
+
   /// 카카오톡 공유 버튼 → `kakao{NATIVE_KEY}://kakaolink?ref=…` 로 앱 실행용
   static Map<String, String> inviteExecutionParams(String referralCode) {
     final code = referralCode.trim();

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/reward_limits.dart';
 import '../providers/app_provider.dart';
+import 'store_review.dart';
 
 Future<void> submitCrowdReportFeedback(
   BuildContext context,
@@ -56,6 +57,10 @@ Future<void> submitCrowdReportFeedback(
   }
 
   final autoRedeemSucceeded = stamp.autoRedeem.succeeded;
+  // StoreKit「안 함」은 감지 불가 → 영구 종료 플래그 없이
+  // 계정 첫 제보 1회 + 이후 기프티콘마다 다시 requestReview (이전「나중에」재노출과 동일)
+  final promptFirstReport = provider.shouldPromptStoreReviewForFirstReport();
+  final promptGifticon = autoRedeemSucceeded;
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -77,28 +82,42 @@ Future<void> submitCrowdReportFeedback(
     ),
   );
 
-  if (!autoRedeemSucceeded) return;
+  if (autoRedeemSucceeded) {
+    await Future.delayed(const Duration(milliseconds: 1600));
+    if (!context.mounted) return;
 
-  await Future.delayed(const Duration(milliseconds: 1600));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '커피 쿠폰이 발급됐어요. 확인해보세요!\n(마이페이지 > 내 스탬프 > 쿠폰함)',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.primaryCta,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 80),
+        duration: Duration(milliseconds: 2800),
+        elevation: 0,
+      ),
+    );
+  }
+
+  if (!promptFirstReport && !promptGifticon) return;
+
+  await Future.delayed(
+    Duration(milliseconds: autoRedeemSucceeded ? 500 : 700),
+  );
   if (!context.mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        '커피 쿠폰이 발급됐어요. 확인해보세요!\n(마이페이지 > 내 스탬프 > 쿠폰함)',
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: AppColors.primaryCta,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-      duration: const Duration(milliseconds: 2800),
-      elevation: 0,
-    ),
-  );
+  if (promptFirstReport) {
+    await provider.markStoreReviewFirstReportPrompted();
+  }
+  await requestNativeStoreReview();
 }
