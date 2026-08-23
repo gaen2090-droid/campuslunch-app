@@ -84,7 +84,11 @@ Future<void> main() async {
 }
 
 Future<void> _deferredStartup(AppProvider provider) async {
-  await KakaoAuthService.initialize();
+  try {
+    await KakaoAuthService.initialize();
+  } catch (e, st) {
+    debugPrint('[Kakao] deferred init failed: $e\n$st');
+  }
   unawaited(GoogleAuthService.initialize());
   unawaited(KakaoMapBootstrap.ensureInitialized());
   try {

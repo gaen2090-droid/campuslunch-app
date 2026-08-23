@@ -60,12 +60,13 @@ class _PermissionsConsentScreenState extends State<PermissionsConsentScreen> {
     if (_loading || !_canProceed) return;
     setState(() => _loading = true);
 
-    await context.read<AppProvider>().completePermissionsConsent(
-          requestLocation: _agreed['location'] == true,
-        );
-
-    if (!mounted) return;
-    setState(() => _loading = false);
+    try {
+      await context.read<AppProvider>().completePermissionsConsent(
+            requestLocation: _agreed['location'] == true,
+          );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

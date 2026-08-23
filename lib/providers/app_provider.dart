@@ -2372,50 +2372,59 @@ class AppProvider extends ChangeNotifier {
     debugPrint('[Permissions] confirm tapped — requesting OS permissions');
 
     var locationGranted = false;
-    if (requestLocation) {
-      locationGranted = await requestLocationOsPermission();
-      debugPrint('[Permissions] location granted=$locationGranted');
-      await DevicePermissionService.requestAndroidNearbyScanForLocation();
-    }
-
     var pushGranted = false;
     try {
-      pushGranted =
-          await PushNotificationService.instance.requestPermission();
-      if (pushGranted) {
-        await FcmPushService.instance.requestPermissionAndRegister();
+      if (requestLocation) {
+        try {
+          locationGranted = await requestLocationOsPermission()
+              .timeout(const Duration(seconds: 30), onTimeout: () => false);
+          debugPrint('[Permissions] location granted=$locationGranted');
+          await DevicePermissionService.requestAndroidNearbyScanForLocation()
+              .timeout(const Duration(seconds: 30), onTimeout: () {});
+        } catch (e, st) {
+          debugPrint('[Permissions] location: $e\n$st');
+        }
       }
-      debugPrint('[Permissions] notification granted=$pushGranted');
-    } catch (e, st) {
-      debugPrint('[Permissions] push: $e\n$st');
+
+      try {
+        pushGranted = await PushNotificationService.instance
+            .requestPermission()
+            .timeout(const Duration(seconds: 30), onTimeout: () => false);
+        if (pushGranted) {
+          await FcmPushService.instance.requestPermissionAndRegister();
+        }
+        debugPrint('[Permissions] notification granted=$pushGranted');
+      } catch (e, st) {
+        debugPrint('[Permissions] push: $e\n$st');
+      }
+    } finally {
+      _locationMode = locationGranted;
+      _notificationEnabled = pushGranted;
+      _lunchPushEnabled = pushGranted;
+      _dinnerPushEnabled = pushGranted;
+      _communityCommentsPushEnabled = pushGranted;
+      _rewardPushEnabled = pushGranted;
+      _newsPushEnabled = pushGranted;
+
+      await prefs.setBool(_kPermissionsConsentSeen, true);
+      await prefs.setBool(_kLocation, locationGranted);
+      await prefs.setBool(_kPush, pushGranted);
+      await prefs.setBool(_kLunchPush, pushGranted);
+      await prefs.setBool(_kDinnerPush, pushGranted);
+      await prefs.setBool(_kCommunityCommentsPush, pushGranted);
+      await prefs.setBool(_kRewardPush, pushGranted);
+      await prefs.setBool(_kNewsPush, pushGranted);
+
+      if (_hasSupabaseSession && pushGranted) {
+        unawaited(_syncPushNotifications());
+      }
+
+      // 네이티브 SDK(카카오맵 등) 초기화는 화면 전환을 막지 않도록 백그라운드로 실행
+      unawaited(triggerDeferredStartup());
+
+      _stage = await _resolveStageAfterSplash(prefs);
+      notifyListeners();
     }
-
-    _locationMode = locationGranted;
-    _notificationEnabled = pushGranted;
-    _lunchPushEnabled = pushGranted;
-    _dinnerPushEnabled = pushGranted;
-    _communityCommentsPushEnabled = pushGranted;
-    _rewardPushEnabled = pushGranted;
-    _newsPushEnabled = pushGranted;
-
-    await prefs.setBool(_kPermissionsConsentSeen, true);
-    await prefs.setBool(_kLocation, locationGranted);
-    await prefs.setBool(_kPush, pushGranted);
-    await prefs.setBool(_kLunchPush, pushGranted);
-    await prefs.setBool(_kDinnerPush, pushGranted);
-    await prefs.setBool(_kCommunityCommentsPush, pushGranted);
-    await prefs.setBool(_kRewardPush, pushGranted);
-    await prefs.setBool(_kNewsPush, pushGranted);
-
-    if (_hasSupabaseSession && pushGranted) {
-      unawaited(_syncPushNotifications());
-    }
-
-    // 네이티브 SDK(카카오맵 등)는 권한 팝업이 끝난 뒤에만 초기화
-    await triggerDeferredStartup();
-
-    _stage = await _resolveStageAfterSplash(prefs);
-    notifyListeners();
   }
 
   Future<void> completeLegalTermsConsent([Map<String, bool>? agreed]) async {
