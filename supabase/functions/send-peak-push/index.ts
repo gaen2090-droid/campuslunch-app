@@ -16,10 +16,23 @@ type PeakSchedule = {
   minute: number;
   title_template: string;
   body_template: string;
+  fallback_title_template: string;
+  fallback_body_template: string;
 };
 
 function stripGate(text: string): string {
   return text.replaceAll("{gate}", "").replace(/\s{2,}/g, " ").trim();
+}
+
+const DEFAULT_TITLE = "{restaurant}에서 대기없이 식사할 수 있어요";
+const DEFAULT_BODY = "다른 매장도 확인해보기 >";
+const DEFAULT_FALLBACK_TITLE = "대기 없이 식사할 수 있어요";
+const DEFAULT_FALLBACK_BODY =
+  "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >";
+
+function nonEmpty(v: unknown, fallback: string): string {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s || fallback;
 }
 
 function parseSchedules(cfg: Record<string, unknown>): PeakSchedule[] {
@@ -33,18 +46,26 @@ function parseSchedules(cfg: Record<string, unknown>): PeakSchedule[] {
         enabled: r.enabled !== false,
         hour: Number(r.hour ?? 12),
         minute: Number(r.minute ?? 0),
-        title_template: stripGate(String(r.title_template ?? "")),
-        body_template: stripGate(String(r.body_template ?? "")),
+        title_template: stripGate(nonEmpty(r.title_template, DEFAULT_TITLE)),
+        body_template: stripGate(nonEmpty(r.body_template, DEFAULT_BODY)),
+        fallback_title_template: stripGate(
+          nonEmpty(r.fallback_title_template, DEFAULT_FALLBACK_TITLE),
+        ),
+        fallback_body_template: stripGate(
+          nonEmpty(r.fallback_body_template, DEFAULT_FALLBACK_BODY),
+        ),
       };
-    }).filter((s) => s.title_template && s.body_template);
+    }).filter((s) =>
+      s.title_template && s.body_template &&
+      s.fallback_title_template && s.fallback_body_template
+    );
   }
   // legacy lunch/dinner
-  const title = stripGate(String(cfg.title_template ?? "대기 없이 식사할 수 있어요"));
-  const body = stripGate(
-    String(
-      cfg.body_template ??
-        "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
-    ),
+  const fallbackTitle = stripGate(
+    nonEmpty(cfg.title_template, DEFAULT_FALLBACK_TITLE),
+  );
+  const fallbackBody = stripGate(
+    nonEmpty(cfg.body_template, DEFAULT_FALLBACK_BODY),
   );
   return [
     {
@@ -52,18 +73,26 @@ function parseSchedules(cfg: Record<string, unknown>): PeakSchedule[] {
       enabled: true,
       hour: Number(cfg.lunch_hour ?? 12),
       minute: Number(cfg.lunch_minute ?? 0),
-      title_template: title,
-      body_template: body,
+      title_template: DEFAULT_TITLE,
+      body_template: DEFAULT_BODY,
+      fallback_title_template: fallbackTitle,
+      fallback_body_template: fallbackBody,
     },
     {
       id: "dinner",
       enabled: true,
       hour: Number(cfg.dinner_hour ?? 18),
       minute: Number(cfg.dinner_minute ?? 0),
-      title_template: title,
-      body_template: body,
+      title_template: DEFAULT_TITLE,
+      body_template: DEFAULT_BODY,
+      fallback_title_template: fallbackTitle,
+      fallback_body_template: fallbackBody,
     },
   ];
+}
+
+function applyRestaurant(template: string, restaurantName: string): string {
+  return template.replaceAll("{restaurant}", restaurantName);
 }
 
 Deno.serve(async (req) => {
@@ -167,25 +196,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: restRows, error: restErr } = await supabase.rpc(
-      "pick_peak_push_restaurant",
-    );
-    if (restErr) throw restErr;
-    const rest = Array.isArray(restRows) ? restRows[0] : restRows;
-    if (!rest) {
-      return jsonResponse({ skipped: true, reason: "no_available_restaurant" });
-    }
-
-    const gate = String((rest as { gate?: string }).gate ?? "캠퍼스");
-    const title = matched.title_template;
-    const body = matched.body_template;
-
-    const { data: tokens, error: tokErr } = await supabase.rpc(
-      "list_peak_push_tokens",
+    const { data: targets, error: targetsErr } = await supabase.rpc(
+      "list_peak_push_targets",
       { p_slot: slot },
     );
-    if (tokErr) throw tokErr;
-    const list = (tokens ?? []) as { user_id: string; token: string }[];
+    if (targetsErr) throw targetsErr;
+    const list = (targets ?? []) as {
+      user_id: string;
+      token: string;
+      restaurant_id: string | null;
+      restaurant_name: string | null;
+    }[];
     if (list.length === 0) {
       return jsonResponse({ ok: true, slot, sent: 0, reason: "no_tokens" });
     }
@@ -194,22 +215,35 @@ Deno.serve(async (req) => {
     const access = await getGoogleAccessToken(sa);
     let sent = 0;
     let failed = 0;
+    let personalized = 0;
+    let fallback = 0;
     const invalidTokens: string[] = [];
 
     for (const row of list) {
+      const hasRestaurant = Boolean(row.restaurant_id && row.restaurant_name);
+      const title = hasRestaurant
+        ? applyRestaurant(matched.title_template, row.restaurant_name!)
+        : matched.fallback_title_template;
+      const body = hasRestaurant
+        ? applyRestaurant(matched.body_template, row.restaurant_name!)
+        : matched.fallback_body_template;
+
+      const data: Record<string, string> = { type: "peak", slot };
+      if (hasRestaurant) {
+        data.restaurant_id = row.restaurant_id!;
+      }
+
       const result = await sendFcmMessage(sa, access, {
         token: row.token,
         title,
         body,
-        data: {
-          type: "peak",
-          slot,
-          restaurant_id: String((rest as { restaurant_id: string }).restaurant_id),
-          gate,
-        },
+        data,
       });
-      if (result.ok) sent++;
-      else {
+      if (result.ok) {
+        sent++;
+        if (hasRestaurant) personalized++;
+        else fallback++;
+      } else {
         failed++;
         if (
           result.status === 404 ||
@@ -233,8 +267,8 @@ Deno.serve(async (req) => {
       slot,
       sent,
       failed,
-      restaurant_id: (rest as { restaurant_id: string }).restaurant_id,
-      gate,
+      personalized,
+      fallback,
       forced: Boolean(force),
     });
   } catch (e) {

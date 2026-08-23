@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   cancelScheduledNewsPush,
   createScheduledNewsPush,
+  fetchNewsPushReach,
   fetchPushNotificationConfig,
   fetchPushOpsSnapshot,
   fetchScheduledNewsPush,
@@ -16,11 +17,16 @@ import {
   formatTime,
   newPeakSchedule,
   previewCommunityTemplate,
+  type NewsPushTarget,
   type PeakPushSchedule,
   type PushNotificationConfig,
   type PushOpsSnapshot,
   type ScheduledNewsPush,
 } from "../types/pushConfig";
+
+function targetLabel(target: NewsPushTarget): string {
+  return target === "owners_only" ? "사장님만" : "전체";
+}
 
 function toLocalDatetimeInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -75,6 +81,11 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   const [scheduleAt, setScheduleAt] = useState("");
   const [scheduling, setScheduling] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [newsTarget, setNewsTarget] = useState<NewsPushTarget>("all");
+  const [newsTargetReach, setNewsTargetReach] = useState<{
+    users: number;
+    devices: number;
+  } | null>(null);
 
   useEffect(() => {
     if (config) setForm(config);
@@ -109,6 +120,18 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   useEffect(() => {
     void reloadScheduled();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchNewsPushReach(newsTarget)
+      .then((r) => {
+        if (!cancelled) setNewsTargetReach(r);
+      })
+      .catch((err) => console.error(err));
+    return () => {
+      cancelled = true;
+    };
+  }, [newsTarget]);
 
   function patch(partial: Partial<PushNotificationConfig>) {
     setForm((prev) => ({ ...prev, ...partial }));
@@ -177,6 +200,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       scheduleDaysAhead: form.scheduleDaysAhead,
       peakFcmEnabled: form.peakFcmEnabled,
       peakLocalScheduleEnabled: form.peakLocalScheduleEnabled,
+      peakExcludeOwners: form.peakExcludeOwners,
     });
   }
 
@@ -193,6 +217,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   function saveNewsSection() {
     return saveSection("news", {
       newsFcmEnabled: form.newsFcmEnabled,
+      newsExcludeOwners: form.newsExcludeOwners,
     });
   }
 
@@ -235,10 +260,10 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
       setFormError("소식 알림 제목/본문을 입력해주세요.");
       return;
     }
-    const targetCount = Math.max(ops.newsDevices, 0);
+    const targetCount = newsTargetReach?.devices ?? 0;
     if (
       !window.confirm(
-        `기기 ${targetCount}대에 소식 알림을 보낼까요?\n\n제목: ${title}\n본문: ${body}`,
+        `${targetLabel(newsTarget)} 기기 ${targetCount}대에 소식 알림을 보낼까요?\n\n제목: ${title}\n본문: ${body}`,
       )
     ) {
       return;
@@ -247,7 +272,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     setFormError(null);
     setSuccess(null);
     try {
-      const result = await invokeNewsPush(title, body);
+      const result = await invokeNewsPush(title, body, newsTarget);
       if (result.skipped) {
         setSuccess(`발송 건너뜀: ${result.skipped}`);
       } else {
@@ -280,7 +305,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     }
     if (
       !window.confirm(
-        `${at.toLocaleString("ko-KR")}에 소식 알림을 예약할까요?\n\n제목: ${title}\n본문: ${body}`,
+        `${at.toLocaleString("ko-KR")}에 ${targetLabel(newsTarget)} 대상으로 소식 알림을 예약할까요?\n\n제목: ${title}\n본문: ${body}`,
       )
     ) {
       return;
@@ -289,7 +314,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     setFormError(null);
     setSuccess(null);
     try {
-      await createScheduledNewsPush(title, body, at);
+      await createScheduledNewsPush(title, body, at, newsTarget);
       setSuccess("예약했어요. 지정한 시각에 자동으로 발송돼요.");
       setScheduleAt("");
       await reloadScheduled();
@@ -497,6 +522,16 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 />
                 평일만
               </label>
+              <label className="chip-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.peakExcludeOwners}
+                  onChange={(e) =>
+                    patch({ peakExcludeOwners: e.target.checked })
+                  }
+                />
+                사장님 제외
+              </label>
             </div>
 
             <div className="peak-schedule-list">
@@ -564,24 +599,56 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                       삭제
                     </button>
                   </div>
-                  <input
-                    className="peak-title"
-                    type="text"
-                    value={s.titleTemplate}
-                    onChange={(e) =>
-                      patchSchedule(index, { titleTemplate: e.target.value })
-                    }
-                    placeholder="제목"
-                  />
-                  <textarea
-                    className="peak-body"
-                    rows={2}
-                    value={s.bodyTemplate}
-                    onChange={(e) =>
-                      patchSchedule(index, { bodyTemplate: e.target.value })
-                    }
-                    placeholder="본문"
-                  />
+                  <div className="peak-template-group">
+                    <span className="muted sm">
+                      개인화용 (즐겨찾기 중 여유로운 매장 있을 때 · {"{restaurant}"} 사용 가능)
+                    </span>
+                    <input
+                      className="peak-title"
+                      type="text"
+                      value={s.titleTemplate}
+                      onChange={(e) =>
+                        patchSchedule(index, { titleTemplate: e.target.value })
+                      }
+                      placeholder="제목"
+                    />
+                    <textarea
+                      className="peak-body"
+                      rows={2}
+                      value={s.bodyTemplate}
+                      onChange={(e) =>
+                        patchSchedule(index, { bodyTemplate: e.target.value })
+                      }
+                      placeholder="본문"
+                    />
+                  </div>
+                  <div className="peak-template-group">
+                    <span className="muted sm">
+                      고정 홍보용 (즐겨찾기 없거나, 있어도 여유로운 곳 없을 때)
+                    </span>
+                    <input
+                      className="peak-title"
+                      type="text"
+                      value={s.fallbackTitleTemplate}
+                      onChange={(e) =>
+                        patchSchedule(index, {
+                          fallbackTitleTemplate: e.target.value,
+                        })
+                      }
+                      placeholder="제목"
+                    />
+                    <textarea
+                      className="peak-body"
+                      rows={2}
+                      value={s.fallbackBodyTemplate}
+                      onChange={(e) =>
+                        patchSchedule(index, {
+                          fallbackBodyTemplate: e.target.value,
+                        })
+                      }
+                      placeholder="본문"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -700,14 +767,43 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 />
                 FCM
               </label>
+              <label className="chip-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.newsExcludeOwners}
+                  onChange={(e) =>
+                    patch({ newsExcludeOwners: e.target.checked })
+                  }
+                />
+                사장님 제외
+              </label>
             </div>
             <p className="muted sm">
-              업데이트·이벤트 등 운영 소식을 소식 알림에 동의한 전체 유저에게
-              보냅니다. 아래 "전체 발송"은 즉시 나가고(별도 저장 없이 바로
-              나가는 발송이니 신중하게), 시각을 지정하면 그때 한 번만 자동
-              발송되는 예약도 가능해요.
+              업데이트·이벤트 등 운영 소식을 소식 알림에 동의한 유저에게
+              보냅니다. "사장님 제외"는 아래 대상을 "전체"로 선택했을 때만
+              적용돼요. 아래 "발송"은 즉시 나가고(별도 저장 없이 바로 나가는
+              발송이니 신중하게), 시각을 지정하면 그때 한 번만 자동 발송되는
+              예약도 가능해요.
             </p>
             <div className="community-fields">
+              <label className="field">
+                <span className="field-label">대상</span>
+                <select
+                  value={newsTarget}
+                  onChange={(e) =>
+                    setNewsTarget(e.target.value as NewsPushTarget)
+                  }
+                >
+                  <option value="all">전체</option>
+                  <option value="owners_only">사장님만</option>
+                </select>
+                {newsTargetReach && (
+                  <span className="field-hint">
+                    도달 예상: {newsTargetReach.users}명 · 기기{" "}
+                    {newsTargetReach.devices}대
+                  </span>
+                )}
+              </label>
               <label className="field">
                 <span className="field-label">제목</span>
                 <input
@@ -745,7 +841,11 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 }
                 onClick={() => void sendNewsPush()}
               >
-                {newsSending ? "발송 중…" : `전체 발송 (기기 ${ops.newsDevices}대)`}
+                {newsSending
+                  ? "발송 중…"
+                  : `${targetLabel(newsTarget)} 발송 (기기 ${
+                      newsTargetReach?.devices ?? 0
+                    }대)`}
               </button>
               {!form.newsFcmEnabled && (
                 <span className="muted sm">
@@ -802,6 +902,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                   <thead>
                     <tr>
                       <th>발송 시각</th>
+                      <th>대상</th>
                       <th>제목</th>
                       <th>본문</th>
                       <th>상태</th>
@@ -812,6 +913,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                     {scheduledList.map((item) => (
                       <tr key={item.id}>
                         <td>{item.scheduledAt.toLocaleString("ko-KR")}</td>
+                        <td>{targetLabel(item.target)}</td>
                         <td>{item.title}</td>
                         <td>{item.body}</td>
                         <td>{statusLabel(item.status)}</td>

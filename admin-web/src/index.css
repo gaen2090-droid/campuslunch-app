@@ -1326,6 +1326,15 @@ code {
   border-radius: 8px;
 }
 
+.peak-template-group {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
 .peak-title,
 .peak-body {
   width: 100%;

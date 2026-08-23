@@ -7,6 +7,7 @@ import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
+import '../widgets/admin_badge.dart';
 import '../widgets/owner_badge.dart';
 
 class CollectionCommentsSheet extends StatefulWidget {
@@ -427,6 +428,10 @@ class _CollectionCommentTile extends StatelessWidget {
                     if (comment.isAuthorOwner) ...[
                       const SizedBox(width: 4),
                       const OwnerBadge(),
+                    ],
+                    if (comment.isAuthorAdmin) ...[
+                      const SizedBox(width: 4),
+                      const AdminBadge(),
                     ],
                     const SizedBox(width: 6),
                     Text(

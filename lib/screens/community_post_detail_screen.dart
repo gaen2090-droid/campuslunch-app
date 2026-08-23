@@ -12,6 +12,7 @@ import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
 import '../widgets/community_post_editor_sheet.dart';
+import '../widgets/admin_badge.dart';
 import '../widgets/owner_badge.dart';
 import 'detail_screen.dart';
 
@@ -463,6 +464,10 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                         const SizedBox(width: 4),
                         const OwnerBadge(),
                       ],
+                      if (_post.isAuthorAdmin) ...[
+                        const SizedBox(width: 4),
+                        const AdminBadge(),
+                      ],
                       const SizedBox(width: 6),
                       Text(
                         timeAgo(_post.createdAt),
@@ -682,6 +687,10 @@ class _CommentTile extends StatelessWidget {
                     if (comment.isAuthorOwner) ...[
                       const SizedBox(width: 4),
                       const OwnerBadge(),
+                    ],
+                    if (comment.isAuthorAdmin) ...[
+                      const SizedBox(width: 4),
+                      const AdminBadge(),
                     ],
                     const SizedBox(width: 6),
                     Text(

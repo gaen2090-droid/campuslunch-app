@@ -8,6 +8,8 @@ class PeakPushSchedule {
     required this.minute,
     required this.titleTemplate,
     required this.bodyTemplate,
+    required this.fallbackTitleTemplate,
+    required this.fallbackBodyTemplate,
   });
 
   final String id;
@@ -15,11 +17,17 @@ class PeakPushSchedule {
   final bool enabled;
   final int hour;
   final int minute;
+
+  /// 개인화용(서버 FCM 전용). {restaurant} 플레이스홀더 포함 가능 — 로컬 예약에서는 쓰지 않는다.
   final String titleTemplate;
   final String bodyTemplate;
 
+  /// 고정 홍보용. 매장 관련 플레이스홀더 없음 — 로컬 예약은 이쪽만 사용.
+  final String fallbackTitleTemplate;
+  final String fallbackBodyTemplate;
+
   String formatTitle([String? gate]) {
-    var t = titleTemplate;
+    var t = fallbackTitleTemplate;
     if (gate != null && gate.isNotEmpty) {
       t = t.replaceAll('{gate}', gate);
     }
@@ -27,7 +35,7 @@ class PeakPushSchedule {
   }
 
   String formatBody([String? gate]) {
-    var t = bodyTemplate;
+    var t = fallbackBodyTemplate;
     if (gate != null && gate.isNotEmpty) {
       t = t.replaceAll('{gate}', gate);
     }
@@ -75,6 +83,16 @@ class PeakPushSchedule {
         json['body_template'] as String? ?? json['bodyTemplate'] as String?,
         fallback.bodyTemplate,
       ),
+      fallbackTitleTemplate: clean(
+        json['fallback_title_template'] as String? ??
+            json['fallbackTitleTemplate'] as String?,
+        fallback.fallbackTitleTemplate,
+      ),
+      fallbackBodyTemplate: clean(
+        json['fallback_body_template'] as String? ??
+            json['fallbackBodyTemplate'] as String?,
+        fallback.fallbackBodyTemplate,
+      ),
     );
   }
 }
@@ -116,8 +134,10 @@ class PushNotificationConfig {
     label: '점심',
     hour: 12,
     minute: 0,
-    titleTemplate: '대기 없이 식사할 수 있어요',
-    bodyTemplate: '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
+    titleTemplate: '{restaurant}에서 대기없이 식사할 수 있어요',
+    bodyTemplate: '다른 매장도 확인해보기 >',
+    fallbackTitleTemplate: '대기 없이 식사할 수 있어요',
+    fallbackBodyTemplate: '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
   );
 
   static const _defaultDinner = PeakPushSchedule(
@@ -125,8 +145,10 @@ class PushNotificationConfig {
     label: '저녁',
     hour: 18,
     minute: 0,
-    titleTemplate: '대기 없이 식사할 수 있어요',
-    bodyTemplate: '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
+    titleTemplate: '{restaurant}에서 대기없이 식사할 수 있어요',
+    bodyTemplate: '다른 매장도 확인해보기 >',
+    fallbackTitleTemplate: '대기 없이 식사할 수 있어요',
+    fallbackBodyTemplate: '지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >',
   );
 
   static const defaults = PushNotificationConfig(
@@ -141,16 +163,20 @@ class PushNotificationConfig {
         label: '점심',
         hour: lunchHour,
         minute: lunchMinute,
-        titleTemplate: titleTemplate,
-        bodyTemplate: bodyTemplate,
+        titleTemplate: _defaultLunch.titleTemplate,
+        bodyTemplate: _defaultLunch.bodyTemplate,
+        fallbackTitleTemplate: titleTemplate,
+        fallbackBodyTemplate: bodyTemplate,
       ),
       PeakPushSchedule(
         id: 'dinner',
         label: '저녁',
         hour: dinnerHour,
         minute: dinnerMinute,
-        titleTemplate: titleTemplate,
-        bodyTemplate: bodyTemplate,
+        titleTemplate: _defaultDinner.titleTemplate,
+        bodyTemplate: _defaultDinner.bodyTemplate,
+        fallbackTitleTemplate: titleTemplate,
+        fallbackBodyTemplate: bodyTemplate,
       ),
     ];
   }

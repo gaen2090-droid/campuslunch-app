@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/community_post.dart';
 import '../utils/time_ago.dart';
+import 'admin_badge.dart';
 import 'owner_badge.dart';
 
 class CommunityPostCard extends StatelessWidget {
@@ -52,6 +53,10 @@ class CommunityPostCard extends StatelessWidget {
                           if (post.isAuthorOwner) ...[
                             const SizedBox(width: 4),
                             const OwnerBadge(),
+                          ],
+                          if (post.isAuthorAdmin) ...[
+                            const SizedBox(width: 4),
+                            const AdminBadge(),
                           ],
                           const SizedBox(width: 6),
                           Text(

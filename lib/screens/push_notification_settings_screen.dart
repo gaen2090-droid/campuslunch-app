@@ -46,6 +46,7 @@ class _PushNotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isOwner = context.watch<AppProvider>().hasOwnerTab;
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -74,28 +75,30 @@ class _PushNotificationSettingsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _SectionHeader('서비스 알림'),
-            _ToggleRow(
-              title: '점심시간 알림',
-              desc: '점심시간에 캠퍼스런치 이용을 알려드려요.',
-              enabled: _lunchPush,
-              onToggle: () async {
-                final next = !_lunchPush;
-                setState(() => _lunchPush = next);
-                await context.read<AppProvider>().setLunchPush(next);
-              },
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            _ToggleRow(
-              title: '리워드 지급 알림',
-              desc: '기프티콘이 지급되면 알려드려요.',
-              enabled: _rewardPush,
-              onToggle: () async {
-                final next = !_rewardPush;
-                setState(() => _rewardPush = next);
-                await context.read<AppProvider>().setRewardPush(next);
-              },
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            if (!isOwner) ...[
+              _ToggleRow(
+                title: '점심시간 알림',
+                desc: '점심시간에 캠퍼스런치 이용을 알려드려요.',
+                enabled: _lunchPush,
+                onToggle: () async {
+                  final next = !_lunchPush;
+                  setState(() => _lunchPush = next);
+                  await context.read<AppProvider>().setLunchPush(next);
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              _ToggleRow(
+                title: '리워드 지급 알림',
+                desc: '기프티콘이 지급되면 알려드려요.',
+                enabled: _rewardPush,
+                onToggle: () async {
+                  final next = !_rewardPush;
+                  setState(() => _rewardPush = next);
+                  await context.read<AppProvider>().setRewardPush(next);
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            ],
             _ToggleRow(
               title: '캠퍼스런치 소식 알림',
               desc: '업데이트, 이벤트 등 운영 소식을 알려드려요.',

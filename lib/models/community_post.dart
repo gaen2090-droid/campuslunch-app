@@ -16,6 +16,7 @@ class CommunityPost {
   final DateTime? updatedAt;
   final bool isOwner;
   final bool isAuthorOwner;
+  final bool isAuthorAdmin;
   final bool isPinned;
 
   const CommunityPost({
@@ -33,6 +34,7 @@ class CommunityPost {
     this.updatedAt,
     required this.isOwner,
     this.isAuthorOwner = false,
+    this.isAuthorAdmin = false,
     this.isPinned = false,
   });
 
@@ -56,6 +58,7 @@ class CommunityPost {
           : null,
       isOwner: map['is_owner'] as bool? ?? false,
       isAuthorOwner: map['is_author_owner'] as bool? ?? false,
+      isAuthorAdmin: map['is_author_admin'] as bool? ?? false,
       isPinned: map['is_pinned'] as bool? ?? false,
     );
   }
@@ -79,6 +82,7 @@ class CommunityPost {
       updatedAt: updatedAt,
       isOwner: isOwner,
       isAuthorOwner: isAuthorOwner,
+      isAuthorAdmin: isAuthorAdmin,
       isPinned: isPinned,
     );
   }

@@ -889,6 +889,8 @@ export async function updatePushNotificationConfig(
       p_news_fcm_enabled: config.newsFcmEnabled,
       p_community_reply_title_template: config.communityReplyTitleTemplate,
       p_community_reply_body_template: config.communityReplyBodyTemplate,
+      p_peak_exclude_owners: config.peakExcludeOwners,
+      p_news_exclude_owners: config.newsExcludeOwners,
     },
   );
   if (error) throw error;
@@ -969,10 +971,27 @@ export async function invokePushEdge(
   return parsed;
 }
 
+export type NewsPushTarget = "all" | "owners_only";
+
+export async function fetchNewsPushReach(
+  target: NewsPushTarget,
+): Promise<{ users: number; devices: number }> {
+  const { data, error } = await supabase.rpc("admin_news_push_reach", {
+    p_target: target,
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  return {
+    users: Number(result.users ?? 0),
+    devices: Number(result.devices ?? 0),
+  };
+}
+
 /** 캠퍼스런치 소식 알림 즉시 발송 (관리자 JWT). */
 export async function invokeNewsPush(
   title: string,
   body: string,
+  target: NewsPushTarget = "all",
 ): Promise<{ ok: boolean; sent: number; failed: number; skipped?: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
@@ -996,7 +1015,7 @@ export async function invokeNewsPush(
       apikey: anonKey,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ title, body }),
+    body: JSON.stringify({ title, body, target }),
   });
 
   const text = await res.text();
@@ -1037,11 +1056,13 @@ export async function createScheduledNewsPush(
   title: string,
   body: string,
   scheduledAt: Date,
+  target: NewsPushTarget = "all",
 ): Promise<ScheduledNewsPush> {
   const { data, error } = await supabase.rpc("admin_create_scheduled_news_push", {
     p_title: title,
     p_body: body,
     p_scheduled_at: scheduledAt.toISOString(),
+    p_target: target,
   });
   if (error) throw error;
   return parseScheduledNewsPush(data as Record<string, unknown>);

@@ -237,15 +237,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
-          if (!provider.hasOwnerTab) ...[
-            _SettingsButton(
-              label: '알림 설정',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const PushNotificationSettingsScreen()),
-              ),
+          _SettingsButton(
+            label: '알림 설정',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const PushNotificationSettingsScreen()),
             ),
+          ),
+          if (!provider.hasOwnerTab) ...[
             _SettingsButton(
               label: '이용 제한 내역',
               onTap: () => Navigator.push(
@@ -254,8 +254,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     builder: (_) => const CommunitySuspensionHistoryScreen()),
               ),
             ),
-            const SizedBox(height: 8),
           ],
+          const SizedBox(height: 8),
           GestureDetector(
             onTap: () {
               provider.logout();

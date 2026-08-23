@@ -8,6 +8,7 @@ class CommunityComment {
   final DateTime createdAt;
   final bool isOwner;
   final bool isAuthorOwner;
+  final bool isAuthorAdmin;
   final int likeCount;
   final bool likedByMe;
   final String? parentCommentId;
@@ -20,6 +21,7 @@ class CommunityComment {
     required this.createdAt,
     required this.isOwner,
     this.isAuthorOwner = false,
+    this.isAuthorAdmin = false,
     this.likeCount = 0,
     this.likedByMe = false,
     this.parentCommentId,
@@ -34,6 +36,7 @@ class CommunityComment {
       createdAt: DateTime.parse(map['created_at'] as String),
       isOwner: map['is_owner'] as bool? ?? false,
       isAuthorOwner: map['is_author_owner'] as bool? ?? false,
+      isAuthorAdmin: map['is_author_admin'] as bool? ?? false,
       likeCount: map['like_count'] as int? ?? 0,
       likedByMe: map['liked_by_me'] as bool? ?? false,
       parentCommentId: map['parent_comment_id'] as String?,
@@ -52,6 +55,7 @@ class CommunityComment {
       createdAt: createdAt,
       isOwner: isOwner,
       isAuthorOwner: isAuthorOwner,
+      isAuthorAdmin: isAuthorAdmin,
       likeCount: likeCount ?? this.likeCount,
       likedByMe: likedByMe ?? this.likedByMe,
       parentCommentId: parentCommentId,

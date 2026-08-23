@@ -1,7 +1,13 @@
 -- 커뮤니티 사용자 차단 (App Store 심사 가이드라인 1.2 - UGC 안전장치)
 -- Dashboard → SQL Editor → Run
 --
--- ⚠️ 이 파일이 아래 RPC의 정본이다. community_owner_active_restaurant.sql /
+-- ⚠️ community_feed / community_comments_for_post / community_post_by_id /
+--    community_pinned_posts / collection_comments_for_collection 5개는
+--    community_admin_badge.sql(is_author_admin 추가판)이 최종 정본이다.
+--    이 파일을 재실행해도 무방하지만(차단 필터는 여기 그대로 있음), 그 뒤에
+--    반드시 community_admin_badge.sql을 다시 실행해 관리자 뱃지 컬럼을 복원할 것.
+--
+-- 이 파일이 아래 RPC의 정본이다. community_owner_active_restaurant.sql /
 --    community_owner_display_name.sql / community_notifications.sql /
 --    community_post_pin_order.sql / collection_comment_likes_replies.sql /
 --    community_my_activity.sql 의 같은 이름 함수는 이 파일로 대체됐다.

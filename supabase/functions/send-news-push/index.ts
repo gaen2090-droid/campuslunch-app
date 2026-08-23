@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
     const body = await req.json() as Record<string, unknown>;
     const title = String(body.title ?? "").trim();
     const text = String(body.body ?? "").trim();
+    const target = body.target === "owners_only" ? "owners_only" : "all";
     if (!title || !text) {
       return jsonResponse({ error: "title/body가 필요해요" }, 400);
     }
@@ -42,7 +43,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ skipped: true, reason: "news_fcm_disabled" });
     }
 
-    const { data: tokens, error } = await supabase.rpc("list_news_push_tokens");
+    const { data: tokens, error } = await supabase.rpc("list_news_push_tokens", {
+      p_target: target,
+    });
     if (error) throw error;
     const list = (tokens ?? []) as { token: string }[];
     if (list.length === 0) {

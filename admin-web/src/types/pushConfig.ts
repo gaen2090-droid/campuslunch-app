@@ -1,3 +1,5 @@
+export type NewsPushTarget = "all" | "owners_only";
+
 export interface ScheduledNewsPush {
   id: string;
   title: string;
@@ -6,6 +8,7 @@ export interface ScheduledNewsPush {
   status: "pending" | "sent" | "cancelled" | "failed";
   sentAt: Date | null;
   createdAt: Date;
+  target: NewsPushTarget;
 }
 
 export function parseScheduledNewsPush(raw: Record<string, unknown>): ScheduledNewsPush {
@@ -17,6 +20,7 @@ export function parseScheduledNewsPush(raw: Record<string, unknown>): ScheduledN
     status: (String(raw.status ?? "pending") as ScheduledNewsPush["status"]),
     sentAt: raw.sent_at ? new Date(String(raw.sent_at)) : null,
     createdAt: new Date(String(raw.created_at ?? "")),
+    target: raw.target === "owners_only" ? "owners_only" : "all",
   };
 }
 
@@ -26,8 +30,12 @@ export interface PeakPushSchedule {
   enabled: boolean;
   hour: number;
   minute: number;
+  /** 즐겨찾기 중 여유로운 매장이 있을 때 사용. {restaurant} 치환 가능 */
   titleTemplate: string;
   bodyTemplate: string;
+  /** 즐겨찾기가 없거나, 있어도 여유로운 곳이 없을 때 사용하는 고정 홍보 문구 */
+  fallbackTitleTemplate: string;
+  fallbackBodyTemplate: string;
 }
 
 export interface PushNotificationConfig {
@@ -49,6 +57,8 @@ export interface PushNotificationConfig {
   communityReplyTitleTemplate: string;
   communityReplyBodyTemplate: string;
   newsFcmEnabled: boolean;
+  peakExcludeOwners: boolean;
+  newsExcludeOwners: boolean;
   updatedAt: Date | null;
 }
 
@@ -59,8 +69,10 @@ export const DEFAULT_PEAK_SCHEDULES: PeakPushSchedule[] = [
     enabled: true,
     hour: 12,
     minute: 0,
-    titleTemplate: "대기 없이 식사할 수 있어요",
-    bodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+    titleTemplate: "{restaurant}에서 대기없이 식사할 수 있어요",
+    bodyTemplate: "다른 매장도 확인해보기 >",
+    fallbackTitleTemplate: "대기 없이 식사할 수 있어요",
+    fallbackBodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
   },
   {
     id: "dinner",
@@ -68,8 +80,10 @@ export const DEFAULT_PEAK_SCHEDULES: PeakPushSchedule[] = [
     enabled: true,
     hour: 18,
     minute: 0,
-    titleTemplate: "대기 없이 식사할 수 있어요",
-    bodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
+    titleTemplate: "{restaurant}에서 대기없이 식사할 수 있어요",
+    bodyTemplate: "다른 매장도 확인해보기 >",
+    fallbackTitleTemplate: "대기 없이 식사할 수 있어요",
+    fallbackBodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
   },
 ];
 
@@ -91,6 +105,8 @@ export const DEFAULT_PUSH_CONFIG: PushNotificationConfig = {
   communityReplyTitleTemplate: "{nickname}님이 답글을 남겼어요",
   communityReplyBodyTemplate: "{content}",
   newsFcmEnabled: true,
+  peakExcludeOwners: false,
+  newsExcludeOwners: false,
   updatedAt: null,
 };
 
@@ -152,6 +168,12 @@ function parseSchedule(
   };
   const title = String(raw.title_template ?? raw.titleTemplate ?? "").trim();
   const body = String(raw.body_template ?? raw.bodyTemplate ?? "").trim();
+  const fallbackTitle = String(
+    raw.fallback_title_template ?? raw.fallbackTitleTemplate ?? "",
+  ).trim();
+  const fallbackBody = String(
+    raw.fallback_body_template ?? raw.fallbackBodyTemplate ?? "",
+  ).trim();
   return {
     id: String(raw.id ?? fallback.id).trim() || fallback.id,
     label: String(raw.label ?? fallback.label).trim() || fallback.label,
@@ -164,6 +186,12 @@ function parseSchedule(
     bodyTemplate: body
       ? stripGatePlaceholder(body) || fallback.bodyTemplate
       : fallback.bodyTemplate,
+    fallbackTitleTemplate: fallbackTitle
+      ? stripGatePlaceholder(fallbackTitle) || fallback.fallbackTitleTemplate
+      : fallback.fallbackTitleTemplate,
+    fallbackBodyTemplate: fallbackBody
+      ? stripGatePlaceholder(fallbackBody) || fallback.fallbackBodyTemplate
+      : fallback.fallbackBodyTemplate,
   };
 }
 
@@ -176,10 +204,10 @@ function schedulesFromLegacy(raw: Record<string, unknown>): PeakPushSchedule[] {
   };
   const titleRaw = String(raw.title_template ?? "").trim();
   const bodyRaw = String(raw.body_template ?? "").trim();
-  const title =
-    stripGatePlaceholder(titleRaw) || DEFAULT_PEAK_SCHEDULES[0].titleTemplate;
-  const body =
-    stripGatePlaceholder(bodyRaw) || DEFAULT_PEAK_SCHEDULES[0].bodyTemplate;
+  const fallbackTitle =
+    stripGatePlaceholder(titleRaw) || DEFAULT_PEAK_SCHEDULES[0].fallbackTitleTemplate;
+  const fallbackBody =
+    stripGatePlaceholder(bodyRaw) || DEFAULT_PEAK_SCHEDULES[0].fallbackBodyTemplate;
   return [
     {
       id: "lunch",
@@ -187,8 +215,10 @@ function schedulesFromLegacy(raw: Record<string, unknown>): PeakPushSchedule[] {
       enabled: true,
       hour: readInt("lunch_hour", 12),
       minute: readInt("lunch_minute", 0),
-      titleTemplate: title,
-      bodyTemplate: body,
+      titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
+      bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
+      fallbackTitleTemplate: fallbackTitle,
+      fallbackBodyTemplate: fallbackBody,
     },
     {
       id: "dinner",
@@ -196,8 +226,10 @@ function schedulesFromLegacy(raw: Record<string, unknown>): PeakPushSchedule[] {
       enabled: true,
       hour: readInt("dinner_hour", 18),
       minute: readInt("dinner_minute", 0),
-      titleTemplate: title,
-      bodyTemplate: body,
+      titleTemplate: DEFAULT_PEAK_SCHEDULES[1].titleTemplate,
+      bodyTemplate: DEFAULT_PEAK_SCHEDULES[1].bodyTemplate,
+      fallbackTitleTemplate: fallbackTitle,
+      fallbackBodyTemplate: fallbackBody,
     },
   ];
 }
@@ -282,6 +314,14 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
       DEFAULT_PUSH_CONFIG.communityReplyBodyTemplate,
     ),
     newsFcmEnabled: readBool("news_fcm_enabled", DEFAULT_PUSH_CONFIG.newsFcmEnabled),
+    peakExcludeOwners: readBool(
+      "peak_exclude_owners",
+      DEFAULT_PUSH_CONFIG.peakExcludeOwners,
+    ),
+    newsExcludeOwners: readBool(
+      "news_exclude_owners",
+      DEFAULT_PUSH_CONFIG.newsExcludeOwners,
+    ),
     updatedAt: raw.updated_at ? new Date(String(raw.updated_at)) : null,
   };
 }
@@ -295,6 +335,8 @@ export function schedulesToJson(schedules: PeakPushSchedule[]) {
     minute: s.minute,
     title_template: s.titleTemplate,
     body_template: s.bodyTemplate,
+    fallback_title_template: s.fallbackTitleTemplate,
+    fallback_body_template: s.fallbackBodyTemplate,
   }));
 }
 
@@ -307,6 +349,8 @@ export function newPeakSchedule(index: number): PeakPushSchedule {
     minute: 0,
     titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
     bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
+    fallbackTitleTemplate: DEFAULT_PEAK_SCHEDULES[0].fallbackTitleTemplate,
+    fallbackBodyTemplate: DEFAULT_PEAK_SCHEDULES[0].fallbackBodyTemplate,
   };
 }
 
