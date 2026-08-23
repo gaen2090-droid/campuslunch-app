@@ -65,20 +65,9 @@ export interface PushNotificationConfig {
 export const DEFAULT_PEAK_SCHEDULES: PeakPushSchedule[] = [
   {
     id: "lunch",
-    label: "점심",
+    label: "점심시간 알림",
     enabled: true,
     hour: 12,
-    minute: 0,
-    titleTemplate: "{restaurant}에서 대기없이 식사할 수 있어요",
-    bodyTemplate: "다른 매장도 확인해보기 >",
-    fallbackTitleTemplate: "대기 없이 식사할 수 있어요",
-    fallbackBodyTemplate: "지금 바로 입장 가능한 매장을 확인해보세요\n확인하러 가기 >",
-  },
-  {
-    id: "dinner",
-    label: "저녁",
-    enabled: true,
-    hour: 18,
     minute: 0,
     titleTemplate: "{restaurant}에서 대기없이 식사할 수 있어요",
     bodyTemplate: "다른 매장도 확인해보기 >",
@@ -211,23 +200,12 @@ function schedulesFromLegacy(raw: Record<string, unknown>): PeakPushSchedule[] {
   return [
     {
       id: "lunch",
-      label: "점심",
+      label: "점심시간 알림",
       enabled: true,
       hour: readInt("lunch_hour", 12),
       minute: readInt("lunch_minute", 0),
       titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
       bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
-      fallbackTitleTemplate: fallbackTitle,
-      fallbackBodyTemplate: fallbackBody,
-    },
-    {
-      id: "dinner",
-      label: "저녁",
-      enabled: true,
-      hour: readInt("dinner_hour", 18),
-      minute: readInt("dinner_minute", 0),
-      titleTemplate: DEFAULT_PEAK_SCHEDULES[1].titleTemplate,
-      bodyTemplate: DEFAULT_PEAK_SCHEDULES[1].bodyTemplate,
       fallbackTitleTemplate: fallbackTitle,
       fallbackBodyTemplate: fallbackBody,
     },
@@ -264,10 +242,8 @@ export function parsePushConfig(raw: Record<string, unknown>): PushNotificationC
 
   const first = schedules[0] ?? DEFAULT_PEAK_SCHEDULES[0];
   const lunch = schedules.find((s) => s.id === "lunch") ?? first;
-  const dinner =
-    schedules.find((s) => s.id === "dinner") ??
-    schedules[1] ??
-    DEFAULT_PEAK_SCHEDULES[1];
+  /** @deprecated dinner 슬롯 폐지 — 하위 호환 필드는 lunch 값으로 채운다 */
+  const dinner = lunch;
 
   return {
     schedules,
@@ -338,20 +314,6 @@ export function schedulesToJson(schedules: PeakPushSchedule[]) {
     fallback_title_template: s.fallbackTitleTemplate,
     fallback_body_template: s.fallbackBodyTemplate,
   }));
-}
-
-export function newPeakSchedule(index: number): PeakPushSchedule {
-  return {
-    id: `slot_${Date.now()}_${index}`,
-    label: `알림 ${index + 1}`,
-    enabled: true,
-    hour: 12,
-    minute: 0,
-    titleTemplate: DEFAULT_PEAK_SCHEDULES[0].titleTemplate,
-    bodyTemplate: DEFAULT_PEAK_SCHEDULES[0].bodyTemplate,
-    fallbackTitleTemplate: DEFAULT_PEAK_SCHEDULES[0].fallbackTitleTemplate,
-    fallbackBodyTemplate: DEFAULT_PEAK_SCHEDULES[0].fallbackBodyTemplate,
-  };
 }
 
 export function parsePushOpsSnapshot(raw: Record<string, unknown>): PushOpsSnapshot {

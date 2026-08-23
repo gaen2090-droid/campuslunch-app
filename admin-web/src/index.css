@@ -1203,6 +1203,11 @@ code {
   line-height: 1.45;
 }
 
+.push-landing-note {
+  margin: 4px 0 12px;
+  line-height: 1.5;
+}
+
 .push-reach-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

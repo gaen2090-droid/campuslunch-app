@@ -5,6 +5,7 @@ enum AppLinkTarget {
   home,
   coupons,
   restaurant,
+  bookmarks,
 }
 
 class AppLinks {

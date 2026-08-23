@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../widgets/coach_mark_overlay.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_links.dart';
+import 'bookmark_list_screen.dart';
 import 'community_screen.dart';
 import 'coupon_box_screen.dart';
 import 'detail_screen.dart';
@@ -100,6 +101,11 @@ class _MainScreenState extends State<MainScreen> {
             MaterialPageRoute(
               builder: (_) => DetailScreen(restaurant: restaurant),
             ),
+          );
+        case AppLinkTarget.bookmarks:
+          if (!mounted) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
           );
       }
     } finally {

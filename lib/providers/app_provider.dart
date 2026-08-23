@@ -1758,13 +1758,16 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     unawaited(_refreshForMainTab(homeTabIndex));
     if (restaurantId != null && restaurantId.isNotEmpty) {
-      final r = _restaurants.where((x) => x.id == restaurantId).firstOrNull;
-      if (r != null && r.linkNo > 0) {
-        _pendingAppLink = AppLinkTarget.restaurant;
-        _pendingRestaurantLinkNo = r.linkNo;
-        notifyListeners();
-      }
+      _pendingAppLink = AppLinkTarget.bookmarks;
+      notifyListeners();
     }
+  }
+
+  void openCouponsFromPush() {
+    debugPrint('[AppProvider] openCouponsFromPush');
+    _mainTabIndex = homeTabIndex;
+    _pendingAppLink = AppLinkTarget.coupons;
+    notifyListeners();
   }
 
   void openCommunityFromPush([String? postId]) {
@@ -1845,6 +1848,10 @@ class AppProvider extends ChangeNotifier {
     }
     if (type == 'owner_rejected') {
       openOwnerRejectionFromPush();
+      return;
+    }
+    if (type == 'reward_gifticon') {
+      openCouponsFromPush();
       return;
     }
     openHomeFromPush(data['restaurant_id'] as String?);

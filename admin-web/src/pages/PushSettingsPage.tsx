@@ -15,7 +15,6 @@ import {
   DEFAULT_PUSH_CONFIG,
   EMPTY_PUSH_OPS,
   formatTime,
-  newPeakSchedule,
   previewCommunityTemplate,
   type NewsPushTarget,
   type PeakPushSchedule,
@@ -146,26 +145,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
     });
   }
 
-  function addSchedule() {
-    setForm((prev) => {
-      if (prev.schedules.length >= 8) return prev;
-      return {
-        ...prev,
-        schedules: [...prev.schedules, newPeakSchedule(prev.schedules.length)],
-      };
-    });
-  }
-
-  function removeSchedule(index: number) {
-    setForm((prev) => {
-      if (prev.schedules.length <= 1) return prev;
-      return {
-        ...prev,
-        schedules: prev.schedules.filter((_, i) => i !== index),
-      };
-    });
-  }
-
   /**
    * 섹션별 저장: 서버의 최신 설정을 다시 받아온 뒤, 그 위에 이 섹션이 다루는
    * 필드만 로컬 form 값으로 덮어써서 저장한다. 다른 섹션을 편집 중인 동안
@@ -195,12 +174,12 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
 
   function saveLunchSection() {
     return saveSection("lunch", {
-      schedules: form.schedules,
+      schedules: form.schedules.slice(0, 1),
       weekdaysOnly: form.weekdaysOnly,
       scheduleDaysAhead: form.scheduleDaysAhead,
       peakFcmEnabled: form.peakFcmEnabled,
       peakLocalScheduleEnabled: form.peakLocalScheduleEnabled,
-      peakExcludeOwners: form.peakExcludeOwners,
+      peakExcludeOwners: true,
     });
   }
 
@@ -365,6 +344,11 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               서버 FCM 기준 · 알림을 켠 유저 중 <strong>토큰이 있는</strong> 대상만
               집계합니다. (로컬 예약 알림은 폰에서 따로 울립니다)
             </p>
+            <p className="muted sm push-landing-note">
+              탭 시 이동 위치 — 점심시간 알림: 즐겨찾기 매장 있으면 즐겨찾기
+              페이지, 없으면 홈 · 커뮤니티 댓글: 해당 글/모아보기 · 리워드
+              지급: 쿠폰함 · 캠퍼스런치 소식: 홈
+            </p>
           </div>
           <button
             type="button"
@@ -378,14 +362,9 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
 
         <div className="push-reach-grid">
           <div className="push-reach-card">
-            <span className="push-reach-label">점심 피크</span>
+            <span className="push-reach-label">점심시간 알림</span>
             <strong className="push-reach-main">{ops.lunchUsers}명</strong>
             <span className="muted sm">기기 {ops.lunchDevices}대</span>
-          </div>
-          <div className="push-reach-card">
-            <span className="push-reach-label">저녁 피크</span>
-            <strong className="push-reach-main">{ops.dinnerUsers}명</strong>
-            <span className="muted sm">기기 {ops.dinnerDevices}대</span>
           </div>
           <div className="push-reach-card">
             <span className="push-reach-label">커뮤니티 댓글</span>
@@ -477,6 +456,11 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
           <section className="push-section">
             <div className="push-section-head row">
               <h3>점심시간 알림</h3>
+            </div>
+            <p className="muted sm push-landing-note">
+              탭 시 이동 위치: 즐겨찾기 매장 있으면 즐겨찾기 페이지, 없으면 홈
+            </p>
+            <div className="push-section-head row">
               <label className="field inline-days">
                 <span>예약 일수</span>
                 <input
@@ -522,20 +506,13 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 />
                 평일만
               </label>
-              <label className="chip-toggle">
-                <input
-                  type="checkbox"
-                  checked={form.peakExcludeOwners}
-                  onChange={(e) =>
-                    patch({ peakExcludeOwners: e.target.checked })
-                  }
-                />
-                사장님 제외
-              </label>
             </div>
+            <p className="muted sm push-landing-note">
+              사장님으로 등록된 계정에는 항상 발송되지 않아요.
+            </p>
 
             <div className="peak-schedule-list">
-              {form.schedules.map((s, index) => (
+              {form.schedules.slice(0, 1).map((s, index) => (
                 <div
                   key={s.id}
                   className={`peak-schedule-card${s.enabled ? "" : " off"}`}
@@ -551,15 +528,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                       />
                       ON
                     </label>
-                    <input
-                      className="peak-schedule-label"
-                      type="text"
-                      value={s.label}
-                      onChange={(e) =>
-                        patchSchedule(index, { label: e.target.value })
-                      }
-                      placeholder="이름"
-                    />
                     <div className="time-row compact">
                       <input
                         type="number"
@@ -590,14 +558,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                     <span className="muted sm peak-time-hint">
                       {formatTime(s.hour, s.minute)}
                     </span>
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      disabled={form.schedules.length <= 1}
-                      onClick={() => removeSchedule(index)}
-                    >
-                      삭제
-                    </button>
                   </div>
                   <div className="peak-template-group">
                     <span className="muted sm">
@@ -653,15 +613,6 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               ))}
             </div>
 
-            <button
-              type="button"
-              className="btn sm"
-              disabled={form.schedules.length >= 8}
-              onClick={addSchedule}
-            >
-              + 스케줄 추가
-            </button>
-
             <div className="form-actions">
               <button
                 type="button"
@@ -688,6 +639,9 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                 FCM
               </label>
             </div>
+            <p className="muted sm push-landing-note">
+              탭 시 이동 위치: 커뮤니티 탭의 해당 글/모아보기
+            </p>
 
             <div className="community-fields">
               <label className="field">
@@ -784,6 +738,9 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               적용돼요. 아래 "발송"은 즉시 나가고(별도 저장 없이 바로 나가는
               발송이니 신중하게), 시각을 지정하면 그때 한 번만 자동 발송되는
               예약도 가능해요.
+            </p>
+            <p className="muted sm push-landing-note">
+              탭 시 이동 위치: 홈 (매장 지정 없음)
             </p>
             <div className="community-fields">
               <label className="field">
