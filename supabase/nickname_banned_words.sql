@@ -53,7 +53,10 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.nickname is distinct from old.nickname then
+  -- INSERT는 OLD가 없으므로(TG_OP 분기 없이 old.nickname을 참조하면
+  -- "record old is not assigned yet" 에러) INSERT는 항상 검사, UPDATE는
+  -- 닉네임이 실제로 바뀔 때만 검사한다.
+  if TG_OP = 'INSERT' or new.nickname is distinct from old.nickname then
     -- delete_own_account() 등 시스템이 강제로 닉네임을 익명화(예: '탈퇴한 회원')할 때는
     -- 이 세션 변수를 켜서 검사를 우회한다 (nickname_change_lock_30d.sql과 동일 패턴).
     if coalesce(current_setting('app.bypass_nickname_lock', true), '') <> '1' then

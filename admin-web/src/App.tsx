@@ -194,11 +194,14 @@ export default function App() {
         <UsersPage
           users={usersState.users}
           nicknameBannedWords={usersState.nicknameBannedWords}
+          nicknameReservedWords={usersState.nicknameReservedWords}
           loading={usersState.loading}
           error={usersState.error}
           onReload={usersState.reload}
           onAddNicknameWord={usersState.addNicknameWord}
           onRemoveNicknameWord={usersState.removeNicknameWord}
+          onAddReservedWord={usersState.addReservedWord}
+          onRemoveReservedWord={usersState.removeReservedWord}
         />
       );
     }

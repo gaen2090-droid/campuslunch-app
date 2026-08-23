@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fetchRewardSpendReport } from "../lib/adminApi";
+import { fetchRewardSpendReport, type RewardSpendReport } from "../lib/adminApi";
 import {
   buildMetricsTsvForClipboard,
   downloadMetricsExcel,
@@ -48,7 +48,18 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
 
   async function buildParams() {
     const needReward = selected.has("리워드 지출");
-    const rewardSpend = needReward ? await fetchRewardSpendReport() : null;
+    let rewardSpend: RewardSpendReport | null = null;
+    let rewardFetchFailed = false;
+    if (needReward) {
+      try {
+        rewardSpend = await fetchRewardSpendReport();
+      } catch (e) {
+        // 리워드 지출 집계 하나가 실패해도 나머지 섹션은 내보낼 수 있어야 한다 —
+        // 여기서 던지면 선택한 다른 섹션까지 전부 실패로 처리된다.
+        rewardFetchFailed = true;
+        console.error("[ExportModal] fetchRewardSpendReport failed:", e);
+      }
+    }
     return {
       startDate: start,
       endDate: end,
@@ -56,6 +67,7 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
       metrics,
       restaurants,
       rewardSpend,
+      rewardFetchFailed,
     };
   }
 
@@ -63,12 +75,17 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
     setBusy(true);
     setHint(null);
     try {
-      const params = await buildParams();
+      const { rewardFetchFailed, ...params } = await buildParams();
       await downloadMetricsExcel(
         `campuslunch_${fmtDate(start)}_${fmtDate(end)}.xlsx`,
         params,
       );
-      onClose();
+      if (rewardFetchFailed) {
+        setHint("리워드 지출 조회 실패 · 나머지 항목은 내보냈어요.");
+        window.setTimeout(() => setHint(null), 4000);
+      } else {
+        onClose();
+      }
     } catch (e) {
       setHint(e instanceof Error ? e.message : "엑셀 내보내기 실패");
     } finally {
@@ -80,7 +97,8 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
     setBusy(true);
     setHint(null);
     try {
-      const params = await buildParams();
+      const { rewardFetchFailed: _rewardFetchFailed, ...params } =
+        await buildParams();
       const tsv = await buildMetricsTsvForClipboard(params);
       await navigator.clipboard.writeText(tsv);
       setHint("클립보드에 복사됨 · 엑셀/시트에서 Ctrl/Cmd+V");

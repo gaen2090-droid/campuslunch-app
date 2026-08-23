@@ -1188,6 +1188,33 @@ export async function deleteNicknameBannedWord(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function fetchNicknameReservedWords(): Promise<BannedWord[]> {
+  const { data, error } = await supabase
+    .from("nickname_reserved_words")
+    .select("id, word, created_at")
+    .order("word", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map(parseBannedWord);
+}
+
+export async function addNicknameReservedWord(word: string): Promise<void> {
+  const trimmed = word.trim();
+  if (!trimmed) return;
+  const { error } = await supabase
+    .from("nickname_reserved_words")
+    .insert({ word: trimmed });
+  if (error) throw error;
+}
+
+export async function deleteNicknameReservedWord(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("nickname_reserved_words")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function fetchCommunityNotices(): Promise<CommunityNoticeAdmin[]> {
   const { data, error } = await supabase
     .from("community_notices")
