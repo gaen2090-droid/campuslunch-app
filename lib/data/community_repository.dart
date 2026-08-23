@@ -253,6 +253,13 @@ class CommunityRepository {
         .toList();
   }
 
+  Future<List<String>> fetchNicknameBannedWords() async {
+    final rows = await _client.from('nickname_banned_words').select('word');
+    return (rows as List<dynamic>)
+        .map((e) => (e as Map<String, dynamic>)['word'] as String)
+        .toList();
+  }
+
   Future<List<RestaurantCollection>> fetchCollections() async {
     final rows = await _client.rpc('collections_with_likes');
     return (rows as List<dynamic>)

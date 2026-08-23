@@ -2504,6 +2504,9 @@ class AppProvider extends ChangeNotifier {
   Future<String?> updateNickname(String nick) async {
     final trimmed = nick.trim();
     if (trimmed.isEmpty) return '닉네임을 입력해주세요.';
+    if (containsForbiddenNicknameWord(trimmed)) {
+      return '사용할 수 없는 닉네임이에요.';
+    }
     if (trimmed == _nickname.trim()) return null;
 
     if (_hasSupabaseSession) {
@@ -3225,6 +3228,13 @@ class AppProvider extends ChangeNotifier {
       setBannedWords(words);
     } catch (e) {
       debugPrint('[Community] fetchBannedWords failed: $e');
+    }
+    try {
+      final nicknameWords =
+          await CommunityRepository().fetchNicknameBannedWords();
+      setNicknameBannedWords(nicknameWords);
+    } catch (e) {
+      debugPrint('[Community] fetchNicknameBannedWords failed: $e');
     }
   }
 

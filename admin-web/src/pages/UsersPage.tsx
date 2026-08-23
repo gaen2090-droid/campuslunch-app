@@ -5,6 +5,7 @@ import {
   setCommunitySuspension,
   setReportSuspension,
 } from "../lib/adminApi";
+import type { BannedWord } from "../types/community";
 import { errorMessage } from "../lib/errors";
 import { isSuspensionActive, roleLabel, type AdminUser } from "../types/user";
 
@@ -12,9 +13,12 @@ type SuspensionKind = "community" | "report";
 
 interface Props {
   users: AdminUser[];
+  nicknameBannedWords: BannedWord[];
   loading: boolean;
   error: string | null;
   onReload: () => void;
+  onAddNicknameWord: (word: string) => Promise<void>;
+  onRemoveNicknameWord: (id: string) => Promise<void>;
 }
 
 function formatDate(d: Date | null): string {
@@ -28,12 +32,24 @@ function formatDate(d: Date | null): string {
   });
 }
 
-export function UsersPage({ users, loading, error, onReload }: Props) {
+export function UsersPage({
+  users,
+  nicknameBannedWords,
+  loading,
+  error,
+  onReload,
+  onAddNicknameWord,
+  onRemoveNicknameWord,
+}: Props) {
   const [query, setQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const [newNicknameWord, setNewNicknameWord] = useState("");
+  const [nicknameWordBusy, setNicknameWordBusy] = useState(false);
+  const [nicknameWordBusyId, setNicknameWordBusyId] = useState<string | null>(null);
 
   const [suspendTarget, setSuspendTarget] = useState<{
     user: AdminUser;
@@ -117,6 +133,33 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
       onReload();
     } catch (err) {
       setActionError(errorMessage(err));
+    }
+  }
+
+  async function submitNicknameWord() {
+    const word = newNicknameWord.trim();
+    if (!word || nicknameWordBusy) return;
+    setNicknameWordBusy(true);
+    setActionError(null);
+    try {
+      await onAddNicknameWord(word);
+      setNewNicknameWord("");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setNicknameWordBusy(false);
+    }
+  }
+
+  async function removeNicknameWord(id: string) {
+    setNicknameWordBusyId(id);
+    setActionError(null);
+    try {
+      await onRemoveNicknameWord(id);
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setNicknameWordBusyId(null);
     }
   }
 
@@ -244,6 +287,52 @@ export function UsersPage({ users, loading, error, onReload }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      <div className="panel-head" style={{ marginTop: 32 }}>
+        <h2>닉네임 금칙어 관리</h2>
+      </div>
+      <p className="muted sm">
+        여기 등록된 단어가 포함된 닉네임은 설정할 수 없어요. (부분 일치)
+      </p>
+      <div className="row-actions">
+        <input
+          className="search-input"
+          type="text"
+          placeholder="추가할 단어 입력"
+          value={newNicknameWord}
+          onChange={(e) => setNewNicknameWord(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void submitNicknameWord();
+          }}
+        />
+        <button
+          type="button"
+          className="btn sm"
+          disabled={nicknameWordBusy || !newNicknameWord.trim()}
+          onClick={() => void submitNicknameWord()}
+        >
+          추가
+        </button>
+      </div>
+      {nicknameBannedWords.length === 0 ? (
+        <p className="muted center">등록된 금칙어가 없어요.</p>
+      ) : (
+        <div className="chip-row">
+          {nicknameBannedWords.map((w) => (
+            <span key={w.id} className="chip">
+              {w.word}
+              <button
+                type="button"
+                className="chip-remove"
+                disabled={nicknameWordBusyId === w.id}
+                onClick={() => void removeNicknameWord(w.id)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
       )}
 
       {deleteTarget && (

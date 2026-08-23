@@ -193,9 +193,12 @@ export default function App() {
       return (
         <UsersPage
           users={usersState.users}
+          nicknameBannedWords={usersState.nicknameBannedWords}
           loading={usersState.loading}
           error={usersState.error}
           onReload={usersState.reload}
+          onAddNicknameWord={usersState.addNicknameWord}
+          onRemoveNicknameWord={usersState.removeNicknameWord}
         />
       );
     }

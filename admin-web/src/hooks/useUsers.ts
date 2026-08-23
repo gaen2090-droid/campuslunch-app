@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchAdminUsers } from "../lib/adminApi";
+import {
+  addNicknameBannedWord,
+  deleteNicknameBannedWord,
+  fetchAdminUsers,
+  fetchNicknameBannedWords,
+} from "../lib/adminApi";
 import { errorMessage } from "../lib/errors";
+import type { BannedWord } from "../types/community";
 import type { AdminUser } from "../types/user";
 
 export function useUsers(enabled: boolean) {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [nicknameBannedWords, setNicknameBannedWords] = useState<BannedWord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +20,12 @@ export function useUsers(enabled: boolean) {
     setLoading(true);
     setError(null);
     try {
-      setUsers(await fetchAdminUsers());
+      const [userList, wordList] = await Promise.all([
+        fetchAdminUsers(),
+        fetchNicknameBannedWords(),
+      ]);
+      setUsers(userList);
+      setNicknameBannedWords(wordList);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -25,5 +37,29 @@ export function useUsers(enabled: boolean) {
     void reload();
   }, [reload]);
 
-  return { users, loading, error, reload };
+  const addNicknameWord = useCallback(
+    async (word: string) => {
+      await addNicknameBannedWord(word);
+      await reload();
+    },
+    [reload],
+  );
+
+  const removeNicknameWord = useCallback(
+    async (id: string) => {
+      await deleteNicknameBannedWord(id);
+      await reload();
+    },
+    [reload],
+  );
+
+  return {
+    users,
+    nicknameBannedWords,
+    loading,
+    error,
+    reload,
+    addNicknameWord,
+    removeNicknameWord,
+  };
 }
