@@ -18,6 +18,8 @@ class CommunityPost {
   final bool isAuthorOwner;
   final bool isAuthorAdmin;
   final bool isPinned;
+  final bool hasPoll;
+  final int pollVoterCount;
 
   const CommunityPost({
     required this.id,
@@ -36,6 +38,8 @@ class CommunityPost {
     this.isAuthorOwner = false,
     this.isAuthorAdmin = false,
     this.isPinned = false,
+    this.hasPoll = false,
+    this.pollVoterCount = 0,
   });
 
   factory CommunityPost.fromMap(Map<String, dynamic> map) {
@@ -60,6 +64,8 @@ class CommunityPost {
       isAuthorOwner: map['is_author_owner'] as bool? ?? false,
       isAuthorAdmin: map['is_author_admin'] as bool? ?? false,
       isPinned: map['is_pinned'] as bool? ?? false,
+      hasPoll: map['has_poll'] as bool? ?? false,
+      pollVoterCount: map['poll_voter_count'] as int? ?? 0,
     );
   }
 
@@ -84,6 +90,8 @@ class CommunityPost {
       isAuthorOwner: isAuthorOwner,
       isAuthorAdmin: isAuthorAdmin,
       isPinned: isPinned,
+      hasPoll: hasPoll,
+      pollVoterCount: pollVoterCount,
     );
   }
 }

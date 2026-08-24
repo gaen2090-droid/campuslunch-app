@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/community_comment.dart';
+import '../models/community_poll_option.dart';
 import '../models/community_post.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
@@ -11,6 +12,7 @@ import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
+import '../widgets/community_poll_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/admin_badge.dart';
 import '../widgets/owner_badge.dart';
@@ -38,6 +40,8 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   bool _subscribed = false;
   bool _subscribedLoaded = false;
   CommunityComment? _replyTarget;
+  List<CommunityPollOption> _pollOptions = [];
+  bool _loadingPoll = false;
 
   @override
   void initState() {
@@ -45,6 +49,35 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     _post = widget.post;
     _loadComments();
     _loadSubscription();
+    if (_post.hasPoll) _loadPollOptions();
+  }
+
+  Future<void> _loadPollOptions() async {
+    setState(() => _loadingPoll = true);
+    try {
+      final options = await _repo.fetchPollOptions(_post.id);
+      if (!mounted) return;
+      setState(() {
+        _pollOptions = options;
+        _loadingPoll = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingPoll = false);
+    }
+  }
+
+  Future<void> _submitVote(List<String> optionIds) async {
+    try {
+      await _repo.submitPollVote(optionIds);
+      _changed = true;
+      await _loadPollOptions();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('투표에 실패했어요.')),
+      );
+    }
   }
 
   Future<void> _loadSubscription() async {
@@ -501,6 +534,19 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                             ),
                           ),
                         ))),
+                  ],
+                  if (_post.hasPoll) ...[
+                    const SizedBox(height: 12),
+                    if (_loadingPoll && _pollOptions.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: CircularProgressIndicator(color: Color(0xFF000000))),
+                      )
+                    else if (_pollOptions.isNotEmpty)
+                      CommunityPollCard(
+                        options: _pollOptions,
+                        onVote: _submitVote,
+                      ),
                   ],
                   if (_post.restaurantId != null && _post.restaurantName != null) ...[
                     const SizedBox(height: 8),

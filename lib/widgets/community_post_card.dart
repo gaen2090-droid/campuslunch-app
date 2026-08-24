@@ -149,6 +149,15 @@ class CommunityPostCard extends StatelessWidget {
                   '${post.commentCount}',
                   style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
                 ),
+                if (post.hasPoll) ...[
+                  const SizedBox(width: 16),
+                  const Icon(Icons.poll_outlined, size: 16, color: Color(0xFF9CA3AF)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${post.pollVoterCount}명',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
+                  ),
+                ],
               ],
             ),
           ],

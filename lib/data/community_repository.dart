@@ -6,6 +6,7 @@ import '../models/collection.dart';
 import '../models/community_comment.dart';
 import '../models/community_inbox_notification.dart';
 import '../models/community_notice.dart';
+import '../models/community_poll_option.dart';
 import '../models/community_post.dart';
 import '../services/supabase_service.dart';
 
@@ -105,26 +106,43 @@ class CommunityRepository {
     });
   }
 
+  /// [pollOptions]가 있으면(2~5개) 게시글 생성 직후 create_poll_for_post RPC로
+  /// 투표를 함께 만든다. 게시 후 옵션은 전혀 수정/삭제할 수 없다(§0).
   Future<void> createPost({
     required String content,
     List<String> imageUrls = const [],
     String? restaurantId,
+    List<String>? pollOptions,
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('NOT_AUTHENTICATED');
-    await _client.from('community_posts').insert({
-      'user_id': uid,
-      'content': content,
-      'image_urls': imageUrls,
-      'restaurant_id': restaurantId,
-    });
+    final row = await _client
+        .from('community_posts')
+        .insert({
+          'user_id': uid,
+          'content': content,
+          'image_urls': imageUrls,
+          'restaurant_id': restaurantId,
+        })
+        .select('id')
+        .single();
+    if (pollOptions != null && pollOptions.isNotEmpty) {
+      await _client.rpc('create_poll_for_post', params: {
+        'p_post_id': row['id'] as String,
+        'p_options': pollOptions,
+      });
+    }
   }
 
+  /// 투표가 아직 없던 글에 한해 [pollOptions]로 최초 1회 투표를 추가할 수 있다.
+  /// 이미 투표가 있는 글은 옵션을 바꿀 수 없으므로 [pollOptions]를 무시한다
+  /// (호출측에서 이미 has_poll 여부로 UI 진입점을 막아야 함).
   Future<void> updatePost({
     required String postId,
     required String content,
     List<String> imageUrls = const [],
     String? restaurantId,
+    List<String>? pollOptions,
   }) async {
     await _client.from('community_posts').update({
       'content': content,
@@ -132,6 +150,27 @@ class CommunityRepository {
       'restaurant_id': restaurantId,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', postId);
+    if (pollOptions != null && pollOptions.isNotEmpty) {
+      await _client.rpc('create_poll_for_post', params: {
+        'p_post_id': postId,
+        'p_options': pollOptions,
+      });
+    }
+  }
+
+  Future<List<CommunityPollOption>> fetchPollOptions(String postId) async {
+    final rows = await _client.rpc('community_poll_options_for_post', params: {
+      'p_post_id': postId,
+    });
+    return (rows as List<dynamic>)
+        .map((e) => CommunityPollOption.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> submitPollVote(List<String> optionIds) async {
+    await _client.rpc('submit_poll_vote', params: {
+      'p_option_ids': optionIds,
+    });
   }
 
   Future<void> deletePost(String postId) async {

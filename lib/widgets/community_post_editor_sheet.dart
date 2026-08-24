@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
 import '../models/community_post.dart';
+import '../screens/community_poll_editor_screen.dart';
 import '../utils/profanity_filter.dart';
 import 'community_rules_summary.dart';
 import 'restaurant_picker_sheet.dart';
@@ -37,8 +38,14 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   _SelectedRestaurant? _selectedRestaurant;
   bool _submitting = false;
   String? _validationError;
+  List<String>? _pollOptions;
 
   static const _maxImages = 4;
+
+  /// 게시된 글의 투표는 전혀 수정할 수 없으므로(§0), 이미 투표가 달린 글을
+  /// 수정할 때는 투표 관련 UI 진입점 자체를 노출하지 않는다.
+  bool get _pollLockedByExistingPoll =>
+      widget.editing != null && widget.editing!.hasPoll;
 
   @override
   void initState() {
@@ -92,6 +99,16 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
     setState(() => _selectedRestaurant = (id: picked.id, name: picked.name));
   }
 
+  Future<void> _openPollEditor() async {
+    final result = await CommunityPollEditorScreen.show(
+      context,
+      initialOptions: _pollOptions,
+    );
+    if (result == null) return;
+    if (!mounted) return;
+    setState(() => _pollOptions = result.isEmpty ? null : result);
+  }
+
   Future<void> _submit() async {
     final content = _contentCtrl.text.trim();
     if (content.isEmpty || _submitting) return;
@@ -119,12 +136,14 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
           content: content,
           imageUrls: allImages,
           restaurantId: _selectedRestaurant?.id,
+          pollOptions: _pollLockedByExistingPoll ? null : _pollOptions,
         );
       } else {
         await repo.createPost(
           content: content,
           imageUrls: allImages,
           restaurantId: _selectedRestaurant?.id,
+          pollOptions: _pollOptions,
         );
       }
       if (!mounted) return;
@@ -236,6 +255,14 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                       ),
                     ),
                   ],
+                  if (_pollOptions != null) ...[
+                    const SizedBox(height: 12),
+                    _PollSummaryCard(
+                      options: _pollOptions!,
+                      onTap: _openPollEditor,
+                      onRemove: () => setState(() => _pollOptions = null),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   const CommunityRulesSummary(),
                   const SizedBox(height: 16),
@@ -248,8 +275,10 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
                     OutlinedButton.icon(
                       onPressed: _totalImageCount >= _maxImages ? null : _pickImages,
                       style: OutlinedButton.styleFrom(
@@ -258,6 +287,24 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                       icon: const Icon(Icons.image_outlined, size: 18),
                       label: Text('사진 ($_totalImageCount/$_maxImages)'),
                     ),
+                    const SizedBox(width: 8),
+                    if (!_pollLockedByExistingPoll)
+                      OutlinedButton.icon(
+                        onPressed: _openPollEditor,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: _pollOptions != null
+                              ? const Color(0xFFE6F3EC)
+                              : null,
+                          foregroundColor: _pollOptions != null
+                              ? const Color(0xFF26BC7D)
+                              : const Color(0xFF000000),
+                          side: _pollOptions != null
+                              ? const BorderSide(color: Color(0xFFE6F3EC))
+                              : null,
+                        ),
+                        icon: const Icon(Icons.poll_outlined, size: 18),
+                        label: Text(_pollOptions != null ? '투표 ✓' : '투표'),
+                      ),
                     const SizedBox(width: 8),
                     if (_selectedRestaurant != null)
                       Flexible(
@@ -296,7 +343,8 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                         icon: const Icon(Icons.storefront_outlined, size: 18),
                         label: const Text('관련 매장'),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
@@ -380,6 +428,59 @@ class _ImageThumb extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 아직 게시 전(로컬 상태)인 투표를 요약해서 보여주는 카드. 탭하면 편집 화면으로
+/// 돌아가고, X로 투표 자체를 취소할 수 있다. 게시된 이후에는 이 카드가 아니라
+/// 상세 화면의 읽기 전용 투표 카드(community_poll_card.dart)가 대신 쓰인다.
+class _PollSummaryCard extends StatelessWidget {
+  final List<String> options;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _PollSummaryCard({
+    required this.options,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.poll_outlined, size: 18, color: Color(0xFF26BC7D)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '투표 · ${options.length}개 옵션 · ${options.first}${options.length > 1 ? ' 외' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onRemove,
+              child: const Icon(Icons.close, size: 18, color: Color(0xFF9CA3AF)),
+            ),
+          ],
+        ),
       ),
     );
   }
