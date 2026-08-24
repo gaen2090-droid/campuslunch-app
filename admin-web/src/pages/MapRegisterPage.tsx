@@ -26,6 +26,7 @@ export function MapRegisterPage({ onReload }: Props) {
   const [selected, setSelected] = useState<PlaceDetails | null>(null);
   const [area, setArea] = useState<string>(AREAS[0]);
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [crowdEnabled, setCrowdEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function MapRegisterPage({ onReload }: Props) {
         hours_periods: selected.hoursPeriods,
         kakao_place_id: selected.placeId,
         google_place_id: selected.googlePlaceId,
+        crowd_enabled: crowdEnabled,
       });
       setRegistered(true);
       onReload();
@@ -177,6 +179,20 @@ export function MapRegisterPage({ onReload }: Props) {
           </select>
         </label>
       </div>
+
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={crowdEnabled}
+          onChange={(e) => setCrowdEnabled(e.target.checked)}
+        />
+        <span>
+          제보 대상으로 노출{" "}
+          <span className="muted xs">
+            (끄면 맛집컬렉션 전용 매장 — 지도/홈에 안 뜨고 혼잡도 제보 기능 없음)
+          </span>
+        </span>
+      </label>
 
       {mapLink && (
         <p className="muted sm">
