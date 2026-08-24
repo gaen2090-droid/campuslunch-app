@@ -45,6 +45,9 @@ class _DetailScreenState extends State<DetailScreen> {
       if (!provider.hasOwnerTab) {
         provider.recordDetailView(r.id);
       }
+      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 제보 기능 자체가 없으므로
+      // 제보 유도 시트/좌석 업데이트/최근 제보를 아예 불러오지 않는다.
+      if (!r.crowdEnabled) return;
       // 사장님이 자기 매장을 미리보기할 때는 제보 유도 시트를 띄우지 않는다.
       if (r.status == '영업안함' || provider.hasOwnerTab) {
         _loadOwnerSeatUpdate();
@@ -288,48 +291,52 @@ class _DetailScreenState extends State<DetailScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: statusMaxW),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              r.status == '영업안함'
-                                  ? r.status
-                                  : r.hasCrowdUpdate
-                                      ? r.status
-                                      : '제보필요',
-                              maxLines: 1,
-                              textAlign: TextAlign.right,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: (r.status != '영업안함' && !r.hasCrowdUpdate)
-                                    ? const Color(0xFF9CA3AF)
-                                    : statusColor,
-                                height: 1.15,
-                              ),
-                            ),
-                            if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
-                              const SizedBox(height: 4),
+                      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 상태 컬럼 자체를
+                      // 그리지 않는다 — 매장명 위치/정렬은 그대로 유지.
+                      if (r.crowdEnabled)
+                        const SizedBox(width: 12),
+                      if (r.crowdEnabled)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: statusMaxW),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
                               Text(
-                                r.crowdBaseSource == 'owner'
-                                    ? '사장님 · ${formatUpdateAgeFromDateTime(r.updatedAt)}'
-                                    : formatUpdateAgeFromDateTime(r.updatedAt),
+                                r.status == '영업안함'
+                                    ? r.status
+                                    : r.hasCrowdUpdate
+                                        ? r.status
+                                        : '제보필요',
                                 maxLines: 1,
                                 textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF9CA3AF),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  color: (r.status != '영업안함' && !r.hasCrowdUpdate)
+                                      ? const Color(0xFF9CA3AF)
+                                      : statusColor,
+                                  height: 1.15,
                                 ),
                               ),
+                              if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  r.crowdBaseSource == 'owner'
+                                      ? '사장님 · ${formatUpdateAgeFromDateTime(r.updatedAt)}'
+                                      : formatUpdateAgeFromDateTime(r.updatedAt),
+                                  maxLines: 1,
+                                  textAlign: TextAlign.right,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
                     ],
                   );
                 },
@@ -338,48 +345,83 @@ class _DetailScreenState extends State<DetailScreen> {
 
             BusinessHoursSection(hours: r.hours),
 
-            if (r.ownerNotice.isNotEmpty)
+            // 맛집컬렉션 전용 매장(crowdEnabled=false)은 사장님 공지/좌석메시지/최근제보를
+            // 표시하지 않는다. 사장님 영입은 제보 대상 매장에만 이뤄지므로 실제로는
+            // 데이터가 없겠지만, 방어적으로 조건을 걸어둔다.
+            if (r.crowdEnabled && r.ownerNotice.isNotEmpty)
               _OwnerNoticeBanner(notice: r.ownerNotice),
 
-            if (_ownerSeatUpdate != null &&
+            if (r.crowdEnabled &&
+                _ownerSeatUpdate != null &&
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
 
-            if (_recentReports.isNotEmpty)
+            if (r.crowdEnabled && _recentReports.isNotEmpty)
               _RecentReportsSection(
                 reports: _recentReports,
                 showPriorityNote: ownerPriorityActive,
               ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.info_outline, size: 12, color: Color(0xFF9CA3AF)),
-                    SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        '추후 축적된 제보 데이터를 바탕으로 AI 기반 혼잡도 예측 정보 별도 제공 예정',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF9CA3AF),
+            if (r.crowdEnabled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: Color(0xFF9CA3AF)),
+                      SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '추후 축적된 제보 데이터를 바탕으로 AI 기반 혼잡도 예측 정보 별도 제공 예정',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF9CA3AF),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: Color(0xFF9CA3AF)),
+                      SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '제보 기능을 준비 중이에요. 곧 만나요!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
             if (r.menu.isNotEmpty) _MenuSection(menu: r.menu, formatPrice: _formatPrice),
 
@@ -388,7 +430,7 @@ class _DetailScreenState extends State<DetailScreen> {
         ),
       ),
       floatingActionButton: _ActionButtonBar(
-        showReportButton: !provider.hasOwnerTab,
+        showReportButton: !provider.hasOwnerTab && r.crowdEnabled,
         reportEnabled: r.status != '영업안함',
         onReport: () => ReportSheet.show(
           context,

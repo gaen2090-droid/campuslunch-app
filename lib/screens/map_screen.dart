@@ -173,6 +173,9 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
 
   List<Restaurant> _filter(List<Restaurant> all, Set<String> bookmarks) {
     return all.where((r) {
+      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 평소 지도 마커엔 안 뜨고
+      // 검색으로 찾아 들어간 경우에만 임시로 노출한다 (docs/PLAN_two_tier_restaurants.md §6).
+      if (!r.crowdEnabled) return false;
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk =
           _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
@@ -191,9 +194,18 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     final provider = context.watch<AppProvider>();
     final all = provider.restaurants;
     final filtered = _filter(all, provider.bookmarks);
+    // 검색으로 선택한 매장이 맛집컬렉션 전용(crowdEnabled=false)이라 평소 필터에
+    // 안 걸렸다면, 그 매장 하나만 임시로 마커 목록에 얹는다
+    // (docs/PLAN_two_tier_restaurants.md §6 — 검색 진입 시에만 노출).
+    final markerRestaurants = _selected != null &&
+            !filtered.any((r) => r.id == _selected!.id)
+        ? [...filtered, _selected!]
+        : filtered;
     final jeongmunRestaurants = all.where((r) => r.area == '정문').toList();
+    // '제보없음' 필터 자동 리셋은 실제로 화면에 보이는(crowdEnabled=true) 매장
+    // 기준이어야 한다 — all 기준이면 컬렉션 전용 매장 때문에 리셋이 안 걸릴 수 있음.
     final hasNeedsReportRestaurant =
-        all.any((r) => r.status != '영업안함' && !r.hasCrowdUpdate);
+        filtered.any((r) => r.status != '영업안함' && !r.hasCrowdUpdate);
     if (!hasNeedsReportRestaurant && _reportFilter == '제보없음') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -219,7 +231,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
         // ── 지도 (풀스크린) ──
         Positioned.fill(
           child: RestaurantKakaoMap(
-            restaurants: filtered,
+            restaurants: markerRestaurants,
             selected: _selected,
             onSelect: (r) {
               final wasSelected = _selected?.id == r.id;

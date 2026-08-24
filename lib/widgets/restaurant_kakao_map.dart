@@ -420,11 +420,15 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
         final isSelected = widget.selected?.id == r.id;
         final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
-        final desiredStyleId = r.status == '영업안함'
+        // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 개념이 없으므로
+        // "영업안함"과 같은 무채색 마커로 표시한다 (검색으로만 지도에 노출됨).
+        final desiredStyleId = !r.crowdEnabled
             ? MapMarkerIcons.styleIdForStatus('영업안함')
-            : noReport
-                ? 'pin_no_report'
-                : MapMarkerIcons.styleIdForStatus(r.status);
+            : r.status == '영업안함'
+                ? MapMarkerIcons.styleIdForStatus('영업안함')
+                : noReport
+                    ? 'pin_no_report'
+                    : MapMarkerIcons.styleIdForStatus(r.status);
         final styleId =
             KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 

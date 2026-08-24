@@ -1947,17 +1947,22 @@ class AppProvider extends ChangeNotifier {
       }
 
       if (pushConfig.peakLocalScheduleEnabled) {
+        // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 개념이 없으므로
+        // "지금 여유로워요" 류의 로컬 피크 푸시 추천 대상에서 제외한다.
+        final crowdEnabledRestaurants =
+            _restaurants.where((r) => r.crowdEnabled).toList();
         await PushNotificationService.instance.syncDeliveredAnalytics(
           lunchEnabled: lunchOn,
           dinnerEnabled: dinnerOn,
-          restaurantId:
-              pickRecommendedRestaurant(_restaurants, _useAlgorithmRanking)?.id,
+          restaurantId: pickRecommendedRestaurant(
+                  crowdEnabledRestaurants, _useAlgorithmRanking)
+              ?.id,
           config: pushConfig,
         );
         await PushNotificationService.instance.refreshSchedules(
           lunchEnabled: lunchOn,
           dinnerEnabled: dinnerOn,
-          restaurants: _restaurants,
+          restaurants: crowdEnabledRestaurants,
           useAlgorithmRanking: _useAlgorithmRanking,
           config: pushConfig,
         );

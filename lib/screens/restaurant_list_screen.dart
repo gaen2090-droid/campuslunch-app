@@ -75,11 +75,14 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   List<Restaurant> _applyFilter(List<Restaurant> all) {
     final bookmarks = context.read<AppProvider>().bookmarks;
     return all.where((r) {
+      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 상태별(바로입장가능/붐빔 등)
+      // 리스트에 안 뜬다 (docs/PLAN_two_tier_restaurants.md §6).
+      final crowdOk = r.crowdEnabled;
       final tabOk = widget.mainTab == 1 ? r.category == '카페' : r.category != '카페';
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       final bookmarkOk = !_bookmarkOnly || bookmarks.contains(r.id);
-      return tabOk && regionOk && cuisineOk && bookmarkOk;
+      return crowdOk && tabOk && regionOk && cuisineOk && bookmarkOk;
     }).toList();
   }
 

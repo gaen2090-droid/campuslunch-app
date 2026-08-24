@@ -65,6 +65,9 @@ export function RestaurantFormModal({
   const [menu, setMenu] = useState<MenuItem[]>(
     restaurant?.menu.length ? restaurant.menu : [{ name: "", price: 0 }],
   );
+  const [crowdEnabled, setCrowdEnabled] = useState(
+    restaurant?.crowdEnabled ?? true,
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState(restaurant?.imageUrl ?? "");
   const [saving, setSaving] = useState(false);
@@ -101,6 +104,7 @@ export function RestaurantFormModal({
         address: area,
         hours,
         menu: validMenu,
+        crowd_enabled: crowdEnabled,
         ...(imageUrl ? { image_url: imageUrl } : {}),
       };
       if (mode === "add") {
@@ -143,6 +147,20 @@ export function RestaurantFormModal({
         <label className="field">
           <span className="field-label">매장명 *</span>
           <input value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={crowdEnabled}
+            onChange={(e) => setCrowdEnabled(e.target.checked)}
+          />
+          <span>
+            제보 대상으로 노출{" "}
+            <span className="muted xs">
+              (끄면 맛집컬렉션 전용 매장 — 지도/홈에 안 뜨고 혼잡도 제보 기능 없음)
+            </span>
+          </span>
         </label>
 
         <div className="form-row">

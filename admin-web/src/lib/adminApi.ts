@@ -190,6 +190,7 @@ function mergeRestaurant(
     hasCrowdUpdate,
     updated,
     isActive: row.is_active !== false,
+    crowdEnabled: row.crowd_enabled !== false,
     menuPhotoUrls: Array.isArray(extra?.menu_photo_urls)
       ? (extra!.menu_photo_urls as unknown[]).map(String)
       : [],
@@ -292,6 +293,7 @@ export async function insertRestaurant(
     latitude: data.latitude ?? 0,
     longitude: data.longitude ?? 0,
     is_active: true,
+    crowd_enabled: data.crowd_enabled ?? true,
   });
 
   if (error) throw error;
@@ -307,6 +309,7 @@ export async function updateRestaurant(
   if (data.area != null) patch.area = data.area;
   if (data.address != null) patch.address = data.address;
   if (data.image_url != null) patch.image_url = data.image_url;
+  if (data.crowd_enabled != null) patch.crowd_enabled = data.crowd_enabled;
 
   if (data.hours != null || data.menu != null) {
     const { data: existing, error: fetchErr } = await supabase
@@ -329,6 +332,19 @@ export async function updateRestaurant(
   if (error) throw error;
   if (!updatedRows?.length) {
     throw new Error("매장 수정 실패: 관리자 권한을 확인하세요.");
+  }
+}
+
+/** 맛집컬렉션 전용 매장(crowd_enabled=false)을 제보 대상 매장으로 전환 */
+export async function promoteToCrowdEnabled(id: string): Promise<void> {
+  const { data: updatedRows, error } = await supabase
+    .from("restaurants")
+    .update({ crowd_enabled: true })
+    .eq("id", id)
+    .select("id");
+  if (error) throw error;
+  if (!updatedRows?.length) {
+    throw new Error("승격 실패: 관리자 권한을 확인하세요.");
   }
 }
 

@@ -153,11 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Restaurant> _filter(List<Restaurant> all) {
     final bookmarks = context.read<AppProvider>().bookmarks;
     return all.where((r) {
+      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 평소 홈 목록엔 안 뜨고
+      // 검색을 통해서만 노출한다 (docs/PLAN_two_tier_restaurants.md §6).
+      final crowdOk = r.crowdEnabled;
       final tabOk = _mainTab == 1 ? r.category == '카페' : r.category != '카페';
       final regionOk = _regions.contains(_allLabel) || _regions.contains(r.area);
       final cuisineOk = _cuisines.contains(_allLabel) || _cuisines.contains(r.category);
       final bookmarkOk = !_bookmarkOnly || bookmarks.contains(r.id);
-      return tabOk && regionOk && cuisineOk && bookmarkOk;
+      return crowdOk && tabOk && regionOk && cuisineOk && bookmarkOk;
     }).toList();
   }
 

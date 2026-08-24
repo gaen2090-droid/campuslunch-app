@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   deleteRestaurant,
   fetchRecentCrowdReports,
+  promoteToCrowdEnabled,
   totalReports,
 } from "../lib/adminApi";
 import type { AdminRestaurant, RecentCrowdReport } from "../types/restaurant";
@@ -14,6 +15,7 @@ interface Props {
 
 export function RestaurantsPage({ restaurants, onReload }: Props) {
   const [query, setQuery] = useState("");
+  const [showCollectionOnly, setShowCollectionOnly] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reportsCache, setReportsCache] = useState<
@@ -30,15 +32,18 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
     const sorted = [...restaurants].sort((a, b) =>
       a.name.localeCompare(b.name, "ko"),
     );
+    const base = showCollectionOnly
+      ? sorted
+      : sorted.filter((r) => r.crowdEnabled);
     const q = query.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter(
+    if (!q) return base;
+    return base.filter(
       (r) =>
         r.name.toLowerCase().includes(q) ||
         r.area.includes(q) ||
         r.category.includes(q),
     );
-  }, [restaurants, query]);
+  }, [restaurants, query, showCollectionOnly]);
 
   async function toggleReports(id: string) {
     if (expandedId === id) {
@@ -59,6 +64,21 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         next.delete(id);
         return next;
       });
+    }
+  }
+
+  async function handlePromote(id: string) {
+    setBusyId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      await promoteToCrowdEnabled(id);
+      setSuccess("제보 대상 매장으로 전환했어요.");
+      onReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -89,6 +109,15 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={showCollectionOnly}
+          onChange={(e) => setShowCollectionOnly(e.target.checked)}
+        />
+        <span>맛집컬렉션 전용 매장 포함 전체 보기</span>
+      </label>
 
       <button
         type="button"
@@ -123,6 +152,9 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                     </div>
                     {!r.isActive && (
                       <p className="inactive-tag">DB 비활성 (삭제 대상)</p>
+                    )}
+                    {!r.crowdEnabled && (
+                      <p className="inactive-tag">맛집컬렉션 전용 (제보 미지원)</p>
                     )}
                     <p className="muted sm">
                       {r.area} · {r.category}
@@ -173,6 +205,16 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                     </div>
                   </div>
                   <div className="card-actions">
+                    {!r.crowdEnabled && (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        disabled={busyId === r.id}
+                        onClick={() => handlePromote(r.id)}
+                      >
+                        제보 대상으로 전환
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="icon-btn"

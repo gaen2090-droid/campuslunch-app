@@ -25,6 +25,8 @@ export interface AdminRestaurant {
   hasCrowdUpdate: boolean;
   updated: number;
   isActive: boolean;
+  /** 제보 대상 매장 여부. false면 맛집컬렉션 전용(혼잡도 제보 기능 없음). */
+  crowdEnabled: boolean;
   /** 사장님이 직접 등록한 메뉴 사진 (최대 3장) */
   menuPhotoUrls?: string[];
   /** 대표사진(imageUrl) 출처. 'owner' | 'google' */
@@ -58,4 +60,6 @@ export interface RestaurantFormData {
   menu_photo_urls?: string[];
   image_source?: string;
   owner_notice?: string;
+  /** 제보 대상 매장 여부. 기본 true. false로 등록하면 맛집컬렉션 전용 매장이 된다. */
+  crowd_enabled?: boolean;
 }

@@ -45,6 +45,8 @@ class Restaurant {
   final DateTime? ownerUpdatedAt;
   /// DB is_active. 일반 앱 목록은 true 만 로드, 어드민은 false 포함 가능.
   final bool isActive;
+  /// DB crowd_enabled. false면 맛집컬렉션 전용 매장 — 지도/홈 평소 목록·혼잡도 제보 기능 없음.
+  final bool crowdEnabled;
   /// 사장님이 직접 등록한 메뉴 사진 (최대 3장)
   final List<String> menuPhotoUrls;
   /// 대표사진(imageUrl) 출처. 'owner' | 'google' (기본값 'google')
@@ -84,6 +86,7 @@ class Restaurant {
     this.createdAt,
     this.ownerUpdatedAt,
     this.isActive = true,
+    this.crowdEnabled = true,
     this.menuPhotoUrls = const [],
     this.imageSource = 'google',
     this.googleImageUrl = '',
@@ -135,6 +138,7 @@ class Restaurant {
         createdAt: createdAt,
         ownerUpdatedAt: ownerUpdatedAt,
         isActive: isActive,
+        crowdEnabled: crowdEnabled,
         menuPhotoUrls: menuPhotoUrls ?? this.menuPhotoUrls,
         imageSource: imageSource ?? this.imageSource,
         googleImageUrl: googleImageUrl ?? this.googleImageUrl,

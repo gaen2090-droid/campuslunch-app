@@ -509,6 +509,7 @@ class SupabaseRestaurantRepository {
           'latitude': (data['latitude'] as num?)?.toDouble() ?? 0,
           'longitude': (data['longitude'] as num?)?.toDouble() ?? 0,
           'is_active': true,
+          'crowd_enabled': data['crowd_enabled'] as bool? ?? true,
         })
         .select()
         .single();
@@ -522,6 +523,9 @@ class SupabaseRestaurantRepository {
     if (data.containsKey('area')) patch['area'] = data['area'];
     if (data.containsKey('address')) patch['address'] = data['address'];
     if (data.containsKey('image_url')) patch['image_url'] = data['image_url'];
+    if (data.containsKey('crowd_enabled')) {
+      patch['crowd_enabled'] = data['crowd_enabled'];
+    }
 
     if (data.containsKey('hours') || data.containsKey('menu')) {
       final existing = await _client
@@ -721,6 +725,7 @@ class SupabaseRestaurantRepository {
           : null,
       ownerUpdatedAt: ownerUpdatedAt,
       isActive: row['is_active'] as bool? ?? true,
+      crowdEnabled: row['crowd_enabled'] as bool? ?? true,
       menuPhotoUrls: menuPhotoUrls,
       imageSource: extra?['image_source'] as String? ?? 'google',
       googleImageUrl: extra?['google_image_url'] as String? ?? '',
