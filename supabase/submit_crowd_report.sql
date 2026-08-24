@@ -6,13 +6,20 @@
 -- 이후 제보 규칙을 바꿀 때도 여기만 수정할 것.
 --
 -- user_suspension.sql을 먼저 실행해 is_report_suspended()가 있어야 한다.
+-- trust_abuse: metadata에 device_install_id / app_session_id (선택).
+
+-- 오버로드 충돌 방지 (인자 개수가 다른 옛 정의 제거)
+drop function if exists public.submit_crowd_report(uuid, text, text, double precision, double precision);
+drop function if exists public.submit_crowd_report(uuid, text, text, double precision, double precision, text, text);
 
 create or replace function public.submit_crowd_report(
   p_restaurant_id uuid,
   p_status        text,
   p_source        text default 'user',
   p_lat           double precision default null,
-  p_lng           double precision default null
+  p_lng           double precision default null,
+  p_device_install_id text default null,
+  p_app_session_id    text default null
 )
 returns jsonb
 language plpgsql
@@ -32,6 +39,7 @@ declare
   v_session_start timestamptz;
   v_had_report_this_session boolean;
   v_stamp_count int;
+  v_meta jsonb;
 begin
   if v_uid is null then
     raise exception '로그인이 필요해요.';
@@ -114,6 +122,23 @@ begin
     ) into v_had_report_this_session;
   end if;
 
+  v_meta := jsonb_build_object(
+    'status', p_status,
+    'user_id', v_uid::text,
+    'lat', p_lat,
+    'lng', p_lng
+  );
+  if nullif(trim(coalesce(p_device_install_id, '')), '') is not null then
+    v_meta := v_meta || jsonb_build_object(
+      'device_install_id', trim(p_device_install_id)
+    );
+  end if;
+  if nullif(trim(coalesce(p_app_session_id, '')), '') is not null then
+    v_meta := v_meta || jsonb_build_object(
+      'app_session_id', trim(p_app_session_id)
+    );
+  end if;
+
   insert into public.crowd_reports (
     restaurant_id, level, source, user_id, metadata
   ) values (
@@ -121,12 +146,7 @@ begin
     v_level,
     v_source,
     v_uid,
-    jsonb_build_object(
-      'status', p_status,
-      'user_id', v_uid::text,
-      'lat', p_lat,
-      'lng', p_lng
-    )
+    v_meta
   );
 
   if p_source = 'user' then
@@ -144,10 +164,11 @@ begin
 end;
 $$;
 
-grant execute on function public.submit_crowd_report(uuid, text, text, double precision, double precision)
-  to authenticated;
+grant execute on function public.submit_crowd_report(
+  uuid, text, text, double precision, double precision, text, text
+) to authenticated;
 
 comment on function public.submit_crowd_report is
-  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운. 디버그 빌드는 클라이언트가 매장 좌표를 보내 거리 0m.';
+  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운. metadata에 device_install_id·app_session_id 선택.';
 
 select 'submit_crowd_report.sql ok' as status;

@@ -15,6 +15,11 @@
 | **Web** | Supabase + Android `serverClientId` | — |
 
 > **중요:** Supabase Google Provider의 **Client ID**와 `.env`의 `GOOGLE_OAUTH_WEB_CLIENT_ID`는 **웹 Client ID**여야 합니다.
+>
+> 로그인 OAuth 정본은 Google Cloud **`928162840381`** (웹 `…720sip4u…`, iOS·Android 클라이언트).
+> Firebase(`campuslunch-e5a2c` / `891082373643`)는 FCM 등용이며, `google-services.json`의 웹 ID와 달라도
+> 앱은 `.env`의 `serverClientId`(928162 웹)를 사용한다. Play 로그인은 **928162** Android 클라이언트
+> (`com.campuslunch.app` + 앱 서명 SHA-1)가 맞는지가 핵심이다.
 
 ### Android SHA-1 등록
 

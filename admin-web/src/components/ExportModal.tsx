@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { fetchRewardSpendReport, type RewardSpendReport } from "../lib/adminApi";
+import {
+  fetchRewardSpendReport,
+  type RewardSpendReport,
+} from "../lib/adminApi";
 import {
   buildMetricsTsvForClipboard,
   downloadMetricsExcel,
@@ -7,6 +10,7 @@ import {
   fmtDate,
   type ExportSection,
 } from "../lib/excelExport";
+import { errorMessage } from "../lib/errors";
 import type { AdminRestaurant } from "../types/restaurant";
 import type { DashboardMetrics } from "../types/metrics";
 import { Modal } from "./Modal";
@@ -46,28 +50,42 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
     });
   }
 
-  async function buildParams() {
-    const needReward = selected.has("리워드 지출");
-    let rewardSpend: RewardSpendReport | null = null;
-    let rewardFetchFailed = false;
-    if (needReward) {
-      try {
-        rewardSpend = await fetchRewardSpendReport();
-      } catch (e) {
-        // 리워드 지출 집계 하나가 실패해도 나머지 섹션은 내보낼 수 있어야 한다 —
-        // 여기서 던지면 선택한 다른 섹션까지 전부 실패로 처리된다.
-        rewardFetchFailed = true;
-        console.error("[ExportModal] fetchRewardSpendReport failed:", e);
-      }
+  async function loadRewardSpend(): Promise<{
+    report: RewardSpendReport | null;
+    warning: string | null;
+  }> {
+    if (!selected.has("리워드 지출")) {
+      return { report: null, warning: null };
     }
+    try {
+      return { report: await fetchRewardSpendReport(), warning: null };
+    } catch (e) {
+      // 리워드 집계 실패해도 나머지 섹션은 내보낼 수 있어야 함
+      console.error("[ExportModal] fetchRewardSpendReport failed:", e);
+      return {
+        report: {
+          totalRewardCount: 0,
+          totalAmountKrw: 0,
+          attributedCount: 0,
+          unattributedCount: 0,
+          missingFaceValueCount: 0,
+          users: [],
+        },
+        warning: `리워드 지출 조회 실패 · 나머지 시트만 포함 (${errorMessage(e)})`,
+      };
+    }
+  }
+
+  async function buildParams() {
+    const { report: rewardSpend, warning } = await loadRewardSpend();
     return {
-      startDate: start,
-      endDate: end,
+      startDate: Number.isFinite(start.getTime()) ? start : new Date(),
+      endDate: Number.isFinite(end.getTime()) ? end : new Date(),
       sections: selected,
       metrics,
       restaurants,
       rewardSpend,
-      rewardFetchFailed,
+      warning,
     };
   }
 
@@ -75,19 +93,20 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
     setBusy(true);
     setHint(null);
     try {
-      const { rewardFetchFailed, ...params } = await buildParams();
+      const params = await buildParams();
+      const { warning, ...exportParams } = params;
       await downloadMetricsExcel(
-        `campuslunch_${fmtDate(start)}_${fmtDate(end)}.xlsx`,
-        params,
+        `campuslunch_${fmtDate(exportParams.startDate)}_${fmtDate(exportParams.endDate)}.xlsx`,
+        exportParams,
       );
-      if (rewardFetchFailed) {
-        setHint("리워드 지출 조회 실패 · 나머지 항목은 내보냈어요.");
+      if (warning) {
+        setHint(warning);
         window.setTimeout(() => setHint(null), 4000);
-      } else {
-        onClose();
+        return;
       }
+      onClose();
     } catch (e) {
-      setHint(e instanceof Error ? e.message : "엑셀 내보내기 실패");
+      setHint(errorMessage(e) || "엑셀 내보내기 실패");
     } finally {
       setBusy(false);
     }
@@ -97,22 +116,26 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
     setBusy(true);
     setHint(null);
     try {
-      const { rewardFetchFailed: _rewardFetchFailed, ...params } =
-        await buildParams();
-      const tsv = await buildMetricsTsvForClipboard(params);
+      const params = await buildParams();
+      const { warning, ...exportParams } = params;
+      const tsv = await buildMetricsTsvForClipboard(exportParams);
       await navigator.clipboard.writeText(tsv);
-      setHint("클립보드에 복사됨 · 엑셀/시트에서 Ctrl/Cmd+V");
-      window.setTimeout(() => setHint(null), 2500);
-    } catch {
-      setHint("복사 실패 · 엑셀 다운로드를 이용해 주세요");
-      window.setTimeout(() => setHint(null), 2500);
+      setHint(
+        warning
+          ? `${warning} · 표는 클립보드에 복사됨`
+          : "클립보드에 복사됨 · 엑셀/시트에서 Ctrl/Cmd+V",
+      );
+      window.setTimeout(() => setHint(null), 3500);
+    } catch (e) {
+      setHint(`복사 실패 · ${errorMessage(e)}`);
+      window.setTimeout(() => setHint(null), 3500);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="지표 내보내기" onClose={onClose}>
+    <Modal title="핵심 지표 내보내기" onClose={onClose}>
       <p className="field-label">기간</p>
       <div className="date-row">
         <input
@@ -132,9 +155,8 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
       </div>
 
       <p className="muted xs" style={{ marginBottom: 12 }}>
-        선택한 항목이 <strong>엑셀 시트</strong>로 나뉩니다. DAU는 기준일, MAU는
-        매월 1일 갱신으로 표기됩니다. 리워드 지출은 유저별 수령 개수·액수와 총합이
-        포함됩니다.
+        DAU/MAU·제보·리워드 등 <strong>핵심 지표</strong>용입니다. 신뢰·어뷰징
+        원본 수치는 <strong>신뢰·어뷰징</strong> 탭에서 따로 내보내세요.
       </p>
 
       <div className="export-actions">

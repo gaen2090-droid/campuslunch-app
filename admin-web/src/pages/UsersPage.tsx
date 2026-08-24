@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Modal } from "../components/Modal";
+import { TrustProfileButton } from "../components/TrustUserProfile";
 import {
   purgeAdminUserById,
   setCommunitySuspension,
@@ -272,55 +273,61 @@ export function UsersPage({
                   {u.provider && <span>{u.provider}</span>}
                 </div>
               </div>
-              {u.role !== "admin" && (
-                <div className="user-row-actions" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {isSuspensionActive(u.communitySuspendedUntil) ? (
+              <div
+                className="user-row-actions"
+                style={{ display: "flex", flexDirection: "column", gap: 6 }}
+              >
+                <TrustProfileButton userId={u.id} nickname={u.nickname} />
+                {u.role !== "admin" && (
+                  <>
+                    {isSuspensionActive(u.communitySuspendedUntil) ? (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => void unsuspend(u, "community")}
+                      >
+                        커뮤니티 정지 해제
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => openSuspend(u, "community")}
+                      >
+                        커뮤니티 정지
+                      </button>
+                    )}
+                    {isSuspensionActive(u.reportSuspendedUntil) ? (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => void unsuspend(u, "report")}
+                      >
+                        제보 정지 해제
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => openSuspend(u, "report")}
+                      >
+                        제보 정지
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className="btn ghost sm"
-                      onClick={() => void unsuspend(u, "community")}
+                      className="btn danger sm"
+                      onClick={() => {
+                        setSuccess(null);
+                        setActionError(null);
+                        setDeleteTarget(u);
+                      }}
                     >
-                      커뮤니티 정지 해제
+                      완전 삭제
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      onClick={() => openSuspend(u, "community")}
-                    >
-                      커뮤니티 정지
-                    </button>
-                  )}
-                  {isSuspensionActive(u.reportSuspendedUntil) ? (
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      onClick={() => void unsuspend(u, "report")}
-                    >
-                      제보 정지 해제
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      onClick={() => openSuspend(u, "report")}
-                    >
-                      제보 정지
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn danger sm"
-                    onClick={() => {
-                      setSuccess(null);
-                      setActionError(null);
-                      setDeleteTarget(u);
-                    }}
-                  >
-                    완전 삭제
-                  </button>
-                </div>
-              )}
+                  </>
+                )}
+              </div>
             </li>
           ))}
         </ul>

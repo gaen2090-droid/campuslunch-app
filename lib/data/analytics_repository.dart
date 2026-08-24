@@ -115,6 +115,63 @@ class AnalyticsRepository {
     }
   }
 
+  Future<void> recordReportAttempt({
+    required String restaurantId,
+    required bool success,
+    String? failReason,
+    String? deviceInstallId,
+    String? appSessionId,
+    double? latitude,
+    double? longitude,
+    String source = 'user',
+    String? status,
+  }) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    try {
+      await _client.rpc(
+        'record_report_attempt',
+        params: {
+          'p_restaurant_id': restaurantId,
+          'p_outcome': success ? 'success' : 'fail',
+          'p_fail_reason': failReason,
+          'p_device_install_id': deviceInstallId,
+          'p_app_session_id': appSessionId,
+          'p_lat': latitude,
+          'p_lng': longitude,
+          'p_source': source,
+          'p_status': status,
+          'p_metadata': <String, dynamic>{},
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] recordReportAttempt: $e\n$st');
+    }
+  }
+
+  Future<void> recordScreenDwell({
+    required String screen,
+    required int dwellMs,
+    String? appSessionId,
+  }) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    if (dwellMs < 2000) return;
+    try {
+      await _client.rpc(
+        'record_screen_dwell',
+        params: {
+          'p_screen': screen,
+          'p_dwell_ms': dwellMs,
+          'p_app_session_id': appSessionId,
+          'p_metadata': <String, dynamic>{},
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] recordScreenDwell: $e\n$st');
+    }
+  }
+
   Future<void> _recordBanner(String event, String restaurantId) async {
     if (!SupabaseService.isReady) return;
     if (_client.auth.currentUser == null) return;

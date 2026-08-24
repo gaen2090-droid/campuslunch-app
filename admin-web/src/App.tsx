@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { ExportModal } from "./components/ExportModal";
 import { Layout } from "./components/Layout";
 import type { AdminTab } from "./components/Tabs";
+import { TrustExportModal } from "./components/TrustExportModal";
 import { useAuth } from "./hooks/useAuth";
 import { useCollections } from "./hooks/useCollections";
 import { useCommunity } from "./hooks/useCommunity";
@@ -9,6 +10,10 @@ import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
 import { useMetrics } from "./hooks/useMetrics";
 import { useRestaurants } from "./hooks/useRestaurants";
+import { useOwnerApplications } from "./hooks/useOwnerApplications";
+import { usePushConfig } from "./hooks/usePushConfig";
+import { useTrustSignals } from "./hooks/useTrustAbuse";
+import { useUsers } from "./hooks/useUsers";
 import { CollectionsPage } from "./pages/CollectionsPage";
 import { CommunityAdminPage } from "./pages/CommunityAdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -20,16 +25,15 @@ import { OwnerApplicationsPage } from "./pages/OwnerApplicationsPage";
 import { PopularityPage } from "./pages/PopularityPage";
 import { PushSettingsPage } from "./pages/PushSettingsPage";
 import { RestaurantsPage } from "./pages/RestaurantsPage";
+import { TrustSignalsPage } from "./pages/TrustAbusePage";
 import { UsersPage } from "./pages/UsersPage";
-import { useOwnerApplications } from "./hooks/useOwnerApplications";
-import { usePushConfig } from "./hooks/usePushConfig";
-import { useUsers } from "./hooks/useUsers";
 
 export default function App() {
   const auth = useAuth();
   const enabled = auth.isAdmin && !auth.loading;
   const [tab, setTab] = useState<AdminTab>("metrics");
   const [showExport, setShowExport] = useState(false);
+  const [showTrustExport, setShowTrustExport] = useState(false);
 
   const metricsState = useMetrics(enabled);
   const restaurantsState = useRestaurants(enabled);
@@ -38,6 +42,9 @@ export default function App() {
   const communityState = useCommunity(enabled && tab === "community");
   const collectionsState = useCollections(enabled && tab === "collections");
   const usersState = useUsers(enabled && tab === "users");
+  const trustSignalsState = useTrustSignals(
+    enabled && tab === "trust_signals",
+  );
   const pushConfigState = usePushConfig(enabled && tab === "push");
   const ownerApplicationsState = useOwnerApplications(
     enabled && tab === "owner_applications",
@@ -52,6 +59,7 @@ export default function App() {
       tab === "community" ? communityState.reload() : Promise.resolve(),
       tab === "collections" ? collectionsState.reload() : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
+      tab === "trust_signals" ? trustSignalsState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
       tab === "owner_applications"
         ? ownerApplicationsState.reload()
@@ -65,6 +73,7 @@ export default function App() {
     communityState,
     collectionsState,
     usersState,
+    trustSignalsState,
     pushConfigState,
     ownerApplicationsState,
     tab,
@@ -90,7 +99,9 @@ export default function App() {
       if (!metricsState.metrics) {
         return (
           <div className="center-msg">
-            {metricsState.loading ? "지표 불러오는 중…" : "지표를 불러올 수 없습니다."}
+            {metricsState.loading
+              ? "지표 불러오는 중…"
+              : "지표를 불러올 수 없습니다."}
           </div>
         );
       }
@@ -206,6 +217,19 @@ export default function App() {
       );
     }
 
+    if (tab === "trust_signals") {
+      return (
+        <TrustSignalsPage
+          report={trustSignalsState.report}
+          days={trustSignalsState.days}
+          loading={trustSignalsState.loading}
+          error={trustSignalsState.error}
+          onReload={trustSignalsState.reload}
+          onExport={() => setShowTrustExport(true)}
+        />
+      );
+    }
+
     if (tab === "push") {
       return (
         <PushSettingsPage
@@ -249,6 +273,7 @@ export default function App() {
           if (next === "community") communityState.reload();
           if (next === "collections") collectionsState.reload();
           if (next === "users") usersState.reload();
+          if (next === "trust_signals") trustSignalsState.reload();
           if (next === "push") pushConfigState.reload();
           if (next === "owner_applications") ownerApplicationsState.reload();
         }}
@@ -266,6 +291,14 @@ export default function App() {
           metrics={metricsState.metrics}
           restaurants={restaurantsState.restaurants}
           onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {showTrustExport && trustSignalsState.report && (
+        <TrustExportModal
+          report={trustSignalsState.report}
+          days={trustSignalsState.days}
+          onClose={() => setShowTrustExport(false)}
         />
       )}
     </>

@@ -343,10 +343,13 @@ def build(pdf: GuidePDF) -> None:
     pdf.section("5.4 관리자", 2)
     pdf.code(
         "login admin/admin123 (debug) 또는 Supabase role=admin\n"
-        "  -> AdminScreen\n"
+        "  -> AdminScreen / admin-web\n"
         "  -> fetchMetrics (admin_dashboard_metrics)\n"
         "  -> 매장 CRUD, owner_code 생성, manual_rank, owner_influence\n"
-        "  -> AdminMapRegisterTab + PlacesService (Google Places)"
+        "  -> AdminMapRegisterTab + PlacesService (Google Places)\n"
+        "  -> 신뢰·어뷰징: admin_trust_signals_report (원본 수치, 점수 없음)\n"
+        "  -> 회원 관리 → 신뢰·어뷰징 지표 / 별도 엑셀 카테고리\n"
+        "  -> 지표 엑셀: 리워드는 admin_reward_spend_report 서버 집계본"
     )
 
     pdf.section("5.5 푸시·북마크·홈", 2)
@@ -427,6 +430,9 @@ def build(pdf: GuidePDF) -> None:
         "15. submit_crowd_report.sql   제보 RPC 정본\n"
         "16. hotfix_prelaunch_audit_fixes.sql  grant 회수·약관·푸시\n"
         "17. community_block.sql       차단 테이블·피드/댓글 필터\n"
+        "18. hotfix_admin_reward_spend_aggregate.sql  리워드 엑셀 집계\n"
+        "19. trust_abuse_scoring.sql   신뢰/어뷰징 + screen_dwell\n"
+        "    (이후 submit_crowd_report.sql 재실행: device/session metadata)\n"
         "\n"
         "crowd_status.sql 하단: Realtime publication 추가 블록 (재실행)\n"
         "schema.sql — 문서용 (실행 X)\n"
@@ -434,8 +440,8 @@ def build(pdf: GuidePDF) -> None:
     )
     pdf.body(
         "주요 테이블: users, restaurants, crowd_reports, crowd_status, "
-        "owner_seat_updates, analytics_events, gifticons, system_settings, "
-        "community_blocks."
+        "owner_seat_updates, analytics_events, report_attempts, gifticons, "
+        "system_settings, community_blocks."
     )
 
     pdf.add_page()
@@ -501,9 +507,12 @@ def build(pdf: GuidePDF) -> None:
         "                        my_blocked_users (차단 관리)\n"
         "FeedbackRepository      app_feedback INSERT\n"
         "AnalyticsRepository     analytics_events (INSERT)\n"
+        "                        RPC: record_app_session, record_screen_dwell,\n"
+        "                             record_report_attempt\n"
         "RewardRepository        gifticons, RPC: redeem_gifticon,\n"
         "                        storage signed URL\n"
-        "Push (간접)             RPC: record_push_event"
+        "Push (간접)             RPC: record_push_event\n"
+        "Admin trust             RPC: admin_trust_abuse_report"
     )
 
     pdf.section("7.3 RLS·보안", 2)
@@ -745,6 +754,10 @@ def build(pdf: GuidePDF) -> None:
 
     pdf.section("12. 최근 주요 변경 요약", 1)
     pdf.body(
+        "[신뢰·어뷰징 수집] trust_abuse_scoring.sql — 점수 없이 원본 수치만\n"
+        "  같매장 제보 간격(분), 이동거리(m), 구역전환, 기기공유, 시도실패, 체류ms\n"
+        "  어드민: 회원 관리 → 신뢰·어뷰징 지표 / 별도 엑셀 카테고리\n"
+        "[엑셀] admin_reward_spend_report 서버 집계 — 전체 내보내기 타임아웃 수정\n"
         "[75aa50a] 제보 제한 AppProvider 전담, kDebugMode 우회, GPS 150m\n"
         "  어드민 제보 제한 Supabase 토글 제거, 24h 영업 business_hours 수정\n"
         "  Realtime publication SQL, 스탬프 일일 한도 3 (rewards_daily_cap_to_3.sql)\n"

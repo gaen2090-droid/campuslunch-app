@@ -10,6 +10,8 @@ import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
 import '../constants/legal_terms.dart';
 import '../utils/nickname_generator.dart';
+import '../utils/app_session_id.dart';
+import '../utils/device_install_id.dart';
 import '../data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/community_repository.dart';
@@ -429,6 +431,7 @@ class AppProvider extends ChangeNotifier {
   int? _pendingRestaurantLinkNo;
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
   final Map<String, DateTime> _lastReportTime = {};
+  DateTime _tabEnteredAt = DateTime.now();
   final ProfileRepository _profileRepo = ProfileRepository();
   final AuthRepository _authRepo = AuthRepository();
   final AnalyticsRepository _analyticsRepo = AnalyticsRepository();
@@ -1747,9 +1750,42 @@ class AppProvider extends ChangeNotifier {
     final max = 3;
     final next = index.clamp(0, max);
     if (_mainTabIndex == next) return;
+    _flushTabDwell(_mainTabIndex);
     _mainTabIndex = next;
+    _tabEnteredAt = DateTime.now();
     notifyListeners();
     unawaited(_refreshForMainTab(next));
+  }
+
+  String _screenNameForTab(int index) {
+    if (hasOwnerTab) {
+      return switch (index) {
+        0 => 'owner_report',
+        1 => 'owner_store',
+        2 => 'community',
+        3 => 'my',
+        _ => 'unknown',
+      };
+    }
+    return switch (index) {
+      0 => 'home',
+      1 => 'map',
+      2 => 'community',
+      3 => 'my',
+      _ => 'unknown',
+    };
+  }
+
+  void _flushTabDwell(int tabIndex) {
+    final ms = DateTime.now().difference(_tabEnteredAt).inMilliseconds;
+    if (ms < 2000) return;
+    unawaited(
+      _analyticsRepo.recordScreenDwell(
+        screen: _screenNameForTab(tabIndex),
+        dwellMs: ms,
+        appSessionId: getAppSessionId(),
+      ),
+    );
   }
 
   void openHomeFromPush([String? restaurantId]) {
@@ -1944,16 +1980,31 @@ class AppProvider extends ChangeNotifier {
     final authUser = SupabaseService.client.auth.currentUser;
 
     if (repo != null && authUser != null) {
+      final deviceId = await getOrCreateDeviceInstallId();
+      final sessionId = getAppSessionId();
+      String source = 'user';
+      double? attemptLat;
+      double? attemptLng;
       try {
         final isOwnerReport = _ownsRestaurant(restaurantId);
-        final source = isOwnerReport ? 'owner' : 'user';
+        source = isOwnerReport ? 'owner' : 'user';
 
         // 사장님은 5분 제한 없음. 디버그 빌드(flutter run)는 테스트 위해 제한 우회.
         if (source == 'user' && !kDebugMode) {
           final last = _lastReportTime[restaurantId];
           if (last != null &&
               DateTime.now().difference(last).inMinutes < 5) {
-            return '방금 제보한 매장이에요.\n잠시 후 다시 제보해주세요.';
+            final msg = '방금 제보한 매장이에요.\n잠시 후 다시 제보해주세요.';
+            unawaited(_analyticsRepo.recordReportAttempt(
+              restaurantId: restaurantId,
+              success: false,
+              failReason: 'client_cooldown',
+              deviceInstallId: deviceId,
+              appSessionId: sessionId,
+              source: source,
+              status: status,
+            ));
+            return msg;
           }
         }
         // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
@@ -1962,7 +2013,20 @@ class AppProvider extends ChangeNotifier {
           restaurantId,
           tooFarMessage: '매장 근처에서만 혼잡도를 제보할 수 있어요.',
         );
-        if (gpsErr != null) return gpsErr;
+        if (gpsErr != null) {
+          unawaited(_analyticsRepo.recordReportAttempt(
+            restaurantId: restaurantId,
+            success: false,
+            failReason: gpsErr,
+            deviceInstallId: deviceId,
+            appSessionId: sessionId,
+            source: source,
+            status: status,
+          ));
+          return gpsErr;
+        }
+        attemptLat = coords!.lat;
+        attemptLng = coords.lng;
 
         final stampResult = await repo.reportStatusWithStamp(
           restaurantId,
@@ -1970,8 +2034,10 @@ class AppProvider extends ChangeNotifier {
           source: source,
           userId: authUser.id,
           nickname: _nickname,
-          latitude: coords!.lat,
+          latitude: coords.lat,
           longitude: coords.lng,
+          deviceInstallId: deviceId,
+          appSessionId: sessionId,
         );
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
@@ -1979,6 +2045,17 @@ class AppProvider extends ChangeNotifier {
         } else {
           _lastStampResult = StampResult.none;
         }
+
+        unawaited(_analyticsRepo.recordReportAttempt(
+          restaurantId: restaurantId,
+          success: true,
+          deviceInstallId: deviceId,
+          appSessionId: sessionId,
+          latitude: attemptLat,
+          longitude: attemptLng,
+          source: source,
+          status: status,
+        ));
 
         // 제보(RPC)는 이미 커밋됨 — 이후 부수 작업이 실패해도 "제보 실패"로 보이면 안 됨
         try {
@@ -1998,11 +2075,34 @@ class AppProvider extends ChangeNotifier {
         return null;
       } on PostgrestException catch (e) {
         debugPrint('[Supabase] reportStatus failed: ${e.message}');
-        final msg = e.message.trim();
-        if (msg.isNotEmpty) return msg;
-        return '제보에 실패했어요. 잠시 후 다시 시도해주세요.';
+        final msg = e.message.trim().isNotEmpty
+            ? e.message.trim()
+            : '제보에 실패했어요. 잠시 후 다시 시도해주세요.';
+        unawaited(_analyticsRepo.recordReportAttempt(
+          restaurantId: restaurantId,
+          success: false,
+          failReason: msg,
+          deviceInstallId: deviceId,
+          appSessionId: sessionId,
+          latitude: attemptLat,
+          longitude: attemptLng,
+          source: source,
+          status: status,
+        ));
+        return msg;
       } catch (e, st) {
         debugPrint('[Supabase] reportStatus failed: $e\n$st');
+        unawaited(_analyticsRepo.recordReportAttempt(
+          restaurantId: restaurantId,
+          success: false,
+          failReason: e.toString(),
+          deviceInstallId: deviceId,
+          appSessionId: sessionId,
+          latitude: attemptLat,
+          longitude: attemptLng,
+          source: source,
+          status: status,
+        ));
         return '제보에 실패했어요. 잠시 후 다시 시도해주세요.';
       }
     }

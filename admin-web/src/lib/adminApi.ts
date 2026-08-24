@@ -22,6 +22,12 @@ import {
 } from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
 import {
+  parseTrustSignalsReport,
+  parseTrustSignalsUserDetail,
+  type TrustSignalsReport,
+  type TrustSignalsUserDetail,
+} from "../types/trustAbuse";
+import {
   parseBannedWord,
   parseCommunityNoticeAdmin,
   parseCommunityPostAdmin,
@@ -193,12 +199,14 @@ function mergeRestaurant(
 }
 
 export function totalReports(r: AdminRestaurant): number {
-  return Object.values(r.reports).reduce((a, b) => a + b, 0);
+  const reports = r.reports ?? {};
+  return Object.values(reports).reduce((a, b) => a + (Number(b) || 0), 0);
 }
 
 export async function fetchAdminRestaurants(): Promise<AdminRestaurant[]> {
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDay());
+  // getDate() = 일(1–31). getDay()는 요일(0–6)이라 오늘 시작이 잘못 잡히던 버그.
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(todayStart);
   weekAgo.setDate(weekAgo.getDate() - 6);
 
@@ -692,6 +700,33 @@ export async function fetchRewardSpendReport(): Promise<RewardSpendReport> {
     data && typeof data === "object" && !Array.isArray(data)
       ? (data as Record<string, unknown>)
       : {};
+
+  // 신버전 RPC: 서버에서 유저별 집계된 users 배열 (+ totals)
+  if (Array.isArray(map.users)) {
+    const users: RewardSpendUserRow[] = map.users
+      .filter((u): u is Record<string, unknown> => !!u && typeof u === "object")
+      .map((u) => ({
+        userId: String(u.user_id ?? u.userId ?? ""),
+        nickname: String(u.nickname ?? ""),
+        email: String(u.email ?? ""),
+        rewardCount: Number(u.reward_count ?? u.rewardCount ?? 0) || 0,
+        amountKrw: Number(u.amount_krw ?? u.amountKrw ?? 0) || 0,
+      }))
+      .filter((u) => u.userId.length > 0)
+      .sort(
+        (a, b) => b.rewardCount - a.rewardCount || b.amountKrw - a.amountKrw,
+      );
+    return {
+      totalRewardCount: Number(map.total_reward_count ?? 0) || 0,
+      totalAmountKrw: Number(map.total_amount_krw ?? 0) || 0,
+      attributedCount: Number(map.attributed_count ?? 0) || 0,
+      unattributedCount: Number(map.unattributed_count ?? 0) || 0,
+      missingFaceValueCount: Number(map.missing_face_value_count ?? 0) || 0,
+      users,
+    };
+  }
+
+  // 구버전 RPC 호환: gifts 원본 → 클라이언트 집계 (대량 시 타임아웃/용량 이슈 가능)
   const giftsRaw = Array.isArray(map.gifts) ? map.gifts : [];
 
   type Agg = {
@@ -761,6 +796,28 @@ export async function fetchRewardSpendReport(): Promise<RewardSpendReport> {
     missingFaceValueCount,
     users,
   };
+}
+
+export async function fetchTrustSignalsReport(
+  days = 30,
+): Promise<TrustSignalsReport> {
+  const { data, error } = await supabase.rpc("admin_trust_signals_report", {
+    p_days: days,
+  });
+  if (error) throw error;
+  return parseTrustSignalsReport(data);
+}
+
+export async function fetchTrustSignalsUserDetail(
+  userId: string,
+  days = 30,
+): Promise<TrustSignalsUserDetail> {
+  const { data, error } = await supabase.rpc("admin_trust_signals_user", {
+    p_user_id: userId,
+    p_days: days,
+  });
+  if (error) throw error;
+  return parseTrustSignalsUserDetail(data);
 }
 
 export async function deleteGifticon(id: string): Promise<void> {

@@ -4,6 +4,7 @@ import type { DashboardMetrics } from "../types/metrics";
 import type { RewardSpendReport } from "./adminApi";
 import { totalReports } from "./adminApi";
 import { last6MonthLabels, last7DayLabels } from "./metrics";
+import type { TrustSignalsReport } from "../types/trustAbuse";
 
 export const EXPORT_SECTIONS = [
   "사용자 지표",
@@ -17,6 +18,16 @@ export const EXPORT_SECTIONS = [
 ] as const;
 
 export type ExportSection = (typeof EXPORT_SECTIONS)[number];
+
+/** 핵심 지표와 목적이 다른 신뢰·어뷰징 원본 수집용 */
+export const TRUST_EXPORT_SHEETS = [
+  "유저 요약",
+  "같매장 간격(분)",
+  "이동거리(m)",
+  "구역 전환",
+] as const;
+
+export type TrustExportSheet = (typeof TRUST_EXPORT_SHEETS)[number];
 
 const AREA_ORDER = ["정문", "중문", "후문"] as const;
 
@@ -109,7 +120,8 @@ function sortedRestaurants(list: AdminRestaurant[]): AdminRestaurant[] {
 }
 
 function reportCount(r: AdminRestaurant, ...keys: string[]): number {
-  return keys.reduce((sum, k) => sum + (r.reports[k] ?? 0), 0);
+  const reports = r.reports ?? {};
+  return keys.reduce((sum, k) => sum + (Number(reports[k]) || 0), 0);
 }
 
 function sheetName(label: string): string {
@@ -587,6 +599,191 @@ export async function buildMetricsWorkbook(
   return wb;
 }
 
+export interface TrustExportParams {
+  days: number;
+  sheets: Set<TrustExportSheet>;
+  report: TrustSignalsReport;
+}
+
+export async function buildTrustSignalsWorkbook(
+  params: TrustExportParams,
+): Promise<Workbook> {
+  const ExcelJS = await loadExcelJS();
+  const { days, sheets, report } = params;
+  const exportedAt = fmtDateTime(new Date());
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "CampusLunch Admin";
+  wb.created = new Date();
+
+  const meta: Array<[string, string]> = [
+    ["카테고리", "신뢰·어뷰징 수집 지표 (점수/판정 없음)"],
+    ["집계 기간", `최근 ${days}일`],
+    ["내보낸 시각", exportedAt],
+  ];
+
+  if (sheets.has("유저 요약")) {
+    writeDataSheet(
+      wb,
+      "유저 요약",
+      meta,
+      [
+        "유저 ID",
+        "닉네임",
+        "이메일",
+        "제보수",
+        "같매장간격쌍",
+        "같매장평균분",
+        "같매장중앙분",
+        "같매장최소분",
+        "같매장최대분",
+        "전체간격평균분",
+        "전체간격중앙분",
+        "이동쌍",
+        "이동평균m",
+        "이동중앙m",
+        "이동최소m",
+        "이동최대m",
+        "구역전환수",
+        "피어일치",
+        "피어겹침",
+        "기기간수",
+        "형제계정수",
+        "공유기기최대계정",
+        "시도성공",
+        "시도실패",
+        "체류ms합",
+        "상세조회",
+        "지도클릭",
+        "검색클릭",
+        "배너클릭",
+        "앱세션",
+        "비제보이벤트",
+        "스탬프내제보",
+        "스탬프외제보",
+      ],
+      report.users.map((u) => [
+        u.userId,
+        u.nickname,
+        u.email,
+        u.reportCount,
+        u.sameStoreIntervalPairCount,
+        u.sameStoreIntervalAvgMin,
+        u.sameStoreIntervalMedianMin,
+        u.sameStoreIntervalMinMin,
+        u.sameStoreIntervalMaxMin,
+        u.allReportIntervalAvgMin,
+        u.allReportIntervalMedianMin,
+        u.movePairCount,
+        u.moveAvgM,
+        u.moveMedianM,
+        u.moveMinM,
+        u.moveMaxM,
+        u.areaTransitionCount,
+        u.peerAgreeCount,
+        u.peerOverlapCount,
+        u.deviceIds.length,
+        u.deviceSiblingUserCount,
+        u.deviceMaxAccountsOnShared,
+        u.attemptSuccess,
+        u.attemptFail,
+        u.dwellMsTotal,
+        u.detailViewN,
+        u.mapClickN,
+        u.searchClickN,
+        u.bannerClickN,
+        u.appSessionN,
+        u.nonReportEventN,
+        u.reportsInStampHours,
+        u.reportsOutStampHours,
+      ]),
+      [
+        36, 12, 24, 8, 10, 10, 10, 10, 10, 10, 10, 8, 10, 10, 10, 10, 8, 8, 8,
+        8, 8, 10, 8, 8, 10, 8, 8, 8, 8, 8, 10, 10, 10,
+      ],
+    );
+  }
+
+  if (sheets.has("같매장 간격(분)")) {
+    const rows: CellValue[][] = [];
+    for (const u of report.users) {
+      u.sameStoreIntervalsMin.forEach((gap, i) => {
+        rows.push([u.userId, u.nickname, u.email, i + 1, gap]);
+      });
+    }
+    writeDataSheet(
+      wb,
+      "같매장 간격(분)",
+      [...meta, ["설명", "같은 매장에서 연속 제보 사이 간격(분). 한 행=한 간격"]],
+      ["유저 ID", "닉네임", "이메일", "순서", "간격_분"],
+      rows,
+      [36, 12, 24, 8, 10],
+    );
+  }
+
+  if (sheets.has("이동거리(m)")) {
+    const rows: CellValue[][] = [];
+    for (const u of report.users) {
+      u.moveMeters.forEach((m, i) => {
+        rows.push([u.userId, u.nickname, u.email, i + 1, m]);
+      });
+    }
+    writeDataSheet(
+      wb,
+      "이동거리(m)",
+      [...meta, ["설명", "연속 제보 GPS 간 거리(m). 한 행=한 이동"]],
+      ["유저 ID", "닉네임", "이메일", "순서", "거리_m"],
+      rows,
+      [36, 12, 24, 8, 10],
+    );
+  }
+
+  if (sheets.has("구역 전환")) {
+    const rows: CellValue[][] = [];
+    for (const u of report.users) {
+      for (const t of u.areaTransitions) {
+        rows.push([
+          u.userId,
+          u.nickname,
+          u.email,
+          t.fromArea,
+          t.toArea,
+          t.gapMin,
+        ]);
+      }
+    }
+    writeDataSheet(
+      wb,
+      "구역 전환",
+      [...meta, ["설명", "정문/중문/후문 구역이 바뀔 때 간격(분)"]],
+      ["유저 ID", "닉네임", "이메일", "from", "to", "간격_분"],
+      rows,
+      [36, 12, 24, 10, 10, 10],
+    );
+  }
+
+  return wb;
+}
+
+export async function downloadTrustSignalsExcel(
+  filename: string,
+  params: TrustExportParams,
+): Promise<void> {
+  const wb = await buildTrustSignalsWorkbook(params);
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
 export async function downloadMetricsExcel(
   filename: string,
   params: MetricsExportParams,
@@ -600,8 +797,12 @@ export async function downloadMetricsExcel(
   const a = document.createElement("a");
   a.href = url;
   a.download = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+  // Safari/Chrome: body에 붙이지 않으면 대용량 다운로드가 조용히 무시되는 경우가 있음
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 /** 선택한 첫 데이터 시트를 TSV로 (엑셀/시트 붙여넣기용) */

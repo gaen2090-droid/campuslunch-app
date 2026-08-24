@@ -21,8 +21,14 @@ class GoogleAuthResult {
 }
 
 class GoogleSignInCancelled implements Exception {
+  final String? description;
+  final GoogleSignInExceptionCode? code;
+
+  GoogleSignInCancelled({this.description, this.code});
+
   @override
-  String toString() => 'Google sign-in cancelled';
+  String toString() =>
+      'Google sign-in cancelled (code: $code, $description)';
 }
 
 class GoogleEmailBlocked implements Exception {

@@ -243,6 +243,8 @@ class SupabaseRestaurantRepository {
     String? nickname,
     double? latitude,
     double? longitude,
+    String? deviceInstallId,
+    String? appSessionId,
   }) async {
     try {
       final raw = await _client.rpc('submit_crowd_report', params: {
@@ -251,6 +253,10 @@ class SupabaseRestaurantRepository {
         'p_source': source,
         'p_lat': latitude,
         'p_lng': longitude,
+        if (deviceInstallId != null && deviceInstallId.isNotEmpty)
+          'p_device_install_id': deviceInstallId,
+        if (appSessionId != null && appSessionId.isNotEmpty)
+          'p_app_session_id': appSessionId,
       });
       if (raw is Map) {
         return StampResult.fromJson(Map<String, dynamic>.from(raw));
@@ -276,6 +282,10 @@ class SupabaseRestaurantRepository {
         if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
         if (latitude != null) 'lat': latitude,
         if (longitude != null) 'lng': longitude,
+        if (deviceInstallId != null && deviceInstallId.isNotEmpty)
+          'device_install_id': deviceInstallId,
+        if (appSessionId != null && appSessionId.isNotEmpty)
+          'app_session_id': appSessionId,
       },
     };
     if (_isUuid(userId)) {
@@ -293,11 +303,15 @@ class SupabaseRestaurantRepository {
     String? nickname,
     double? latitude,
     double? longitude,
+    String? deviceInstallId,
+    String? appSessionId,
   }) async {
     await reportStatusWithStamp(
       restaurantId, uiStatus,
       source: source, userId: userId, nickname: nickname,
       latitude: latitude, longitude: longitude,
+      deviceInstallId: deviceInstallId,
+      appSessionId: appSessionId,
     );
   }
 

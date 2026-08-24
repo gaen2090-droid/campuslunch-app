@@ -8,6 +8,7 @@ export type AdminTab =
   | "community"
   | "collections"
   | "users"
+  | "trust_signals"
   | "push"
   | "owner_applications";
 
@@ -22,6 +23,7 @@ export const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "community", label: "커뮤니티" },
   { id: "collections", label: "맛집 컬렉션" },
   { id: "users", label: "회원 관리" },
+  { id: "trust_signals", label: "신뢰·어뷰징" },
   { id: "push", label: "푸시 설정" },
 ];
 
