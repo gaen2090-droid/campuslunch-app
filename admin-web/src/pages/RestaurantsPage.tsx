@@ -14,8 +14,10 @@ interface Props {
 }
 
 export function RestaurantsPage({ restaurants, onReload }: Props) {
+  type CrowdFilter = "crowdOnly" | "collectionOnly" | "all";
+
   const [query, setQuery] = useState("");
-  const [showCollectionOnly, setShowCollectionOnly] = useState(false);
+  const [crowdFilter, setCrowdFilter] = useState<CrowdFilter>("crowdOnly");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reportsCache, setReportsCache] = useState<
@@ -32,9 +34,12 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
     const sorted = [...restaurants].sort((a, b) =>
       a.name.localeCompare(b.name, "ko"),
     );
-    const base = showCollectionOnly
-      ? sorted
-      : sorted.filter((r) => r.crowdEnabled);
+    const base =
+      crowdFilter === "crowdOnly"
+        ? sorted.filter((r) => r.crowdEnabled)
+        : crowdFilter === "collectionOnly"
+          ? sorted.filter((r) => !r.crowdEnabled)
+          : sorted;
     const q = query.trim().toLowerCase();
     if (!q) return base;
     return base.filter(
@@ -43,7 +48,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         r.area.includes(q) ||
         r.category.includes(q),
     );
-  }, [restaurants, query, showCollectionOnly]);
+  }, [restaurants, query, crowdFilter]);
 
   async function toggleReports(id: string) {
     if (expandedId === id) {
@@ -110,14 +115,35 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      <label className="checkbox-row">
-        <input
-          type="checkbox"
-          checked={showCollectionOnly}
-          onChange={(e) => setShowCollectionOnly(e.target.checked)}
-        />
-        <span>맛집컬렉션 전용 매장 포함 전체 보기</span>
-      </label>
+      <div className="radio-group">
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "crowdOnly"}
+            onChange={() => setCrowdFilter("crowdOnly")}
+          />
+          <span>제보 대상 O</span>
+        </label>
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "collectionOnly"}
+            onChange={() => setCrowdFilter("collectionOnly")}
+          />
+          <span>제보 대상 X (맛집컬렉션 전용)</span>
+        </label>
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "all"}
+            onChange={() => setCrowdFilter("all")}
+          />
+          <span>전체 보기</span>
+        </label>
+      </div>
 
       <button
         type="button"

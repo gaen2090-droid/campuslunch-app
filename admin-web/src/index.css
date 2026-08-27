@@ -865,6 +865,13 @@ code {
   color: #374151;
 }
 
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+
 .image-picker {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
