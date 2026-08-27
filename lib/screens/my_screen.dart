@@ -131,6 +131,8 @@ class _MyScreenState extends State<MyScreen> {
 
               // ══ 카드 1: 즐겨찾기 / 내 쿠폰함 ══
               _MyCardSection(
+                topPadding: 12,
+                bottomPadding: 12,
                 child: Row(
                   children: [
                     Expanded(
@@ -287,8 +289,15 @@ class _MyScreenState extends State<MyScreen> {
 class _MyCardSection extends StatelessWidget {
   final String? title;
   final Widget child;
+  final double topPadding;
+  final double bottomPadding;
 
-  const _MyCardSection({this.title, required this.child});
+  const _MyCardSection({
+    this.title,
+    required this.child,
+    this.topPadding = 16,
+    this.bottomPadding = 12,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +323,7 @@ class _MyCardSection extends StatelessWidget {
           children: [
             if (title != null)
               Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 4),
+                padding: EdgeInsets.only(top: topPadding, bottom: 4),
                 child: Text(
                   title!,
                   style: const TextStyle(
@@ -325,9 +334,9 @@ class _MyCardSection extends StatelessWidget {
                 ),
               )
             else
-              const SizedBox(height: 16),
+              SizedBox(height: topPadding),
             child,
-            const SizedBox(height: 12),
+            SizedBox(height: bottomPadding),
           ],
         ),
       ),
