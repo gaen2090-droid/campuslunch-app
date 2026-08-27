@@ -5,6 +5,8 @@ import '../utils/time_ago.dart';
 import 'admin_badge.dart';
 import 'owner_badge.dart';
 
+String _countLabel(int count) => count > 999 ? '999+' : '$count';
+
 class CommunityPostCard extends StatelessWidget {
   final CommunityPost post;
   final VoidCallback onTap;
@@ -25,14 +27,14 @@ class CommunityPostCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Column(
@@ -70,36 +72,58 @@ class CommunityPostCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        post.content,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4),
-                      ),
-                      if (post.restaurantId != null && post.restaurantName != null) ...[
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: onRestaurantTap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE6F3EC),
-                              borderRadius: BorderRadius.circular(20),
+                      Builder(builder: (context) {
+                        final hasBadge =
+                            post.restaurantId != null && post.restaurantName != null;
+                        // 매장 뱃지가 있으면 본문을 1줄로 줄여 "본문 1줄 + 뱃지"
+                        // 블록 높이가 뱃지 없는 카드의 "본문 2줄" 블록 높이와
+                        // 비슷해지도록 한다. 뱃지 없는 카드는 그대로 2줄까지 자연
+                        // 높이를 쓰고, 짧은 글은 짧은 대로 더 작게 남는다.
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              post.content,
+                              maxLines: hasBadge ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.storefront_outlined, size: 11, color: Color(0xFF26BC7D)),
-                                const SizedBox(width: 3),
-                                Text(
-                                  post.restaurantName!,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF26BC7D)),
+                            if (hasBadge) ...[
+                              const SizedBox(height: 6),
+                              GestureDetector(
+                                onTap: onRestaurantTap,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE6F3EC),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.storefront_outlined, size: 11, color: Color(0xFF26BC7D)),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          post.restaurantName!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.2,
+                                            color: Color(0xFF26BC7D),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                              ),
+                            ],
+                          ],
+                        );
+                      }),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -116,7 +140,7 @@ class CommunityPostCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${post.likeCount}',
+                              _countLabel(post.likeCount),
                               style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -126,7 +150,7 @@ class CommunityPostCard extends StatelessWidget {
                       const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 4),
                       Text(
-                        '${post.commentCount}',
+                        _countLabel(post.commentCount),
                         style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
                       ),
                       if (post.hasPoll) ...[
@@ -134,7 +158,7 @@ class CommunityPostCard extends StatelessWidget {
                         const Icon(Icons.poll_outlined, size: 16, color: Color(0xFF9CA3AF)),
                         const SizedBox(width: 4),
                         Text(
-                          '${post.pollVoterCount}명',
+                          '${_countLabel(post.pollVoterCount)}명',
                           style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -145,22 +169,17 @@ class CommunityPostCard extends StatelessWidget {
             ),
             if (post.imageUrls.isNotEmpty) ...[
               const SizedBox(width: 12),
-              IntrinsicHeight(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      post.imageUrls.first,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 72,
-                        height: 72,
-                        color: const Color(0xFFF3F4F6),
-                      ),
-                    ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  post.imageUrls.first,
+                  width: 92,
+                  height: 92,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 92,
+                    height: 92,
+                    color: const Color(0xFFF3F4F6),
                   ),
                 ),
               ),

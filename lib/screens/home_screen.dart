@@ -564,7 +564,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       HomeFilterIconButton(
                         active: _sortBy != '최신순' ||
                             (!_isAll(_regions) && _regions.isNotEmpty) ||
-                            (!_isAll(_cuisines) && _cuisines.isNotEmpty),
+                            (!_isAll(_cuisines) && _cuisines.isNotEmpty) ||
+                            _bookmarkOnly,
                         onTap: () {
                           setState(() => _openDropdown = null);
                           _openFilterSheet();
