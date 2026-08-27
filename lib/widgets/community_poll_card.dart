@@ -26,6 +26,9 @@ class _CommunityPollCardState extends State<CommunityPollCard> {
 
   bool get _voted => widget.options.any((o) => o.votedByMe);
 
+  bool get _allowMultiple =>
+      widget.options.isNotEmpty && widget.options.first.allowMultiple;
+
   int get _totalVoters {
     // 참여자 수(중복선택 고려 distinct)는 상위(게시글) 레벨 poll_voter_count가
     // 정확하지만, 이 카드는 옵션 리스트만 받으므로 옵션별 vote_count 합으로
@@ -38,8 +41,13 @@ class _CommunityPollCardState extends State<CommunityPollCard> {
     setState(() {
       if (_selected.contains(optionId)) {
         _selected.remove(optionId);
-      } else {
+      } else if (_allowMultiple) {
         _selected.add(optionId);
+      } else {
+        // 단일선택 투표는 새 선택이 이전 선택을 대체한다(라디오 버튼처럼).
+        _selected
+          ..clear()
+          ..add(optionId);
       }
     });
   }
@@ -127,7 +135,9 @@ class _CommunityPollCardState extends State<CommunityPollCard> {
           ],
           const SizedBox(height: 8),
           Text(
-            '$_totalVoters명 참여 · 최대 ${widget.options.length}개 선택 가능',
+            _allowMultiple
+                ? '$_totalVoters명 참여 · 최대 ${widget.options.length}개 선택 가능'
+                : '$_totalVoters명 참여 · 1개 선택 가능',
             style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
           ),
         ],

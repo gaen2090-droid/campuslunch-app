@@ -72,10 +72,11 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
       await _repo.submitPollVote(optionIds);
       _changed = true;
       await _loadPollOptions();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Poll] submitPollVote failed: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('투표에 실패했어요.')),
+        SnackBar(content: Text('투표에 실패했어요. ($e)')),
       );
     }
   }
@@ -555,17 +556,17 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
+                          color: const Color(0xFFE6F3EC),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF374151)),
+                            const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF26BC7D)),
                             const SizedBox(width: 4),
                             Text(
                               _post.restaurantName!,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF26BC7D)),
                             ),
                           ],
                         ),

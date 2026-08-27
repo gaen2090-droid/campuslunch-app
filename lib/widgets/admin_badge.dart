@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
+
 /// 커뮤니티 글/댓글 작성자가 관리자(admin)일 때 표시하는 배지.
 class AdminBadge extends StatelessWidget {
   const AdminBadge({super.key});
@@ -9,7 +11,7 @@ class AdminBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFF2563EB),
+        color: AppColors.primaryCta,
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Text(

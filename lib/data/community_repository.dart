@@ -113,6 +113,7 @@ class CommunityRepository {
     List<String> imageUrls = const [],
     String? restaurantId,
     List<String>? pollOptions,
+    bool pollAllowMultiple = false,
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('NOT_AUTHENTICATED');
@@ -130,6 +131,7 @@ class CommunityRepository {
       await _client.rpc('create_poll_for_post', params: {
         'p_post_id': row['id'] as String,
         'p_options': pollOptions,
+        'p_allow_multiple': pollAllowMultiple,
       });
     }
   }
@@ -143,6 +145,7 @@ class CommunityRepository {
     List<String> imageUrls = const [],
     String? restaurantId,
     List<String>? pollOptions,
+    bool pollAllowMultiple = false,
   }) async {
     await _client.from('community_posts').update({
       'content': content,
@@ -154,6 +157,7 @@ class CommunityRepository {
       await _client.rpc('create_poll_for_post', params: {
         'p_post_id': postId,
         'p_options': pollOptions,
+        'p_allow_multiple': pollAllowMultiple,
       });
     }
   }

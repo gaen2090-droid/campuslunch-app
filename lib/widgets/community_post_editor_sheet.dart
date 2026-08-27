@@ -5,9 +5,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
+import '../models/community_poll_option.dart';
 import '../models/community_post.dart';
 import '../screens/community_poll_editor_screen.dart';
 import '../utils/profanity_filter.dart';
+import 'community_poll_card.dart';
 import 'community_rules_summary.dart';
 import 'restaurant_picker_sheet.dart';
 
@@ -38,12 +40,15 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   _SelectedRestaurant? _selectedRestaurant;
   bool _submitting = false;
   String? _validationError;
-  List<String>? _pollOptions;
+  CommunityPollDraft? _pollDraft;
+  List<CommunityPollOption> _existingPollOptions = [];
+  bool _loadingExistingPoll = false;
 
   static const _maxImages = 4;
 
   /// 게시된 글의 투표는 전혀 수정할 수 없으므로(§0), 이미 투표가 달린 글을
-  /// 수정할 때는 투표 관련 UI 진입점 자체를 노출하지 않는다.
+  /// 수정할 때는 새 투표를 추가하는 UI 진입점을 노출하지 않는다. 대신 기존
+  /// 투표를 읽기 전용(사실은 상세 화면과 동일하게 투표도 가능)으로 보여준다.
   bool get _pollLockedByExistingPoll =>
       widget.editing != null && widget.editing!.hasPoll;
 
@@ -60,7 +65,29 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
           name: editing.restaurantName!,
         );
       }
+      if (editing.hasPoll) _loadExistingPollOptions(editing.id);
     }
+  }
+
+  Future<void> _loadExistingPollOptions(String postId) async {
+    setState(() => _loadingExistingPoll = true);
+    try {
+      final options = await CommunityRepository().fetchPollOptions(postId);
+      if (!mounted) return;
+      setState(() {
+        _existingPollOptions = options;
+        _loadingExistingPoll = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingExistingPoll = false);
+    }
+  }
+
+  Future<void> _voteOnExistingPoll(List<String> optionIds) async {
+    await CommunityRepository().submitPollVote(optionIds);
+    if (!mounted) return;
+    await _loadExistingPollOptions(widget.editing!.id);
   }
 
   @override
@@ -102,11 +129,37 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   Future<void> _openPollEditor() async {
     final result = await CommunityPollEditorScreen.show(
       context,
-      initialOptions: _pollOptions,
+      initialDraft: _pollDraft,
     );
     if (result == null) return;
     if (!mounted) return;
-    setState(() => _pollOptions = result.isEmpty ? null : result);
+    setState(() => _pollDraft = result);
+  }
+
+  void _deletePollDraft() {
+    setState(() => _pollDraft = null);
+  }
+
+  void _showPollMenu(TapDownDetails details) async {
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        details.globalPosition.dx,
+        details.globalPosition.dy,
+        details.globalPosition.dx,
+        details.globalPosition.dy,
+      ),
+      items: const [
+        PopupMenuItem(value: 'edit', child: Text('수정')),
+        PopupMenuItem(
+          value: 'delete',
+          child: Text('삭제', style: TextStyle(color: Color(0xFFEF4444))),
+        ),
+      ],
+    );
+    if (!mounted) return;
+    if (selected == 'edit') _openPollEditor();
+    if (selected == 'delete') _deletePollDraft();
   }
 
   Future<void> _submit() async {
@@ -136,14 +189,16 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
           content: content,
           imageUrls: allImages,
           restaurantId: _selectedRestaurant?.id,
-          pollOptions: _pollLockedByExistingPoll ? null : _pollOptions,
+          pollOptions: _pollLockedByExistingPoll ? null : _pollDraft?.options,
+          pollAllowMultiple: _pollDraft?.allowMultiple ?? false,
         );
       } else {
         await repo.createPost(
           content: content,
           imageUrls: allImages,
           restaurantId: _selectedRestaurant?.id,
-          pollOptions: _pollOptions,
+          pollOptions: _pollDraft?.options,
+          pollAllowMultiple: _pollDraft?.allowMultiple ?? false,
         );
       }
       if (!mounted) return;
@@ -255,13 +310,29 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                       ),
                     ),
                   ],
-                  if (_pollOptions != null) ...[
+                  if (_pollDraft != null) ...[
                     const SizedBox(height: 12),
                     _PollSummaryCard(
-                      options: _pollOptions!,
-                      onTap: _openPollEditor,
-                      onRemove: () => setState(() => _pollOptions = null),
+                      draft: _pollDraft!,
+                      onMenuTap: _showPollMenu,
                     ),
+                    const SizedBox(height: 8),
+                    const _PollLockNotice(),
+                  ],
+                  if (_pollLockedByExistingPoll) ...[
+                    const SizedBox(height: 12),
+                    if (_loadingExistingPoll && _existingPollOptions.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: CircularProgressIndicator(color: Color(0xFF000000))),
+                      )
+                    else if (_existingPollOptions.isNotEmpty)
+                      CommunityPollCard(
+                        options: _existingPollOptions,
+                        onVote: _voteOnExistingPoll,
+                      ),
+                    const SizedBox(height: 8),
+                    const _PollLockNotice(),
                   ],
                   const SizedBox(height: 24),
                   const CommunityRulesSummary(),
@@ -274,6 +345,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
             padding: EdgeInsets.fromLTRB(20, 8, 20, bottomSafe + 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -290,24 +362,19 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
                     const SizedBox(width: 8),
                     if (!_pollLockedByExistingPoll)
                       OutlinedButton.icon(
-                        onPressed: _openPollEditor,
+                        onPressed: _pollDraft != null ? null : _openPollEditor,
                         style: OutlinedButton.styleFrom(
-                          backgroundColor: _pollOptions != null
-                              ? const Color(0xFFE6F3EC)
-                              : null,
-                          foregroundColor: _pollOptions != null
-                              ? const Color(0xFF26BC7D)
+                          foregroundColor: _pollDraft != null
+                              ? const Color(0xFFD1D5DB)
                               : const Color(0xFF000000),
-                          side: _pollOptions != null
-                              ? const BorderSide(color: Color(0xFFE6F3EC))
-                              : null,
                         ),
                         icon: const Icon(Icons.poll_outlined, size: 18),
-                        label: Text(_pollOptions != null ? '투표 ✓' : '투표'),
+                        label: const Text('투표'),
                       ),
                     const SizedBox(width: 8),
                     if (_selectedRestaurant != null)
-                      Flexible(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 160),
                         child: OutlinedButton.icon(
                           onPressed: _pickRestaurant,
                           style: OutlinedButton.styleFrom(
@@ -433,55 +500,90 @@ class _ImageThumb extends StatelessWidget {
   }
 }
 
-/// 아직 게시 전(로컬 상태)인 투표를 요약해서 보여주는 카드. 탭하면 편집 화면으로
-/// 돌아가고, X로 투표 자체를 취소할 수 있다. 게시된 이후에는 이 카드가 아니라
+/// 아직 게시 전(로컬 상태)인 투표를 요약해서 보여주는 카드. 우측 ⋮ 메뉴로
+/// 수정(편집 화면 재진입)/삭제를 선택한다. 게시된 이후에는 이 카드가 아니라
 /// 상세 화면의 읽기 전용 투표 카드(community_poll_card.dart)가 대신 쓰인다.
 class _PollSummaryCard extends StatelessWidget {
-  final List<String> options;
-  final VoidCallback onTap;
-  final VoidCallback onRemove;
+  final CommunityPollDraft draft;
+  final void Function(TapDownDetails) onMenuTap;
 
   const _PollSummaryCard({
-    required this.options,
-    required this.onTap,
-    required this.onRemove,
+    required this.draft,
+    required this.onMenuTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.poll_outlined, size: 18, color: Color(0xFF26BC7D)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '투표 · ${options.length}개 옵션 · ${options.first}${options.length > 1 ? ' 외' : ''}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF374151),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onRemove,
-              child: const Icon(Icons.close, size: 18, color: Color(0xFF9CA3AF)),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.poll_outlined, size: 18, color: Color(0xFF6B7280)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '투표',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF000000),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${draft.allowMultiple ? '복수 선택 가능' : '1개만 선택 가능'}, ${draft.options.length}개 항목',
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 12,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTapDown: onMenuTap,
+            child: const Icon(Icons.more_vert, size: 18, color: Color(0xFF9CA3AF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 캡처 참고: 투표가 붙은 게시글 초안 아래 "글 게시 후 투표는 수정/삭제할 수
+/// 없어요" 안내.
+class _PollLockNotice extends StatelessWidget {
+  const _PollLockNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Icon(Icons.info_outline, size: 14, color: Color(0xFF9CA3AF)),
+        SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            '글 게시 후 투표는 수정하거나 삭제할 수 없어요.',
+            style: TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 12,
+              color: Color(0xFF9CA3AF),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
