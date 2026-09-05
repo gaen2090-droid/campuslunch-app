@@ -214,12 +214,12 @@ export async function fetchAdminRestaurants(): Promise<AdminRestaurant[]> {
   const [rowsRes, reportsRes, crowdRes, weekReportsRes] = await Promise.all([
     supabase.from("restaurants").select("*").order("created_at"),
     supabase
-      .from("crowd_reports")
+      .from("crowd_reports_for_stats")
       .select("restaurant_id, level, metadata, created_at, source")
       .gte("created_at", todayStart.toISOString()),
     supabase.from("crowd_status").select("*"),
     supabase
-      .from("crowd_reports")
+      .from("crowd_reports_for_stats")
       .select("restaurant_id, level, metadata, created_at, source")
       .gte("created_at", weekAgo.toISOString()),
   ]);

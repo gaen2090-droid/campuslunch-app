@@ -14,6 +14,7 @@ import '../utils/kakao_map_ready.dart';
 import '../utils/kakao_route_line.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/map_marker_icons.dart';
+import '../widgets/external_map_sheet.dart';
 
 /// OSRM 도보 경로 + 카카오맵 SDK (polyline은 네이티브 Shape API)
 class DirectionsScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   bool _loadingRoute = true;
   bool _isEstimatedRoute = false;
   bool _waitingKakaoMapSdk = false;
+  bool _movingToMyLocation = false;
 
   MapLatLng get _destination => MapLatLng(
         widget.restaurant.latitude,
@@ -161,6 +163,38 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
     if (_mapReady) {
       unawaited(_setupMap());
+    }
+  }
+
+  Future<void> _moveToMyLocation() async {
+    final controller = _controller;
+    if (controller == null || _movingToMyLocation) return;
+    setState(() => _movingToMyLocation = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (!mounted) return;
+      await MapCameraFit.moveToFitLatLngs(
+        controller,
+        [LatLng(latitude: pos.latitude, longitude: pos.longitude)],
+        animate: true,
+      );
+    } catch (e, st) {
+      debugPrint('[Directions] moveToMyLocation failed: $e\n$st');
+    } finally {
+      if (mounted) setState(() => _movingToMyLocation = false);
     }
   }
 
@@ -311,14 +345,31 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                       const Icon(Icons.directions_walk,
                           size: 18, color: Color(0xFF3566B8)),
                       const SizedBox(width: 8),
-                      Text(
-                        '${route.durationText} · ${route.distanceText}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF374151),
+                      Expanded(
+                        child: Text(
+                          '${route.durationText} · ${route.distanceText}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF374151),
+                          ),
                         ),
                       ),
+                      if (origin != null)
+                        InkWell(
+                          onTap: () => showExternalMapSheet(
+                            context,
+                            origin: origin,
+                            destination: _destination,
+                            destinationName: r.name,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.menu_rounded,
+                                size: 20, color: Color(0xFF3566B8)),
+                          ),
+                        ),
                     ],
                   ),
                   if (_isEstimatedRoute) ...[
@@ -409,6 +460,42 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                               child: Center(
                                 child: CircularProgressIndicator(
                                   color: Color(0xFF4A7FE5),
+                                ),
+                              ),
+                            ),
+                          if (Env.isKakaoMapConfigured && _mapReady)
+                            Positioned(
+                              right: 16,
+                              bottom: MediaQuery.paddingOf(context).bottom + 48,
+                              child: GestureDetector(
+                                onTap: _moveToMyLocation,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Color(0x21000000),
+                                        blurRadius: 18,
+                                        offset: Offset(0, 0),
+                                      ),
+                                    ],
+                                  ),
+                                  child: _movingToMyLocation
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(14),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF4A7FE5),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.my_location,
+                                          size: 20,
+                                          color: Color(0xFF9CA3AF),
+                                        ),
                                 ),
                               ),
                             ),

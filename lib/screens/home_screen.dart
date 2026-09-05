@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadHistory();
-    // 스탬프 제공 시간대(10~19시) 경계를 넘어갈 때 배너가 자동으로 갱신되도록 주기적 rebuild.
+    // 스탬프 제공 시간대(11~19시) 경계를 넘어갈 때 배너가 자동으로 갱신되도록 주기적 rebuild.
     _stampHoursTicker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -410,6 +410,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final closedList = all
         .where((r) =>
             r.status == '영업안함' &&
+            r.crowdEnabled &&
             (_mainTab == 1 ? r.category == '카페' : r.category != '카페') &&
             (!_bookmarkOnly || provider.bookmarks.contains(r.id)))
         .toList();
@@ -435,7 +436,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 10시~오후 7시)',
+                RewardLimits.isWeekend(DateTime.now())
+                    ? '주말에는 스탬프를 제공하지 않아요. (제보는 영업시간 내 항상 가능해요)'
+                    : '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 11시~오후 7시)',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 style: const TextStyle(
@@ -1448,7 +1451,8 @@ class StampInfoPopup extends StatelessWidget {
       '혼잡도를 제보하면 스탬프를 1개 받아요.',
       '최초 제보 시에는 스탬프를 2개 받아요.',
       '단, 하루 최대 3개의 스탬프를 획득할 수 있어요.',
-      '스탬프는 오전 10시~오후 7시에만 제공돼요. (제보는 영업시간 내 항상 가능해요)',
+      '스탬프는 평일 오전 11시~오후 7시에만 제공돼요. (제보는 영업시간 내 항상 가능해요)',
+      '주말(토·일)에는 스탬프를 제공하지 않아요.',
       '획득한 스탬프는 마이페이지에서 확인할 수 있어요.',
     ];
 

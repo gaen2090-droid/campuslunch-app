@@ -6,6 +6,30 @@ import '../constants/reward_limits.dart';
 import '../providers/app_provider.dart';
 import 'store_review.dart';
 
+/// 제보/스탬프 실패 시 쓰는 빨간 토스트. crowd_enabled=false 매장 등
+/// 서버 호출 없이도 동일한 실패 안내가 필요한 곳에서 재사용한다.
+void showReportErrorToast(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+      backgroundColor: const Color(0xFFEF4444),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      duration: const Duration(milliseconds: 2200),
+      elevation: 0,
+    ),
+  );
+}
+
 Future<void> submitCrowdReportFeedback(
   BuildContext context,
   String restaurantId,
@@ -16,33 +40,18 @@ Future<void> submitCrowdReportFeedback(
   if (!context.mounted) return;
 
   if (err != null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          err,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: const Color(0xFFEF4444),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-        duration: const Duration(milliseconds: 2200),
-        elevation: 0,
-      ),
-    );
+    showReportErrorToast(context, err);
     return;
   }
 
   final stamp = provider.lastStampResult;
   String message;
-  if (stamp.isOutOfStampHours) {
+  if (stamp.isWeekend) {
     message =
-        '혼잡도 제보가 등록되었어요.\n지금은 스탬프 제공 시간이 아니에요. (오전 10시~오후 7시)';
+        '혼잡도 제보가 등록되었어요.\n주말에는 스탬프를 제공하지 않아요.';
+  } else if (stamp.isOutOfStampHours) {
+    message =
+        '혼잡도 제보가 등록되었어요.\n지금은 스탬프 제공 시간이 아니에요. (오전 11시~오후 7시)';
   } else if (!stamp.granted && stamp.todayStamps == 0 && stamp.totalStamps == 0) {
     // 사장님 제보 또는 Supabase 미연결
     message = '소중한 제보 감사드려요!';

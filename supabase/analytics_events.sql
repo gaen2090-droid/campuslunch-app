@@ -1,5 +1,5 @@
 -- 앱 분석 이벤트 (DAU/MAU, 추천 배너 클릭률)
--- Dashboard → SQL Editor → Run
+-- Dashboard → SQL Editor → Run (stats_excluded_users.sql 이후)
 --
 -- ⚠️ event_type does not exist 오류:
 --    예전에 다른 구조로 analytics_events 가 만들어진 경우입니다.
@@ -87,6 +87,14 @@ begin
     return;
   end if;
 
+  update public.users
+  set last_login_at = now(), updated_at = now()
+  where id = uid;
+
+  if public.is_stats_excluded(uid) then
+    return;
+  end if;
+
   day_start := date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
 
   if exists (
@@ -101,10 +109,6 @@ begin
 
   insert into public.analytics_events (user_id, event_type)
   values (uid, 'app_session');
-
-  update public.users
-  set last_login_at = now(), updated_at = now()
-  where id = uid;
 end;
 $$;
 
@@ -131,6 +135,9 @@ begin
     raise exception 'invalid banner event';
   end if;
   if p_restaurant_id is null then
+    return;
+  end if;
+  if public.is_stats_excluded(uid) then
     return;
   end if;
 
@@ -289,13 +296,15 @@ begin
   from public.crowd_reports cr
   where cr.created_at >= today_start
     and cr.created_at < today_start + interval '1 day'
-    and cr.source in ('user', 'owner');
+    and cr.source in ('user', 'owner')
+    and not public.is_stats_excluded(cr.user_id);
 
   select count(*)::int into week_reports
   from public.crowd_reports cr
   where cr.created_at >= week_start
     and cr.created_at < today_start + interval '1 day'
-    and cr.source in ('user', 'owner');
+    and cr.source in ('user', 'owner')
+    and not public.is_stats_excluded(cr.user_id);
 
   select coalesce(jsonb_agg(row order by cnt desc), '[]'::jsonb)
   into top_reporters
@@ -310,6 +319,7 @@ begin
       and cr.created_at < today_start + interval '1 day'
       and cr.source in ('user', 'owner')
       and cr.metadata ? 'user_id'
+      and not public.is_stats_excluded(cr.user_id)
     group by coalesce(cr.metadata ->> 'nickname', '익명')
     order by cnt desc
     limit 3
@@ -323,6 +333,7 @@ begin
     where cr.created_at >= today_start
       and cr.created_at < today_start + interval '1 day'
       and cr.source in ('user', 'owner')
+      and not public.is_stats_excluded(cr.user_id)
     group by cr.restaurant_id
   ) t;
 
@@ -334,6 +345,7 @@ begin
     where cr.created_at >= week_start
       and cr.created_at < today_start + interval '1 day'
       and cr.source in ('user', 'owner')
+      and not public.is_stats_excluded(cr.user_id)
     group by cr.restaurant_id
   ) t;
 

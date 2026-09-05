@@ -1,14 +1,17 @@
 -- 사장님 통계: 매장 상세페이지 방문(조회) 수 — 오늘/누적
--- (Dashboard → SQL Editor → Run, owner_search_click_stats.sql 이후)
+-- (Dashboard → SQL Editor → Run, owner_search_click_stats.sql, stats_excluded_users.sql 이후)
 
 -- ── 1. event_type에 상세페이지 조회 추가 ──
+-- ⚠️ screen_dwell(trust_abuse_scoring.sql)까지 포함한 최종 목록으로 통일
+-- (실행 순서에 따라 기존 행과 충돌해 check constraint 위반이 나는 사고 방지).
 alter table public.analytics_events drop constraint if exists analytics_events_event_type_check;
 alter table public.analytics_events
   add constraint analytics_events_event_type_check
   check (event_type in (
     'app_session', 'banner_impression', 'banner_click',
     'push_delivered', 'push_click',
-    'map_marker_click', 'search_result_click', 'detail_view'
+    'map_marker_click', 'search_result_click', 'detail_view',
+    'screen_dwell'
   ));
 
 -- ── 2. 지도 마커 클릭 / 검색결과 클릭 기록 RPC (이전 파일에서 이미 만들었다면 재실행 안전) ──
@@ -22,6 +25,9 @@ declare
   uid uuid := auth.uid();
 begin
   if uid is null or p_restaurant_id is null then
+    return;
+  end if;
+  if public.is_stats_excluded(uid) then
     return;
   end if;
 
@@ -45,6 +51,9 @@ begin
   if uid is null or p_restaurant_id is null then
     return;
   end if;
+  if public.is_stats_excluded(uid) then
+    return;
+  end if;
 
   insert into public.analytics_events (user_id, event_type, restaurant_id)
   values (uid, 'search_result_click', p_restaurant_id);
@@ -65,6 +74,9 @@ declare
   uid uuid := auth.uid();
 begin
   if uid is null or p_restaurant_id is null then
+    return;
+  end if;
+  if public.is_stats_excluded(uid) then
     return;
   end if;
 
@@ -111,6 +123,7 @@ as $$
       where cr.restaurant_id = p_restaurant_id
         and cr.source = 'user'::public.crowd_source
         and cr.created_at >= (date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul')
+        and not public.is_stats_excluded(cr.user_id)
     ) as today_reports,
     (
       select count(*)::int from public.analytics_events e

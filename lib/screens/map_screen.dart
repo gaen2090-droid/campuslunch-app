@@ -579,6 +579,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
               ),
               onDismiss: () => setState(() => _selected = null),
               onDirections: () => _launchDirections(_selected!),
+              onCrowdDisabledTap: () => showReportErrorToast(
+                context,
+                '아직 혼잡도 제보를 지원하지 않는 매장이에요.',
+              ),
               safeBottom: safeBottom,
             ),
           ),
@@ -1057,6 +1061,7 @@ class _SelectedCard extends StatelessWidget {
   final VoidCallback? onReport;
   final VoidCallback onDismiss;
   final VoidCallback onDirections;
+  final VoidCallback onCrowdDisabledTap;
   final double safeBottom;
 
   const _SelectedCard({
@@ -1065,6 +1070,7 @@ class _SelectedCard extends StatelessWidget {
     required this.onReport,
     required this.onDismiss,
     required this.onDirections,
+    required this.onCrowdDisabledTap,
     required this.safeBottom,
   });
 
@@ -1072,6 +1078,7 @@ class _SelectedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = restaurant;
     final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+    final crowdDisabled = !r.crowdEnabled;
     final displayStatus = noReport ? '제보필요' : r.status;
     final meta = crowdStatusMeta(displayStatus);
     final statusColor = Color(meta.color);
@@ -1197,9 +1204,9 @@ class _SelectedCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Opacity(
-                    opacity: onReport == null ? 0.4 : 1.0,
+                    opacity: (onReport == null || crowdDisabled) ? 0.4 : 1.0,
                     child: GestureDetector(
-                      onTap: onReport,
+                      onTap: crowdDisabled ? onCrowdDisabledTap : onReport,
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
@@ -1207,7 +1214,10 @@ class _SelectedCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
-                          child: Text(noReport ? '스탬프 2개 받기' : '혼잡도 제보하기',
+                          child: Text(
+                              crowdDisabled
+                                  ? '제보 기능 준비 중'
+                                  : (noReport ? '스탬프 2개 받기' : '혼잡도 제보하기'),
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,

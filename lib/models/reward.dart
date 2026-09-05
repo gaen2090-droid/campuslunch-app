@@ -40,6 +40,7 @@ class StampResult {
   });
 
   bool get isOutOfStampHours => reason == 'out_of_hours';
+  bool get isWeekend => reason == 'weekend';
 
   factory StampResult.fromJson(Map<String, dynamic> json) {
     final granted = json['granted'] as bool? ?? false;

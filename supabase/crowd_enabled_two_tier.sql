@@ -5,7 +5,8 @@
 -- crowd_enabled=false 매장은 is_active=true로 앱에 정상 노출되지만
 -- 지도/홈 평소 목록에는 안 뜨고(클라이언트에서 필터), 혼잡도 제보 기능이 꺼진다.
 --
--- ⚠️ 실행 순서: owner_code_cleanup.sql, owner_application_reject_push.sql 이후 실행할 것.
+-- ⚠️ 실행 순서: owner_code_cleanup.sql, owner_application_reject_push.sql,
+-- stats_excluded_users.sql 이후 실행할 것.
 -- 이 파일은 admin_review_owner_application을 owner_application_reject_push.sql의 최신 본문
 -- (승인/반려 푸시 발송 포함) 기반으로 재정의한다 — 더 이전 버전을 베이스로 하면 푸시 발송
 -- 로직이 사라진다. submit_crowd_report도 최신 정본(trust_abuse용 7인자,
@@ -53,12 +54,15 @@ declare
   v_stamp_count int;
   v_meta jsonb;
   v_crowd_enabled boolean;
+  v_stats_excluded boolean;
 begin
   if v_uid is null then
     raise exception '로그인이 필요해요.';
   end if;
 
-  if p_source = 'user' and public.is_report_suspended(v_uid) then
+  v_stats_excluded := public.is_stats_excluded(v_uid);
+
+  if not v_stats_excluded and p_source = 'user' and public.is_report_suspended(v_uid) then
     raise exception '제보 기능 이용이 일시적으로 제한됐어요.';
   end if;
 
@@ -98,7 +102,7 @@ begin
     end if;
   end if;
 
-  if p_source = 'user' then
+  if not v_stats_excluded and p_source = 'user' then
     if exists (
       select 1
       from public.crowd_reports cr
@@ -111,7 +115,7 @@ begin
     end if;
   end if;
 
-  if p_lat is null or p_lng is null then
+  if not v_stats_excluded and (p_lat is null or p_lng is null) then
     raise exception '현재 위치를 확인할 수 없어요. 위치 권한을 확인해주세요.';
   end if;
 
@@ -120,13 +124,15 @@ begin
   from public.restaurants r
   where r.id = p_restaurant_id;
 
-  if v_lat is null or v_lng is null then
+  if not v_stats_excluded and (v_lat is null or v_lng is null) then
     raise exception '식당 위치 정보가 없어요.';
   end if;
 
-  v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
-  if v_distance > 50 then
-    raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
+  if not v_stats_excluded then
+    v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
+    if v_distance > 50 then
+      raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
+    end if;
   end if;
 
   if p_source = 'user' then
@@ -170,7 +176,13 @@ begin
     v_meta
   );
 
-  if p_source = 'user' then
+  if v_stats_excluded then
+    v_stamp_result := jsonb_build_object(
+      'granted', false,
+      'today_stamps', 0,
+      'total_stamps', 0
+    );
+  elsif p_source = 'user' then
     v_stamp_count := case when v_had_report_this_session then 1 else 2 end;
     v_stamp_result := public.grant_stamp(v_uid, v_stamp_count);
   else
@@ -190,7 +202,7 @@ grant execute on function public.submit_crowd_report(
 ) to authenticated;
 
 comment on function public.submit_crowd_report is
-  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택.';
+  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
 
 -- 사장님 인증 승인 시 자동으로 제보 대상으로 승격 (crowd_enabled=true)
 -- 주의: claim_owner_by_code는 6자리 코드 방식 폐지(owner_code_cleanup.sql)로 이미 drop됨.

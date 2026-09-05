@@ -62,10 +62,16 @@ ${bodyHtml}
 
 const indexItems = [];
 
+// CommonMark의 강조 닫힘(right-flanking) 규칙 때문에 `」**란`처럼 닫는 `**` 앞이
+// 문장부호이고 뒤가 문자/숫자로 바로 이어지면 marked가 강조로 인식하지 못해
+// `**`가 그대로 텍스트로 노출된다. marked에 넘기기 전에 `**...**`를
+// <strong>으로 직접 치환해 우회한다 (원본 .md 파일은 그대로 둠).
+const boldify = (md) => md.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+
 for (const doc of DOCS) {
   const srcPath = join(srcDir, doc.file);
   const md = readFileSync(srcPath, 'utf8');
-  const html = marked.parse(md);
+  const html = marked.parse(boldify(md));
   writeFileSync(join(outDir, `${doc.slug}.html`), page(doc.label, html));
   indexItems.push(doc);
 }

@@ -71,6 +71,9 @@ begin
   if p_outcome not in ('success', 'fail') then
     return;
   end if;
+  if public.is_stats_excluded(uid) then
+    return;
+  end if;
 
   insert into public.report_attempts (
     user_id, restaurant_id, outcome, fail_reason,
@@ -159,6 +162,9 @@ begin
   if nullif(trim(coalesce(p_screen, '')), '') is null then
     return;
   end if;
+  if public.is_stats_excluded(uid) then
+    return;
+  end if;
 
   meta := coalesce(p_metadata, '{}'::jsonb)
     || jsonb_build_object(
@@ -222,6 +228,7 @@ begin
     where cr.source = 'user'::public.crowd_source
       and cr.user_id is not null
       and cr.created_at >= v_since
+      and not public.is_stats_excluded(cr.user_id)
   ),
   ranked as (
     select
@@ -516,6 +523,7 @@ begin
   left join engagement eg on eg.user_id = u.id
   left join device_siblings ds on ds.user_id = u.id
   where u.role = 'user'
+    and not public.is_stats_excluded(u.id)
     and (
       coalesce(pr.report_count, 0) > 0
       or coalesce(at.fail_n, 0) > 0

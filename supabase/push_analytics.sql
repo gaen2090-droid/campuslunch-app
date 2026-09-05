@@ -1,6 +1,11 @@
 -- 푸시 알림 분석 (push_delivered / push_click) + admin 푸시 오픈율
--- analytics_events.sql 실행 후 Dashboard → SQL Editor → Run
+-- analytics_events.sql, stats_excluded_users.sql 실행 후 Dashboard → SQL Editor → Run
 
+-- ⚠️ 2026-09 사고 기록: 이 제약을 push 관련 5종으로만 좁혀 재생성했다가, 이미
+-- map_marker_click/search_result_click/detail_view/screen_dwell 행이 쌓인 상태에서
+-- "check constraint ... is violated by some row" 에러가 났음(trust_abuse_scoring.sql이
+-- 나중에 실행되어야 이 4종이 다시 허용되는 구조였음). 실행 순서에 의존하지 않도록
+-- 이후 추가된 이벤트 타입까지 전부 포함한 최종 목록으로 통일한다.
 alter table public.analytics_events
   drop constraint if exists analytics_events_event_type_check;
 
@@ -12,7 +17,11 @@ alter table public.analytics_events
       'banner_impression',
       'banner_click',
       'push_delivered',
-      'push_click'
+      'push_click',
+      'map_marker_click',
+      'search_result_click',
+      'detail_view',
+      'screen_dwell'
     )
   );
 
@@ -35,6 +44,9 @@ begin
   end if;
   if p_event not in ('push_delivered', 'push_click') then
     raise exception 'invalid push event';
+  end if;
+  if public.is_stats_excluded(uid) then
+    return;
   end if;
 
   if p_event = 'push_delivered' and day_key <> '' then
@@ -248,13 +260,15 @@ begin
   from public.crowd_reports cr
   where cr.created_at >= today_start
     and cr.created_at < today_start + interval '1 day'
-    and cr.source in ('user', 'owner');
+    and cr.source in ('user', 'owner')
+    and not public.is_stats_excluded(cr.user_id);
 
   select count(*)::int into week_reports
   from public.crowd_reports cr
   where cr.created_at >= week_start
     and cr.created_at < today_start + interval '1 day'
-    and cr.source in ('user', 'owner');
+    and cr.source in ('user', 'owner')
+    and not public.is_stats_excluded(cr.user_id);
 
   select coalesce(jsonb_agg(jsonb_build_array(nickname, cnt)), '[]'::jsonb)
   into top_reporters
@@ -266,6 +280,7 @@ begin
     where cr.created_at >= today_start
       and cr.created_at < today_start + interval '1 day'
       and cr.source = 'user'
+      and not public.is_stats_excluded(cr.user_id)
     group by 1
     order by cnt desc
     limit 3
@@ -279,6 +294,7 @@ begin
     where cr.created_at >= today_start
       and cr.created_at < today_start + interval '1 day'
       and cr.source in ('user', 'owner')
+      and not public.is_stats_excluded(cr.user_id)
     group by cr.restaurant_id
   ) t;
 
@@ -290,6 +306,7 @@ begin
     where cr.created_at >= week_start
       and cr.created_at < today_start + interval '1 day'
       and cr.source in ('user', 'owner')
+      and not public.is_stats_excluded(cr.user_id)
     group by cr.restaurant_id
   ) t;
 

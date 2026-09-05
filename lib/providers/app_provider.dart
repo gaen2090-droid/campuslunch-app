@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
 import '../constants/legal_terms.dart';
+import '../constants/stats_excluded_account.dart';
 import '../utils/nickname_generator.dart';
 import '../utils/app_session_id.dart';
 import '../utils/device_install_id.dart';
@@ -1993,9 +1994,12 @@ class AppProvider extends ChangeNotifier {
       try {
         final isOwnerReport = _ownsRestaurant(restaurantId);
         source = isOwnerReport ? 'owner' : 'user';
+        final isStatsExcluded =
+            StatsExcludedAccount.isEmail(authUser.email);
 
         // 사장님은 5분 제한 없음. 디버그 빌드(flutter run)는 테스트 위해 제한 우회.
-        if (source == 'user' && !kDebugMode) {
+        // 통계 제외 계정(is_stats_excluded)도 서버와 동일하게 전부 면제.
+        if (source == 'user' && !kDebugMode && !isStatsExcluded) {
           final last = _lastReportTime[restaurantId];
           if (last != null &&
               DateTime.now().difference(last).inMinutes < 5) {
@@ -2012,26 +2016,38 @@ class AppProvider extends ChangeNotifier {
             return msg;
           }
         }
-        // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
-        // 디버그(flutter run)는 50m 우회 — _resolveVenueGps 참고.
-        final (coords, gpsErr) = await _resolveVenueGps(
-          restaurantId,
-          tooFarMessage: '매장 근처에서만 혼잡도를 제보할 수 있어요.',
-        );
-        if (gpsErr != null) {
-          unawaited(_analyticsRepo.recordReportAttempt(
-            restaurantId: restaurantId,
-            success: false,
-            failReason: gpsErr,
-            deviceInstallId: deviceId,
-            appSessionId: sessionId,
-            source: source,
-            status: status,
-          ));
-          return gpsErr;
+
+        double? gpsLat;
+        double? gpsLng;
+        if (isStatsExcluded) {
+          // GPS(위치) 확인·거리 제한 없이 매장 좌표를 그대로 사용해 제보를 넘긴다.
+          final pos = await _currentPosition();
+          gpsLat = pos?.latitude;
+          gpsLng = pos?.longitude;
+        } else {
+          // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
+          // 디버그(flutter run)는 50m 우회 — _resolveVenueGps 참고.
+          final (coords, gpsErr) = await _resolveVenueGps(
+            restaurantId,
+            tooFarMessage: '매장 근처에서만 혼잡도를 제보할 수 있어요.',
+          );
+          if (gpsErr != null) {
+            unawaited(_analyticsRepo.recordReportAttempt(
+              restaurantId: restaurantId,
+              success: false,
+              failReason: gpsErr,
+              deviceInstallId: deviceId,
+              appSessionId: sessionId,
+              source: source,
+              status: status,
+            ));
+            return gpsErr;
+          }
+          gpsLat = coords!.lat;
+          gpsLng = coords.lng;
         }
-        attemptLat = coords!.lat;
-        attemptLng = coords.lng;
+        attemptLat = gpsLat;
+        attemptLng = gpsLng;
 
         final stampResult = await repo.reportStatusWithStamp(
           restaurantId,
@@ -2039,8 +2055,8 @@ class AppProvider extends ChangeNotifier {
           source: source,
           userId: authUser.id,
           nickname: _nickname,
-          latitude: coords.lat,
-          longitude: coords.lng,
+          latitude: gpsLat,
+          longitude: gpsLng,
           deviceInstallId: deviceId,
           appSessionId: sessionId,
         );
