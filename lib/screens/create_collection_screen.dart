@@ -26,7 +26,7 @@ class CreateCollectionScreen extends StatefulWidget {
 }
 
 class _CreateCollectionScreenState extends State<CreateCollectionScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   late final _titleCtrl = TextEditingController(text: widget.editing?.title ?? '');
   late final _subtitleCtrl = TextEditingController(text: widget.editing?.subtitle ?? '');
   final _searchCtrl = TextEditingController();

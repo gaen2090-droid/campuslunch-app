@@ -8,7 +8,6 @@ import '../models/community_notice.dart';
 import '../models/community_post.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
-import '../services/supabase_service.dart';
 import '../widgets/collection_comments_sheet.dart';
 import '../widgets/collection_section.dart';
 import '../widgets/community_guideline_sheet.dart';
@@ -31,7 +30,7 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   final List<CommunityPost> _posts = [];
   bool _loading = true;
   bool _loadingMore = false;
@@ -259,7 +258,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
-    final uid = SupabaseService.client.auth.currentUser?.id;
+    final uid = context.read<AppProvider>().currentUserId;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),

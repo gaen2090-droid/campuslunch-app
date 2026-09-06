@@ -8,7 +8,6 @@ import '../models/community_poll_option.dart';
 import '../models/community_post.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
-import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
@@ -28,7 +27,7 @@ class CommunityPostDetailScreen extends StatefulWidget {
 }
 
 class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   final _commentCtrl = TextEditingController();
   final _commentFocusNode = FocusNode();
   late CommunityPost _post;
@@ -129,7 +128,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   }
 
   Future<void> _toggleLike() async {
-    final uid = SupabaseService.client.auth.currentUser?.id;
+    final uid = context.read<AppProvider>().currentUserId;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),
@@ -243,7 +242,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
       );
       return;
     }
-    final uid = SupabaseService.client.auth.currentUser?.id;
+    final uid = context.read<AppProvider>().currentUserId;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),

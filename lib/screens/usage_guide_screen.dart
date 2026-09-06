@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
-import '../data/restaurants.dart';
+import 'usage_guide_preview_data.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';

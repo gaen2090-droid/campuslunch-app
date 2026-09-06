@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchTrustSignalsReport } from "../lib/adminApi";
+import { fetchTrustSignalsReport } from "../lib/adminTrustApi";
 import { errorMessage } from "../lib/errors";
 import type { TrustSignalsReport } from "../types/trustAbuse";
 

@@ -21,7 +21,7 @@ class CommunityMyActivityScreen extends StatefulWidget {
 }
 
 class _CommunityMyActivityScreenState extends State<CommunityMyActivityScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   List<CommunityPost> _posts = [];
   bool _loading = true;
   String? _error;

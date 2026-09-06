@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_inbox_notification.dart';
 
 /// 정지/해제 이후 첫 로그인 시 홈 화면에 뜨는 안내 팝업.
@@ -8,7 +9,7 @@ import '../models/community_inbox_notification.dart';
 /// 화면 중앙에 카드로 띄운다.
 class SuspensionPopupDialog {
   static Future<void> checkAndShow(BuildContext context) async {
-    final repo = CommunityRepository();
+    final repo = context.read<AppProvider>().community;
     CommunityInboxNotification? notice;
     try {
       notice = await repo.fetchPendingSuspensionPopup();

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../services/supabase_service.dart';
 import 'community_suspension_history_screen.dart';
 import 'push_notification_settings_screen.dart';
 
@@ -90,11 +89,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _loginMethodLabel() {
-    final user = SupabaseService.client.auth.currentUser;
-    if (user == null) return '';
-    final authProvider = user.appMetadata['provider'] as String?;
-    return switch (authProvider) {
+  String _loginMethodLabel(AppProvider provider) {
+    return switch (provider.authLoginProvider) {
       'kakao' => '카카오 로그인',
       'google' => '구글 로그인',
       'apple' => '애플 로그인',
@@ -105,8 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final email = SupabaseService.client.auth.currentUser?.email ?? '';
-    final loginMethod = _loginMethodLabel();
+    final email = provider.authEmail;
+    final loginMethod = _loginMethodLabel(provider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),

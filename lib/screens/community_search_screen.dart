@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_post.dart';
-import '../services/supabase_service.dart';
 import '../utils/recent_search_store.dart';
 import '../widgets/community_post_card.dart';
 import 'community_post_detail_screen.dart';
@@ -20,7 +21,7 @@ class CommunitySearchScreen extends StatefulWidget {
 class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   static const _recentSearchStore = RecentSearchStore('community');
 
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   final _searchCtrl = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -111,7 +112,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
-    final uid = SupabaseService.client.auth.currentUser?.id;
+    final uid = context.read<AppProvider>().currentUserId;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),

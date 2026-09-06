@@ -38,7 +38,6 @@ import '../services/push_notification_service.dart';
 import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
-import '../utils/gifticon_csv_parser.dart';
 import '../utils/profanity_filter.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -59,6 +58,29 @@ class AppProvider extends ChangeNotifier {
   String get accountId => _accountId;
   String get userRole => _userRole;
   List<String> get ownerRestaurantIds => _ownerRestaurantIds;
+
+  /// Screen/Widget는 [CommunityRepository]를 직접 생성하지 말고 이 accessor를 쓴다.
+  CommunityRepository get community => CommunityRepository();
+
+  /// Supabase auth user id (세션 없으면 null)
+  String? get currentUserId =>
+      SupabaseService.isReady
+          ? SupabaseService.client.auth.currentUser?.id
+          : null;
+
+  /// 로그인 이메일 (없으면 빈 문자열)
+  String get authEmail =>
+      SupabaseService.isReady
+          ? (SupabaseService.client.auth.currentUser?.email ?? '')
+          : '';
+
+  /// OAuth provider: kakao | google | apple | email 등
+  String? get authLoginProvider {
+    if (!SupabaseService.isReady) return null;
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) return null;
+    return user.appMetadata['provider'] as String?;
+  }
 
   /// 사장님 탭들(제보/마이페이지)이 공유하는 현재 선택 매장 ID.
   /// 선택값이 더 이상 소유 목록에 없으면(삭제 등) 첫 번째 매장으로 폴백.
@@ -97,7 +119,7 @@ class AppProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kActiveOwnerRestaurantId, restaurantId);
-      await CommunityRepository().setActiveOwnerRestaurant(restaurantId);
+      await community.setActiveOwnerRestaurant(restaurantId);
     } catch (e, st) {
       debugPrint('[setCommunityActiveOwnerRestaurant] failed: $e\n$st');
     }
@@ -321,10 +343,6 @@ class AppProvider extends ChangeNotifier {
   // ── 매장 ──
   List<Restaurant> _restaurants = [];
   List<Restaurant> get restaurants => _restaurants;
-  List<Restaurant> _adminRestaurants = [];
-  /// 어드민 화면용 — is_active=false 포함 DB 전체
-  List<Restaurant> get adminRestaurants =>
-      _adminRestaurants.isNotEmpty ? _adminRestaurants : _restaurants;
   int _restaurantRefreshGen = 0;
   bool _restaurantsLoading = true;
   /// true: 최초 로딩 중(네트워크 응답 전). 실패해도 한 번 끝나면 false.
@@ -2687,175 +2705,6 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
-
-  /// 카카오 로컬 API로 매장 등록. 성공 시 등록된 매장 id 반환.
-  Future<String?> addRestaurantFromKakaoPlace({
-    required String placeId,
-    required String name,
-    required String address,
-    required double latitude,
-    required double longitude,
-    required String category,
-    required String area,
-    String imageUrl = '',
-    String hours = BusinessHoursData.defaultHours,
-    String hoursDisplay = '',
-    List<Map<String, dynamic>> hoursPeriods = const [],
-    String? googlePlaceId,
-  }) async {
-    final repo = _restaurantRepo;
-    if (repo == null) return null;
-    if (!_canAdminOps) {
-      debugPrint('[addRestaurantFromKakaoPlace] 관리자 로그인 필요');
-      return null;
-    }
-
-    try {
-      final existing = await repo.findRestaurantIdByKakaoPlaceId(placeId);
-      if (existing != null) return null;
-
-      final restaurant = await repo.insert({
-        'name': name,
-        'category': category,
-        'area': area,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-        'image_url': imageUrl,
-        'hours': hours,
-        if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,
-        if (hoursPeriods.isNotEmpty) 'hours_periods': hoursPeriods,
-        'kakao_place_id': placeId,
-        if (googlePlaceId != null && googlePlaceId.isNotEmpty)
-          'google_place_id': googlePlaceId,
-      });
-
-      await _syncRestaurantListsAfterAdminChange();
-      return restaurant.id;
-    } catch (e, st) {
-      debugPrint('[Supabase] addRestaurantFromKakaoPlace failed: $e\n$st');
-      return null;
-    }
-  }
-
-  @Deprecated('Use addRestaurantFromKakaoPlace')
-  Future<String?> addRestaurantFromGooglePlace({
-    required String placeId,
-    required String name,
-    required String address,
-    required double latitude,
-    required double longitude,
-    required String category,
-    required String area,
-    String imageUrl = '',
-    String hours = BusinessHoursData.defaultHours,
-    String hoursDisplay = '',
-    List<Map<String, dynamic>> hoursPeriods = const [],
-  }) async {
-    final repo = _restaurantRepo;
-    if (repo == null) return null;
-    if (!_canAdminOps) {
-      debugPrint('[addRestaurantFromGooglePlace] 관리자 로그인 필요');
-      return null;
-    }
-
-    try {
-      final existing = await repo.findRestaurantIdByKakaoPlaceId(placeId);
-      if (existing != null) return null;
-
-      final restaurant = await repo.insert({
-        'name': name,
-        'category': category,
-        'area': area,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-        'image_url': imageUrl,
-        'hours': hours,
-        if (hoursDisplay.isNotEmpty) 'hours_display': hoursDisplay,
-        if (hoursPeriods.isNotEmpty) 'hours_periods': hoursPeriods,
-        'kakao_place_id': placeId,
-      });
-
-      await _syncRestaurantListsAfterAdminChange();
-      return restaurant.id;
-    } catch (e, st) {
-      debugPrint('[Supabase] addRestaurantFromGooglePlace failed: $e\n$st');
-      return null;
-    }
-  }
-
-  Future<void> refreshAdminRestaurants() async {
-    if (!_canAdminOps) return;
-    final repo = _restaurantRepo;
-    if (repo == null) return;
-    try {
-      _adminRestaurants =
-          _withOperatingHours(await repo.fetchAll(includeInactive: true));
-      notifyListeners();
-    } catch (e, st) {
-      debugPrint('[Supabase] refreshAdminRestaurants failed: $e\n$st');
-    }
-  }
-
-  Future<void> _syncRestaurantListsAfterAdminChange() async {
-    final repo = _restaurantRepo;
-    if (repo == null) return;
-    _adminRestaurants =
-        _withOperatingHours(await repo.fetchAll(includeInactive: true));
-    _restaurants = _withOperatingHours(await repo.fetchAll());
-    notifyListeners();
-  }
-
-  // ── 어드민: 매장 관리 ──
-  Future<String?> addRestaurant(Map<String, dynamic> data) async {
-    if (!_canAdminOps) {
-      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
-    }
-    final repo = _restaurantRepo;
-    if (repo == null) return 'Supabase 연결이 필요해요.';
-    try {
-      await repo.insert(data);
-      await _syncRestaurantListsAfterAdminChange();
-      return null;
-    } catch (e, st) {
-      debugPrint('[Supabase] addRestaurant failed: $e\n$st');
-      return '매장 추가에 실패했어요.';
-    }
-  }
-
-  Future<String?> editRestaurant(String id, Map<String, dynamic> data) async {
-    if (!_canAdminOps) {
-      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
-    }
-    final repo = _restaurantRepo;
-    if (repo == null) return 'Supabase 연결이 필요해요.';
-    try {
-      await repo.update(id, data);
-      await _syncRestaurantListsAfterAdminChange();
-      return null;
-    } catch (e, st) {
-      debugPrint('[Supabase] editRestaurant failed: $e\n$st');
-      return '매장 수정에 실패했어요.';
-    }
-  }
-
-  Future<String?> deleteRestaurant(String id) async {
-    if (!_canAdminOps) {
-      return 'Supabase 관리자(role=admin) 계정으로 로그인해주세요.';
-    }
-    final repo = _restaurantRepo;
-    if (repo == null) return 'Supabase 연결이 필요해요.';
-    try {
-      await repo.delete(id);
-      await _syncRestaurantListsAfterAdminChange();
-      return null;
-    } catch (e, st) {
-      debugPrint('[Supabase] deleteRestaurant failed: $e\n$st');
-      return '매장 삭제에 실패했어요. supabase/rpc_admin_restaurants.sql 실행 여부를 확인해주세요.';
-    }
-  }
-
   Future<List<RecentCrowdReport>> fetchRecentCrowdReports(String restaurantId) async {
     final repo = _restaurantRepo;
     if (repo == null) return [];
@@ -3352,14 +3201,14 @@ class AppProvider extends ChangeNotifier {
   Future<void> _loadBannedWords() async {
     if (!SupabaseService.isReady) return;
     try {
-      final words = await CommunityRepository().fetchBannedWords();
+      final words = await community.fetchBannedWords();
       setBannedWords(words);
     } catch (e) {
       debugPrint('[Community] fetchBannedWords failed: $e');
     }
     try {
       final nicknameWords =
-          await CommunityRepository().fetchNicknameBannedWords();
+          await community.fetchNicknameBannedWords();
       setNicknameBannedWords(nicknameWords);
     } catch (e) {
       debugPrint('[Community] fetchNicknameBannedWords failed: $e');
@@ -3519,65 +3368,5 @@ class AppProvider extends ChangeNotifier {
     );
     notifyListeners();
     return null;
-  }
-
-  // ── 어드민: 기프티콘 ──
-
-  List<Gifticon> _adminGifticons = [];
-  List<Gifticon> get adminGifticons => _adminGifticons;
-
-  Future<void> adminFetchGifticons() async {
-    final repo = _rewardRepo;
-    if (repo == null) return;
-    try {
-      _adminGifticons = await repo.adminListGifticons();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('[Reward] adminFetchGifticons failed: $e');
-    }
-  }
-
-  Future<String?> adminRegisterGifticon({
-    required String brand,
-    required String productName,
-    required String imageUrl,
-    DateTime? expiresAt,
-  }) async {
-    final repo = _rewardRepo;
-    if (repo == null) return '서버에 연결할 수 없어요.';
-    final err = await repo.adminRegisterGifticon(
-      brand: brand,
-      productName: productName,
-      imageUrl: imageUrl,
-      expiresAt: expiresAt,
-    );
-    if (err == null) await adminFetchGifticons();
-    return err;
-  }
-
-  Future<String?> adminUploadGifticonImage(String fileName, Uint8List bytes) async {
-    final repo = _rewardRepo;
-    if (repo == null) return null;
-    return repo.uploadGifticonImage(fileName, bytes);
-  }
-
-  Future<(int, String?)> adminBulkRegisterGifticonsFromCsv(String csvText) async {
-    final repo = _rewardRepo;
-    if (repo == null) return (0, '서버에 연결할 수 없어요.');
-
-    final parsed = GifticonCsvParser.parse(csvText);
-    if (parsed.error != null) return (0, parsed.error);
-
-    final result = await repo.adminBulkRegisterGifticons(parsed.rows);
-    if (result.$2 == null) await adminFetchGifticons();
-    return result;
-  }
-
-  Future<String?> adminDeleteGifticon(String gifticonId) async {
-    final repo = _rewardRepo;
-    if (repo == null) return '서버에 연결할 수 없어요.';
-    final err = await repo.adminDeleteGifticon(gifticonId);
-    if (err == null) await adminFetchGifticons();
-    return err;
   }
 }

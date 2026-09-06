@@ -194,10 +194,6 @@ export function formatCount(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
-export function formatRate(rate: number): string {
-  return Number.isInteger(rate) ? String(rate) : rate.toFixed(1);
-}
-
 /** 최근 N개월 "YYYY-M" 키 목록 (오래된 순) */
 export function lastNMonthKeys(n: number): string[] {
   const now = new Date();
@@ -258,10 +254,4 @@ export function levelToLabel(level: number | null): string {
     default:
       return "정보없음";
   }
-}
-
-export function displayReporterName(raw: string): string {
-  if (!raw.includes("@") && raw.length < 30) return raw;
-  if (raw.includes("@")) return raw.split("@")[0] ?? raw;
-  return `유저 ${raw.slice(-4)}`;
 }

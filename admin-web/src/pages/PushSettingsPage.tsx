@@ -9,7 +9,7 @@ import {
   invokeNewsPush,
   invokePushEdge,
   updatePushNotificationConfig,
-} from "../lib/adminApi";
+} from "../lib/adminPushApi";
 import { errorMessage } from "../lib/errors";
 import {
   DEFAULT_PUSH_CONFIG,

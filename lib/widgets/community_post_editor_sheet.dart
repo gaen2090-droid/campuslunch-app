@@ -1,10 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../constants/app_colors.dart';
-import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_poll_option.dart';
 import '../models/community_post.dart';
 import '../screens/community_poll_editor_screen.dart';
@@ -72,7 +73,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   Future<void> _loadExistingPollOptions(String postId) async {
     setState(() => _loadingExistingPoll = true);
     try {
-      final options = await CommunityRepository().fetchPollOptions(postId);
+      final options = await context.read<AppProvider>().community.fetchPollOptions(postId);
       if (!mounted) return;
       setState(() {
         _existingPollOptions = options;
@@ -85,7 +86,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
   }
 
   Future<void> _voteOnExistingPoll(List<String> optionIds) async {
-    await CommunityRepository().submitPollVote(optionIds);
+    await context.read<AppProvider>().community.submitPollVote(optionIds);
     if (!mounted) return;
     await _loadExistingPollOptions(widget.editing!.id);
   }
@@ -174,7 +175,7 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
       _validationError = null;
     });
 
-    final repo = CommunityRepository();
+    final repo = context.read<AppProvider>().community;
     try {
       final uploaded = <String>[];
       for (final img in _newImages) {

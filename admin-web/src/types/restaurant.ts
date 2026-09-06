@@ -64,3 +64,14 @@ export interface RestaurantFormData {
   /** 제보 대상 매장 여부. 기본 true. false로 등록하면 맛집컬렉션 전용 매장이 된다. */
   crowd_enabled?: boolean;
 }
+
+export const AREAS = ["정문", "중문", "후문"] as const;
+export const CATEGORIES = [
+  "한식",
+  "중식",
+  "일식",
+  "양식",
+  "아시아",
+  "분식",
+  "카페",
+] as const;

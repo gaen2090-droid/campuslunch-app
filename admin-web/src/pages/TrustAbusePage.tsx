@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fetchTrustSignalsUserDetail } from "../lib/adminApi";
+import { fetchTrustSignalsUserDetail } from "../lib/adminTrustApi";
 import { errorMessage } from "../lib/errors";
 import {
   fmtMeters,
@@ -10,6 +10,7 @@ import {
 } from "../types/trustAbuse";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
+import { TrustFieldGlossary } from "../components/TrustFieldGlossary";
 import { TrustUserDetailBody } from "../components/TrustUserProfile";
 import { usePagination } from "../hooks/usePagination";
 
@@ -93,14 +94,14 @@ export function TrustSignalsPage({
         </div>
       </div>
 
+      <TrustFieldGlossary />
+
       <div className="info-panel">
-        <strong>수집 지표</strong>
+        <strong>안내</strong>
         <ul>
-          <li>같은 매장 연속 제보 간격(분) · 연속 제보 GPS 이동(m)</li>
-          <li>구역 전환 · 동일 기기 계정 · 제보 성공/실패 · 화면 체류</li>
           <li>
-            개별 회원은 <strong>회원 관리</strong>에서 「수집 지표」 버튼으로도
-            확인
+            개별 회원은 <strong>회원 관리</strong> → 「수집 지표」에서도 동일
+            상세를 볼 수 있어요.
           </li>
         </ul>
       </div>
@@ -130,15 +131,22 @@ export function TrustSignalsPage({
                 </div>
                 <p className="user-email">{u.email || u.userId}</p>
                 <div className="user-meta">
-                  <span>
-                    같매장간격 중앙 {fmtMin(u.sameStoreIntervalMedianMin)}
+                  <span title="같은 매장 연속 제보 간격의 중앙값(분)">
+                    같은매장 간격(중앙) {fmtMin(u.sameStoreIntervalMedianMin)}
                   </span>
-                  <span>이동중앙 {fmtMeters(u.moveMedianM)}</span>
-                  <span>
-                    실패 {u.attemptFail}/{u.attemptSuccess + u.attemptFail}
+                  <span title="연속 제보 GPS 거리의 중앙값(m)">
+                    이동(중앙) {fmtMeters(u.moveMedianM)}
                   </span>
-                  <span>체류 {fmtMs(u.dwellMsTotal)}</span>
-                  <span>형제계정 {u.deviceSiblingUserCount}</span>
+                  <span title="제보 시도 실패 / (성공+실패)">
+                    시도실패 {u.attemptFail}/
+                    {u.attemptSuccess + u.attemptFail}
+                  </span>
+                  <span title="화면 체류 시간 합">
+                    체류 {fmtMs(u.dwellMsTotal)}
+                  </span>
+                  <span title="같은 기기를 쓰는 다른 계정 수">
+                    형제계정 {u.deviceSiblingUserCount}
+                  </span>
                 </div>
               </div>
               <div className="user-row-actions">

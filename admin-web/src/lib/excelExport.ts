@@ -5,8 +5,8 @@ import type { RealtimeMetrics } from "../types/realtimeMetrics";
 import type { KpiMetricsV2 } from "../types/kpiMetrics";
 import type { OpsMetrics } from "../types/opsMetrics";
 import type { DailyExportRow, HourlyExportRow, RestaurantExportRow } from "../types/exportRangeMetrics";
-import type { RewardSpendReport } from "./adminApi";
-import { totalReports } from "./adminApi";
+import type { RewardSpendReport } from "../types/rewardSpend";
+import { totalReports } from "./adminRestaurantsApi";
 import type { TrustSignalsReport } from "../types/trustAbuse";
 
 export const EXPORT_SECTIONS = [

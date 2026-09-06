@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../constants/app_colors.dart';
 import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_comment.dart';
-import '../services/supabase_service.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
@@ -44,7 +45,7 @@ class CollectionCommentsSheet extends StatefulWidget {
 }
 
 class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   final _commentCtrl = TextEditingController();
   final _commentFocusNode = FocusNode();
   List<CommunityComment> _comments = [];
@@ -164,7 +165,7 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
       );
       return;
     }
-    final uid = SupabaseService.client.auth.currentUser?.id;
+    final uid = context.read<AppProvider>().currentUserId;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 후 이용할 수 있어요.')),

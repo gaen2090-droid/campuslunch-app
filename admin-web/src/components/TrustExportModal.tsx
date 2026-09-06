@@ -6,6 +6,7 @@ import {
 } from "../lib/excelExport";
 import { errorMessage } from "../lib/errors";
 import type { TrustSignalsReport } from "../types/trustAbuse";
+import { TrustFieldGlossary } from "./TrustFieldGlossary";
 import { Modal } from "./Modal";
 
 interface Props {
@@ -52,9 +53,12 @@ export function TrustExportModal({ report, days, onClose }: Props) {
     <Modal title="신뢰·어뷰징 수집 지표 내보내기" onClose={onClose}>
       <p className="muted xs mb-3">
         핵심 지표와 <strong>별도 카테고리</strong>입니다. 점수·판정 없이 원본
-        수치(간격 분, 이동 m 등)만 포함합니다. 최근 {days}일 ·{" "}
-        {report.users.length}명.
+        수치만 포함합니다. 최근 {days}일 · {report.users.length}명.
       </p>
+
+      <div style={{ marginBottom: 12 }}>
+        <TrustFieldGlossary />
+      </div>
 
       <div className="export-actions">
         <button

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchPushNotificationConfig } from "../lib/adminApi";
+import { fetchPushNotificationConfig } from "../lib/adminPushApi";
 import { errorMessage } from "../lib/errors";
 import {
   DEFAULT_PUSH_CONFIG,

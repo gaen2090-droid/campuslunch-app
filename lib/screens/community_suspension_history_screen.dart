@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_inbox_notification.dart';
 import '../utils/time_ago.dart';
 
@@ -17,7 +19,7 @@ class CommunitySuspensionHistoryScreen extends StatefulWidget {
 
 class _CommunitySuspensionHistoryScreenState
     extends State<CommunitySuspensionHistoryScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   List<CommunityInboxNotification> _items = [];
   bool _loading = true;
   String? _error;

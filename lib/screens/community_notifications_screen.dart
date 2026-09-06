@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/community_inbox_notification.dart';
 import '../utils/time_ago.dart';
 import '../widgets/collection_comments_sheet.dart';
@@ -18,7 +20,7 @@ class CommunityNotificationsScreen extends StatefulWidget {
 
 class _CommunityNotificationsScreenState
     extends State<CommunityNotificationsScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   List<CommunityInboxNotification> _notifications = [];
   bool _loading = true;
   String? _error;

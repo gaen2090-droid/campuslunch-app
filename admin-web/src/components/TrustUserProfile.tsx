@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { fetchTrustSignalsUserDetail } from "../lib/adminApi";
+import { fetchTrustSignalsUserDetail } from "../lib/adminTrustApi";
 import { errorMessage } from "../lib/errors";
 import {
   fmtMeters,
@@ -12,17 +12,18 @@ import { Modal } from "./Modal";
 
 function MetricBlock({
   title,
+  hint,
   children,
 }: {
   title: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
     <div className="info-panel mt-0">
       <strong>{title}</strong>
-      <div className="muted sm mt-1-5">
-        {children}
-      </div>
+      {hint && <p className="muted xs mt-1">{hint}</p>}
+      <div className="muted sm mt-1-5">{children}</div>
     </div>
   );
 }
@@ -30,7 +31,10 @@ function MetricBlock({
 export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
   return (
     <div className="trust-summary-grid">
-      <MetricBlock title="같은 매장 제보 간격(분)">
+      <MetricBlock
+        title="같은 매장 제보 간격(분)"
+        hint="같은 식당에 연속 제보할 때 이전 제보와의 시간 차이"
+      >
         <p>
           쌍 {u.sameStoreIntervalPairCount} · 평균{" "}
           {fmtMin(u.sameStoreIntervalAvgMin)} · 중앙값{" "}
@@ -48,7 +52,10 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         )}
       </MetricBlock>
 
-      <MetricBlock title="연속 제보 이동 거리(m)">
+      <MetricBlock
+        title="연속 제보 이동 거리(m)"
+        hint="연속 두 제보 GPS 사이 직선 거리"
+      >
         <p>
           쌍 {u.movePairCount} · 평균 {fmtMeters(u.moveAvgM)} · 중앙값{" "}
           {fmtMeters(u.moveMedianM)}
@@ -64,7 +71,10 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         )}
       </MetricBlock>
 
-      <MetricBlock title="구역 이동">
+      <MetricBlock
+        title="구역 이동"
+        hint="정문/중문/후문 구역이 바뀔 때와 그때의 간격"
+      >
         <p>전환 {u.areaTransitionCount}회</p>
         {u.areaTransitions.slice(0, 5).map((t, i) => (
           <p key={`${t.fromArea}-${t.toArea}-${i}`}>
@@ -73,13 +83,19 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         ))}
       </MetricBlock>
 
-      <MetricBlock title="10분 내 타유저 겹침">
+      <MetricBlock
+        title="10분 내 타유저 겹침"
+        hint="같은 매장·10분 안 다른 유저 제보(겹침)와 레벨 일치"
+      >
         <p>
           일치 {u.peerAgreeCount} / 겹침 기회 {u.peerOverlapCount}
         </p>
       </MetricBlock>
 
-      <MetricBlock title="동일 기기 계정">
+      <MetricBlock
+        title="동일 기기 계정"
+        hint="설치 ID(device_install_id)로 묶인 계정"
+      >
         <p>
           기기 {u.deviceIds.length}개 · 공유 시 최대 계정{" "}
           {u.deviceMaxAccountsOnShared}
@@ -87,7 +103,10 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         <p>형제 계정 {u.deviceSiblingUserCount}명</p>
       </MetricBlock>
 
-      <MetricBlock title="제보 시도">
+      <MetricBlock
+        title="제보 시도"
+        hint="성공·실패 로그(쿨다운·거리 실패 등 포함)"
+      >
         <p>
           성공 {u.attemptSuccess} · 실패 {u.attemptFail}
         </p>
@@ -100,7 +119,10 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         )}
       </MetricBlock>
 
-      <MetricBlock title="화면 체류">
+      <MetricBlock
+        title="화면 체류"
+        hint="탭별 머문 시간 합(2초 미만 제외)"
+      >
         <p>합계 {fmtMs(u.dwellMsTotal)}</p>
         {Object.entries(u.dwellMsByScreen).map(([k, v]) => (
           <p key={k}>
@@ -109,7 +131,10 @@ export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
         ))}
       </MetricBlock>
 
-      <MetricBlock title="비제보 활동 / 스탬프 시간">
+      <MetricBlock
+        title="비제보 활동 / 스탬프 시간"
+        hint="상세·지도 등 이벤트 수 · KST 10–19 안/밖 제보 수"
+      >
         <p>
           상세 {u.detailViewN} · 지도 {u.mapClickN} · 검색 {u.searchClickN} ·
           배너 {u.bannerClickN} · 세션 {u.appSessionN}

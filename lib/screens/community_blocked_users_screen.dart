@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/community_repository.dart';
+import '../providers/app_provider.dart';
 import '../models/blocked_user.dart';
 
 /// 차단 관리 — 커뮤니티 더보기(≡) → 차단 관리
@@ -14,7 +16,7 @@ class CommunityBlockedUsersScreen extends StatefulWidget {
 
 class _CommunityBlockedUsersScreenState
     extends State<CommunityBlockedUsersScreen> {
-  final _repo = CommunityRepository();
+  CommunityRepository get _repo => context.read<AppProvider>().community;
   List<BlockedUser> _blocked = [];
   bool _loading = true;
   bool _changed = false;
