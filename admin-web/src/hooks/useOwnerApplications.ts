@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { fetchOwnerApplications } from "../lib/adminApi";
 import type { OwnerApplication } from "../types/ownerApplication";
 
@@ -14,7 +15,7 @@ export function useOwnerApplications(enabled: boolean) {
     try {
       setApplications(await fetchOwnerApplications());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

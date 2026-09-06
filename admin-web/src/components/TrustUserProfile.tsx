@@ -18,9 +18,9 @@ function MetricBlock({
   children: ReactNode;
 }) {
   return (
-    <div className="info-panel" style={{ marginTop: 0 }}>
+    <div className="info-panel mt-0">
       <strong>{title}</strong>
-      <div className="muted sm" style={{ marginTop: 6 }}>
+      <div className="muted sm mt-1-5">
         {children}
       </div>
     </div>
@@ -29,14 +29,7 @@ function MetricBlock({
 
 export function UserTrustSummaryCards({ u }: { u: TrustSignalsUserRow }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 10,
-        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-        marginTop: 12,
-      }}
-    >
+    <div className="trust-summary-grid">
       <MetricBlock title="같은 매장 제보 간격(분)">
         <p>
           쌍 {u.sameStoreIntervalPairCount} · 평균{" "}
@@ -143,12 +136,12 @@ export function TrustUserDetailBody({
           최근 {detail.days}일 수집 요약이 없습니다. (제보·시도·체류 기록 없음)
         </p>
       )}
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         <strong>최근 제보</strong>
         {detail.recentReports.length === 0 ? (
           <p className="muted sm">없음</p>
         ) : (
-          <ul className="feedback-list" style={{ marginTop: 8 }}>
+          <ul className="feedback-list mt-2">
             {detail.recentReports.slice(0, 30).map((r) => (
               <li key={r.id} className="feedback-row">
                 <div className="feedback-row-head">
@@ -167,12 +160,12 @@ export function TrustUserDetailBody({
           </ul>
         )}
       </div>
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         <strong>최근 시도(성공/실패)</strong>
         {detail.recentAttempts.length === 0 ? (
           <p className="muted sm">없음</p>
         ) : (
-          <ul className="feedback-list" style={{ marginTop: 8 }}>
+          <ul className="feedback-list mt-2">
             {detail.recentAttempts.slice(0, 30).map((a, i) => (
               <li key={`${a.createdAt}-${i}`} className="feedback-row">
                 <div className="feedback-row-head">
@@ -231,7 +224,7 @@ export function TrustProfileButton({
         {busy ? "불러오는 중…" : "수집 지표"}
       </button>
       {err && !detail && (
-        <p className="muted xs" style={{ margin: 0 }}>
+        <p className="muted xs mt-0">
           {err}
         </p>
       )}

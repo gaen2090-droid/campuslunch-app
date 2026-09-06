@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import {
   addBannedWord,
   createCommunityNotice,
@@ -53,7 +54,7 @@ export function useCommunity(enabled: boolean) {
       setBannedWordsState(wordList);
       setNotices(noticeList);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ export function useCommunity(enabled: boolean) {
     try {
       setPosts(await fetchCommunityPosts(query));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

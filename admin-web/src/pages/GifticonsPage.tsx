@@ -250,7 +250,6 @@ export function GifticonsPage({
   return (
     <div className="page">
       <div className="panel-head">
-        <h2>기프티콘 관리</h2>
         <div className="topbar-actions">
           <button type="button" className="btn primary sm" onClick={openBulk}>
             쿠폰 대량 등록
@@ -345,8 +344,8 @@ export function GifticonsPage({
         <p className="muted center">등록된 기프티콘이 없어요.</p>
       ) : (
         <>
-          <div className="panel-head" style={{ marginTop: 8 }}>
-            <label className="muted sm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div className="panel-head mt-2">
+            <label className="muted sm flex-row gap-1-5">
               <input
                 type="checkbox"
                 checked={allDeletableSelected}
@@ -498,7 +497,7 @@ export function GifticonsPage({
             </label>
           </div>
 
-          <div style={{ margin: "12px 0" }}>
+          <div className="my-3">
             <button
               type="button"
               className="btn ghost sm"

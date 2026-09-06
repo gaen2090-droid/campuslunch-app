@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 interface Props {
   title: string;
@@ -8,6 +8,14 @@ interface Props {
 }
 
 export function Modal({ title, onClose, children, wide }: Props) {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div

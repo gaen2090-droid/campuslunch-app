@@ -3,14 +3,21 @@ interface Props {
   value: string;
   unit?: string;
   onClick?: () => void;
+  size?: "primary" | "secondary";
 }
 
-export function MetricCard({ label, value, unit, onClick }: Props) {
+export function MetricCard({
+  label,
+  value,
+  unit,
+  onClick,
+  size = "secondary",
+}: Props) {
   const Tag = onClick ? "button" : "div";
   return (
     <Tag
       type={onClick ? "button" : undefined}
-      className={`metric-card${onClick ? " clickable" : ""}`}
+      className={`metric-card metric-card--${size}${onClick ? " clickable" : ""}`}
       onClick={onClick}
     >
       <p className="metric-label">{label}</p>

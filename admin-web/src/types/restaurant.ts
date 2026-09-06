@@ -33,6 +33,7 @@ export interface AdminRestaurant {
   imageSource?: string;
   /** 사장님이 직접 입력한 매장 공지 (최대 500자) */
   ownerNotice?: string;
+  createdAt: Date;
 }
 
 export interface RecentCrowdReport {

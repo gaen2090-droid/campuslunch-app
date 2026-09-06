@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { DeleteReasonModal } from "../components/DeleteReasonModal";
+import { Pagination } from "../components/Pagination";
+import { usePagination } from "../hooks/usePagination";
 import type {
-  BannedWord,
   CommunityNoticeAdmin,
   CommunityPostAdmin,
   CommunityReport,
@@ -11,7 +13,6 @@ interface Props {
   reports: CommunityReport[];
   posts: CommunityPostAdmin[];
   pinnedPosts: CommunityPostAdmin[];
-  bannedWords: BannedWord[];
   notices: CommunityNoticeAdmin[];
   loading: boolean;
   error: string | null;
@@ -23,8 +24,6 @@ interface Props {
   onReorderPinned: (orderedIds: string[]) => Promise<void>;
   onHideComment: (id: string, hidden: boolean) => Promise<void>;
   onRemoveComment: (id: string, reason: string) => Promise<void>;
-  onAddWord: (word: string) => Promise<void>;
-  onRemoveWord: (id: string) => Promise<void>;
   onAddNotice: (content: string) => Promise<void>;
   onEditNotice: (id: string, content: string) => Promise<void>;
   onToggleNoticeActive: (id: string, active: boolean) => Promise<void>;
@@ -45,7 +44,6 @@ export function CommunityAdminPage({
   reports,
   posts,
   pinnedPosts,
-  bannedWords,
   notices,
   loading,
   error,
@@ -57,8 +55,6 @@ export function CommunityAdminPage({
   onReorderPinned,
   onHideComment,
   onRemoveComment,
-  onAddWord,
-  onRemoveWord,
   onAddNotice,
   onEditNotice,
   onToggleNoticeActive,
@@ -66,8 +62,6 @@ export function CommunityAdminPage({
 }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [newWord, setNewWord] = useState("");
-  const [wordBusy, setWordBusy] = useState(false);
   const [newNotice, setNewNotice] = useState("");
   const [noticeBusy, setNoticeBusy] = useState(false);
   const [postQueryInput, setPostQueryInput] = useState(postQuery);
@@ -75,20 +69,8 @@ export function CommunityAdminPage({
     { kind: "post" | "comment"; id: string } | null
   >(null);
 
-  async function submitWord() {
-    const word = newWord.trim();
-    if (!word || wordBusy) return;
-    setWordBusy(true);
-    setActionError(null);
-    try {
-      await onAddWord(word);
-      setNewWord("");
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setWordBusy(false);
-    }
-  }
+  const reportsPage = usePagination(reports, 20);
+  const postsPage = usePagination(posts, 20);
 
   async function submitNotice() {
     const content = newNotice.trim();
@@ -99,7 +81,7 @@ export function CommunityAdminPage({
       await onAddNotice(content);
       setNewNotice("");
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setNoticeBusy(false);
     }
@@ -111,7 +93,7 @@ export function CommunityAdminPage({
     try {
       await fn();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setBusyId(null);
     }
@@ -172,7 +154,7 @@ export function CommunityAdminPage({
         </ul>
       )}
 
-      <div className="panel-head" style={{ marginTop: 32 }}>
+      <div className="panel-head mt-8">
         <h2>커뮤니티 신고함</h2>
       </div>
 
@@ -182,7 +164,7 @@ export function CommunityAdminPage({
         <p className="muted center">접수된 신고가 없어요.</p>
       ) : (
         <ul className="feedback-list">
-          {reports.map((r) => (
+          {reportsPage.pageItems.map((r) => (
             <li key={r.id} className="feedback-row">
               <div className="feedback-row-head">
                 <span className="badge">{r.commentId ? "댓글 신고" : "게시글 신고"}</span>
@@ -226,8 +208,13 @@ export function CommunityAdminPage({
           ))}
         </ul>
       )}
+      <Pagination
+        page={reportsPage.page}
+        totalPages={reportsPage.totalPages}
+        onChange={reportsPage.setPage}
+      />
 
-      <div className="panel-head" style={{ marginTop: 32 }}>
+      <div className="panel-head mt-8">
         <h2>공지로 설정한 게시글</h2>
       </div>
       {pinnedPosts.length === 0 ? (
@@ -281,7 +268,7 @@ export function CommunityAdminPage({
         </ul>
       )}
 
-      <div className="panel-head" style={{ marginTop: 32 }}>
+      <div className="panel-head mt-8">
         <h2>최근 게시글</h2>
       </div>
       <div className="field-group">
@@ -319,7 +306,7 @@ export function CommunityAdminPage({
         <p className="muted center">게시글이 없어요.</p>
       ) : (
         <ul className="feedback-list">
-          {posts.map((p) => (
+          {postsPage.pageItems.map((p) => (
             <li key={p.id} className="feedback-row">
               <div className="feedback-row-head">
                 <span className="badge">{p.nickname}</span>
@@ -361,49 +348,11 @@ export function CommunityAdminPage({
           ))}
         </ul>
       )}
-
-      <div className="panel-head" style={{ marginTop: 32 }}>
-        <h2>금칙어 관리</h2>
-      </div>
-      <div className="row-actions">
-        <input
-          className="search-input"
-          type="text"
-          placeholder="추가할 단어 입력"
-          value={newWord}
-          onChange={(e) => setNewWord(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submitWord();
-          }}
-        />
-        <button
-          type="button"
-          className="btn sm"
-          disabled={wordBusy || !newWord.trim()}
-          onClick={submitWord}
-        >
-          추가
-        </button>
-      </div>
-      {bannedWords.length === 0 ? (
-        <p className="muted center">등록된 금칙어가 없어요.</p>
-      ) : (
-        <div className="chip-row">
-          {bannedWords.map((w) => (
-            <span key={w.id} className="chip">
-              {w.word}
-              <button
-                type="button"
-                className="chip-remove"
-                disabled={busyId === w.id}
-                onClick={() => run(w.id, () => onRemoveWord(w.id))}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+      <Pagination
+        page={postsPage.page}
+        totalPages={postsPage.totalPages}
+        onChange={postsPage.setPage}
+      />
 
       {deleteTarget && (
         <DeleteReasonModal
@@ -461,7 +410,7 @@ function NoticeRow({
       </div>
 
       {editing ? (
-        <div className="field-group" style={{ marginTop: 4 }}>
+        <div className="field-group mt-1">
           <input
             className="search-input"
             type="text"

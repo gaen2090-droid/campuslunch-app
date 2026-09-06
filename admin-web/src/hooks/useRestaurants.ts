@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { fetchAdminRestaurants } from "../lib/adminApi";
 import type { AdminRestaurant } from "../types/restaurant";
 
@@ -13,7 +14,7 @@ export function useRestaurants(enabled: boolean) {
     try {
       setRestaurants(await fetchAdminRestaurants());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

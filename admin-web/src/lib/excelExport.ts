@@ -1,9 +1,12 @@
 import type { Workbook, Worksheet, Row, Fill, Font } from "exceljs";
 import type { AdminRestaurant } from "../types/restaurant";
-import type { DashboardMetrics } from "../types/metrics";
+import type { AdminUser } from "../types/user";
+import type { RealtimeMetrics } from "../types/realtimeMetrics";
+import type { KpiMetricsV2 } from "../types/kpiMetrics";
+import type { OpsMetrics } from "../types/opsMetrics";
+import type { DailyExportRow, HourlyExportRow, RestaurantExportRow } from "../types/exportRangeMetrics";
 import type { RewardSpendReport } from "./adminApi";
 import { totalReports } from "./adminApi";
-import { last6MonthLabels, last7DayLabels } from "./metrics";
 import type { TrustSignalsReport } from "../types/trustAbuse";
 
 export const EXPORT_SECTIONS = [
@@ -16,6 +19,8 @@ export const EXPORT_SECTIONS = [
   "매장 현황",
   "리워드 지출",
 ] as const;
+
+const APP_SESSION_CUTOFF = "2026-09-05";
 
 export type ExportSection = (typeof EXPORT_SECTIONS)[number];
 
@@ -84,30 +89,6 @@ function fmtDateTime(d: Date): string {
   return `${fmtDate(d)} ${hh}:${mm}`;
 }
 
-function todayKstLabel(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === "year")?.value ?? "";
-  const m = parts.find((p) => p.type === "month")?.value ?? "";
-  const d = parts.find((p) => p.type === "day")?.value ?? "";
-  return `${y}-${m}-${d}`;
-}
-
-function mauMonthLabel(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === "year")?.value ?? "";
-  const m = parts.find((p) => p.type === "month")?.value ?? "";
-  return `${y}-${m}`;
-}
-
 function sortedRestaurants(list: AdminRestaurant[]): AdminRestaurant[] {
   return [...list].sort((a, b) => {
     const ai = AREA_ORDER.indexOf(a.area as (typeof AREA_ORDER)[number]);
@@ -117,11 +98,6 @@ function sortedRestaurants(list: AdminRestaurant[]): AdminRestaurant[] {
     if (aOrd !== bOrd) return aOrd - bOrd;
     return a.name.localeCompare(b.name, "ko");
   });
-}
-
-function reportCount(r: AdminRestaurant, ...keys: string[]): number {
-  const reports = r.reports ?? {};
-  return keys.reduce((sum, k) => sum + (Number(reports[k]) || 0), 0);
 }
 
 function sheetName(label: string): string {
@@ -259,8 +235,14 @@ export interface MetricsExportParams {
   startDate: Date;
   endDate: Date;
   sections: Set<ExportSection>;
-  metrics: DashboardMetrics;
+  realtimeMetrics: RealtimeMetrics | null;
+  kpiMetrics: KpiMetricsV2 | null;
+  opsMetrics: OpsMetrics | null;
+  dailyRows: DailyExportRow[];
+  hourlyRows: HourlyExportRow[];
+  restaurantRows: RestaurantExportRow[];
   restaurants: AdminRestaurant[];
+  users: AdminUser[];
   rewardSpend?: RewardSpendReport | null;
 }
 
@@ -273,26 +255,55 @@ export async function buildMetricsWorkbook(
   params: MetricsExportParams,
 ): Promise<Workbook> {
   const ExcelJS = await loadExcelJS();
-  const { startDate, endDate, sections, metrics, restaurants, rewardSpend } =
-    params;
+  const {
+    startDate,
+    endDate,
+    sections,
+    realtimeMetrics,
+    kpiMetrics,
+    opsMetrics,
+    dailyRows,
+    hourlyRows,
+    restaurantRows,
+    restaurants,
+    users,
+    rewardSpend,
+  } = params;
   const periodStart = fmtDate(startDate);
   const periodEnd = fmtDate(endDate);
   const exportedAt = fmtDateTime(new Date());
+  // 제휴 매장 집계는 제보 대상(crowd_enabled) 매장 기준으로 한다.
+  // 맛집컬렉션 전용 매장은 애초에 제보/오너 인증 대상이 아니라서 분모에 넣으면 비율이 왜곡된다.
+  const crowdEnabledRestaurants = restaurants.filter((r) => r.crowdEnabled);
   const restaurantsSorted = sortedRestaurants(restaurants);
-  const dayLabels = last7DayLabels();
-  const monthLabels = last6MonthLabels();
-  const ownerCount = restaurants.filter((r) => r.ownerId).length;
-  const dauDate = todayKstLabel();
-  const mauMonth = mauMonthLabel();
+  const partneredCount = crowdEnabledRestaurants.filter((r) => r.ownerId).length;
+  const rangeCoversPreCutoff = periodStart < APP_SESSION_CUTOFF;
 
   const meta: Array<[string, string]> = [
     ["기간", `${periodStart} ~ ${periodEnd}`],
     ["내보낸 시각", exportedAt],
   ];
+  const rangeMetaExtra: Array<[string, string]> = rangeCoversPreCutoff
+    ? [
+        [
+          "참고",
+          `앱 세션 기록 방식이 ${APP_SESSION_CUTOFF}부터 개선되어(1일 1건 → 30분 단위 재기록), 그 이전 날짜의 활성사용자·점심시간사용자 수치는 실제보다 적게 집계될 수 있음`,
+        ],
+      ]
+    : [];
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "CampusLunch Admin";
   wb.created = new Date();
+
+  const rangeTotal = dailyRows.reduce(
+    (acc, d) => ({
+      activeUsers: acc.activeUsers + d.activeUsers,
+      reports: acc.reports + d.reports,
+      newSignups: acc.newSignups + d.newSignups,
+    }),
+    { activeUsers: 0, reports: 0, newSignups: 0 },
+  );
 
   writeDataSheet(
     wb,
@@ -300,24 +311,16 @@ export async function buildMetricsWorkbook(
     meta,
     ["지표", "값", "단위", "설명"],
     [
-      [
-        `DAU (${dauDate})`,
-        metrics.dauToday,
-        "명",
-        `기준일 ${dauDate} (KST) 활성 사용자`,
-      ],
-      [
-        `MAU (${mauMonth})`,
-        metrics.mau,
-        "명",
-        "매월 1일 갱신 · 해당 월 활성 사용자",
-      ],
-      ["오늘 누적 제보", metrics.todayReports, "건", "오늘 혼잡도 제보 수"],
-      ["최근 7일 누적 제보", metrics.weekReports, "건", "최근 7일 제보 합계"],
-      ["추천 배너 클릭률 (오늘)", metrics.bannerClickRate, "%", "오늘 배너 클릭률"],
-      ["푸시 오픈율 (오늘)", metrics.pushOpenRate, "%", "오늘 푸시 오픈율"],
-      ["오너 등록 매장", ownerCount, "개", "사장님 연결된 매장"],
-      ["전체 매장", restaurants.length, "개", "등록된 매장 수"],
+      ["기간 내 신규 가입자", rangeTotal.newSignups, "명", `${periodStart} ~ ${periodEnd} 합계`],
+      ["기간 내 누적 제보", rangeTotal.reports, "건", `${periodStart} ~ ${periodEnd} 합계`],
+      ["오늘 활성 사용자", realtimeMetrics?.activeToday ?? 0, "명", "실시간 지표 기준"],
+      ["총 가입자", users.length, "명", "전체 유저 수 (내보내기 시점 스냅샷)"],
+      ["총 제휴 매장", partneredCount, "개", "사장님 연결된 매장 (제보 대상 기준, 스냅샷)"],
+      ["누적 제보", kpiMetrics?.totalReports ?? 0, "건", "전체 기간 누적"],
+      ["누적 게시글", kpiMetrics?.totalPosts ?? 0, "개", "전체 기간 누적"],
+      ["추천 배너 CTR (최근 7일)", opsMetrics?.bannerCtr7d ?? 0, "%", "노출 대비 클릭 비율"],
+      ["푸시 오픈율 (오늘)", opsMetrics?.pushOpenRateToday ?? 0, "%", "점심시간 알림 기준"],
+      ["오늘 쿠폰 지급", opsMetrics?.couponsToday ?? 0, "건", "리워드 현황"],
       ...(rewardSpend
         ? ([
             [
@@ -336,74 +339,26 @@ export async function buildMetricsWorkbook(
         : []),
       ["선택 섹션", [...sections].join(", "), "", "이번 파일에 포함된 시트"],
     ],
-    [28, 14, 8, 40],
+    [28, 14, 8, 44],
   );
 
   if (sections.has("사용자 지표")) {
     writeDataSheet(
       wb,
       "사용자 지표",
+      [...meta, ...rangeMetaExtra],
+      ["지표", "값", "단위", "비고"],
       [
-        ["내보낸 시각", exportedAt],
-        [
-          "참고",
-          "지표별 기준일·갱신 주기는 '기준'·'비고' 열을 보세요 (기간 중복 제거)",
-        ],
+        ["기간 내 활성 사용자 합", rangeTotal.activeUsers, "명", "일별 합계 (중복 제거 없음, 참고용)"],
+        ["기간 내 신규 가입자", rangeTotal.newSignups, "명", `${periodStart} ~ ${periodEnd}`],
+        ["기간 내 누적 제보", rangeTotal.reports, "건", `${periodStart} ~ ${periodEnd}`],
+        ["오늘 활성 사용자", realtimeMetrics?.activeToday ?? 0, "명", "실시간 지표 · 스냅샷"],
+        ["WAU (최근 7일)", kpiMetrics?.wauCurrent ?? 0, "명", "KPI · 스냅샷"],
+        ["총 가입자", users.length, "명", "내보내기 시점 스냅샷"],
+        ["오너 등록 매장 수", partneredCount, "개", "내보내기 시점 스냅샷 (제보 대상 기준)"],
+        ["전체 매장 수", restaurants.length, "개", "내보내기 시점 스냅샷"],
       ],
-      ["지표", "값", "단위", "기준", "비고"],
-      [
-        [
-          "DAU",
-          metrics.dauToday,
-          "명",
-          dauDate,
-          `기준일 ${dauDate} (KST) · 해당일 활성 사용자`,
-        ],
-        [
-          "MAU",
-          metrics.mau,
-          "명",
-          `${mauMonth}-01`,
-          "매월 1일 갱신 · 해당 월 활성 사용자",
-        ],
-        [
-          "오늘 누적 제보",
-          metrics.todayReports,
-          "건",
-          dauDate,
-          "기준일 당일 제보 수",
-        ],
-        [
-          "최근 7일 누적 제보",
-          metrics.weekReports,
-          "건",
-          `~${dauDate}`,
-          "기준일 포함 최근 7일",
-        ],
-        [
-          "추천 배너 클릭률",
-          metrics.bannerClickRate,
-          "%",
-          dauDate,
-          "기준일 당일",
-        ],
-        ["푸시 오픈율", metrics.pushOpenRate, "%", dauDate, "기준일 당일"],
-        [
-          "오너 등록 매장 수",
-          ownerCount,
-          "개",
-          exportedAt,
-          "내보내기 시점 스냅샷",
-        ],
-        [
-          "전체 매장 수",
-          restaurants.length,
-          "개",
-          exportedAt,
-          "내보내기 시점 스냅샷",
-        ],
-      ],
-      [18, 12, 8, 18, 40],
+      [26, 12, 8, 40],
     );
   }
 
@@ -411,23 +366,10 @@ export async function buildMetricsWorkbook(
     writeDataSheet(
       wb,
       "리텐션",
-      meta,
-      ["구분", "날짜_또는_월", "값", "단위"],
-      [
-        ...dayLabels.map((label, i) => [
-          "DAU 추이 (최근 7일)",
-          label,
-          metrics.dailyDau[i] ?? 0,
-          "명",
-        ]),
-        ...monthLabels.map((label, i) => [
-          "MAU 추이 (최근 6개월)",
-          label,
-          metrics.monthlyMau[i] ?? 0,
-          "명",
-        ]),
-      ],
-      [22, 14, 10, 8],
+      [...meta, ...rangeMetaExtra],
+      ["날짜", "활성 사용자", "점심시간 사용자", "신규 가입자"],
+      dailyRows.map((d) => [d.day, d.activeUsers, d.lunchUsers, d.newSignups]),
+      [14, 14, 16, 14],
     );
   }
 
@@ -435,15 +377,10 @@ export async function buildMetricsWorkbook(
     writeDataSheet(
       wb,
       "시간대 분석",
-      [...meta, ["참고", "시간대 raw 미연동 · 최근 7일 일자별 지표"]],
-      ["날짜", "DAU", "배너클릭률(%)", "푸시오픈율(%)"],
-      dayLabels.map((label, i) => [
-        label,
-        metrics.dailyDau[i] ?? 0,
-        metrics.dailyClickRates[i] ?? 0,
-        metrics.dailyPushOpenRates[i] ?? 0,
-      ]),
-      [12, 10, 14, 14],
+      [...meta, ...rangeMetaExtra, ["참고", "날짜 × 시간대(0~23시, KST) 단위 세부 집계"]],
+      ["날짜", "시", "활성 사용자", "제보 수", "상세 조회 수"],
+      hourlyRows.map((h) => [h.day, h.hour, h.activeUsers, h.reports, h.detailViews]),
+      [14, 6, 14, 12, 14],
     );
   }
 
@@ -452,24 +389,13 @@ export async function buildMetricsWorkbook(
       wb,
       "전환 지표",
       meta,
-      ["지표", "날짜", "값", "단위"],
-      [
-        ["배너 클릭률 (오늘)", periodEnd, metrics.bannerClickRate, "%"],
-        ["푸시 오픈율 (오늘)", periodEnd, metrics.pushOpenRate, "%"],
-        ...dayLabels.map((label, i) => [
-          "배너 클릭률 (일별)",
-          label,
-          metrics.dailyClickRates[i] ?? 0,
-          "%",
-        ]),
-        ...dayLabels.map((label, i) => [
-          "푸시 오픈율 (일별)",
-          label,
-          metrics.dailyPushOpenRates[i] ?? 0,
-          "%",
-        ]),
-      ],
-      [22, 12, 10, 8],
+      ["날짜", "배너 노출", "배너 클릭", "배너 CTR(%)", "푸시 발송", "푸시 오픈", "푸시 오픈율(%)"],
+      dailyRows.map((d) => {
+        const ctr = d.bannerImpressions > 0 ? Math.round((d.bannerClicks / d.bannerImpressions) * 1000) / 10 : 0;
+        const pushRate = d.pushDelivered > 0 ? Math.round((d.pushClicks / d.pushDelivered) * 1000) / 10 : 0;
+        return [d.day, d.bannerImpressions, d.bannerClicks, ctr, d.pushDelivered, d.pushClicks, pushRate];
+      }),
+      [14, 12, 12, 12, 12, 12, 14],
     );
   }
 
@@ -477,14 +403,11 @@ export async function buildMetricsWorkbook(
     writeDataSheet(
       wb,
       "오너 참여 현황",
-      [...meta, ["등록 요약", `${ownerCount} / ${restaurantsSorted.length} 매장`]],
+      [...meta, ["등록 요약", `${partneredCount} / ${crowdEnabledRestaurants.length} 매장 (내보내기 시점 스냅샷, 기간 필터 미적용)`]],
       ["매장명", "구역", "카테고리", "오너등록"],
-      restaurantsSorted.map((r) => [
-        r.name,
-        r.area,
-        r.category,
-        r.ownerId ? "등록" : "미등록",
-      ]),
+      restaurantsSorted
+        .filter((r) => r.crowdEnabled)
+        .map((r) => [r.name, r.area, r.category, r.ownerId ? "등록" : "미등록"]),
       [24, 10, 12, 10],
     );
   }
@@ -500,21 +423,23 @@ export async function buildMetricsWorkbook(
         "여유로움",
         "약간혼잡",
         "자리없음",
-        "합계",
-        "오늘제보",
-        "7일제보",
+        "기간 내 합계",
+        "제보 참여자수",
+        "누적제보(전체기간)",
       ],
-      restaurantsSorted.map((r) => [
+      restaurantRows.map((r) => [
         r.name,
         r.area,
-        reportCount(r, "여유로움"),
-        reportCount(r, "약간혼잡"),
-        reportCount(r, "자리없음", "웨이팅많음"),
-        totalReports(r),
-        metrics.todayByRestaurant[r.id] ?? 0,
-        metrics.weekByRestaurant[r.id] ?? 0,
+        r.reportsRelaxed,
+        r.reportsModerate,
+        r.reportsFull,
+        r.reportsTotal,
+        r.reportParticipants,
+        totalReports(
+          restaurants.find((rr) => rr.id === r.restaurantId) ?? ({ reports: {} } as AdminRestaurant),
+        ),
       ]),
-      [22, 8, 10, 10, 10, 8, 10, 10],
+      [22, 8, 10, 10, 10, 12, 12, 14],
     );
   }
 
@@ -522,7 +447,7 @@ export async function buildMetricsWorkbook(
     writeDataSheet(
       wb,
       "매장 현황",
-      meta,
+      [...meta, ["기준", "내보내기 시점 스냅샷 (기간 필터 미적용)"]],
       [
         "매장명",
         "구역",
@@ -588,6 +513,7 @@ export async function buildMetricsWorkbook(
             ? `face_value 미입력 ${report.missingFaceValueCount}건 · 상품명 'N원' 패턴으로 추정(없으면 0원)`
             : "face_value 또는 상품명 금액 기준",
         ],
+        ["기준", "내보내기 시점 스냅샷 (기간 필터 미적용, 전체 기간 누적)"],
       ],
       ["유저 ID", "닉네임", "이메일", "받아간 개수", "액수(원)"],
       userRows,

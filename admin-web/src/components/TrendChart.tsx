@@ -43,7 +43,7 @@ export function TrendChart({
               <XAxis dataKey="label" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v) => [`${v}${suffix}`, ""]} />
-              <Bar dataKey="value" fill="#16a34a" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="value" fill="#26BC7D" radius={[6, 6, 0, 0]} />
             </BarChart>
           ) : (
             <LineChart data={data}>
@@ -54,9 +54,9 @@ export function TrendChart({
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#16a34a"
+                stroke="#26BC7D"
                 strokeWidth={3}
-                dot={{ r: 4, fill: "#16a34a" }}
+                dot={{ r: 4, fill: "#26BC7D" }}
               />
             </LineChart>
           )}

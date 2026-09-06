@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { fetchDashboardMetrics } from "../lib/metrics";
 import type { DashboardMetrics } from "../types/metrics";
 
@@ -18,7 +19,7 @@ export function useMetrics(enabled: boolean) {
       setMetrics(m);
       setUpdatedAt(new Date());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

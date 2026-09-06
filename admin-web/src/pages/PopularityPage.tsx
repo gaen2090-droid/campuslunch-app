@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import {
   totalReports,
   updateManualRanks,
@@ -42,8 +43,14 @@ export function PopularityPage({ restaurants, onReload }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [manualOrder, setManualOrder] = useState<string[] | null>(null);
 
+  // 맛집컬렉션 전용(제보 미지원) 매장은 혼잡도 기반 인기 순위 대상이 아니다.
+  const rankable = useMemo(
+    () => restaurants.filter((r) => r.crowdEnabled),
+    [restaurants],
+  );
+
   const sorted = useMemo(() => {
-    const base = sortRestaurants(restaurants, useAlgo);
+    const base = sortRestaurants(rankable, useAlgo);
     if (!useAlgo && manualOrder) {
       const map = new Map(base.map((r) => [r.id, r]));
       return manualOrder
@@ -51,7 +58,7 @@ export function PopularityPage({ restaurants, onReload }: Props) {
         .filter((r): r is AdminRestaurant => r != null);
     }
     return base;
-  }, [restaurants, useAlgo, manualOrder]);
+  }, [rankable, useAlgo, manualOrder]);
 
   async function toggleAlgo() {
     const next = !useAlgo;
@@ -60,9 +67,9 @@ export function PopularityPage({ restaurants, onReload }: Props) {
     setManualOrder(null);
 
     if (!next) {
-      const allUnranked = restaurants.every((r) => r.manualRank === 0);
+      const allUnranked = rankable.every((r) => r.manualRank === 0);
       if (allUnranked) {
-        const algoSorted = sortRestaurants(restaurants, true);
+        const algoSorted = sortRestaurants(rankable, true);
         await persistOrder(algoSorted.map((r) => r.id));
       }
     }
@@ -80,7 +87,7 @@ export function PopularityPage({ restaurants, onReload }: Props) {
       setManualOrder(ids);
       onReload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -117,7 +124,7 @@ export function PopularityPage({ restaurants, onReload }: Props) {
       </section>
 
       <div className="section-head">
-        <h2>인기 순위</h2>
+        <h2>매장별 순위</h2>
         <p className="muted sm">
           {useAlgo
             ? "알고리즘이 자동으로 산정한 순위예요"

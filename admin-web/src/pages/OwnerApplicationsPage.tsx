@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { errorMessage } from "../lib/errors";
 import {
   resolveOwnerLicenseUrl,
   reviewOwnerApplication,
@@ -50,7 +51,7 @@ export function OwnerApplicationsPage({
       await reviewOwnerApplication(app.id, true);
       onReload();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setBusyId(null);
     }
@@ -70,7 +71,7 @@ export function OwnerApplicationsPage({
       setRejectReason("");
       onReload();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setBusyId(null);
     }
@@ -81,10 +82,6 @@ export function OwnerApplicationsPage({
 
   return (
     <div className="page">
-      <div className="panel-head">
-        <h2>사장님 인증 심사</h2>
-      </div>
-
       {(error || actionError) && (
         <div className="alert">{error ?? actionError}</div>
       )}

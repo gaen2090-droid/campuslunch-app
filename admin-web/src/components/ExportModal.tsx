@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
 import {
+  fetchAdminUsers,
   fetchRewardSpendReport,
   type RewardSpendReport,
 } from "../lib/adminApi";
+import {
+  fetchRealtimeMetrics,
+  fetchKpiMetrics,
+  fetchOpsMetrics,
+  fetchDailyExportMetrics,
+  fetchHourlyExportMetrics,
+  fetchRestaurantExportMetrics,
+} from "../lib/metrics";
 import {
   buildMetricsTsvForClipboard,
   downloadMetricsExcel,
@@ -12,16 +21,14 @@ import {
 } from "../lib/excelExport";
 import { errorMessage } from "../lib/errors";
 import type { AdminRestaurant } from "../types/restaurant";
-import type { DashboardMetrics } from "../types/metrics";
 import { Modal } from "./Modal";
 
 interface Props {
-  metrics: DashboardMetrics;
   restaurants: AdminRestaurant[];
   onClose: () => void;
 }
 
-export function ExportModal({ metrics, restaurants, onClose }: Props) {
+export function ExportModal({ restaurants, onClose }: Props) {
   const [selected, setSelected] = useState<Set<ExportSection>>(
     () => new Set(EXPORT_SECTIONS),
   );
@@ -77,15 +84,60 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
   }
 
   async function buildParams() {
-    const { report: rewardSpend, warning } = await loadRewardSpend();
+    const { report: rewardSpend, warning: rewardWarning } =
+      await loadRewardSpend();
+    const warnings: string[] = [];
+    if (rewardWarning) warnings.push(rewardWarning);
+
+    const rangeStart = fmtDate(Number.isFinite(start.getTime()) ? start : new Date());
+    const rangeEnd = fmtDate(Number.isFinite(end.getTime()) ? end : new Date());
+
+    const [realtimeMetrics, kpiMetrics, opsMetrics, users, dailyRows, hourlyRows, restaurantRows] =
+      await Promise.all([
+        fetchRealtimeMetrics().catch((e) => {
+          warnings.push(`실시간 지표 조회 실패 (${errorMessage(e)})`);
+          return null;
+        }),
+        fetchKpiMetrics().catch((e) => {
+          warnings.push(`KPI 지표 조회 실패 (${errorMessage(e)})`);
+          return null;
+        }),
+        fetchOpsMetrics().catch((e) => {
+          warnings.push(`운영 성과 지표 조회 실패 (${errorMessage(e)})`);
+          return null;
+        }),
+        fetchAdminUsers().catch((e) => {
+          warnings.push(`회원 목록 조회 실패 (${errorMessage(e)})`);
+          return [];
+        }),
+        fetchDailyExportMetrics(rangeStart, rangeEnd).catch((e) => {
+          warnings.push(`일별 지표 조회 실패 (${errorMessage(e)})`);
+          return [];
+        }),
+        fetchHourlyExportMetrics(rangeStart, rangeEnd).catch((e) => {
+          warnings.push(`시간대별 지표 조회 실패 (${errorMessage(e)})`);
+          return [];
+        }),
+        fetchRestaurantExportMetrics(rangeStart, rangeEnd).catch((e) => {
+          warnings.push(`매장별 지표 조회 실패 (${errorMessage(e)})`);
+          return [];
+        }),
+      ]);
+
     return {
       startDate: Number.isFinite(start.getTime()) ? start : new Date(),
       endDate: Number.isFinite(end.getTime()) ? end : new Date(),
       sections: selected,
-      metrics,
+      realtimeMetrics,
+      kpiMetrics,
+      opsMetrics,
+      dailyRows,
+      hourlyRows,
+      restaurantRows,
       restaurants,
+      users,
       rewardSpend,
-      warning,
+      warning: warnings.length > 0 ? warnings.join(" · ") : null,
     };
   }
 
@@ -154,9 +206,10 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
         />
       </div>
 
-      <p className="muted xs" style={{ marginBottom: 12 }}>
-        DAU/MAU·제보·리워드 등 <strong>핵심 지표</strong>용입니다. 신뢰·어뷰징
-        원본 수치는 <strong>신뢰·어뷰징</strong> 탭에서 따로 내보내세요.
+      <p className="muted xs mb-3">
+        실시간 지표·KPI·운영 성과·리워드 등 <strong>핵심 지표</strong>용입니다.
+        신뢰·어뷰징 원본 수치는 <strong>신뢰·어뷰징</strong> 탭에서 따로
+        내보내세요.
       </p>
 
       <div className="export-actions">
@@ -191,7 +244,7 @@ export function ExportModal({ metrics, restaurants, onClose }: Props) {
         })}
       </ul>
 
-      <div className="export-actions" style={{ display: "grid", gap: 8 }}>
+      <div className="export-actions">
         <button
           type="button"
           className="btn primary block"

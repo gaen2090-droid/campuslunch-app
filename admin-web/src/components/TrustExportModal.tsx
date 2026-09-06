@@ -50,7 +50,7 @@ export function TrustExportModal({ report, days, onClose }: Props) {
 
   return (
     <Modal title="신뢰·어뷰징 수집 지표 내보내기" onClose={onClose}>
-      <p className="muted xs" style={{ marginBottom: 12 }}>
+      <p className="muted xs mb-3">
         핵심 지표와 <strong>별도 카테고리</strong>입니다. 점수·판정 없이 원본
         수치(간격 분, 이동 m 등)만 포함합니다. 최근 {days}일 ·{" "}
         {report.users.length}명.
@@ -87,7 +87,7 @@ export function TrustExportModal({ report, days, onClose }: Props) {
         ))}
       </ul>
 
-      <div className="export-actions" style={{ display: "grid", gap: 8 }}>
+      <div className="export-actions">
         <button
           type="button"
           className="btn primary block"

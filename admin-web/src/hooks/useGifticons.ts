@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { fetchGifticons } from "../lib/adminApi";
 import type { Gifticon } from "../types/gifticon";
 
@@ -14,7 +15,7 @@ export function useGifticons(enabled: boolean) {
     try {
       setGifticons(await fetchGifticons());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

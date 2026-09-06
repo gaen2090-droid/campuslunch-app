@@ -19,10 +19,6 @@ function formatDate(d: Date): string {
 export function FeedbackPage({ feedback, loading, error }: Props) {
   return (
     <div className="page">
-      <div className="panel-head">
-        <h2>피드백</h2>
-      </div>
-
       {error && <div className="alert">{error}</div>}
 
       {loading ? (

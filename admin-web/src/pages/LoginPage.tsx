@@ -23,10 +23,7 @@ export function LoginPage({ onSignIn, error }: Props) {
       <form className="login-card" onSubmit={handleSubmit}>
         <p className="eyebrow">Campus Lunch Admin</p>
         <h1>관리자 로그인</h1>
-        <p className="muted">
-          Supabase Auth 계정 중 <code>public.users.role = admin</code> 만
-          접속할 수 있습니다.
-        </p>
+        <p className="muted">관리자 권한이 있는 계정으로 로그인하세요.</p>
 
         {!isSupabaseConfigured() && (
           <div className="alert">상위 폴더 .env 에 SUPABASE_URL / ANON_KEY 가 필요합니다.</div>

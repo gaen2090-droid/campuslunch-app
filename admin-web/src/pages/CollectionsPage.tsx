@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { DeleteReasonModal } from "../components/DeleteReasonModal";
 import type { AdminRestaurant } from "../types/restaurant";
 import {
@@ -16,7 +17,7 @@ function HashtagCheckboxes({
   onToggle: (tag: string) => void;
 }) {
   return (
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+    <div className="flex-row gap-3">
       {COLLECTION_HASHTAGS.map((tag) => (
         <label key={tag} className="chip-toggle">
           <input
@@ -100,7 +101,7 @@ export function CollectionsPage({
     try {
       await fn();
     } catch (e) {
-      setCommentError(e instanceof Error ? e.message : String(e));
+      setCommentError(errorMessage(e));
     } finally {
       setCommentBusyId(null);
     }
@@ -141,7 +142,7 @@ export function CollectionsPage({
     try {
       await onReorderCollections(next.map((c) => c.id));
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setMoveBusyId(null);
     }
@@ -163,7 +164,7 @@ export function CollectionsPage({
       setNewSubtitle("");
       setNewHashtags([]);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(errorMessage(e));
     } finally {
       setCreating(false);
     }
@@ -171,10 +172,6 @@ export function CollectionsPage({
 
   return (
     <div className="page">
-      <div className="panel-head">
-        <h2>맛집 컬렉션</h2>
-      </div>
-
       {(error || actionError) && <div className="alert">{error ?? actionError}</div>}
 
       <div className="field-group">
@@ -201,7 +198,7 @@ export function CollectionsPage({
           컬렉션 추가
         </button>
       </div>
-      <div style={{ marginBottom: 16 }}>
+      <div className="mb-4">
         <HashtagCheckboxes selected={newHashtags} onToggle={toggleNewHashtag} />
       </div>
 
@@ -212,11 +209,11 @@ export function CollectionsPage({
       ) : (
         <>
           {curatedCollections.length > 0 && (
-            <p className="muted sm" style={{ marginBottom: 8 }}>
+            <p className="muted sm mb-2">
               관리자 큐레이션 (화살표로 노출 순서 변경, 위가 먼저 노출)
             </p>
           )}
-          <div style={{ display: "grid", gap: 16 }}>
+          <div className="stack gap-4">
             {curatedCollections.map((c, index) => (
               <CollectionCard
                 key={c.id}
@@ -241,10 +238,10 @@ export function CollectionsPage({
 
           {userCollections.length > 0 && (
             <>
-              <div className="panel-head" style={{ marginTop: 32 }}>
-                <h2>유저 작성 컬렉션</h2>
+              <div className="panel-head mt-8">
+                <h3>유저 작성 컬렉션</h3>
               </div>
-              <div style={{ display: "grid", gap: 16 }}>
+              <div className="stack gap-4">
                 {userCollections.map((c) => (
                   <CollectionCard
                     key={c.id}
@@ -266,8 +263,8 @@ export function CollectionsPage({
         </>
       )}
 
-      <div className="panel-head" style={{ marginTop: 32 }}>
-        <h2>컬렉션 댓글</h2>
+      <div className="panel-head mt-8">
+        <h3>컬렉션 댓글</h3>
       </div>
 
       {commentError && <div className="alert">{commentError}</div>}
@@ -319,7 +316,7 @@ export function CollectionsPage({
               await onRemoveCollection(deleteTargetId, reason);
               setDeleteTargetId(null);
             } catch (e) {
-              setActionError(e instanceof Error ? e.message : String(e));
+              setActionError(errorMessage(e));
             } finally {
               setBusyId(null);
             }
@@ -406,7 +403,7 @@ function CollectionCard({
       await onReorderItems(order.map((item) => item.id));
       setOrderChanged(false);
     } catch (e) {
-      setLocalError(e instanceof Error ? e.message : String(e));
+      setLocalError(errorMessage(e));
     } finally {
       setOrderSaving(false);
     }
@@ -427,7 +424,7 @@ function CollectionCard({
     try {
       await onEdit({ title, subtitle, hashtags });
     } catch (e) {
-      setLocalError(e instanceof Error ? e.message : String(e));
+      setLocalError(errorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -440,7 +437,7 @@ function CollectionCard({
       await onAddItem({ restaurantId: r.id, note: "", sortOrder: items.length });
       setQuery("");
     } catch (e) {
-      setLocalError(e instanceof Error ? e.message : String(e));
+      setLocalError(errorMessage(e));
     } finally {
       setAddBusy(false);
     }
@@ -450,23 +447,21 @@ function CollectionCard({
     <div className="feedback-row">
       <div className="feedback-row-head">
         {(onMoveUp || onMoveDown) && (
-          <span style={{ display: "inline-flex", gap: 2 }}>
+          <span className="flex-row gap-1">
             <button
               type="button"
-              className="btn ghost sm"
+              className="btn ghost sm xs"
               disabled={!onMoveUp || moveBusy}
               onClick={onMoveUp}
-              style={{ padding: "2px 8px" }}
               aria-label="위로 이동"
             >
               ▲
             </button>
             <button
               type="button"
-              className="btn ghost sm"
+              className="btn ghost sm xs"
               disabled={!onMoveDown || moveBusy}
               onClick={onMoveDown}
-              style={{ padding: "2px 8px" }}
               aria-label="아래로 이동"
             >
               ▼
@@ -486,7 +481,7 @@ function CollectionCard({
 
       {localError && <div className="alert">{localError}</div>}
 
-      <div className="field-group" style={{ marginTop: 8 }}>
+      <div className="field-group mt-2">
         <input
           className="search-input"
           type="text"
@@ -503,7 +498,7 @@ function CollectionCard({
         />
       </div>
 
-      <div style={{ marginTop: 8, marginBottom: 8 }}>
+      <div className="mt-2 mb-2">
         <HashtagCheckboxes selected={hashtags} onToggle={toggleHashtag} />
       </div>
 
@@ -524,8 +519,8 @@ function CollectionCard({
         </button>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      <div className="mt-4">
+        <div className="flex-row between mb-2">
           <p className="muted sm">담긴 매장 (드래그로 순서 변경, 왼쪽이 먼저 노출)</p>
           {orderChanged && (
             <button type="button" className="btn sm" disabled={orderSaving} onClick={saveOrder}>
@@ -536,7 +531,7 @@ function CollectionCard({
         {order.length === 0 ? (
           <p className="muted sm">아직 담긴 매장이 없어요.</p>
         ) : (
-          <div style={{ display: "grid", gap: 6 }}>
+          <div className="stack gap-2">
             {order.map((item, index) => (
               <div
                 key={item.id}
@@ -547,7 +542,7 @@ function CollectionCard({
                 className="drag-row"
               >
                 <span className="drag-handle">⠿</span>
-                <span style={{ flex: 1 }}>{item.restaurantName ?? "알 수 없음"}</span>
+                <span className="flex-1">{item.restaurantName ?? "알 수 없음"}</span>
                 <button
                   type="button"
                   className="btn danger sm"
@@ -560,7 +555,7 @@ function CollectionCard({
           </div>
         )}
 
-        <div style={{ marginTop: 10, position: "relative" }}>
+        <div className="mt-2 relative">
           <input
             className="search-input"
             type="text"

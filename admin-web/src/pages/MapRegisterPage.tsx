@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import {
   AREAS,
   CATEGORIES,
@@ -45,7 +46,7 @@ export function MapRegisterPage({ onReload }: Props) {
       try {
         setResults(await searchPlaces(query));
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         setResults([]);
       } finally {
         setLoading(false);
@@ -65,7 +66,7 @@ export function MapRegisterPage({ onReload }: Props) {
       setResults([]);
       setQuery(details.name);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ export function MapRegisterPage({ onReload }: Props) {
       setSelected(null);
       setQuery("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setRegistering(false);
     }

@@ -323,13 +323,10 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
   return (
     <div className="page push-page">
       <div className="panel-head push-page-head">
-        <div>
-          <h2>푸시 알림 설정</h2>
-          <p className="muted sm">
-            피크 스케줄·문구 자유 편집 · 커뮤니티 댓글{" "}
-            <code>{"{nickname}"}</code> <code>{"{content}"}</code>
-          </p>
-        </div>
+        <p className="muted sm">
+          피크 스케줄·문구 자유 편집 · 커뮤니티 댓글{" "}
+          <code>{"{nickname}"}</code> <code>{"{content}"}</code>
+        </p>
       </div>
 
       {error && <div className="alert">{error}</div>}
@@ -816,8 +813,8 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               )}
             </div>
 
-            <div className="push-section-head row" style={{ marginTop: 16 }}>
-              <h4 style={{ margin: 0 }}>예약 발송 (일회성)</h4>
+            <div className="push-section-head row mt-4">
+              <h4 className="mt-0 mb-0">예약 발송 (일회성)</h4>
             </div>
             <div className="community-fields">
               <label className="field">
@@ -849,7 +846,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
               )}
             </div>
 
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-3">
               {scheduledLoading ? (
                 <p className="muted sm">불러오는 중…</p>
               ) : scheduledList.length === 0 ? (

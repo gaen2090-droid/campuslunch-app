@@ -9,7 +9,9 @@ import {
   type TrustSignalsUserDetail,
 } from "../types/trustAbuse";
 import { Modal } from "../components/Modal";
+import { Pagination } from "../components/Pagination";
 import { TrustUserDetailBody } from "../components/TrustUserProfile";
+import { usePagination } from "../hooks/usePagination";
 
 interface Props {
   report: TrustSignalsReport | null;
@@ -45,6 +47,8 @@ export function TrustSignalsPage({
     );
   }, [report, query]);
 
+  const { page, setPage, totalPages, pageItems } = usePagination(filtered, 25);
+
   async function openDetail(userId: string) {
     setDetailBusy(true);
     setDetailError(null);
@@ -61,13 +65,10 @@ export function TrustSignalsPage({
   return (
     <div className="page">
       <div className="panel-head">
-        <div>
-          <h2>신뢰·어뷰징</h2>
-          <p className="muted sm">
-            최근 {report?.days ?? days}일 · 점수/판정 없이 원본 수치만 표시
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <p className="muted sm">
+          최근 {report?.days ?? days}일 · 점수/판정 없이 원본 수치만 표시
+        </p>
+        <div className="flex-row gap-2">
           <select
             value={days}
             disabled={loading}
@@ -101,9 +102,6 @@ export function TrustSignalsPage({
             개별 회원은 <strong>회원 관리</strong>에서 「수집 지표」 버튼으로도
             확인
           </li>
-          <li>
-            SQL: <code>supabase/trust_abuse_scoring.sql</code>
-          </li>
         </ul>
       </div>
 
@@ -120,10 +118,10 @@ export function TrustSignalsPage({
       {loading && !report ? (
         <p className="muted center">불러오는 중…</p>
       ) : filtered.length === 0 ? (
-        <p className="muted center">표시할 유저가 없습니다.</p>
+        <p className="muted center">조건에 맞는 회원이 아직 없어요.</p>
       ) : (
         <ul className="user-list">
-          {filtered.map((u) => (
+          {pageItems.map((u) => (
             <li key={u.userId} className="user-row">
               <div className="user-row-main">
                 <div className="user-row-head">
@@ -157,6 +155,7 @@ export function TrustSignalsPage({
           ))}
         </ul>
       )}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 
       {detail && (
         <Modal

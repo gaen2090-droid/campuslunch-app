@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { TrendChart } from "./TrendChart";
 import { Modal } from "./Modal";
+import { RestaurantBarList } from "./RestaurantBarList";
 import { last6MonthLabels, last7DayLabels } from "../lib/metrics";
 import type { AdminRestaurant } from "../types/restaurant";
+import type { OwnerApplication } from "../types/ownerApplication";
 import type { DashboardMetrics } from "../types/metrics";
 
 export type MetricDetailKey =
@@ -11,57 +13,23 @@ export type MetricDetailKey =
   | "reports"
   | "weekAvg"
   | "clickRate"
-  | "pushOpenRate";
+  | "pushOpenRate"
+  | "coverage"
+  | "ownerRegistration"
+  | "coupon"
+  | "newUsers";
 
 interface Props {
   detailKey: MetricDetailKey;
   metrics: DashboardMetrics;
   restaurants: AdminRestaurant[];
+  /** coverage/ownerRegistration 상세용 — 이미 crowd_enabled로 걸러진 매장만 넘길 것 */
+  crowdEnabledRestaurants?: AdminRestaurant[];
+  /** newUsers 상세용 최근 7일 일별 신규 가입자 수 */
+  dailyNewUsers?: number[];
+  /** ownerRegistration 상세용 — 오늘 승인된 오너 신청 목록 */
+  todayApprovedOwners?: OwnerApplication[];
   onClose: () => void;
-}
-
-function RestaurantBarList({
-  restaurants,
-  countById,
-  total,
-}: {
-  restaurants: AdminRestaurant[];
-  countById: Record<string, number>;
-  total: number;
-}) {
-  const data = restaurants
-    .map((r) => ({ name: r.name, count: countById[r.id] ?? 0 }))
-    .sort((a, b) => b.count - a.count);
-  const maxV = Math.max(1, ...data.map((d) => d.count));
-  const avg =
-    restaurants.length > 0
-      ? Math.round((total / restaurants.length) * 10) / 10
-      : 0;
-
-  return (
-    <div className="restaurant-bar-list">
-      <div className="avg-pill">
-        <span>평균</span>
-        <strong>{avg}건</strong>
-      </div>
-      <ul>
-        {data.map((row) => (
-          <li key={row.name}>
-            <span className="bar-name">{row.name}</span>
-            <div className="bar-track-wrap">
-              <div className="bar-track">
-                <div
-                  className="bar-fill"
-                  style={{ width: `${(row.count / maxV) * 100}%` }}
-                />
-              </div>
-              <span className="bar-count">{row.count}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }
 
 function DauDetail({ metrics }: { metrics: DashboardMetrics }) {
@@ -105,23 +73,88 @@ function titleFor(key: MetricDetailKey, metrics: DashboardMetrics): string {
       return "추천 배너 클릭률 추이";
     case "pushOpenRate":
       return "푸시 오픈율 추이";
+    case "coverage":
+      return "오늘 제보 없는 매장";
+    case "ownerRegistration":
+      return "오늘 오너 등록";
+    case "coupon":
+      return "쿠폰 제공 추이 (최근 7일)";
+    case "newUsers":
+      return "신규 가입자 추이 (최근 7일)";
   }
+}
+
+function RestaurantNameList({
+  restaurants,
+  emptyText,
+}: {
+  restaurants: AdminRestaurant[];
+  emptyText: string;
+}) {
+  if (restaurants.length === 0) {
+    return <p className="muted center">{emptyText}</p>;
+  }
+  return (
+    <ul className="feedback-list">
+      {restaurants.map((r) => (
+        <li key={r.id} className="feedback-row">
+          <div className="feedback-row-head">
+            <strong>{r.name}</strong>
+            <span className="muted sm">
+              {r.area} · {r.category}
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function MetricDetailModal({
   detailKey,
   metrics,
   restaurants,
+  crowdEnabledRestaurants,
+  dailyNewUsers,
+  todayApprovedOwners,
   onClose,
 }: Props) {
   let body: ReactNode;
 
   if (detailKey === "dau") {
     body = <DauDetail metrics={metrics} />;
+  } else if (detailKey === "coverage") {
+    const base = crowdEnabledRestaurants ?? restaurants;
+    const uncovered = base.filter(
+      (r) => (metrics.todayByRestaurant[r.id] ?? 0) === 0,
+    );
+    body = (
+      <RestaurantNameList
+        restaurants={uncovered}
+        emptyText="모든 제보 대상 매장에 오늘 제보가 있어요."
+      />
+    );
+  } else if (detailKey === "ownerRegistration") {
+    const list = todayApprovedOwners ?? [];
+    body =
+      list.length === 0 ? (
+        <p className="muted center">오늘 등록된 사장님이 없어요.</p>
+      ) : (
+        <ul className="feedback-list">
+          {list.map((a) => (
+            <li key={a.id} className="feedback-row">
+              <div className="feedback-row-head">
+                <strong>{a.restaurantName}</strong>
+                <span className="muted sm">{a.userNickname}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      );
   } else if (detailKey === "reports") {
     body = (
       <RestaurantBarList
-        restaurants={restaurants}
+        restaurants={crowdEnabledRestaurants ?? restaurants}
         countById={metrics.todayByRestaurant}
         total={metrics.todayReports}
       />
@@ -129,7 +162,7 @@ export function MetricDetailModal({
   } else if (detailKey === "weekAvg") {
     body = (
       <RestaurantBarList
-        restaurants={restaurants}
+        restaurants={crowdEnabledRestaurants ?? restaurants}
         countById={metrics.weekByRestaurant}
         total={metrics.weekReports}
       />
@@ -145,6 +178,32 @@ export function MetricDetailModal({
           hideTitle
         />
         <p className="muted xs center">KST 기준 실시간 집계</p>
+      </>
+    );
+  } else if (detailKey === "coupon") {
+    body = (
+      <>
+        <TrendChart
+          title=""
+          labels={last7DayLabels()}
+          values={metrics.dailyGifticonsAssigned}
+          hideTitle
+        />
+        <p className="muted xs center">
+          이번 달 총 {metrics.monthGifticonsAssigned}개 제공
+        </p>
+      </>
+    );
+  } else if (detailKey === "newUsers") {
+    body = (
+      <>
+        <TrendChart
+          title=""
+          labels={last7DayLabels()}
+          values={dailyNewUsers ?? []}
+          hideTitle
+        />
+        <p className="muted xs center">가입일(KST) 기준 집계</p>
       </>
     );
   } else if (detailKey === "clickRate") {

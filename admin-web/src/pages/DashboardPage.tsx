@@ -1,165 +1,185 @@
 import { useState } from "react";
 import { MetricCard } from "../components/MetricCard";
-import {
-  MetricDetailModal,
-  type MetricDetailKey,
-} from "../components/MetricDetailModal";
-import { TrendChart } from "../components/TrendChart";
-import {
-  displayReporterName,
-  formatCount,
-  formatRate,
-  last6MonthLabels,
-  last7DayLabels,
-} from "../lib/metrics";
-import type { AdminRestaurant } from "../types/restaurant";
-import type { DashboardMetrics } from "../types/metrics";
+import { ActiveUsersModal } from "../components/realtime/ActiveUsersModal";
+import { LunchUsersModal } from "../components/realtime/LunchUsersModal";
+import { NewSignupsModal } from "../components/realtime/NewSignupsModal";
+import { ReportsModal } from "../components/realtime/ReportsModal";
+import { ParticipantsModal } from "../components/realtime/ParticipantsModal";
+import { CoverageModal } from "../components/realtime/CoverageModal";
+import { DetailViewsModal } from "../components/realtime/DetailViewsModal";
+import { Top10RestaurantsModal } from "../components/realtime/Top10RestaurantsModal";
+import { RestaurantDetailModal } from "../components/realtime/RestaurantDetailModal";
+import { formatCount, levelToLabel } from "../lib/metrics";
+import type { RealtimeMetrics, Top5RestaurantRow } from "../types/realtimeMetrics";
 
-const rankEmoji = ["🥇", "🥈", "🥉"];
+type ModalKey =
+  | "active"
+  | "lunch"
+  | "signups"
+  | "reports"
+  | "participants"
+  | "coverage"
+  | "detailViews"
+  | "top10";
 
 interface Props {
-  metrics: DashboardMetrics;
-  restaurants: AdminRestaurant[];
+  metrics: RealtimeMetrics;
 }
 
-export function DashboardPage({ metrics, restaurants }: Props) {
-  const [detailKey, setDetailKey] = useState<MetricDetailKey | null>(null);
+function diffPct(current: number, prev: number): string {
+  if (prev === 0) return current > 0 ? "+100%" : "0%";
+  const pct = Math.round(((current - prev) / prev) * 100);
+  return `${pct >= 0 ? "+" : ""}${pct}%`;
+}
 
-  const topRestaurants = [...restaurants]
-    .sort(
-      (a, b) =>
-        (metrics.todayByRestaurant[b.id] ?? 0) -
-        (metrics.todayByRestaurant[a.id] ?? 0),
-    )
-    .slice(0, 3);
+export function DashboardPage({ metrics }: Props) {
+  const [modalKey, setModalKey] = useState<ModalKey | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<Top5RestaurantRow | null>(null);
 
-  const registeredOwners = restaurants.filter((r) => r.ownerId).length;
+  const top5 = metrics.top5RestaurantsByReports.slice(0, 5);
 
   return (
     <div className="dashboard">
+      <section className="metric-grid metric-grid--primary">
+        <MetricCard
+          size="primary"
+          label="오늘 활성 사용자"
+          value={formatCount(metrics.activeToday)}
+          unit={`명 · 전일 ${diffPct(metrics.activeToday, metrics.activeYesterday)}`}
+          onClick={() => setModalKey("active")}
+        />
+        <MetricCard
+          size="primary"
+          label="점심시간 사용자"
+          value={formatCount(metrics.lunchUsersToday)}
+          unit={`명 · 전일 ${diffPct(metrics.lunchUsersToday, metrics.lunchUsersYesterday)}`}
+          onClick={() => setModalKey("lunch")}
+        />
+        <MetricCard
+          size="primary"
+          label="신규 가입자"
+          value={formatCount(metrics.newSignupsToday)}
+          unit={`명 · 전일 ${diffPct(metrics.newSignupsToday, metrics.newSignupsYesterday)}`}
+          onClick={() => setModalKey("signups")}
+        />
+        <MetricCard
+          size="primary"
+          label="제보 현황"
+          value={formatCount(metrics.reportsToday)}
+          unit={`건 · 전일 ${diffPct(metrics.reportsToday, metrics.reportsYesterday)}`}
+          onClick={() => setModalKey("reports")}
+        />
+      </section>
+      <p className="muted xs">
+        최근 7일 누적 제보 {formatCount(metrics.reportsWeek)}건 · 총 누적 제보{" "}
+        {formatCount(metrics.reportsTotal)}건
+      </p>
+
       <section className="metric-grid">
         <MetricCard
-          label="DAU"
-          value={String(metrics.dauToday)}
-          unit="명"
-          onClick={() => setDetailKey("dau")}
+          label="오늘 제보 참여자"
+          value={formatCount(metrics.participantsToday)}
+          unit={`명 · 전일 ${diffPct(metrics.participantsToday, metrics.participantsYesterday)}`}
+          onClick={() => setModalKey("participants")}
         />
         <MetricCard
-          label="MAU"
-          value={formatCount(metrics.mau)}
-          unit="명"
-          onClick={() => setDetailKey("mau")}
+          label="실시간 혼잡도 커버리지"
+          value={`${metrics.coverageRestaurantsWithReport} / ${metrics.coverageTotalRestaurants}개`}
+          unit={`매장 · ${metrics.coverageRate}%`}
+          onClick={() => setModalKey("coverage")}
         />
         <MetricCard
-          label="오늘 누적 제보"
-          value={String(metrics.todayReports)}
-          unit="건"
-          onClick={() => setDetailKey("reports")}
-        />
-        <MetricCard
-          label="최근 7일 누적 제보"
-          value={String(metrics.weekReports)}
-          unit="건"
-          onClick={() => setDetailKey("weekAvg")}
-        />
-        <MetricCard
-          label="추천 배너 클릭률"
-          value={formatRate(metrics.bannerClickRate)}
-          unit="%"
-          onClick={() => setDetailKey("clickRate")}
-        />
-        <MetricCard
-          label="푸시 오픈율"
-          value={formatRate(metrics.pushOpenRate)}
-          unit="%"
-          onClick={() => setDetailKey("pushOpenRate")}
+          label="오늘 매장 상세 조회"
+          value={formatCount(metrics.detailViewsToday)}
+          unit={`건 · 전일 ${diffPct(metrics.detailViewsToday, metrics.detailViewsYesterday)}`}
+          onClick={() => setModalKey("detailViews")}
         />
       </section>
 
-      {detailKey && (
-        <MetricDetailModal
-          detailKey={detailKey}
-          metrics={metrics}
-          restaurants={restaurants}
-          onClose={() => setDetailKey(null)}
+      <section className="panel">
+        <div className="panel-head">
+          <h2>오늘 제보 많은 매장 TOP 5</h2>
+          <button type="button" className="btn outline sm" onClick={() => setModalKey("top10")}>
+            TOP 10 보기
+          </button>
+        </div>
+        {top5.length === 0 ? (
+          <p className="muted center">오늘 제보가 없어요.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>매장명</th>
+                  <th>오늘 제보</th>
+                  <th>현재 혼잡도</th>
+                  <th>마지막 제보</th>
+                </tr>
+              </thead>
+              <tbody>
+                {top5.map((r, i) => (
+                  <tr
+                    key={r.restaurantId}
+                    className="clickable-row"
+                    onClick={() => setSelectedRestaurant(r)}
+                  >
+                    <td>{i + 1}</td>
+                    <td>{r.name}</td>
+                    <td>{r.todayReports}건</td>
+                    <td>{levelToLabel(r.currentLevel)}</td>
+                    <td>
+                      {r.lastReportAt
+                        ? r.lastReportAt.toLocaleString("ko-KR", {
+                            month: "numeric",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {modalKey === "active" && (
+        <ActiveUsersModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "lunch" && (
+        <LunchUsersModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "signups" && (
+        <NewSignupsModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "reports" && (
+        <ReportsModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "participants" && (
+        <ParticipantsModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "coverage" && (
+        <CoverageModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "detailViews" && (
+        <DetailViewsModal metrics={metrics} onClose={() => setModalKey(null)} />
+      )}
+      {modalKey === "top10" && (
+        <Top10RestaurantsModal
+          rows={metrics.top5RestaurantsByReports}
+          onClose={() => setModalKey(null)}
         />
       )}
-
-      <section className="panel owner-stats">
-        <p className="field-label">오너 등록 현황</p>
-        <p className="owner-stats-value">
-          <strong>{registeredOwners}</strong>
-          <span className="muted"> / {restaurants.length} 매장</span>
-        </p>
-        <p className="muted xs">
-          푸시: 평일 12:00·18:00 KST, 추천 배너 매장 구역 기준
-        </p>
-      </section>
-
-      <div className="two-col">
-        <TrendChart
-          title="DAU 추이 (최근 7일)"
-          labels={last7DayLabels()}
-          values={metrics.dailyDau}
+      {selectedRestaurant && (
+        <RestaurantDetailModal
+          restaurant={selectedRestaurant}
+          onClose={() => setSelectedRestaurant(null)}
         />
-        <TrendChart
-          title="MAU 추이 (최근 6개월)"
-          labels={last6MonthLabels()}
-          values={metrics.monthlyMau}
-          kind="bar"
-        />
-      </div>
-
-      <div className="two-col">
-        <TrendChart
-          title="배너 클릭률 (최근 7일, %)"
-          labels={last7DayLabels()}
-          values={metrics.dailyClickRates}
-          suffix="%"
-        />
-        <TrendChart
-          title="푸시 오픈율 (최근 7일, %)"
-          labels={last7DayLabels()}
-          values={metrics.dailyPushOpenRates}
-          suffix="%"
-        />
-      </div>
-
-      <div className="two-col">
-        <section className="panel">
-          <h2>오늘 제보 많은 매장 Top 3</h2>
-          {topRestaurants.length === 0 ? (
-            <p className="muted">매장 데이터 없음</p>
-          ) : (
-            <ul className="rank-list">
-              {topRestaurants.map((r, i) => (
-                <li key={r.id}>
-                  <span>{rankEmoji[i]}</span>
-                  <span className="rank-name">{r.name}</span>
-                  <strong>{metrics.todayByRestaurant[r.id] ?? 0}건</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>오늘 제보 많은 유저 Top 3</h2>
-          {metrics.topReporters.length === 0 ? (
-            <p className="muted">아직 제보 데이터가 없어요</p>
-          ) : (
-            <ul className="rank-list">
-              {metrics.topReporters.map(([name, count], i) => (
-                <li key={`${name}-${i}`}>
-                  <span>{rankEmoji[i]}</span>
-                  <span className="rank-name">{displayReporterName(name)}</span>
-                  <strong>{count}건</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+      )}
     </div>
   );
 }

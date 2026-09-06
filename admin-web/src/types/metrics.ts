@@ -12,6 +12,9 @@ export interface DashboardMetrics {
   topReporters: [string, number][];
   todayByRestaurant: Record<string, number>;
   weekByRestaurant: Record<string, number>;
+  todayGifticonsAssigned: number;
+  dailyGifticonsAssigned: number[];
+  monthGifticonsAssigned: number;
 }
 
 export interface RestaurantRow {

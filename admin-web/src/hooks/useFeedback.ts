@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import { fetchFeedback } from "../lib/adminApi";
 import type { AppFeedback } from "../types/feedback";
 
@@ -14,7 +15,7 @@ export function useFeedback(enabled: boolean) {
     try {
       setFeedback(await fetchFeedback());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { errorMessage } from "./errors";
 import type {
   AdminRestaurant,
   MenuItem,
@@ -21,6 +22,7 @@ import {
   type ScheduledNewsPush,
 } from "../types/pushConfig";
 import type { AppFeedback } from "../types/feedback";
+import { parseKpiTarget, type KpiMetricKey, type KpiTarget } from "../types/kpiTarget";
 import {
   parseTrustSignalsReport,
   parseTrustSignalsUserDetail,
@@ -196,6 +198,7 @@ function mergeRestaurant(
       : [],
     imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
+    createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(0),
   };
 }
 
@@ -356,7 +359,7 @@ export async function deleteRestaurant(id: string): Promise<void> {
     if (error) throw error;
     return;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = errorMessage(e);
     if (
       !msg.includes("admin_delete_restaurant") &&
       !msg.includes("Could not find")
@@ -377,9 +380,7 @@ export async function deleteRestaurant(id: string): Promise<void> {
     .select("id");
   if (error) throw error;
   if (!data?.length) {
-    throw new Error(
-      "매장 삭제 실패: supabase/rpc_admin_restaurants.sql 실행·관리자 권한을 확인하세요.",
-    );
+    throw new Error("매장 삭제에 실패했어요. 관리자 권한을 확인해주세요.");
   }
 }
 
@@ -1494,6 +1495,27 @@ export async function setCollectionCommentHidden(
 
 export async function deleteCollectionComment(id: string): Promise<void> {
   const { error } = await supabase.from("collection_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchKpiTargets(): Promise<KpiTarget[]> {
+  const { data, error } = await supabase.rpc("admin_list_kpi_targets");
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.map((row) => parseKpiTarget(row as Record<string, unknown>));
+}
+
+export async function upsertKpiTarget(
+  metricKey: KpiMetricKey,
+  periodMonth: Date,
+  targetValue: number,
+): Promise<void> {
+  const monthStr = `${periodMonth.getFullYear()}-${String(periodMonth.getMonth() + 1).padStart(2, "0")}-01`;
+  const { error } = await supabase.rpc("admin_upsert_kpi_target", {
+    p_metric_key: metricKey,
+    p_period_month: monthStr,
+    p_target_value: targetValue,
+  });
   if (error) throw error;
 }
 

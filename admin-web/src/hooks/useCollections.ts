@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMessage } from "../lib/errors";
 import {
   addCollectionItem,
   createCollection,
@@ -48,7 +49,7 @@ export function useCollections(enabled: boolean) {
         setItems(itemMap);
         setComments(commentList);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
       } finally {
         if (!opts?.silent) setLoading(false);
       }
