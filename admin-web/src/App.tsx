@@ -160,11 +160,22 @@ export default function App() {
       return <div className="alert">{restaurantsState.error}</div>;
     }
 
-    if (tab === "restaurants") {
+    if (tab === "restaurants_report") {
       return (
         <RestaurantsPage
           restaurants={restaurantsState.restaurants}
           onReload={restaurantsState.reload}
+          tier="report"
+        />
+      );
+    }
+
+    if (tab === "restaurants_collection") {
+      return (
+        <RestaurantsPage
+          restaurants={restaurantsState.restaurants}
+          onReload={restaurantsState.reload}
+          tier="collection"
         />
       );
     }
@@ -260,6 +271,7 @@ export default function App() {
         />
       );
     }
+
 
     if (tab === "nickname_words") {
       return (

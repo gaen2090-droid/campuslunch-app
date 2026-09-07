@@ -13,6 +13,9 @@ import { Modal } from "./Modal";
 interface Props {
   mode: "add" | "edit";
   restaurant?: AdminRestaurant;
+  /** 탭(제보 O / 컬렉션 X)에서 고정할 때 */
+  defaultCrowdEnabled?: boolean;
+  lockCrowdEnabled?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -46,6 +49,8 @@ function parseHours(hours: string): TimeRange[] {
 export function RestaurantFormModal({
   mode,
   restaurant,
+  defaultCrowdEnabled,
+  lockCrowdEnabled = false,
   onClose,
   onSaved,
 }: Props) {
@@ -66,7 +71,7 @@ export function RestaurantFormModal({
     restaurant?.menu.length ? restaurant.menu : [{ name: "", price: 0 }],
   );
   const [crowdEnabled, setCrowdEnabled] = useState(
-    restaurant?.crowdEnabled ?? true,
+    restaurant?.crowdEnabled ?? defaultCrowdEnabled ?? true,
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState(restaurant?.imageUrl ?? "");
@@ -149,19 +154,28 @@ export function RestaurantFormModal({
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
 
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={crowdEnabled}
-            onChange={(e) => setCrowdEnabled(e.target.checked)}
-          />
-          <span>
-            제보 대상으로 노출{" "}
-            <span className="muted xs">
-              (끄면 맛집컬렉션 전용 매장 — 지도/홈에 안 뜨고 혼잡도 제보 기능 없음)
+        {lockCrowdEnabled ? (
+          <p className="muted sm">
+            {crowdEnabled
+              ? "제보 대상(O) 탭에서 추가 · restaurant_report_targets"
+              : "컬렉션 전용(X) 탭에서 추가 · restaurant_collection_venues"}
+          </p>
+        ) : (
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={crowdEnabled}
+              onChange={(e) => setCrowdEnabled(e.target.checked)}
+            />
+            <span>
+              제보 대상으로 노출{" "}
+              <span className="muted xs">
+                (끄면 맛집컬렉션 전용 매장 — 지도/홈에 안 뜨고 혼잡도 제보 기능
+                없음)
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
 
         <div className="form-row">
           <label className="field">

@@ -51,6 +51,7 @@ export function UsersPage({
   const [suspendReason, setSuspendReason] = useState("");
   const [suspendBusy, setSuspendBusy] = useState(false);
 
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
@@ -134,10 +135,14 @@ export function UsersPage({
     }
   }
 
+
   return (
     <div className="page">
       <div className="panel-head">
         <span className="badge">{users.length}명</span>
+        <button type="button" className="btn outline sm" onClick={onReload}>
+          DB 새로고침
+        </button>
       </div>
 
       {error && <div className="alert">{error}</div>}
@@ -335,6 +340,7 @@ export function UsersPage({
           </div>
         </Modal>
       )}
+
     </div>
   );
 }

@@ -1,7 +1,7 @@
 name: campus_lunch
 description: 캠퍼스런치 - 실시간 교내 식당 혼잡도 앱
 publish_to: 'none'
-version: 1.0.7+8
+version: 1.0.8+20
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

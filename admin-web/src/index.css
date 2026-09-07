@@ -2075,6 +2075,48 @@ code {
   font-weight: 500;
 }
 
+.db-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+}
+
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 960px;
+}
+
+.db-table th,
+.db-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border-default);
+  vertical-align: top;
+  text-align: left;
+}
+
+.db-table th {
+  background: var(--color-surface-muted, #f3f4f6);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.db-table input,
+.db-table select {
+  width: 100%;
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-input, #d1d5db);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.db-table tr.row-inactive {
+  background: #fef2f2;
+}
+
 @media (max-width: 800px) {
   .push-ops-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

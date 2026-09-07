@@ -44,7 +44,7 @@ https://vkacsvoknnlmcyplprft.supabase.co/auth/v1/callback
 | 항목 | 값 |
 |------|-----|
 | **Android 패키지명** | `com.campuslunch.app` |
-| **Android 스토어 URL** | `https://play.google.com/store/apps/details?id=com.campuslunch.app` |
+| **Android 스토어 URL** | `https://play.google.com/store/apps/details?id=com.campuslunch.app&hl=ko` |
 | **iOS 번들 ID** | `com.campuslunch.app` |
 | **iOS 스토어 URL** | `https://apps.apple.com/app/id6795425369` (+ 버튼으로 iPhone/iPad 각각 가능) |
 

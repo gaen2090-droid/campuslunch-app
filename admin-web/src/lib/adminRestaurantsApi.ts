@@ -297,17 +297,21 @@ export async function updateRestaurant(
   }
 }
 
-/** 맛집컬렉션 전용 매장(crowd_enabled=false)을 제보 대상 매장으로 전환 */
-export async function promoteToCrowdEnabled(id: string): Promise<void> {
-  const { data: updatedRows, error } = await supabase
-    .from("restaurants")
-    .update({ crowd_enabled: true })
-    .eq("id", id)
-    .select("id");
+/** 제보 대상 O / 컬렉션 전용 X 멤버십 전환 (종속 테이블 정본) */
+export async function setRestaurantTier(
+  id: string,
+  tier: "report" | "collection",
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_restaurant_tier", {
+    p_restaurant_id: id,
+    p_tier: tier,
+  });
   if (error) throw error;
-  if (!updatedRows?.length) {
-    throw new Error("승격 실패: 관리자 권한을 확인하세요.");
-  }
+}
+
+/** @deprecated use setRestaurantTier(id, 'report') */
+export async function promoteToCrowdEnabled(id: string): Promise<void> {
+  await setRestaurantTier(id, "report");
 }
 
 export async function deleteRestaurant(id: string): Promise<void> {

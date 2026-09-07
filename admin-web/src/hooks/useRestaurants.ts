@@ -26,5 +26,14 @@ export function useRestaurants(enabled: boolean) {
     reload();
   }, [enabled, reload]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const onFocus = () => {
+      void reload();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [enabled, reload]);
+
   return { restaurants, loading, error, reload };
 }

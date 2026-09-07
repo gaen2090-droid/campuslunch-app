@@ -346,6 +346,8 @@ def build(pdf: GuidePDF) -> None:
         "  -> AdminScreen / admin-web\n"
         "  -> fetchMetrics (admin_dashboard_metrics)\n"
         "  -> 매장 CRUD, owner_code 생성, manual_rank, owner_influence\n"
+        "  -> 제보대상 O/X: restaurant_report_targets / restaurant_collection_venues\n"
+        "     (멤버십 정본, restaurants.crowd_enabled는 트리거 동기화. SQL: restaurant_tier_tables.sql)\n"
         "  -> AdminMapRegisterTab + PlacesService (Google Places)\n"
         "  -> 신뢰·어뷰징: admin_trust_signals_report (원본 수치, 점수 없음)\n"
         "  -> 회원 관리 → 신뢰·어뷰징 지표 / 별도 엑셀 카테고리\n"

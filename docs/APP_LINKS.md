@@ -161,7 +161,7 @@ cd android && ./gradlew :app:signingReport
 | 플랫폼 | 기본 URL |
 |--------|----------|
 | iOS | `https://apps.apple.com/app/id6795425369` |
-| Android | `https://play.google.com/store/apps/details?id=com.campuslunch.app` |
+| Android | `https://play.google.com/store/apps/details?id=com.campuslunch.app&hl=ko` |
 
 Vercel 환경 변수 `STORE_URL_IOS` / `STORE_URL_ANDROID`로 덮어쓸 수 있습니다.
 정의: `share-web/lib/store.js`

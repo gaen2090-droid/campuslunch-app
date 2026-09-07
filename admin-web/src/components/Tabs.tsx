@@ -2,7 +2,8 @@ export type AdminTab =
   | "metrics"
   | "kpi"
   | "ops"
-  | "restaurants"
+  | "restaurants_report"
+  | "restaurants_collection"
   | "popularity"
   | "map_register"
   | "gifticons"
@@ -41,7 +42,8 @@ export const TAB_GROUPS: TabGroup[] = [
     id: "restaurants",
     label: "매장",
     tabs: [
-      { id: "restaurants", label: "전체 매장" },
+      { id: "restaurants_report", label: "제보 대상 (O)" },
+      { id: "restaurants_collection", label: "컬렉션 전용 (X)" },
       { id: "map_register", label: "신규 등록" },
       { id: "popularity", label: "인기 순위" },
       { id: "owner_applications", label: "사장님 인증 심사" },
