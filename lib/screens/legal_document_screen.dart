@@ -98,8 +98,21 @@ class _LegalMarkdownBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
-    for (final raw in text.split('\n')) {
+    final lines = text.split('\n');
+    var i = 0;
+    while (i < lines.length) {
+      final raw = lines[i];
       final line = raw.trimRight();
+      if (line.startsWith('|')) {
+        final tableLines = <String>[];
+        while (i < lines.length && lines[i].trimRight().startsWith('|')) {
+          tableLines.add(lines[i].trimRight());
+          i++;
+        }
+        children.add(_buildTable(tableLines));
+        continue;
+      }
+      i++;
       if (line.isEmpty) {
         children.add(const SizedBox(height: 8));
         continue;
@@ -199,28 +212,6 @@ class _LegalMarkdownBody extends StatelessWidget {
         ));
         continue;
       }
-      if (line.startsWith('|')) {
-        final cells = line
-            .split('|')
-            .map((c) => c.trim())
-            .where((c) => c.isNotEmpty)
-            .toList();
-        if (cells.every((c) => c.replaceAll('-', '').replaceAll(':', '').isEmpty)) {
-          continue;
-        }
-        children.add(Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Text(
-            cells.join(' · '),
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF6B7280),
-              height: 1.5,
-            ),
-          ),
-        ));
-        continue;
-      }
       if (RegExp(r'^\d+\.\s').hasMatch(line)) {
         children.add(Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 4),
@@ -253,6 +244,72 @@ class _LegalMarkdownBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
+      ),
+    );
+  }
+
+  static List<String> _splitRow(String line) {
+    var cells = line.split('|').map((c) => c.trim()).toList();
+    if (cells.isNotEmpty && cells.first.isEmpty) cells = cells.sublist(1);
+    if (cells.isNotEmpty && cells.last.isEmpty) {
+      cells = cells.sublist(0, cells.length - 1);
+    }
+    return cells;
+  }
+
+  static bool _isSeparatorRow(List<String> cells) {
+    return cells.isNotEmpty &&
+        cells.every((c) => c.replaceAll('-', '').replaceAll(':', '').isEmpty);
+  }
+
+  Widget _buildTable(List<String> tableLines) {
+    final rows = tableLines
+        .map(_splitRow)
+        .where((cells) => !_isSeparatorRow(cells))
+        .toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    final columnCount = rows.map((r) => r.length).reduce((a, b) => a > b ? a : b);
+    // 첫 컬럼은 항목명이라 짧게, 나머지는 넓게 배분해 화면 폭 안에서 줄바꿈되게 함
+    final columnWidths = <int, TableColumnWidth>{
+      0: const FlexColumnWidth(1),
+      for (var c = 1; c < columnCount; c++) c: const FlexColumnWidth(2),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Table(
+        border: TableBorder.all(color: const Color(0xFFE5E7EB)),
+        columnWidths: columnWidths,
+        children: [
+          for (var r = 0; r < rows.length; r++)
+            TableRow(
+              decoration: BoxDecoration(
+                color: r == 0 ? const Color(0xFFF9FAFB) : Colors.white,
+              ),
+              children: [
+                for (var c = 0; c < columnCount; c++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      c < rows[r].length ? _stripInline(rows[r][c]) : '',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: r == 0
+                            ? const Color(0xFF111827)
+                            : const Color(0xFF374151),
+                        fontWeight:
+                            r == 0 ? FontWeight.w700 : FontWeight.w400,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }
