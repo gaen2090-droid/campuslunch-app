@@ -160,22 +160,11 @@ export default function App() {
       return <div className="alert">{restaurantsState.error}</div>;
     }
 
-    if (tab === "restaurants_report") {
+    if (tab === "restaurants") {
       return (
         <RestaurantsPage
           restaurants={restaurantsState.restaurants}
           onReload={restaurantsState.reload}
-          tier="report"
-        />
-      );
-    }
-
-    if (tab === "restaurants_collection") {
-      return (
-        <RestaurantsPage
-          restaurants={restaurantsState.restaurants}
-          onReload={restaurantsState.reload}
-          tier="collection"
         />
       );
     }

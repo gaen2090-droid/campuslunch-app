@@ -11,13 +11,11 @@ import { RestaurantFormModal } from "../components/RestaurantFormModal";
 import { Pagination } from "../components/Pagination";
 import { usePagination } from "../hooks/usePagination";
 
-export type RestaurantTierTab = "report" | "collection";
+type CrowdFilter = "crowdOnly" | "collectionOnly" | "all";
 
 interface Props {
   restaurants: AdminRestaurant[];
   onReload: () => void;
-  /** 제보 대상 O / 컬렉션 전용 X — 종속 테이블 멤버십과 동기화된 crowdEnabled 기준 */
-  tier: RestaurantTierTab;
 }
 
 function statusDotColor(status: string): string {
@@ -33,8 +31,9 @@ function statusDotColor(status: string): string {
   }
 }
 
-export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
+export function RestaurantsPage({ restaurants, onReload }: Props) {
   const [query, setQuery] = useState("");
+  const [crowdFilter, setCrowdFilter] = useState<CrowdFilter>("crowdOnly");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reportsCache, setReportsCache] = useState<
@@ -51,19 +50,21 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
     const sorted = [...restaurants].sort((a, b) =>
       a.name.localeCompare(b.name, "ko"),
     );
-    const byTier =
-      tier === "report"
+    const base =
+      crowdFilter === "crowdOnly"
         ? sorted.filter((r) => r.crowdEnabled)
-        : sorted.filter((r) => !r.crowdEnabled);
+        : crowdFilter === "collectionOnly"
+          ? sorted.filter((r) => !r.crowdEnabled)
+          : sorted;
     const q = query.trim().toLowerCase();
-    if (!q) return byTier;
-    return byTier.filter(
+    if (!q) return base;
+    return base.filter(
       (r) =>
         r.name.toLowerCase().includes(q) ||
         r.area.includes(q) ||
         r.category.includes(q),
     );
-  }, [restaurants, query, tier]);
+  }, [restaurants, query, crowdFilter]);
 
   const { page, setPage, totalPages, pageItems } = usePagination(filtered, 20);
 
@@ -89,7 +90,7 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
     }
   }
 
-  async function handleMoveTier(id: string, next: RestaurantTierTab) {
+  async function handleMoveTier(id: string, next: "report" | "collection") {
     setBusyId(id);
     setError(null);
     setSuccess(null);
@@ -129,38 +130,53 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
       {error && <div className="alert">{error}</div>}
       {success && <div className="alert success">{success}</div>}
 
-      <div className="section-head">
-        <h2>{tier === "report" ? "제보 대상 (O)" : "컬렉션 전용 (X)"}</h2>
-        <p className="muted sm">
-          {tier === "report"
-            ? "혼잡도 제보·지도/홈 노출 매장. 멤버십 정본: restaurant_report_targets"
-            : "맛집컬렉션용 정보 매장(제보 불가). 멤버십 정본: restaurant_collection_venues"}
-        </p>
+      <input
+        className="search-input"
+        placeholder="매장명, 지역, 카테고리 검색"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
+      <div className="radio-group">
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "crowdOnly"}
+            onChange={() => setCrowdFilter("crowdOnly")}
+          />
+          <span>제보 대상 O</span>
+        </label>
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "collectionOnly"}
+            onChange={() => setCrowdFilter("collectionOnly")}
+          />
+          <span>제보 대상 X (맛집컬렉션 전용)</span>
+        </label>
+        <label className="checkbox-row">
+          <input
+            type="radio"
+            name="crowdFilter"
+            checked={crowdFilter === "all"}
+            onChange={() => setCrowdFilter("all")}
+          />
+          <span>전체 보기</span>
+        </label>
       </div>
 
-      <div className="list-toolbar">
-        <input
-          className="search-input"
-          placeholder="매장명, 지역, 카테고리 검색"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-
-        <button type="button" className="btn outline sm" onClick={onReload}>
-          DB 새로고침
-        </button>
-
-        <button
-          type="button"
-          className="dashed-btn"
-          onClick={() => {
-            setEditTarget(null);
-            setFormMode("add");
-          }}
-        >
-          + 매장 추가
-        </button>
-      </div>
+      <button
+        type="button"
+        className="dashed-btn"
+        onClick={() => {
+          setEditTarget(null);
+          setFormMode("add");
+        }}
+      >
+        + 매장 추가
+      </button>
 
       {filtered.length === 0 ? (
         <p className="muted center">검색 결과가 없어요</p>
@@ -185,56 +201,55 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
                     {!r.isActive && (
                       <p className="inactive-tag">DB 비활성 (삭제 대상)</p>
                     )}
+                    {!r.crowdEnabled && (
+                      <p className="inactive-tag">맛집컬렉션 전용 (제보 미지원)</p>
+                    )}
                     <p className="muted sm">
                       {r.area} · {r.category}
                     </p>
-                    {tier === "report" && (
-                      <>
-                        <p
-                          className={`status-line${r.hasCrowdUpdate ? "" : " muted"}`}
-                        >
-                          <span
-                            className="status-dot"
-                            style={{ background: statusDotColor(r.status) }}
-                            aria-hidden="true"
-                          />
-                          {r.status}
-                          {r.hasCrowdUpdate ? ` · ${r.updated}분 전` : ""}
-                          {r.crowdBaseSource
-                            ? ` (${r.crowdBaseSource}·${r.crowdConfidence})`
-                            : ""}
-                        </p>
-                        <div className="reports-toggle-row">
-                          <button
-                            type="button"
-                            className="link-btn"
-                            onClick={() => toggleReports(r.id)}
-                          >
-                            {expanded ? "▲" : "▼"} 최근 제보
-                          </button>
-                          <span className="muted xs">
-                            누적 제보 {totalReports(r)}건
-                          </span>
-                        </div>
-                        {expanded && (
-                          <div className="reports-box">
-                            {loadingReports ? (
-                              <p className="muted sm">불러오는 중…</p>
-                            ) : !reports?.length ? (
-                              <p className="muted sm">제보 없음</p>
-                            ) : (
-                              <ul className="reports-list">
-                                {reports.map((rep) => (
-                                  <li key={rep.id}>
-                                    {rep.status} · {rep.source} ·{" "}
-                                    {rep.createdAt.toLocaleString("ko-KR")}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
+                    <p
+                      className={`status-line${r.hasCrowdUpdate ? "" : " muted"}`}
+                    >
+                      <span
+                        className="status-dot"
+                        style={{ background: statusDotColor(r.status) }}
+                        aria-hidden="true"
+                      />
+                      {r.status}
+                      {r.hasCrowdUpdate ? ` · ${r.updated}분 전` : ""}
+                      {r.crowdBaseSource
+                        ? ` (${r.crowdBaseSource}·${r.crowdConfidence})`
+                        : ""}
+                    </p>
+                    <div className="reports-toggle-row">
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => toggleReports(r.id)}
+                      >
+                        {expanded ? "▲" : "▼"} 최근 제보
+                      </button>
+                      <span className="muted xs">
+                        누적 제보 {totalReports(r)}건
+                      </span>
+                    </div>
+                    {expanded && (
+                      <div className="reports-box">
+                        {loadingReports ? (
+                          <p className="muted sm">불러오는 중…</p>
+                        ) : !reports?.length ? (
+                          <p className="muted sm">제보 없음</p>
+                        ) : (
+                          <ul className="reports-list">
+                            {reports.map((rep) => (
+                              <li key={rep.id}>
+                                {rep.status} · {rep.source} ·{" "}
+                                {rep.createdAt.toLocaleString("ko-KR")}
+                              </li>
+                            ))}
+                          </ul>
                         )}
-                      </>
+                      </div>
                     )}
                     <div className="owner-code-row">
                       <span className="muted xs">App Link </span>
@@ -248,16 +263,7 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
                     </div>
                   </div>
                   <div className="card-actions">
-                    {tier === "collection" ? (
-                      <button
-                        type="button"
-                        className="btn ghost sm"
-                        disabled={busyId === r.id}
-                        onClick={() => handleMoveTier(r.id, "report")}
-                      >
-                        제보 대상(O)으로
-                      </button>
-                    ) : (
+                    {r.crowdEnabled ? (
                       <button
                         type="button"
                         className="btn ghost sm"
@@ -265,6 +271,15 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
                         onClick={() => handleMoveTier(r.id, "collection")}
                       >
                         컬렉션 전용(X)으로
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        disabled={busyId === r.id}
+                        onClick={() => handleMoveTier(r.id, "report")}
+                      >
+                        제보 대상(O)으로
                       </button>
                     )}
                     <button
@@ -322,8 +337,7 @@ export function RestaurantsPage({ restaurants, onReload, tier }: Props) {
         <RestaurantFormModal
           mode={formMode}
           restaurant={editTarget ?? undefined}
-          defaultCrowdEnabled={tier === "report"}
-          lockCrowdEnabled
+          defaultCrowdEnabled={crowdFilter !== "collectionOnly"}
           onClose={() => setFormMode(null)}
           onSaved={onReload}
         />
