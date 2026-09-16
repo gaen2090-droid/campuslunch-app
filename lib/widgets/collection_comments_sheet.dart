@@ -242,6 +242,9 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final sheetHeight = (screenHeight * 0.75).clamp(0.0, screenHeight - keyboardHeight);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -249,9 +252,9 @@ class _CollectionCommentsSheetState extends State<CollectionCommentsSheet> {
         Navigator.of(context).pop(_comments.length);
       },
       child: Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        height: sheetHeight,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),

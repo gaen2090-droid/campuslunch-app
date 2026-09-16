@@ -58,6 +58,7 @@ interface Props {
     sortOrder: number;
   }) => Promise<void>;
   onRemoveItem: (id: string) => Promise<void>;
+  onEditItemNote: (id: string, note: string) => Promise<void>;
   onReorderItems: (orderedIds: string[]) => Promise<void>;
   onReorderCollections: (orderedIds: string[]) => Promise<void>;
   onHideComment: (id: string, hidden: boolean) => Promise<void>;
@@ -87,6 +88,7 @@ export function CollectionsPage({
   onRemoveCollection,
   onAddItem,
   onRemoveItem,
+  onEditItemNote,
   onReorderItems,
   onReorderCollections,
   onHideComment,
@@ -120,24 +122,15 @@ export function CollectionsPage({
     );
   }
 
-  const curatedCollections = useMemo(
-    () => collections.filter((c) => c.userId == null),
-    [collections],
-  );
-  const userCollections = useMemo(
-    () => collections.filter((c) => c.userId != null),
-    [collections],
-  );
-
   const [moveBusyId, setMoveBusyId] = useState<string | null>(null);
 
   async function moveCurated(index: number, direction: -1 | 1) {
     const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= curatedCollections.length) return;
-    const next = [...curatedCollections];
+    if (targetIndex < 0 || targetIndex >= collections.length) return;
+    const next = [...collections];
     const [moved] = next.splice(index, 1);
     next.splice(targetIndex, 0, moved);
-    setMoveBusyId(curatedCollections[index].id);
+    setMoveBusyId(collections[index].id);
     setActionError(null);
     try {
       await onReorderCollections(next.map((c) => c.id));
@@ -157,7 +150,7 @@ export function CollectionsPage({
       await onAddCollection({
         title,
         subtitle: newSubtitle,
-        sortOrder: curatedCollections.length,
+        sortOrder: collections.length,
         hashtags: newHashtags,
       });
       setNewTitle("");
@@ -208,13 +201,9 @@ export function CollectionsPage({
         <p className="muted center">등록된 컬렉션이 없어요.</p>
       ) : (
         <>
-          {curatedCollections.length > 0 && (
-            <p className="muted sm mb-2">
-              관리자 큐레이션 (화살표로 노출 순서 변경, 위가 먼저 노출)
-            </p>
-          )}
+          <p className="muted sm mb-2">화살표로 노출 순서 변경, 위가 먼저 노출</p>
           <div className="stack gap-4">
-            {curatedCollections.map((c, index) => (
+            {collections.map((c, index) => (
               <CollectionCard
                 key={c.id}
                 collection={c}
@@ -223,7 +212,7 @@ export function CollectionsPage({
                 busy={busyId === c.id}
                 onMoveUp={index > 0 ? () => moveCurated(index, -1) : undefined}
                 onMoveDown={
-                  index < curatedCollections.length - 1 ? () => moveCurated(index, 1) : undefined
+                  index < collections.length - 1 ? () => moveCurated(index, 1) : undefined
                 }
                 moveBusy={moveBusyId === c.id}
                 onEdit={(params) => onEditCollection(c.id, params)}
@@ -231,35 +220,11 @@ export function CollectionsPage({
                 onRemove={() => setDeleteTargetId(c.id)}
                 onAddItem={(params) => onAddItem({ collectionId: c.id, ...params })}
                 onRemoveItem={onRemoveItem}
+                onEditItemNote={onEditItemNote}
                 onReorderItems={onReorderItems}
               />
             ))}
           </div>
-
-          {userCollections.length > 0 && (
-            <>
-              <div className="panel-head mt-8">
-                <h3>유저 작성 컬렉션</h3>
-              </div>
-              <div className="stack gap-4">
-                {userCollections.map((c) => (
-                  <CollectionCard
-                    key={c.id}
-                    collection={c}
-                    items={items[c.id] ?? []}
-                    restaurants={restaurants}
-                    busy={busyId === c.id}
-                    onEdit={(params) => onEditCollection(c.id, params)}
-                    onTogglePublished={(published) => onTogglePublished(c.id, published)}
-                    onRemove={() => setDeleteTargetId(c.id)}
-                    onAddItem={(params) => onAddItem({ collectionId: c.id, ...params })}
-                    onRemoveItem={onRemoveItem}
-                    onReorderItems={onReorderItems}
-                  />
-                ))}
-              </div>
-            </>
-          )}
         </>
       )}
 
@@ -327,6 +292,54 @@ export function CollectionsPage({
   );
 }
 
+function CollectionItemNoteInput({
+  itemId,
+  initialNote,
+  onSave,
+}: {
+  itemId: string;
+  initialNote: string;
+  onSave: (id: string, note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState(initialNote);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = note !== initialNote;
+
+  async function save() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(itemId, note);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="collection-item-note">
+      <input
+        className="search-input sm"
+        type="text"
+        placeholder="한줄소개 (예: 학생들이 종종 줌밥 먹는 곳)"
+        value={note}
+        maxLength={60}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        disabled={saving}
+      />
+      {dirty && !saving && <span className="muted xs">저장 안 됨 (엔터 또는 클릭 해제 시 저장)</span>}
+      {error && <span className="alert-inline">{error}</span>}
+    </div>
+  );
+}
+
 function CollectionCard({
   collection,
   items,
@@ -340,6 +353,7 @@ function CollectionCard({
   onRemove,
   onAddItem,
   onRemoveItem,
+  onEditItemNote,
   onReorderItems,
 }: {
   collection: RestaurantCollection;
@@ -354,6 +368,7 @@ function CollectionCard({
   onRemove: () => void;
   onAddItem: (params: { restaurantId: string; note: string; sortOrder: number }) => Promise<void>;
   onRemoveItem: (id: string) => Promise<void>;
+  onEditItemNote: (id: string, note: string) => Promise<void>;
   onReorderItems: (orderedIds: string[]) => Promise<void>;
 }) {
   const [title, setTitle] = useState(collection.title);
@@ -472,11 +487,6 @@ function CollectionCard({
           {collection.isPublished ? "게시됨" : "비게시"}
         </span>
         <span className="muted sm">매장 {items.length}개</span>
-        {collection.userId ? (
-          <span className="badge">유저 작성 · {collection.authorNickname ?? "알 수 없음"}</span>
-        ) : (
-          <span className="muted sm">관리자 큐레이션</span>
-        )}
       </div>
 
       {localError && <div className="alert">{localError}</div>}
@@ -539,7 +549,7 @@ function CollectionCard({
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDrop(index)}
-                className="drag-row"
+                className="drag-row drag-row--wrap"
               >
                 <span className="drag-handle">⠿</span>
                 <span className="flex-1">{item.restaurantName ?? "알 수 없음"}</span>
@@ -550,6 +560,11 @@ function CollectionCard({
                 >
                   삭제
                 </button>
+                <CollectionItemNoteInput
+                  itemId={item.id}
+                  initialNote={item.note ?? ""}
+                  onSave={onEditItemNote}
+                />
               </div>
             ))}
           </div>

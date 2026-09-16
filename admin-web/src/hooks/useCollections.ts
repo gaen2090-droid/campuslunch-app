@@ -14,6 +14,7 @@ import {
   setCollectionCommentHidden,
   setCollectionPublished,
   updateCollection,
+  updateCollectionItemNote,
 } from "../lib/adminApi";
 import type {
   CollectionCommentAdmin,
@@ -122,6 +123,14 @@ export function useCollections(enabled: boolean) {
     [reload],
   );
 
+  const editItemNote = useCallback(
+    async (id: string, note: string) => {
+      await updateCollectionItemNote(id, note);
+      await reload({ silent: true });
+    },
+    [reload],
+  );
+
   const reorderItems = useCallback(
     async (orderedIds: string[]) => {
       await reorderCollectionItems(orderedIds);
@@ -167,6 +176,7 @@ export function useCollections(enabled: boolean) {
     removeCollection,
     addItem,
     removeItem,
+    editItemNote,
     reorderItems,
     reorderCollectionsList,
     hideComment,

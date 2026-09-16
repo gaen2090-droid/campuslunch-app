@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/collection.dart';
 import '../models/restaurant.dart';
-import '../widgets/restaurant_card.dart';
+import '../widgets/collection_detail_restaurant_row.dart';
 import 'detail_screen.dart';
 
 class CollectionDetailScreen extends StatelessWidget {
@@ -30,21 +30,7 @@ class CollectionDetailScreen extends StatelessWidget {
       }
       if (r != null) matched.add((item, r));
     }
-    int groupOf(Restaurant r) {
-      if (r.status == '영업안함') return 2;
-      if (!r.hasCrowdUpdate) return 1;
-      return 0;
-    }
-    matched.sort((a, b) {
-      final groupDiff = groupOf(a.$2).compareTo(groupOf(b.$2));
-      if (groupDiff != 0) return groupDiff;
-      final aTime = a.$2.updatedAt;
-      final bTime = b.$2.updatedAt;
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      return bTime.compareTo(aTime);
-    });
+    matched.sort((a, b) => a.$1.sortOrder.compareTo(b.$1.sortOrder));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -77,9 +63,10 @@ class CollectionDetailScreen extends StatelessWidget {
               itemCount: matched.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, i) {
-                final (_, restaurant) = matched[i];
-                return RestaurantCard(
+                final (item, restaurant) = matched[i];
+                return CollectionDetailRestaurantRow(
                   restaurant: restaurant,
+                  note: item.note,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => DetailScreen(restaurant: restaurant)),

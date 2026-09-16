@@ -11,6 +11,25 @@ export interface PushDayRow {
   clicks: number;
 }
 
+export interface TopReferrerRow {
+  userId: string;
+  nickname: string;
+  email: string;
+  totalCount: number;
+  last24hCount: number;
+  last7dCount: number;
+  lastReferredAt: Date | null;
+}
+
+export interface RecentReferralRow {
+  id: string;
+  createdAt: Date;
+  referrerUserId: string;
+  referrerNickname: string;
+  referredUserId: string;
+  referredNickname: string;
+}
+
 export interface OpsMetrics {
   bannerImpressions7d: number;
   bannerClicks7d: number;
@@ -38,6 +57,16 @@ export interface OpsMetrics {
   dailyCoupons30d: number[];
   couponsPerUserDist: Record<string, number>;
   stampDist: { under10: number; from10to19: number; over20: number };
+
+  referralsToday: number;
+  referrals7d: number;
+  referralsTotal: number;
+  uniqueReferrers: number;
+  uniqueReferred: number;
+  dailyReferrals7d: number[];
+  dailyReferrals30d: number[];
+  topReferrers: TopReferrerRow[];
+  recentReferrals: RecentReferralRow[];
 }
 
 function parseNumberArray(value: unknown): number[] {
@@ -66,6 +95,39 @@ function parsePushDayRows(value: unknown): PushDayRow[] {
     return {
       delivered: Number(row.delivered ?? 0),
       clicks: Number(row.clicks ?? 0),
+    };
+  });
+}
+
+function parseTopReferrers(value: unknown): TopReferrerRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    return {
+      userId: String(row.user_id ?? ""),
+      nickname: String(row.nickname ?? ""),
+      email: String(row.email ?? ""),
+      totalCount: Number(row.total_count ?? 0),
+      last24hCount: Number(row.last_24h_count ?? 0),
+      last7dCount: Number(row.last_7d_count ?? 0),
+      lastReferredAt: row.last_referred_at
+        ? new Date(String(row.last_referred_at))
+        : null,
+    };
+  });
+}
+
+function parseRecentReferrals(value: unknown): RecentReferralRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    return {
+      id: String(row.id ?? ""),
+      createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(),
+      referrerUserId: String(row.referrer_user_id ?? ""),
+      referrerNickname: String(row.referrer_nickname ?? ""),
+      referredUserId: String(row.referred_user_id ?? ""),
+      referredNickname: String(row.referred_nickname ?? ""),
     };
   });
 }
@@ -112,5 +174,15 @@ export function parseOpsMetrics(map: Record<string, unknown>): OpsMetrics {
         over20: Number(raw["20_plus"] ?? 0),
       };
     })(),
+
+    referralsToday: Number(map.referrals_today ?? 0),
+    referrals7d: Number(map.referrals_7d ?? 0),
+    referralsTotal: Number(map.referrals_total ?? 0),
+    uniqueReferrers: Number(map.unique_referrers ?? 0),
+    uniqueReferred: Number(map.unique_referred ?? 0),
+    dailyReferrals7d: parseNumberArray(map.daily_referrals_7d),
+    dailyReferrals30d: parseNumberArray(map.daily_referrals_30d),
+    topReferrers: parseTopReferrers(map.top_referrers),
+    recentReferrals: parseRecentReferrals(map.recent_referrals),
   };
 }

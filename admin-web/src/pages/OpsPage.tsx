@@ -21,8 +21,10 @@ export function OpsPage({ metrics, loading, error }: Props) {
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<BannerRestaurantRow | null>(null);
   const [rewardPeriod, setRewardPeriod] = useState<"7d" | "30d">("7d");
+  const [referralPeriod, setReferralPeriod] = useState<"7d" | "30d">("7d");
 
   if (error) {
     return <div className="alert">{error}</div>;
@@ -88,6 +90,39 @@ export function OpsPage({ metrics, loading, error }: Props) {
         최근 7일 발송 {formatCount(metrics.pushDelivered7d)}건 · 오픈{" "}
         {formatCount(metrics.pushClicks7d)}건 · 평균 오픈율 {metrics.pushOpenRate7d}%
       </p>
+
+      <section className="metric-grid">
+        <MetricCard
+          label="오늘 친구초대 성사"
+          value={formatCount(metrics.referralsToday)}
+          unit="건"
+          onClick={() => setShowReferralModal(true)}
+        />
+        <MetricCard
+          label="최근 7일 친구초대 성사"
+          value={formatCount(metrics.referrals7d)}
+          unit="건"
+          onClick={() => setShowReferralModal(true)}
+        />
+        <MetricCard
+          label="총 누적 친구초대 성사"
+          value={formatCount(metrics.referralsTotal)}
+          unit="건"
+          onClick={() => setShowReferralModal(true)}
+        />
+        <MetricCard
+          label="초대를 성공시킨 사람"
+          value={formatCount(metrics.uniqueReferrers)}
+          unit="명"
+          onClick={() => setShowReferralModal(true)}
+        />
+        <MetricCard
+          label="초대받아 가입한 사람"
+          value={formatCount(metrics.uniqueReferred)}
+          unit="명"
+          onClick={() => setShowReferralModal(true)}
+        />
+      </section>
 
       {showBannerModal && (
         <Modal title="추천 배너 성과" onClose={() => setShowBannerModal(false)} wide>
@@ -264,6 +299,105 @@ export function OpsPage({ metrics, loading, error }: Props) {
               </tbody>
             </table>
           </div>
+        </Modal>
+      )}
+
+      {showReferralModal && (
+        <Modal title="친구초대 현황" onClose={() => setShowReferralModal(false)} wide>
+          <PeriodToggle value={referralPeriod} onChange={setReferralPeriod} />
+          <TrendChart
+            title="일별 친구초대 성사 추이"
+            labels={lastNDayLabels(referralPeriod === "7d" ? 7 : 30)}
+            values={referralPeriod === "7d" ? metrics.dailyReferrals7d : metrics.dailyReferrals30d}
+            kind="bar"
+          />
+
+          <div className="metric-grid mt-8">
+            <div>
+              <p className="metric-label">총 성사 건수</p>
+              <p className="metric-value">{formatCount(metrics.referralsTotal)}</p>
+            </div>
+            <div>
+              <p className="metric-label">초대를 성공시킨 사람</p>
+              <p className="metric-value">{formatCount(metrics.uniqueReferrers)}</p>
+            </div>
+            <div>
+              <p className="metric-label">초대받아 가입한 사람</p>
+              <p className="metric-value">{formatCount(metrics.uniqueReferred)}</p>
+            </div>
+          </div>
+
+          <div className="panel-head mt-8">
+            <h3>추천인별 성사 랭킹 (어뷰징 감시용, 상위 20명)</h3>
+          </div>
+          <p className="muted xs">
+            누적 건수가 유난히 많거나 최근 24시간/7일에 몰려있으면 어뷰징 의심 대상이에요. (현재 추천인당 하루 최대 1건 성사 제한 적용 중)
+          </p>
+          {metrics.topReferrers.length === 0 ? (
+            <p className="muted center">친구초대 성사 이력이 없어요.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>닉네임</th>
+                    <th>이메일</th>
+                    <th>누적 성사</th>
+                    <th>최근 24시간</th>
+                    <th>최근 7일</th>
+                    <th>마지막 성사</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.topReferrers.map((row) => (
+                    <tr
+                      key={row.userId}
+                      className={row.last24hCount >= 3 || row.last7dCount >= 7 ? "row-warning" : undefined}
+                    >
+                      <td>{row.nickname || "(닉네임 없음)"}</td>
+                      <td>{row.email}</td>
+                      <td>{row.totalCount}건</td>
+                      <td>{row.last24hCount}건</td>
+                      <td>{row.last7dCount}건</td>
+                      <td>
+                        {row.lastReferredAt
+                          ? row.lastReferredAt.toLocaleString("ko-KR")
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="panel-head mt-8">
+            <h3>최근 성사 이력 (최신순, 최근 50건)</h3>
+          </div>
+          {metrics.recentReferrals.length === 0 ? (
+            <p className="muted center">친구초대 성사 이력이 없어요.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>시각</th>
+                    <th>추천인</th>
+                    <th>가입한 사람</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.recentReferrals.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.createdAt.toLocaleString("ko-KR")}</td>
+                      <td>{row.referrerNickname || "(닉네임 없음)"}</td>
+                      <td>{row.referredNickname || "(닉네임 없음)"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Modal>
       )}
     </div>

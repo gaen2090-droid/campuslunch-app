@@ -318,6 +318,17 @@ export async function removeCollectionItem(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateCollectionItemNote(
+  id: string,
+  note: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("collection_items")
+    .update({ note: note.trim() || null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function reorderCollectionItems(
   orderedIds: string[],
 ): Promise<void> {

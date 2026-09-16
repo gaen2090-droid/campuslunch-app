@@ -1083,6 +1083,30 @@ code {
   user-select: none;
 }
 
+.drag-row--wrap {
+  flex-wrap: wrap;
+}
+
+.collection-item-note {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.collection-item-note .search-input.sm {
+  flex: 1;
+  min-width: 160px;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+}
+
+.alert-inline {
+  color: #b91c1c;
+  font-size: var(--font-size-xs);
+}
+
 .field-group .search-input {
   flex: 1;
   min-width: 160px;
@@ -2055,6 +2079,15 @@ code {
 
 .data-table tr.clickable-row:hover {
   background: var(--color-surface-hover);
+}
+
+.data-table tr.row-warning {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.data-table tr.row-warning td:first-child {
+  font-weight: 700;
+  color: #b91c1c;
 }
 
 .push-schedule-table {
