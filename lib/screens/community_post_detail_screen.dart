@@ -550,24 +550,27 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                   ],
                   if (_post.restaurantId != null && _post.restaurantName != null) ...[
                     const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _openRestaurant,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE6F3EC),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF26BC7D)),
-                            const SizedBox(width: 4),
-                            Text(
-                              _post.restaurantName!,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF26BC7D)),
-                            ),
-                          ],
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: _openRestaurant,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F3EC),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF26BC7D)),
+                              const SizedBox(width: 4),
+                              Text(
+                                _post.restaurantName!,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF26BC7D)),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

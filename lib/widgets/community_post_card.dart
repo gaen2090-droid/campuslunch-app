@@ -93,7 +93,7 @@ class CommunityPostCard extends StatelessWidget {
                               GestureDetector(
                                 onTap: onRestaurantTap,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE6F3EC),
                                     borderRadius: BorderRadius.circular(20),
