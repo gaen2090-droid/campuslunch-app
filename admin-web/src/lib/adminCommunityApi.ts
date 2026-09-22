@@ -332,25 +332,27 @@ export async function updateCollectionItemNote(
 export async function reorderCollectionItems(
   orderedIds: string[],
 ): Promise<void> {
-  await Promise.all(
+  const results = await Promise.all(
     orderedIds.map((id, index) =>
-      supabase.from("collection_items").update({ sort_order: index }).eq("id", id),
+      supabase.from("collection_items").update({ sort_order: index }).eq("id", id).select("id"),
     ),
-  ).then((results) => {
-    const failed = results.find((r) => r.error);
-    if (failed?.error) throw failed.error;
-  });
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
+  const unaffected = results.find((r) => (r.data?.length ?? 0) === 0);
+  if (unaffected) throw new Error("순서 저장 권한이 없거나 대상을 찾을 수 없어요.");
 }
 
 export async function reorderCollections(orderedIds: string[]): Promise<void> {
-  await Promise.all(
+  const results = await Promise.all(
     orderedIds.map((id, index) =>
-      supabase.from("collections").update({ sort_order: index }).eq("id", id),
+      supabase.from("collections").update({ sort_order: index }).eq("id", id).select("id"),
     ),
-  ).then((results) => {
-    const failed = results.find((r) => r.error);
-    if (failed?.error) throw failed.error;
-  });
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
+  const unaffected = results.find((r) => (r.data?.length ?? 0) === 0);
+  if (unaffected) throw new Error("순서 저장 권한이 없거나 대상을 찾을 수 없어요.");
 }
 
 export async function fetchCollectionComments(): Promise<CollectionCommentAdmin[]> {

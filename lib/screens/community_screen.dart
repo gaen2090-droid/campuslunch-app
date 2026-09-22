@@ -230,13 +230,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   void _recomputeCollectionOrder() {
-    final sorted = List<RestaurantCollection>.from(_collections);
-    sorted.sort((a, b) {
-      final likeDiff = b.likeCount.compareTo(a.likeCount);
-      if (likeDiff != 0) return likeDiff;
-      return b.createdAt.compareTo(a.createdAt);
-    });
-    _collectionOrder = sorted.map((c) => c.id).toList();
+    _collectionOrder = _collections.map((c) => c.id).toList();
   }
 
   Future<void> _toggleCollectionLike(RestaurantCollection collection) async {

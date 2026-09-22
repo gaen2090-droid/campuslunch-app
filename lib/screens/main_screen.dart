@@ -27,7 +27,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool _mapMounted = false;
   bool _communityMounted = false;
   bool _showCoachMark = false;
@@ -38,6 +38,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AppProvider>().recordAppSession();
@@ -68,6 +69,19 @@ class _MainScreenState extends State<MainScreen> {
       _handlePendingAppLink();
       _maybeShowCoachMark();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<AppProvider>().recordAppSession();
+    }
   }
 
   Future<void> _handlePendingAppLink() async {
