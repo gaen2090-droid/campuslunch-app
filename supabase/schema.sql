@@ -26,7 +26,7 @@
 --  10. supabase/crowd_status_v2_compute.sql (v2 계산·트리거·백필)
 --  11. supabase/push_analytics.sql
 --  12. supabase/owner_seat_updates.sql
---  12b. supabase/hotfix_owner_seat_gps_50m.sql (입장가능인원도 50m GPS)
+--  12b. supabase/hotfix_owner_seat_gps_50m.sql (입장가능인원도 GPS 거리 제한, 현재 30m)
 --  13. supabase/rewards.sql               (스탬프·기프티콘·쿠폰 교환. 제보 RPC 없음)
 --  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
 --  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
@@ -35,7 +35,7 @@
 --  15. supabase/deploy_prelaunch_security.sql (배포 전 보안 패치)
 --  16. supabase/stamp_hours_10_to_19.sql
 --  17. supabase/rewards_daily_cap_to_3.sql
---  18. supabase/submit_crowd_report.sql   (제보 RPC 정본 — 스탬프+50m)
+--  18. supabase/submit_crowd_report.sql   (제보 RPC 정본 — 스탬프+거리제한, 현재 30m)
 --  19. supabase/hotfix_prelaunch_audit_fixes.sql
 --      (출시 직전 필수: grant_stamp 등 클라이언트 실행 금지,
 --       crowd_reports RLS, has_required_legal_consents,

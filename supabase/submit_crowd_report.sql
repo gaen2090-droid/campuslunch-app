@@ -1,5 +1,5 @@
 -- 제보 RPC 정본 (Dashboard → SQL Editor → Run)
--- 스탬프 + user/owner 공통 50m + 5분 쿨다운 + advisory lock + 제보 정지 체크
+-- 스탬프 + user/owner 공통 30m + 5분 쿨다운 + advisory lock + 제보 정지 체크
 --
 -- ⚠️ 2026-09 확인: 이 파일의 "이 파일만 CREATE OR REPLACE 한다" 주장은 더 이상 사실이
 -- 아니다. crowd_enabled_two_tier.sql이 이후 배포 순서상 이 함수를 다시 재정의하며
@@ -119,7 +119,7 @@ begin
 
   if not v_stats_excluded then
     v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
-    if v_distance > 50 then
+    if v_distance > 30 then
       raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
     end if;
   end if;
@@ -191,6 +191,6 @@ grant execute on function public.submit_crowd_report(
 ) to authenticated;
 
 comment on function public.submit_crowd_report is
-  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
+  '제보 정본. 스탬프 + 30m(user/owner) + user 5분 쿨다운. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
 
 select 'submit_crowd_report.sql ok' as status;

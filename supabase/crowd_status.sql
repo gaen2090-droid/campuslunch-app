@@ -299,7 +299,7 @@ as $$
 $$;
 
 -- ── 제보 RPC 는 이 파일에 두지 않는다 ──
--- 정본: supabase/submit_crowd_report.sql (스탬프 + 50m + 쿨다운)
+-- 정본: supabase/submit_crowd_report.sql (스탬프 + 30m + 쿨다운)
 -- 여기에 CREATE OR REPLACE 를 다시 넣지 말 것.
 
 grant execute on function public.ui_level_to_crowd_level(int) to anon, authenticated;

@@ -2044,7 +2044,7 @@ class AppProvider extends ChangeNotifier {
           gpsLng = pos?.longitude;
         } else {
           // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
-          // 디버그(flutter run)는 50m 우회 — _resolveVenueGps 참고.
+          // 디버그(flutter run)는 30m 우회 — _resolveVenueGps 참고.
           final (coords, gpsErr) = await _resolveVenueGps(
             restaurantId,
             tooFarMessage: '매장 근처에서만 혼잡도를 제보할 수 있어요.',
@@ -2096,21 +2096,33 @@ class AppProvider extends ChangeNotifier {
           status: status,
         ));
 
-        // 제보(RPC)는 이미 커밋됨 — 이후 부수 작업이 실패해도 "제보 실패"로 보이면 안 됨
-        try {
-          if (source == 'user') await fetchMyReward();
-          final gen = ++_restaurantRefreshGen;
-          final fetched = await repo.fetchAll();
-          if (gen == _restaurantRefreshGen) {
-            _restaurants = fetched;
-          }
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove(_kOverrides);
-          await _syncPushNotifications();
-        } catch (e, st) {
-          debugPrint('[Supabase] reportStatus post-processing failed: $e\n$st');
-        }
+        // RPC는 이미 커밋됨 — 서버 fetchAll을 기다리지 않고 로컬을 먼저 반영해
+        // 지도 마커가 바로 바뀌도록 한다. fetchAll은 뒤에서 조용히 동기화만 한다.
+        _restaurants = _restaurants.map((r) {
+          if (r.id != restaurantId) return r;
+          final next = Map<String, int>.from(r.reports);
+          if (status != '영업안함') next[status] = (next[status] ?? 0) + 1;
+          return r.copyWith(status: status, updated: 0, reports: next);
+        }).toList();
         notifyListeners();
+
+        // 제보(RPC)는 이미 커밋됨 — 이후 부수 작업이 실패해도 "제보 실패"로 보이면 안 됨
+        unawaited(() async {
+          try {
+            if (source == 'user') await fetchMyReward();
+            final gen = ++_restaurantRefreshGen;
+            final fetched = await repo.fetchAll();
+            if (gen == _restaurantRefreshGen) {
+              _restaurants = fetched;
+              notifyListeners();
+            }
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove(_kOverrides);
+            await _syncPushNotifications();
+          } catch (e, st) {
+            debugPrint('[Supabase] reportStatus post-processing failed: $e\n$st');
+          }
+        }());
         return null;
       } on PostgrestException catch (e) {
         debugPrint('[Supabase] reportStatus failed: ${e.message}');
@@ -2202,9 +2214,9 @@ class AppProvider extends ChangeNotifier {
 
   /// 제보·입장가능인원용 GPS.
   ///
-  /// - **디버그(`flutter run`)**: 50m 제한 없음. 서버도 50m를 검사하므로
+  /// - **디버그(`flutter run`)**: 30m 제한 없음. 서버도 30m를 검사하므로
   ///   실제 GPS 대신 매장 좌표를 보내 거리=0m로 통과시킨다.
-  /// - **릴리즈/프로파일/IPA**: 실제 GPS + 클라이언트·서버 50m 검증.
+  /// - **릴리즈/프로파일/IPA**: 실제 GPS + 클라이언트·서버 30m 검증.
   ///
   /// 실패 시 `(null, 사용자 메시지)`, 성공 시 `((lat,lng), null)`.
   Future<(({double lat, double lng})? coords, String? error)> _resolveVenueGps(
@@ -2228,7 +2240,7 @@ class AppProvider extends ChangeNotifier {
     // assert/kDebugMode: flutter run(debug)에서만 true. release·profile·IPA는 false.
     if (kDebugMode) {
       debugPrint(
-        '[GPS] debug bypass 50m — using restaurant coords '
+        '[GPS] debug bypass 30m — using restaurant coords '
         'id=$restaurantId lat=${restaurant.latitude} lng=${restaurant.longitude}',
       );
       return (
@@ -2247,7 +2259,7 @@ class AppProvider extends ChangeNotifier {
       restaurant.latitude,
       restaurant.longitude,
     );
-    if (dist > 50) {
+    if (dist > 30) {
       return (null, tooFarMessage);
     }
     return ((lat: pos.latitude, lng: pos.longitude), null);

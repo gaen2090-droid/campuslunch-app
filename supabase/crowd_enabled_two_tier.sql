@@ -130,7 +130,7 @@ begin
 
   if not v_stats_excluded then
     v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
-    if v_distance > 50 then
+    if v_distance > 30 then
       raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
     end if;
   end if;
@@ -202,7 +202,7 @@ grant execute on function public.submit_crowd_report(
 ) to authenticated;
 
 comment on function public.submit_crowd_report is
-  '제보 정본. 스탬프 + 50m(user/owner) + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
+  '제보 정본. 스탬프 + 30m(user/owner) + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
 
 -- 사장님 인증 승인 시 자동으로 제보 대상으로 승격 (crowd_enabled=true)
 -- 주의: claim_owner_by_code는 6자리 코드 방식 폐지(owner_code_cleanup.sql)로 이미 drop됨.
