@@ -2080,7 +2080,7 @@ class AppProvider extends ChangeNotifier {
         );
         if (source == 'user') {
           _lastReportTime[restaurantId] = DateTime.now();
-          _lastStampResult = stampResult;
+          _lastStampResult = await _finishGiftishowRedeem(stampResult);
         } else {
           _lastStampResult = StampResult.none;
         }
@@ -3284,9 +3284,44 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<StampResult> _finishGiftishowRedeem(StampResult stamp) async {
+    final issuanceId = stamp.autoRedeem.issuanceId;
+    if (stamp.autoRedeem.status != 'giftishow_pending' ||
+        issuanceId == null ||
+        issuanceId.isEmpty) {
+      return stamp;
+    }
+    final repo = _rewardRepo;
+    if (repo == null) return stamp;
+    final message = await repo.completeGiftishowIssuance(issuanceId);
+    await fetchMyReward();
+    if (message == null) {
+      return stamp.copyWith(
+        autoRedeem: AutoRedeemResult(
+          status: 'ok',
+          brand: stamp.autoRedeem.brand,
+          productName: stamp.autoRedeem.productName,
+          issuanceId: issuanceId,
+        ),
+      );
+    }
+    return stamp.copyWith(
+      autoRedeem: AutoRedeemResult(
+        status: 'giftishow_failed',
+        brand: stamp.autoRedeem.brand,
+        productName: stamp.autoRedeem.productName,
+        issuanceId: issuanceId,
+      ),
+    );
+  }
+
   Future<void> fetchMyReward() async {
     final repo = _rewardRepo;
     if (repo == null) return;
+    final pending = await repo.pendingGiftishowIssuanceId();
+    if (pending != null) {
+      await repo.completeGiftishowIssuance(pending);
+    }
     var rewardOk = false;
     var giftOk = false;
     try {

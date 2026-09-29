@@ -16,3 +16,6 @@ verify_jwt = false
 
 [functions.send-news-push]
 verify_jwt = false
+
+[functions.issue-giftishow]
+verify_jwt = false

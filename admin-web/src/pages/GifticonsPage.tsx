@@ -14,6 +14,7 @@ import {
   type Gifticon,
 } from "../types/gifticon";
 import { readTextFileAutoEncoding } from "../lib/readTextFile";
+import { GiftishowProductPanel } from "../components/GiftishowProductPanel";
 
 interface Props {
   gifticons: Gifticon[];
@@ -249,6 +250,7 @@ export function GifticonsPage({
 
   return (
     <div className="page">
+      <GiftishowProductPanel />
       <div className="panel-head">
         <div className="topbar-actions">
           <button type="button" className="btn primary sm" onClick={openBulk}>

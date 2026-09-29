@@ -260,3 +260,63 @@ export async function bulkDeleteGifticons(ids: string[]): Promise<number> {
   return deleted;
 }
 
+export type GiftishowProduct = {
+  goodsCode: string;
+  brand: string;
+  productName: string;
+  faceValue: number | null;
+  imageUrl: string;
+  isEnabled: boolean;
+};
+
+export async function fetchGiftishowProduct(): Promise<GiftishowProduct> {
+  const { data, error } = await supabase.rpc("admin_get_giftishow_product");
+  if (error) throw error;
+  const map = (data ?? {}) as Record<string, unknown>;
+  const face = map.face_value;
+  return {
+    goodsCode: String(map.goods_code ?? ""),
+    brand: String(map.brand ?? ""),
+    productName: String(map.product_name ?? ""),
+    faceValue:
+      typeof face === "number"
+        ? face
+        : face != null
+          ? Number.parseInt(String(face), 10) || null
+          : null,
+    imageUrl: String(map.image_url ?? ""),
+    isEnabled: map.is_enabled === true,
+  };
+}
+
+export async function saveGiftishowProduct(
+  product: GiftishowProduct,
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_giftishow_product", {
+    p_goods_code: product.goodsCode,
+    p_brand: product.brand,
+    p_product_name: product.productName,
+    p_face_value: product.faceValue,
+    p_image_url: product.imageUrl,
+    p_is_enabled: product.isEnabled,
+  });
+  if (error) throw error;
+}
+
+export async function fetchGiftishowBalance(): Promise<{
+  ok: boolean;
+  balance: string | null;
+  message: string;
+}> {
+  const { data, error } = await supabase.functions.invoke("issue-giftishow", {
+    body: { action: "balance" },
+  });
+  if (error) throw error;
+  const map = (data ?? {}) as Record<string, unknown>;
+  return {
+    ok: map.ok === true,
+    balance: map.balance != null ? String(map.balance) : null,
+    message: String(map.message ?? (map.ok ? "조회했어요." : "조회에 실패했어요.")),
+  };
+}
+

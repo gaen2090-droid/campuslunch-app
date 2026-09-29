@@ -385,7 +385,10 @@ def build(pdf: GuidePDF) -> None:
         "grant_stamp / _perform_gifticon_redeem / grant_referral_stamp 는\n"
         "  클라이언트 execute 금지 (SECURITY DEFINER 내부 전용).\n"
         "정본 제보 RPC: supabase/submit_crowd_report.sql 만 CREATE OR REPLACE.\n"
-        "  (jsonb 스탬프 + 50m + advisory lock). 옛 본문은 supabase/archive/."
+        "  (jsonb 스탬프 + 거리제한 + advisory lock). 옛 본문은 supabase/archive/.\n"
+        "기프티쇼: giftishow_reward_product 1종. is_enabled 시 스탬프 20 교환은\n"
+        "  giftishow_pending → Edge issue-giftishow(gubun=I 핀/이미지).\n"
+        "  키는 Edge 시크릿. 없으면 발급 실패 후 스탬프 20 환불. 꺼두면 수동 재고."
     )
 
     pdf.section("5.7 APK 테스트·소셜 로그인", 2)

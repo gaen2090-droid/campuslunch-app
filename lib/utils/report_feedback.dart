@@ -46,7 +46,10 @@ Future<void> submitCrowdReportFeedback(
 
   final stamp = provider.lastStampResult;
   String message;
-  if (stamp.isWeekend) {
+  if (stamp.autoRedeem.status == 'giftishow_failed') {
+    message =
+        '기프티쇼 발급이 되지 않아 스탬프를 되돌렸어요.\n연동 키를 넣은 뒤 다시 교환할 수 있어요.';
+  } else if (stamp.isWeekend) {
     message =
         '혼잡도 제보가 등록되었어요.\n주말에는 스탬프를 제공하지 않아요.';
   } else if (stamp.isOutOfStampHours) {

@@ -31,6 +31,7 @@
 --  13a. supabase/rewards_v2_step1_enum.sql (gifticon_status 'used' — 먼저 실행)
 --  13b. supabase/rewards_v2_gifticon_flow.sql (자동 지급·used·CSV 일괄)
 --  13c. supabase/hotfix_gifticon_face_value_and_spend_report.sql (액면가·리워드 지출 리포트)
+--  13d. supabase/giftishow_issue.sql (기프티쇼 상품 1종·교환 발급. 키는 Edge 시크릿)
 --  14. supabase/rpc_admin_restaurants.sql (어드민 매장 DELETE·조회·정책)
 --  15. supabase/deploy_prelaunch_security.sql (배포 전 보안 패치)
 --  16. supabase/stamp_hours_10_to_19.sql

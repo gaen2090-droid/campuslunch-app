@@ -141,6 +141,39 @@ class RewardRepository {
     }
   }
 
+  /// 기프티쇼 발급 마무리. 성공이면 null, 실패면 안내 문구.
+  Future<String?> completeGiftishowIssuance(String issuanceId) async {
+    try {
+      final res = await _client.functions.invoke(
+        'issue-giftishow',
+        body: {'action': 'issue', 'issuance_id': issuanceId},
+      );
+      final data = res.data;
+      if (data is Map && data['ok'] == true) return null;
+      if (data is Map) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+      return '기프티콘 발급에 실패했어요. 잠시 후 쿠폰함과 스탬프를 확인해 주세요.';
+    } catch (e) {
+      debugPrint('[Reward] completeGiftishowIssuance failed: $e');
+      return '기프티쇼 발급 서버에 연결하지 못했어요. 잠시 후 다시 열어 주세요.';
+    }
+  }
+
+  Future<String?> pendingGiftishowIssuanceId() async {
+    try {
+      final raw = await _client.rpc('my_pending_giftishow_issuance');
+      if (raw == null) return null;
+      final id = raw.toString();
+      if (id.isEmpty || id == 'null') return null;
+      return id;
+    } catch (e) {
+      debugPrint('[Reward] pendingGiftishowIssuanceId failed: $e');
+      return null;
+    }
+  }
+
   Future<String?> markGifticonUsed(String gifticonId) async {
     try {
       final raw = await _client.rpc(

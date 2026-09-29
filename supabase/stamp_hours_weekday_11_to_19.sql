@@ -9,6 +9,8 @@
 --
 -- 참고: grant_stamp의 이전 버전은 stamp_hours_10_to_19.sql 이었으나, 이 파일이 이후
 -- 최신 버전이므로 grant_stamp를 다시 수정할 때는 반드시 이 파일을 갱신해서 실행할 것.
+-- ⚠️ giftishow_issue.sql 이 이 함수를 다시 정의한다 (giftishow_pending 반영).
+--    스탬프 시간 조건을 바꿀 때는 giftishow_issue.sql 의 grant_stamp 도 같이 고칠 것.
 
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)
 returns jsonb

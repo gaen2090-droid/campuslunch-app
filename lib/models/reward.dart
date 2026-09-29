@@ -59,6 +59,20 @@ class StampResult {
     );
   }
 
+  StampResult copyWith({
+    AutoRedeemResult? autoRedeem,
+    int? totalStamps,
+  }) {
+    return StampResult(
+      granted: granted,
+      grantedCount: grantedCount,
+      todayStamps: todayStamps,
+      totalStamps: totalStamps ?? this.totalStamps,
+      autoRedeem: autoRedeem ?? this.autoRedeem,
+      reason: reason,
+    );
+  }
+
   static const StampResult none = StampResult(
     granted: false,
     grantedCount: 0,
@@ -71,11 +85,13 @@ class AutoRedeemResult {
   final String status;
   final String? brand;
   final String? productName;
+  final String? issuanceId;
 
   const AutoRedeemResult({
     required this.status,
     this.brand,
     this.productName,
+    this.issuanceId,
   });
 
   bool get succeeded => status == 'ok';
@@ -85,6 +101,7 @@ class AutoRedeemResult {
       status: json['status'] as String? ?? 'none',
       brand: json['brand'] as String?,
       productName: json['product_name'] as String?,
+      issuanceId: json['issuance_id'] as String?,
     );
   }
 
