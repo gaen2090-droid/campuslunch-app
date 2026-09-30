@@ -82,6 +82,9 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   /// 동일한 방식. 마커 판정(_markerIconRadiusPixels)보다만 살짝 크게 잡아, 충분히
   /// 확대해서 마커끼리 떨어지면 라벨도 전부 뜨도록 함(너무 크면 확대해도 라벨이 계속 숨음).
   static const double _labelOverlapRadiusPixels = 20;
+  /// 마커 겹침 제거(간소화) on/off. 현재 제보 가능 매장 수가 적어 꺼둠 —
+  /// 매장이 많아지면 true로 되돌려 재사용.
+  static const bool _markerOverlapEnabled = false;
   int? _lastZoomLevel;
   LatLng? _cachedMyLocation;
   bool _myLocationFetchInFlight = false;
@@ -137,6 +140,28 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
     final useInitialFocus =
         !_didInitialFocusFit && (widget.initialFocusRestaurants?.isNotEmpty ?? false);
+
+    if (useInitialFocus) {
+      // 최초 진입 시엔 정문 대신 내 위치가 있으면 그쪽을 우선한다. 위치 권한이
+      // 없거나 GPS fix를 못 받으면(타임아웃) 기존처럼 정문 일대로 폴백.
+      final myLocation = await _tryGetInitialUserLocation();
+      if (myLocation != null) {
+        _didInitialFocusFit = true;
+        _lastFitKey = _fitKeyFor(widget.restaurants);
+        _lastFitToken = widget.cameraFitToken;
+        if (animate) _beginCameraAnimation();
+        await MapCameraFit.moveToFitLatLngs(
+          controller,
+          [myLocation],
+          profile: widget.initialFocusProfile,
+          animate: animate,
+          viewportSize: _mapViewportSize(),
+          viewportPadding: _mapViewportPadding(),
+        );
+        return;
+      }
+    }
+
     final source = useInitialFocus ? widget.initialFocusRestaurants! : widget.restaurants;
     final profile = useInitialFocus ? widget.initialFocusProfile : widget.cameraFitProfile;
 
@@ -162,6 +187,26 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       viewportSize: _mapViewportSize(),
       viewportPadding: _mapViewportPadding(),
     );
+  }
+
+  /// 최초 진입 카메라 포커스용 내 위치 조회. 권한 없음/타임아웃/실패 시 null
+  /// (호출부에서 정문 폴백).
+  Future<LatLng?> _tryGetInitialUserLocation() async {
+    if (!widget.myLocationEnabled) return null;
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return null;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      ).timeout(const Duration(seconds: 3));
+      return LatLng(latitude: pos.latitude, longitude: pos.longitude);
+    } catch (e) {
+      debugPrint('[RestaurantKakaoMap] initial location fetch failed: $e');
+      return null;
+    }
   }
 
   bool _waitingKakaoMapSdk = false;
@@ -375,47 +420,59 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       _lastZoomLevel = zoom;
 
       final swOverlap = Stopwatch()..start();
-      // 겹치는 마커 중 하나만 남김 — 선택된 매장 최우선, 그 다음 혼잡도(여유로움>약간혼잡>그외)
-      // 우선, 그 외엔 목록 순서(안정적) 유지.
-      final selectedId = widget.selected?.id;
-      final candidates = <OverlapCandidate>[];
-      for (var i = 0; i < located.length; i++) {
-        final r = located[i];
-        final statusRank = switch (r.status) {
-          '여유로움' => 2,
-          '약간혼잡' => 1,
-          _ => 0,
-        };
-        final basePriority = statusRank * located.length + (located.length - i);
-        final priority =
-            r.id == selectedId ? basePriority + 3 * located.length : basePriority;
-        candidates.add(OverlapCandidate(
-          id: r.id,
-          latitude: r.latitude,
-          longitude: r.longitude,
-          priority: priority,
-        ));
-      }
-      final visibleIds = MarkerOverlap.resolveVisibleIds(
-        candidates: candidates,
-        zoomLevel: zoom,
-        iconRadiusPixels: _markerIconRadiusPixels,
-      ).toSet();
+      // 마커 겹침 제거(간소화)는 현재 비활성화 — 제보 가능 매장 수가 적어
+      // 다닥다닥 겹쳐도 문제없는 시기라 전부 표시한다. 매장이 많아지면
+      // _markerOverlapEnabled를 true로 되돌려 재사용.
+      final List<String> visibleIds;
+      final List<String> labeledIds;
+      if (_markerOverlapEnabled) {
+        // 겹치는 마커 중 하나만 남김 — 선택된 매장 최우선, 그 다음 혼잡도(여유로움>약간혼잡>그외)
+        // 우선, 그 외엔 목록 순서(안정적) 유지.
+        final selectedId = widget.selected?.id;
+        final candidates = <OverlapCandidate>[];
+        for (var i = 0; i < located.length; i++) {
+          final r = located[i];
+          final statusRank = switch (r.status) {
+            '여유로움' => 2,
+            '약간혼잡' => 1,
+            _ => 0,
+          };
+          final basePriority = statusRank * located.length + (located.length - i);
+          final priority =
+              r.id == selectedId ? basePriority + 3 * located.length : basePriority;
+          candidates.add(OverlapCandidate(
+            id: r.id,
+            latitude: r.latitude,
+            longitude: r.longitude,
+            priority: priority,
+          ));
+        }
+        visibleIds = MarkerOverlap.resolveVisibleIds(
+          candidates: candidates,
+          zoomLevel: zoom,
+          iconRadiusPixels: _markerIconRadiusPixels,
+        );
 
-      // 라벨(매장명)은 화면상 서로 겹치지 않는 것만 표시 — 매장 수와 무관하게 항상 동작.
-      final visibleCandidates =
-          candidates.where((c) => visibleIds.contains(c.id)).toList();
-      final labeledIds = MarkerOverlap.resolveVisibleIds(
-        candidates: visibleCandidates,
-        zoomLevel: zoom,
-        iconRadiusPixels: _labelOverlapRadiusPixels,
-      ).toSet();
-      debugPrint('[Perf] overlap compute took ${swOverlap.elapsedMilliseconds}ms (n=${located.length}, zoom=$zoom, visible=${visibleIds.length}, labeled=${labeledIds.length})');
+        // 라벨(매장명)은 화면상 서로 겹치지 않는 것만 표시 — 매장 수와 무관하게 항상 동작.
+        final visibleCandidates =
+            candidates.where((c) => visibleIds.contains(c.id)).toList();
+        labeledIds = MarkerOverlap.resolveVisibleIds(
+          candidates: visibleCandidates,
+          zoomLevel: zoom,
+          iconRadiusPixels: _labelOverlapRadiusPixels,
+        );
+      } else {
+        visibleIds = located.map((r) => r.id).toList();
+        labeledIds = visibleIds;
+      }
+      final visibleIdSet = visibleIds.toSet();
+      final labeledIdSet = labeledIds.toSet();
+      debugPrint('[Perf] overlap compute took ${swOverlap.elapsedMilliseconds}ms (n=${located.length}, zoom=$zoom, visible=${visibleIdSet.length}, labeled=${labeledIdSet.length})');
 
       // 목표 상태(이번 sync에서 그려야 할 매장 마커)를 먼저 전부 계산한다(native 호출 없음).
       final desired = <String, MarkerOption>{};
       for (final r in located) {
-        if (!visibleIds.contains(r.id)) continue;
+        if (!visibleIdSet.contains(r.id)) continue;
         if (gen != _syncGeneration) return;
 
         final isSelected = widget.selected?.id == r.id;
@@ -437,7 +494,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
           latLng: LatLng(latitude: r.latitude, longitude: r.longitude),
           styleId: styleId,
           rank: isSelected ? 2 : 1,
-          text: labeledIds.contains(r.id) ? r.name : null,
+          text: labeledIdSet.contains(r.id) ? r.name : null,
         );
       }
 
