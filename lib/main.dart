@@ -65,6 +65,12 @@ Future<void> main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
 
+  // 가로 회전 시 레이아웃이 깨져 보여 세로 모드로 고정.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   await preloadSplashResources();
 
   // ChangeNotifierProvider의 create는 위젯 빌드 시점까지 지연 실행되므로,
