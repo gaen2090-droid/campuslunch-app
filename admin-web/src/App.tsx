@@ -6,6 +6,7 @@ import { TrustExportModal } from "./components/TrustExportModal";
 import { useAuth } from "./hooks/useAuth";
 import { useCollections } from "./hooks/useCollections";
 import { useCommunity } from "./hooks/useCommunity";
+import { useCrowdPrediction } from "./hooks/useCrowdPrediction";
 import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
 import { useKpiMetrics } from "./hooks/useKpiMetrics";
@@ -21,6 +22,7 @@ import { useUsers } from "./hooks/useUsers";
 import { CollectionsPage } from "./pages/CollectionsPage";
 import { CommunityAdminPage } from "./pages/CommunityAdminPage";
 import { CommunityBannedWordsPage } from "./pages/CommunityBannedWordsPage";
+import { CrowdPredictionPage } from "./pages/CrowdPredictionPage";
 import { NicknameWordsPage } from "./pages/NicknameWordsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -53,6 +55,9 @@ export default function App() {
     enabled && (tab === "community" || tab === "community_banned_words"),
   );
   const collectionsState = useCollections(enabled && tab === "collections");
+  const crowdPredictionState = useCrowdPrediction(
+    enabled && tab === "crowd_prediction",
+  );
   const usersState = useUsers(
     enabled && (tab === "users" || tab === "nickname_words" || tab === "kpi"),
   );
@@ -76,6 +81,9 @@ export default function App() {
       tab === "feedback" ? feedbackState.reload() : Promise.resolve(),
       tab === "community" ? communityState.reload() : Promise.resolve(),
       tab === "collections" ? collectionsState.reload() : Promise.resolve(),
+      tab === "crowd_prediction"
+        ? crowdPredictionState.reload()
+        : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
       tab === "trust_signals" ? trustSignalsState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
@@ -95,6 +103,7 @@ export default function App() {
     feedbackState,
     communityState,
     collectionsState,
+    crowdPredictionState,
     usersState,
     trustSignalsState,
     pushConfigState,
@@ -152,6 +161,18 @@ export default function App() {
           metrics={opsMetricsState.metrics}
           loading={opsMetricsState.loading}
           error={opsMetricsState.error}
+        />
+      );
+    }
+
+    if (tab === "crowd_prediction") {
+      return (
+        <CrowdPredictionPage
+          restaurants={crowdPredictionState.restaurants}
+          dailyCounts={crowdPredictionState.dailyCounts}
+          loading={crowdPredictionState.loading}
+          error={crowdPredictionState.error}
+          onReload={crowdPredictionState.reload}
         />
       );
     }
