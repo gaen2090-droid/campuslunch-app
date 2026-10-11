@@ -292,6 +292,10 @@ export function CollectionsPage({
   );
 }
 
+// 앱 컬렉션 상세 카드(collection_detail_restaurant_row.dart)가 한줄소개를 최대 2줄로 보여준다.
+// 작은 폰 폭(약 360dp)에서 한 줄 약 16자(글자 크기 12) → 2줄 32자. 앱의 maxLines·글자 크기와 같이 맞춰서 바꿀 것.
+const NOTE_MAX_LENGTH = 32;
+
 function CollectionItemNoteInput({
   itemId,
   initialNote,
@@ -321,20 +325,28 @@ function CollectionItemNoteInput({
 
   return (
     <div className="collection-item-note">
-      <input
+      <textarea
         className="search-input sm"
-        type="text"
-        placeholder="한줄소개 (예: 학생들이 종종 줌밥 먹는 곳)"
+        rows={2}
+        style={{ resize: "none", fontFamily: "inherit" }}
+        placeholder="한줄소개 (예: 학생들이 혼밥하기 좋은 곳)"
         value={note}
-        maxLength={60}
-        onChange={(e) => setNote(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        maxLength={NOTE_MAX_LENGTH}
+        onChange={(e) => {
+          // 줄바꿈은 1번만 허용 (앱에서 최대 2줄 표시)
+          const v = e.target.value;
+          const firstBreak = v.indexOf("\n");
+          setNote(
+            firstBreak === -1
+              ? v
+              : v.slice(0, firstBreak + 1) + v.slice(firstBreak + 1).replace(/\n/g, ""),
+          );
         }}
+        onBlur={save}
         disabled={saving}
       />
-      {dirty && !saving && <span className="muted xs">저장 안 됨 (엔터 또는 클릭 해제 시 저장)</span>}
+      <span className="muted xs">{note.length}/{NOTE_MAX_LENGTH}자 (엔터로 줄바꿈 1번, 앱에서 최대 2줄 표시)</span>
+      {dirty && !saving && <span className="muted xs">저장 안 됨 (입력창 밖을 클릭하면 저장)</span>}
       {error && <span className="alert-inline">{error}</span>}
     </div>
   );
