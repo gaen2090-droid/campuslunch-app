@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/coach_mark_step.dart';
 import '../providers/app_provider.dart';
+import '../services/app_update_service.dart';
 import '../widgets/coach_mark_overlay.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_links.dart';
@@ -42,6 +43,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AppProvider>().recordAppSession();
+      AppUpdateService.checkAndPrompt(context);
       final provider = context.read<AppProvider>();
       if (provider.showSignupCompleteMessage) {
         provider.clearSignupCompleteMessage();
