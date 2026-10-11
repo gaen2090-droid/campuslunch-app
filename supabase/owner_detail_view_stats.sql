@@ -1,5 +1,6 @@
 -- 사장님 통계: 매장 상세페이지 방문(조회) 수 — 오늘/누적
--- (Dashboard → SQL Editor → Run, owner_search_click_stats.sql, stats_excluded_users.sql 이후)
+-- (Dashboard → SQL Editor → Run, stats_excluded_users.sql 이후)
+-- 구버전 owner_map_click_stats.sql / owner_search_click_stats.sql 은 archive 에 있다. 재실행 금지.
 
 -- ── 1. event_type에 상세페이지 조회 추가 ──
 -- ⚠️ screen_dwell(trust_abuse_scoring.sql)까지 포함한 최종 목록으로 통일

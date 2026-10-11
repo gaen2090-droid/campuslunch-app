@@ -462,6 +462,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSub?.cancel();
+    _reportLocationSub?.cancel();
     super.dispose();
   }
 
@@ -704,6 +705,7 @@ class AppProvider extends ChangeNotifier {
         prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
     _rewardPushEnabled = prefs.getBool(_kRewardPush) ?? _notificationEnabled;
     _newsPushEnabled = prefs.getBool(_kNewsPush) ?? _notificationEnabled;
+    if (_locationMode) _ensureReportLocationWatch();
   }
 
   // ── 로그인 ──
@@ -1206,6 +1208,7 @@ class AppProvider extends ChangeNotifier {
         prefs.getBool(_kCommunityCommentsPush) ?? _notificationEnabled;
     _rewardPushEnabled = prefs.getBool(_kRewardPush) ?? _notificationEnabled;
     _newsPushEnabled = prefs.getBool(_kNewsPush) ?? _notificationEnabled;
+    if (_locationMode) _ensureReportLocationWatch();
 
     final userId = supabaseUserId.isNotEmpty
         ? supabaseUserId
@@ -1611,6 +1614,7 @@ class AppProvider extends ChangeNotifier {
     _locationMode = true;
     await prefs.setBool(_kLocation, true);
     notifyListeners();
+    _ensureReportLocationWatch();
     unawaited(_updateDistances());
   }
 
@@ -1622,7 +1626,10 @@ class AppProvider extends ChangeNotifier {
       _stage = prefs.containsKey(_kPush) ? await _postAppStage(prefs) : 'notification_permission';
     }
     notifyListeners();
-    if (enabled) unawaited(_updateDistances());
+    if (enabled) {
+      _ensureReportLocationWatch();
+      unawaited(_updateDistances());
+    }
   }
 
   Future<void> completeNotificationPermission(bool enabled) async {
@@ -2009,6 +2016,7 @@ class AppProvider extends ChangeNotifier {
       String source = 'user';
       double? attemptLat;
       double? attemptLng;
+      Restaurant? previous;
       try {
         final isOwnerReport = _ownsRestaurant(restaurantId);
         source = isOwnerReport ? 'owner' : 'user';
@@ -2037,13 +2045,13 @@ class AppProvider extends ChangeNotifier {
 
         double? gpsLat;
         double? gpsLng;
-        if (isStatsExcluded) {
-          // GPS(위치) 확인·거리 제한 없이 매장 좌표를 그대로 사용해 제보를 넘긴다.
+        if (isOwnerReport) {
+          // 본인 매장 제보는 위치와 무관. GPS를 기다리지 않는다.
+        } else if (isStatsExcluded) {
           final pos = await _currentPosition();
           gpsLat = pos?.latitude;
           gpsLng = pos?.longitude;
         } else {
-          // 위치 제한은 사장님 제보에도 동일. 5분 쿨다운만 사장님 예외.
           // 디버그(flutter run)는 30m 우회 — _resolveVenueGps 참고.
           final (coords, gpsErr) = await _resolveVenueGps(
             restaurantId,
@@ -2066,6 +2074,16 @@ class AppProvider extends ChangeNotifier {
         }
         attemptLat = gpsLat;
         attemptLng = gpsLng;
+
+        // 위치·쿨다운 확인이 끝난 뒤에 화면을 먼저 바꾼다.
+        // 서버 제보가 실패하면 아래 catch에서 되돌린다.
+        for (final r in _restaurants) {
+          if (r.id == restaurantId) {
+            previous = r;
+            break;
+          }
+        }
+        _paintLocalReport(restaurantId, status);
 
         final stampResult = await repo.reportStatusWithStamp(
           restaurantId,
@@ -2096,16 +2114,6 @@ class AppProvider extends ChangeNotifier {
           status: status,
         ));
 
-        // RPC는 이미 커밋됨 — 서버 fetchAll을 기다리지 않고 로컬을 먼저 반영해
-        // 지도 마커가 바로 바뀌도록 한다. fetchAll은 뒤에서 조용히 동기화만 한다.
-        _restaurants = _restaurants.map((r) {
-          if (r.id != restaurantId) return r;
-          final next = Map<String, int>.from(r.reports);
-          if (status != '영업안함') next[status] = (next[status] ?? 0) + 1;
-          return r.copyWith(status: status, updated: 0, reports: next);
-        }).toList();
-        notifyListeners();
-
         // 제보(RPC)는 이미 커밋됨 — 이후 부수 작업이 실패해도 "제보 실패"로 보이면 안 됨
         unawaited(() async {
           try {
@@ -2125,6 +2133,7 @@ class AppProvider extends ChangeNotifier {
         }());
         return null;
       } on PostgrestException catch (e) {
+        if (previous != null) _restoreRestaurant(previous);
         debugPrint('[Supabase] reportStatus failed: ${e.message}');
         final msg = e.message.trim().isNotEmpty
             ? e.message.trim()
@@ -2142,6 +2151,7 @@ class AppProvider extends ChangeNotifier {
         ));
         return msg;
       } catch (e, st) {
+        if (previous != null) _restoreRestaurant(previous);
         debugPrint('[Supabase] reportStatus failed: $e\n$st');
         unawaited(_analyticsRepo.recordReportAttempt(
           restaurantId: restaurantId,
@@ -2191,6 +2201,82 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  StreamSubscription<Position>? _reportLocationSub;
+  Position? _reportFix;
+  DateTime? _reportFixAt;
+
+  /// 제보용 위치. 버튼을 누를 때 처음 GPS를 켜면 실내에서는 수십 미터 어긋난
+  /// 값이 바로 나와 30m 안인데도 거절된다. 위치 권한이 있는 동안 고정확도 위치를
+  /// 계속 받아 두고, 제보 시점에는 20초 이내의 그 값을 쓴다.
+  void _ensureReportLocationWatch() {
+    if (_reportLocationSub != null) return;
+    final LocationSettings settings;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      settings = AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+        intervalDuration: const Duration(seconds: 5),
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      settings = AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        activityType: ActivityType.other,
+      );
+    } else {
+      settings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      );
+    }
+    _reportLocationSub = Geolocator.getPositionStream(
+      locationSettings: settings,
+    ).listen((pos) {
+      _reportFix = pos;
+      _reportFixAt = DateTime.now();
+    }, onError: (Object e) {
+      debugPrint('[GPS] report watch: $e');
+    });
+  }
+
+  Position? _recentReportFix(Duration maxAge) {
+    final pos = _reportFix;
+    final at = _reportFixAt;
+    if (pos == null || at == null) return null;
+    if (DateTime.now().difference(at) > maxAge) return null;
+    return pos;
+  }
+
+  void _rememberReportFix(Position pos) {
+    _reportFix = pos;
+    _reportFixAt = DateTime.now();
+  }
+
+  /// 제보 팝업을 열기 직전에 호출한다. 권한만 확인하고, 고정확도 위치를 새로 받아
+  /// 제보용 좌표로 저장한다. 실패해도 팝업은 막지 않는다.
+  Future<void> prepareReportLocation() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+      _ensureReportLocationWatch();
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 4),
+        ),
+      );
+      _rememberReportFix(pos);
+    } catch (e) {
+      debugPrint('[GPS] prepareReportLocation: $e');
+    }
+  }
+
   Future<Position?> _currentPosition() async {
     try {
       var permission = await Geolocator.checkPermission();
@@ -2201,15 +2287,47 @@ class AppProvider extends ChangeNotifier {
           permission == LocationPermission.deniedForever) {
         return null;
       }
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 5),
-        ),
-      );
+      _ensureReportLocationWatch();
+      final recent = _recentReportFix(const Duration(seconds: 20));
+      if (recent != null) return recent;
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 4),
+          ),
+        );
+        _rememberReportFix(pos);
+        return pos;
+      } catch (_) {
+        return _recentReportFix(const Duration(seconds: 45));
+      }
     } catch (_) {
       return null;
     }
+  }
+
+  void _paintLocalReport(String restaurantId, String status) {
+    _restaurants = _restaurants.map((r) {
+      if (r.id != restaurantId) return r;
+      final next = Map<String, int>.from(r.reports);
+      if (status != '영업안함') next[status] = (next[status] ?? 0) + 1;
+      return r.copyWith(
+        status: status,
+        updated: 0,
+        reports: next,
+        hasCrowdUpdate: true,
+      );
+    }).toList();
+    notifyListeners();
+  }
+
+  void _restoreRestaurant(Restaurant previous) {
+    _restaurants = [
+      for (final r in _restaurants)
+        if (r.id == previous.id) previous else r,
+    ];
+    notifyListeners();
   }
 
   /// 제보·입장가능인원용 GPS.

@@ -1,3 +1,4 @@
+-- 재실행 금지. 한도를 999로 되돌린다. 운영 한도는 ../rewards_daily_cap_to_3.sql
 -- 일일 스탬프 상한 999개 (디버깅·테스트용)
 
 create or replace function public.grant_stamp(p_user_id uuid, p_count int default 1)

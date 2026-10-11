@@ -534,12 +534,17 @@ class SupabaseRestaurantRepository {
           .eq('id', id)
           .single();
       final desc = _parseDescription(existing['description']) ?? {};
-      if (data.containsKey('hours')) desc['hours'] = data['hours'];
-      if (data.containsKey('hours_display')) {
-        desc['hours_display'] = data['hours_display'];
-      }
-      if (data.containsKey('hours_periods')) {
-        desc['hours_periods'] = data['hours_periods'];
+      if (data.containsKey('hours')) {
+        desc['hours'] = data['hours'];
+        // hours만 덮으면 앱이 남은 hours_periods(구글 캐시)로 영업 여부를 판단한다.
+        desc['hours_display'] = data.containsKey('hours_display')
+            ? data['hours_display']
+            : data['hours'];
+        if (data.containsKey('hours_periods')) {
+          desc['hours_periods'] = data['hours_periods'];
+        } else {
+          desc.remove('hours_periods');
+        }
       }
       if (data.containsKey('menu')) desc['menu'] = data['menu'];
       patch['description'] = jsonEncode(desc);

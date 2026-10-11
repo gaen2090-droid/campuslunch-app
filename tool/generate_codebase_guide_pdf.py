@@ -304,10 +304,13 @@ def build(pdf: GuidePDF) -> None:
         "[제보]\n"
         "ReportSheet -> report_feedback.submitCrowdReportFeedback()\n"
         "  -> AppProvider.reportStatus()\n"
-        "     source = owner (본인 매장+role owner) | user (그 외)\n"
-        "     user: 5분 쿨다운 + GPS 150m (AppProvider, kDebugMode 우회)\n"
-        "     제한 검증: 서버 RPC X, 클라이언트 전담\n"
-        "  -> RPC submit_crowd_report\n"
+        "     source = owner (본인 매장) | user (그 외)\n"
+        "     user: 5분 쿨다운 + GPS 30m. 위치 권한 동안 고정확도 위치를 미리 수신.\n"
+        "       제보 팝업을 열 때 prepareReportLocation()으로 한 번 더 갱신하고,\n"
+        "       제보 시 20초 이내 좌표를 사용 (kDebugMode는 매장 좌표로 우회)\n"
+        "     owner 본인 매장: 위치 제한 없음\n"
+        "     확인 통과 후 화면 혼잡도를 먼저 바꾸고, RPC 실패 시 되돌림\n"
+        "  -> RPC submit_crowd_report (user 30m·쿨다운은 서버도 검사)\n"
         "  -> crowd_reports INSERT -> 트리거 -> recalculate_crowd_status\n"
         "\n"
         "[실시간]\n"
@@ -328,7 +331,7 @@ def build(pdf: GuidePDF) -> None:
         "  -> stage=app, mainTabIndex=0 (사장님 탭)\n"
         "\n"
         "[혼잡도 변경]\n"
-        "OwnerScreen -> reportStatus() — 본인 매장만 owner source\n"
+        "OwnerScreen -> reportStatus() — 본인 매장만 owner source, 위치 제한 없음\n"
         "\n"
         "[입장 인원]\n"
         "OwnerScreen -> submitOwnerSeatUpdate()\n"
@@ -524,7 +527,7 @@ def build(pdf: GuidePDF) -> None:
     pdf.body(
         "anon key는 클라이언트에 노출되므로, 접근 제어는 RLS + SECURITY DEFINER RPC로 합니다.\n"
         "• users: 본인 row만 SELECT/UPDATE (auth.uid() = id)\n"
-        "• crowd_reports: INSERT는 RPC submit_crowd_report 경유 (소유·GPS 50m·쿨다운).\n"
+        "• crowd_reports: INSERT는 RPC submit_crowd_report 경유 (user GPS 30m·쿨다운, owner 본인 매장은 위치 제한 없음).\n"
         "  RLS: user_id=auth.uid(), owner source는 is_restaurant_owner 만.\n"
         "• grant_stamp / _perform_gifticon_redeem / grant_referral_stamp:\n"
         "  authenticated 실행 금지. 푸시 시크릿은 push_edge_runtime_config 만.\n"
@@ -706,9 +709,9 @@ def build(pdf: GuidePDF) -> None:
         "[제보 실패]\n"
         "  1) 콘솔 AuthException / RPC error message\n"
         "  2) submit_crowd_report 배포 + enum 타입\n"
-        "  3) user/owner: GPS 50m + user 5분 쿨다운 (AppProvider, kDebugMode 우회)\n"
-        "     lastKnownPosition 사용 금지 — getCurrentPosition 만\n"
-        "  4) owner: _ownsRestaurant + role=owner\n"
+        "  3) user: GPS 30m + 5분 쿨다운 (서버·앱 둘 다, kDebugMode 우회)\n"
+        "     제보 GPS는 세션 중 고정확도 스트림. OS lastKnownPosition은 쓰지 않음\n"
+        "  4) owner 본인 매장: 위치 제한 없음. _ownsRestaurant\n"
         "\n"
         "[사장님 인증]\n"
         "  1) 로그인 상태? claim_owner_by_code -> LOGIN_REQUIRED\n"
@@ -721,8 +724,9 @@ def build(pdf: GuidePDF) -> None:
     pdf.bullets([
         "report_source enum 없음 — 실제 타입은 crowd_source",
         "profiles 테이블 없음 — public.users 사용",
-        "영업시간: 앱은 description JSON hours_periods, SQL은 hours 문자열만 — "
-        "영업안함 판정 불일치 가능",
+        "영업시간: hours_periods(구글 캐시)가 있으면 앱 영업 여부는 periods 우선, "
+        "화면 문구는 hours. 어드민/사장님이 hours를 저장하면 hours_periods를 지우고 "
+        "hours_display를 hours로 맞춘다. 안 지우면 표시만 바뀌고 영업안함이 유지된다.",
         "제보 RPC는 submit_crowd_report.sql 만 수정. archive/ 및 옛 hotfix 재실행 금지",
         "스탬프 일일 한도 3 + KST 10–19시. grant_stamp 클라이언트 실행 금지",
         "푸시 Edge 시크릿을 SQL에 하드코딩하지 말 것 (push_edge_runtime_config)",
@@ -745,11 +749,12 @@ def build(pdf: GuidePDF) -> None:
 
     pdf.section("11. 증상별 디버깅 체크리스트", 1)
     checks = [
-        "혼잡도 제보 실패 -> submit_crowd_report.sql 적용? 50m GPS? enum?",
+        "혼잡도 제보 실패 -> submit_crowd_report.sql 적용? user 30m GPS? enum?",
         "사장님 '본인 매장만' -> owner_id 연결? 로그인 후 코드 재인증?",
         "표시가 이상함 -> Realtime 갱신 vs 로컬 override(cl_restaurant_overrides) 잔존?",
-        "영업안함 vs 여유로움 -> business_hours / hours_periods 불일치 (앱 vs SQL)?",
-        "사장 홈 제보 -> 본인 매장=owner source, 타 매장=user source (GPS 필요)",
+        "영업안함인데 시간 문구는 영업 중 -> description.hours_periods가 옛 구글 시간인지 확인. "
+        "어드민 저장은 periods를 지워야 함",
+        "사장 홈 제보 -> 본인 매장=owner source(위치 무관), 타 매장=user source (GPS 30m)",
         "Auth 문제 -> public.users row 존재? email 미인증?",
         "Admin CRUD 실패 -> is_admin() / JWT role / RLS",
         "APK 카카오/구글 -> 로그인 취소? -> 릴리스 SHA-1·키 해시 콘솔 등록",

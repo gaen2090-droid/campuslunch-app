@@ -281,7 +281,20 @@ export async function updateRestaurant(
       .single();
     if (fetchErr) throw fetchErr;
     const desc = parseDescription(existing?.description) ?? {};
-    if (data.hours != null) desc.hours = data.hours;
+    if (data.hours != null) {
+      desc.hours = data.hours;
+      // 사장님 RPC(owner_update_restaurant)와 동일.
+      // hours_periods를 남기면 앱은 구글 캐시로 영업 여부를 판단해서
+      // 화면 시간만 바뀌고 상태는 영업안함으로 남는다.
+      desc.hours_display = data.hours_display?.trim()
+        ? data.hours_display
+        : data.hours;
+      if (data.hours_periods?.length) {
+        desc.hours_periods = data.hours_periods;
+      } else {
+        delete desc.hours_periods;
+      }
+    }
     if (data.menu != null) desc.menu = data.menu;
     patch.description = JSON.stringify(desc);
   }

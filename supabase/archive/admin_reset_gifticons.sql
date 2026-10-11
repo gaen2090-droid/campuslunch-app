@@ -1,3 +1,4 @@
+-- 재실행 금지. 기프티콘 행을 지운다.
 -- 기프티콘 전체 초기화 (테스트 데이터 정리용, 1회성 스크립트)
 -- 대상: public.gifticons 테이블만. public.user_rewards(스탬프)는 절대 건드리지 않음.
 -- 실행: Supabase Dashboard → SQL Editor에서 아래를 위에서부터 순서대로 실행

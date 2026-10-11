@@ -115,7 +115,8 @@ begin
     end if;
   end if;
 
-  if not v_stats_excluded and (p_lat is null or p_lng is null) then
+  -- 사장님 본인 매장 제보(p_source=owner)는 위치와 무관하다.
+  if not v_stats_excluded and p_source <> 'owner' and (p_lat is null or p_lng is null) then
     raise exception '현재 위치를 확인할 수 없어요. 위치 권한을 확인해주세요.';
   end if;
 
@@ -124,11 +125,11 @@ begin
   from public.restaurants r
   where r.id = p_restaurant_id;
 
-  if not v_stats_excluded and (v_lat is null or v_lng is null) then
+  if not v_stats_excluded and p_source <> 'owner' and (v_lat is null or v_lng is null) then
     raise exception '식당 위치 정보가 없어요.';
   end if;
 
-  if not v_stats_excluded then
+  if not v_stats_excluded and p_source <> 'owner' then
     v_distance := public.haversine_meters(p_lat, p_lng, v_lat, v_lng);
     if v_distance > 30 then
       raise exception '식당 근처에서만 혼잡도를 제보할 수 있어요.';
@@ -202,7 +203,7 @@ grant execute on function public.submit_crowd_report(
 ) to authenticated;
 
 comment on function public.submit_crowd_report is
-  '제보 정본. 스탬프 + 30m(user/owner) + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
+  '제보 정본. 스탬프 + user 30m + 사장님 본인 매장은 위치 제한 없음 + user 5분 쿨다운 + crowd_enabled 매장만 허용. metadata에 device_install_id·app_session_id 선택. is_stats_excluded 계정은 제한 전부 면제(스탬프 미지급).';
 
 -- 사장님 인증 승인 시 자동으로 제보 대상으로 승격 (crowd_enabled=true)
 -- 주의: claim_owner_by_code는 6자리 코드 방식 폐지(owner_code_cleanup.sql)로 이미 drop됨.

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../models/restaurant.dart';
+import '../providers/app_provider.dart';
 
 class ReportSheet extends StatelessWidget {
   final Restaurant restaurant;
@@ -15,7 +18,11 @@ class ReportSheet extends StatelessWidget {
     BuildContext context,
     Restaurant restaurant,
     ValueChanged<String> onSubmit,
-  ) {
+  ) async {
+    // 혼잡도를 고르기 전에 위치를 한 번 갱신해 둔다.
+    // 제보 시점에는 방금 받은 좌표를 쓰므로, 팝업을 연 뒤에 처음 GPS를 켜지 않는다.
+    await context.read<AppProvider>().prepareReportLocation();
+    if (!context.mounted) return;
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,

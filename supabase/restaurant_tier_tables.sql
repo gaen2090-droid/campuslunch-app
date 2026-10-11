@@ -4,7 +4,7 @@
 -- 제보 대상 O: public.restaurant_report_targets
 -- 제보 대상 X (맛집컬렉션 전용): public.restaurant_collection_venues
 --
--- 동시에 이 파일은 admin_db_direct_edit.sql 의 RPC/정책을 롤백한다.
+-- 동시에 이 파일은 archive/admin_db_direct_edit.sql 의 RPC/정책을 롤백한다.
 
 -- ── 0) DB 직접 편집 롤백 ──
 drop function if exists public.admin_set_restaurant_active(uuid, boolean);

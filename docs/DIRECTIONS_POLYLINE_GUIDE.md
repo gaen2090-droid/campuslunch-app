@@ -422,7 +422,7 @@ packages/kakao_maps_flutter/                 # (장기) RouteLine API 포크
 |------|------|
 | 1 | `supabase/rpc_release_owner.sql` |
 | 2 | `supabase/rewards_v2_step1_enum.sql` |
-| 3 | `supabase/rewards_v2_gifticon_flow.sql` 또는 `rewards_v2_daily_cap_fix.sql` (일일 스탬프 3개) |
+| 3 | `supabase/rewards_v2_gifticon_flow.sql`, 일일 한도는 `supabase/rewards_daily_cap_to_3.sql` |
 
 ### admin-web 배포 (장소 검색)
 
