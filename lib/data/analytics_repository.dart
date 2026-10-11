@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/supabase_service.dart';
@@ -16,6 +17,33 @@ class AnalyticsRepository {
       await _client.rpc('record_app_session');
     } catch (e, st) {
       debugPrint('[Analytics] recordAppSession: $e\n$st');
+    }
+    await _reportAppVersion();
+  }
+
+  /// 같은 계정으로는 앱 실행당 1번만 보고한다 (서버도 값이 바뀔 때만 쓴다).
+  static String? _versionReportedForUid;
+
+  /// 어드민 "앱 버전 현황"용. 실패해도 앱 사용에는 영향이 없다.
+  Future<void> _reportAppVersion() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null || _versionReportedForUid == uid) return;
+    final platform = switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.android => 'android',
+      _ => null,
+    };
+    if (kIsWeb || platform == null) return;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      await _client.rpc('record_app_version', params: {
+        'p_version': info.version,
+        'p_build': int.tryParse(info.buildNumber),
+        'p_platform': platform,
+      });
+      _versionReportedForUid = uid;
+    } catch (e, st) {
+      debugPrint('[Analytics] reportAppVersion: $e\n$st');
     }
   }
 

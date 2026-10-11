@@ -12,6 +12,7 @@ export type AdminTab =
   | "community_banned_words"
   | "collections"
   | "users"
+  | "app_versions"
   | "nickname_words"
   | "trust_signals"
   | "push"
@@ -63,6 +64,7 @@ export const TAB_GROUPS: TabGroup[] = [
     label: "회원",
     tabs: [
       { id: "users", label: "회원 관리" },
+      { id: "app_versions", label: "앱 버전 현황" },
       { id: "nickname_words", label: "닉네임 금칙어·예약어" },
       { id: "trust_signals", label: "신뢰·어뷰징 지표" },
       { id: "feedback", label: "피드백함" },

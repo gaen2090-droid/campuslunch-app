@@ -6,6 +6,7 @@ import { TrustExportModal } from "./components/TrustExportModal";
 import { useAuth } from "./hooks/useAuth";
 import { useCollections } from "./hooks/useCollections";
 import { useCommunity } from "./hooks/useCommunity";
+import { useAppVersions } from "./hooks/useAppVersions";
 import { useCrowdPrediction } from "./hooks/useCrowdPrediction";
 import { useFeedback } from "./hooks/useFeedback";
 import { useGifticons } from "./hooks/useGifticons";
@@ -22,6 +23,7 @@ import { useUsers } from "./hooks/useUsers";
 import { CollectionsPage } from "./pages/CollectionsPage";
 import { CommunityAdminPage } from "./pages/CommunityAdminPage";
 import { CommunityBannedWordsPage } from "./pages/CommunityBannedWordsPage";
+import { AppVersionsPage } from "./pages/AppVersionsPage";
 import { CrowdPredictionPage } from "./pages/CrowdPredictionPage";
 import { NicknameWordsPage } from "./pages/NicknameWordsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -58,6 +60,7 @@ export default function App() {
   const crowdPredictionState = useCrowdPrediction(
     enabled && tab === "crowd_prediction",
   );
+  const appVersionsState = useAppVersions(enabled && tab === "app_versions");
   const usersState = useUsers(
     enabled && (tab === "users" || tab === "nickname_words" || tab === "kpi"),
   );
@@ -85,6 +88,7 @@ export default function App() {
         ? crowdPredictionState.reload()
         : Promise.resolve(),
       tab === "users" ? usersState.reload() : Promise.resolve(),
+      tab === "app_versions" ? appVersionsState.reload() : Promise.resolve(),
       tab === "trust_signals" ? trustSignalsState.reload() : Promise.resolve(),
       tab === "push" ? pushConfigState.reload() : Promise.resolve(),
       tab === "owner_applications" || tab === "kpi"
@@ -105,6 +109,7 @@ export default function App() {
     collectionsState,
     crowdPredictionState,
     usersState,
+    appVersionsState,
     trustSignalsState,
     pushConfigState,
     ownerApplicationsState,
@@ -161,6 +166,17 @@ export default function App() {
           metrics={opsMetricsState.metrics}
           loading={opsMetricsState.loading}
           error={opsMetricsState.error}
+        />
+      );
+    }
+
+    if (tab === "app_versions") {
+      return (
+        <AppVersionsPage
+          stats={appVersionsState.stats}
+          loading={appVersionsState.loading}
+          error={appVersionsState.error}
+          onReload={appVersionsState.reload}
         />
       );
     }
