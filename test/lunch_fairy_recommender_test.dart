@@ -351,7 +351,7 @@ void main() {
       final list = [_r('front'), _r('back', area: '후문')];
       for (var seed = 0; seed < 30; seed++) {
         final pick = _run(list,
-                request: const FairyRequest(area: '정문'), seed: seed)
+                request: const FairyRequest(areas: {'정문'}), seed: seed)
             .pick!;
         expect(pick.restaurant.id, 'front');
         expect(pick.relaxed, isEmpty);
@@ -362,16 +362,53 @@ void main() {
       final list = [_r('front'), _r('back', area: '후문')];
       for (var seed = 0; seed < 30; seed++) {
         final pick = _run(list,
-                request: const FairyRequest(area: '후문'), seed: seed)
+                request: const FairyRequest(areas: {'후문'}), seed: seed)
             .pick!;
         expect(pick.restaurant.id, 'back');
+      }
+    });
+
+    test('흑석·상도를 함께 고르면 정문·후문 매장이 모두 후보이고 중문은 제외', () {
+      final list = [
+        _r('front'),
+        _r('back', area: '후문'),
+        _r('mid', area: '중문'),
+      ];
+      final ids = <String>{};
+      for (var seed = 0; seed < 100; seed++) {
+        ids.add(_run(list,
+                request: const FairyRequest(areas: {'정문', '후문'}),
+                seed: seed)
+            .pick!
+            .restaurant
+            .id);
+      }
+      expect(ids, {'front', 'back'});
+    });
+
+    test('지역과 도보를 함께 쓰면 두 조건을 모두 만족해야 한다', () {
+      // 정문 매장은 가까움(100m), 후문 매장도 가까움(100m), 정문 매장 하나는 멀다(2km)
+      final list = [
+        _r('front_near', meters: 100),
+        _r('front_far', meters: 2000),
+        _r('back_near', area: '후문', meters: 100),
+      ];
+      for (var seed = 0; seed < 50; seed++) {
+        final pick = _run(
+          list,
+          request: const FairyRequest(areas: {'정문'}, walkMinutes: 10),
+          position: _campus,
+          seed: seed,
+        ).pick!;
+        expect(pick.restaurant.id, 'front_near');
+        expect(pick.relaxed, isEmpty);
       }
     });
 
     test('위치 정보가 없어도 지역 조건은 적용된다', () {
       final list = [_r('front'), _r('back', area: '후문')];
       final pick = _run(list,
-              request: const FairyRequest(area: '후문'), position: null)
+              request: const FairyRequest(areas: {'후문'}), position: null)
           .pick!;
       expect(pick.restaurant.id, 'back');
     });
@@ -379,7 +416,7 @@ void main() {
     test('지역에 후보가 없으면 지역(거리) 조건을 넓힌다', () {
       final list = [_r('front')];
       final pick =
-          _run(list, request: const FairyRequest(area: '후문')).pick!;
+          _run(list, request: const FairyRequest(areas: {'후문'})).pick!;
       expect(pick.restaurant.id, 'front');
       expect(pick.relaxed, contains(FairyRelax.distance));
     });

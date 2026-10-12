@@ -50,9 +50,10 @@ class FairyRequest {
   /// 도보 한도(분). null이면 상관없음. 위치를 켠 사용자만 값을 가질 수 있다.
   final int? walkMinutes;
 
-  /// 학교 출입구 기준 지역(매장의 area: '정문' | '후문'). null이면 상관없음.
-  /// 앱 질문에서는 흑석(=정문) / 상도(=후문)로 보여준다. 위치 권한과 무관하다.
-  final String? area;
+  /// 학교 출입구 기준 지역(매장의 area: '정문' | '후문'). 비어 있으면 상관없음.
+  /// 여러 개면 "또는"이다. 앱 질문에서는 흑석(=정문) / 상도(=후문)로 보여주며,
+  /// 위치 권한과 무관하다. 도보 조건([walkMinutes])과 함께 쓰면 둘 다 만족해야 한다.
+  final Set<String> areas;
 
   /// 혼밥 / 친구랑 / 밥약.
   final FairyCompanion companion;
@@ -64,7 +65,7 @@ class FairyRequest {
     this.cuisine,
     this.budgetLimit,
     this.walkMinutes,
-    this.area,
+    this.areas = const {},
     this.companion = FairyCompanion.solo,
   });
 
@@ -77,7 +78,7 @@ class FairyRequest {
         cuisine: cuisine ? null : this.cuisine,
         budgetLimit: budget ? null : budgetLimit,
         walkMinutes: distance ? null : walkMinutes,
-        area: distance ? null : area,
+        areas: distance ? const {} : areas,
         companion: companion,
       );
 }
@@ -317,7 +318,7 @@ FairyOutcome fairyRecommend(
     stages.add((current, List.of(relaxed)));
   }
   if ((request.walkMinutes != null && position != null) ||
-      request.area != null) {
+      request.areas.isNotEmpty) {
     relaxed.add(FairyRelax.distance);
     current = current.copyWithout(distance: true);
     stages.add((current, List.of(relaxed)));
@@ -349,7 +350,7 @@ FairyOutcome fairyRecommend(
 
 bool _matches(Restaurant r, FairyRequest req, FairyPosition? position) {
   if (req.cuisine != null && r.category != req.cuisine) return false;
-  if (req.area != null && r.area != req.area) return false;
+  if (req.areas.isNotEmpty && !req.areas.contains(r.area)) return false;
   if (req.budgetLimit != null) {
     final price = fairyBudgetPrice(r);
     if (price != null && price > req.budgetLimit!) return false;

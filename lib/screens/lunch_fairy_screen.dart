@@ -109,7 +109,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   static const _kCuisine = 'fairy_cuisine';
   static const _kBudget = 'fairy_budget';
   static const _kWalk = 'fairy_walk';
-  static const _kArea = 'fairy_area';
+  static const _kArea = 'fairy_area'; // 예전 버전(단일 선택) 값
+  static const _kAreas = 'fairy_areas';
   static const _kFriend = 'fairy_friend';
   static const _kCompanion = 'fairy_companion';
 
@@ -130,8 +131,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   int? _budget;
   int? _walk;
 
-  /// 흑석(=정문) / 상도(=후문). 도보 조건과 함께 고를 수 없다(같은 질문의 단일 선택).
-  String? _area;
+  /// 흑석(=정문) / 상도(=후문). 복수 선택 가능하고, 도보 조건과 함께 쓸 수 있다.
+  final Set<String> _areas = {};
   FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
@@ -158,9 +159,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         _cuisine = prefs.getString(_kCuisine);
         _budget = prefs.containsKey(_kBudget) ? prefs.getInt(_kBudget) : null;
         _walk = prefs.containsKey(_kWalk) ? prefs.getInt(_kWalk) : null;
-        final savedArea = prefs.getString(_kArea);
-        _area = (savedArea == '정문' || savedArea == '후문') ? savedArea : null;
-        if (_area != null) _walk = null;
+        final savedAreas = prefs.getStringList(_kAreas) ??
+            [if (prefs.getString(_kArea) != null) prefs.getString(_kArea)!];
+        _areas
+          ..clear()
+          ..addAll(savedAreas.where((a) => a == '정문' || a == '후문'));
         final saved = prefs.getString(_kCompanion);
         _companion = FairyCompanion.values.firstWhere(
           (c) => c.name == saved,
@@ -187,10 +190,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       }
       await putInt(_kBudget, _budget);
       await putInt(_kWalk, _walk);
-      if (_area == null) {
-        await prefs.remove(_kArea);
+      await prefs.remove(_kArea);
+      if (_areas.isEmpty) {
+        await prefs.remove(_kAreas);
       } else {
-        await prefs.setString(_kArea, _area!);
+        await prefs.setStringList(_kAreas, _areas.toList());
       }
       await prefs.setString(_kCompanion, _companion.name);
     } catch (_) {}
@@ -213,6 +217,10 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     });
   }
 
+  void _toggleArea(String area) {
+    if (!_areas.remove(area)) _areas.add(area);
+  }
+
   /// 도보 5분/10분 선택. 위치가 꺼져 있으면 OS 위치 권한 팝업을 띄우고, 허용되면 선택한다.
   /// 이미 "다시 묻지 않음"으로 거부해 OS가 팝업을 더 띄울 수 없으면 설정 이동을 안내한다.
   Future<void> _selectWalk(int minutes) async {
@@ -224,10 +232,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         return;
       }
     }
-    setState(() {
-      _walk = minutes;
-      _area = null;
-    });
+    // 이미 고른 도보 칩을 다시 누르면 해제한다.
+    setState(() => _walk = _walk == minutes ? null : minutes);
   }
 
   Future<void> _showLocationDeniedDialog() async {
@@ -309,7 +315,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       cuisine: _cuisine,
       budgetLimit: _budget,
       walkMinutes: _lastPosition == null ? null : _walk,
-      area: _area,
+      areas: _areas.toSet(),
       companion: _companion,
     );
     if (!mounted) return;
@@ -447,12 +453,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               _chip(
                 label,
                 // "상관없음"은 도보도 지역도 고르지 않았을 때만 선택된 상태
-                value == null ? (_walk == null && _area == null) : _walk == value,
+                value == null ? (_walk == null && _areas.isEmpty) : _walk == value,
                 () {
                   if (value == null) {
                     setState(() {
                       _walk = null;
-                      _area = null;
+                      _areas.clear();
                     });
                   } else {
                     // 도보 조건은 위치가 필요하다. 권한이 없으면 OS 허용 팝업을 띄운다.
@@ -460,22 +466,17 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                   }
                 },
               ),
-            // 흑석(정문) / 상도(후문): 위치 권한 없이도 고를 수 있다.
+            // 흑석(정문) / 상도(후문): 위치 권한 없이도 고를 수 있고, 둘 다 고를 수 있다.
+            // 도보 5분/10분과 함께 고르면 "그 지역 안에서 도보 N분 이내"가 된다.
             _chip(
               '흑석',
-              _area == '정문',
-              () => setState(() {
-                _area = '정문';
-                _walk = null;
-              }),
+              _areas.contains('정문'),
+              () => setState(() => _toggleArea('정문')),
             ),
             _chip(
               '상도',
-              _area == '후문',
-              () => setState(() {
-                _area = '후문';
-                _walk = null;
-              }),
+              _areas.contains('후문'),
+              () => setState(() => _toggleArea('후문')),
             ),
           ],
           footer: _locationReady
