@@ -3190,6 +3190,30 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// 사장님 정기 휴무(요일·공휴일) 저장. 요일은 월=1 … 일=7.
+  Future<String?> ownerUpdateRestaurantClosures(
+    String restaurantId, {
+    required List<int> closedDays,
+    required bool closedOnHolidays,
+  }) async {
+    if (!_ownsRestaurant(restaurantId)) return '본인 매장만 수정할 수 있어요.';
+    final repo = _restaurantRepo;
+    if (repo == null) return '서버에 연결할 수 없어요.';
+    try {
+      await repo.ownerUpdateRestaurant(
+        restaurantId,
+        closedDays: closedDays,
+        closedOnHolidays: closedOnHolidays,
+      );
+      await refreshRestaurants();
+      notifyListeners();
+      return null;
+    } catch (e, st) {
+      debugPrint('[ownerUpdateRestaurantClosures] failed: $e\n$st');
+      return _ownerUpdateErrorMessage(e);
+    }
+  }
+
   /// 사장님 매장 공지(최대 500자) 저장
   Future<String?> ownerUpdateRestaurantNotice(
     String restaurantId,
@@ -3315,6 +3339,8 @@ class AppProvider extends ChangeNotifier {
       'hours': r.hours,
       'hours_display': r.hours,
       'hours_periods': r.hoursPeriods,
+      'closed_days': r.closedWeekdays,
+      'closed_on_holidays': r.closedOnHolidays,
     });
     if (!bh.isOpenAt(DateTime.now())) {
       return r.copyWith(status: '영업안함', updated: 0);

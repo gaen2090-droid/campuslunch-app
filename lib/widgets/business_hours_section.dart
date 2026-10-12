@@ -6,7 +6,14 @@ import '../utils/business_hours.dart';
 class BusinessHoursSection extends StatefulWidget {
   final String hours;
 
-  const BusinessHoursSection({super.key, required this.hours});
+  /// 휴무 안내 문구(예: "휴무: 일요일 · 공휴일"). 비어 있으면 표시하지 않는다.
+  final String closedNote;
+
+  const BusinessHoursSection({
+    super.key,
+    required this.hours,
+    this.closedNote = '',
+  });
 
   @override
   State<BusinessHoursSection> createState() => _BusinessHoursSectionState();
@@ -66,6 +73,19 @@ class _BusinessHoursSectionState extends State<BusinessHoursSection> {
                             color: Color(0xFF6B7280),
                             height: 1.4,
                           ),
+                        ),
+                      ),
+                    ),
+                  if (widget.closedNote.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 2),
+                      child: Text(
+                        widget.closedNote,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFEF4444),
+                          height: 1.4,
                         ),
                       ),
                     ),

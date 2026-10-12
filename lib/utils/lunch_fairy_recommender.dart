@@ -179,6 +179,8 @@ bool _isOpenForFairy(Restaurant r, DateTime now) {
     'hours': r.hours,
     'hours_display': r.hours,
     'hours_periods': r.hoursPeriods,
+    'closed_days': r.closedWeekdays,
+    'closed_on_holidays': r.closedOnHolidays,
   });
   return bh.isOpenAt(now) && bh.isOpenAt(now.add(fairyClosingSoonWindow));
 }

@@ -738,6 +738,8 @@ class SupabaseRestaurantRepository {
       ownerNotice: extra?['owner_notice'] as String? ?? '',
       soloFriendly: extra?['solo_friendly'] == true,
       dateFriendly: extra?['date_friendly'] == true,
+      closedWeekdays: _parseClosedWeekdays(extra),
+      closedOnHolidays: extra?['closed_on_holidays'] == true,
       signatureMenus: _parseSignatureMenus(extra),
     );
   }
@@ -937,6 +939,8 @@ class SupabaseRestaurantRepository {
     String? hours,
     String? hoursDisplay,
     String? ownerNotice,
+    List<int>? closedDays,
+    bool? closedOnHolidays,
   }) async {
     await _client.rpc('owner_update_restaurant', params: {
       'p_restaurant_id': restaurantId,
@@ -947,6 +951,8 @@ class SupabaseRestaurantRepository {
       if (hours != null) 'p_hours': hours,
       if (hoursDisplay != null) 'p_hours_display': hoursDisplay,
       if (ownerNotice != null) 'p_owner_notice': ownerNotice,
+      if (closedDays != null) 'p_closed_days': closedDays,
+      if (closedOnHolidays != null) 'p_closed_on_holidays': closedOnHolidays,
     });
   }
 
@@ -973,6 +979,18 @@ class SupabaseRestaurantRepository {
   // ── 인기도 점수 계산 ──
   // (약간혼잡 지속 토큰*1 + 자리없음 지속 토큰*2), 토큰=5분, 영업시간 내만 집계, 최근 7일
   /// 신규 키(signature_menus 배열)를 우선하고, 예전 단일 키(signature_menu)도 읽는다.
+  /// 정기 휴무 요일(월=1 … 일=7). 잘못된 값은 무시한다.
+  static List<int> _parseClosedWeekdays(Map<String, dynamic>? extra) {
+    final raw = extra?['closed_days'];
+    if (raw is! List) return const [];
+    final out = <int>{
+      for (final v in raw)
+        if (v is num && v.toInt() >= 1 && v.toInt() <= 7) v.toInt(),
+    }.toList()
+      ..sort();
+    return out;
+  }
+
   /// 어드민이 입력한 대표사진 출처 문구. 입력 당시의 대표사진(image_source_label_url)과 현재
   /// 대표사진이 같을 때만 쓴다 — 사장님이 사진을 바꾸거나 되돌리면 자동으로 무효가 된다.
   String _parseImageSourceLabel(Map<String, dynamic>? extra, String imageUrl) {

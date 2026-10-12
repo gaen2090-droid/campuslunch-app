@@ -1,3 +1,5 @@
+import '../utils/korean_holidays.dart';
+
 /// 스탬프·리워드 UI 상수 (서버 grant_stamp 일일 한도와 맞출 것)
 abstract final class RewardLimits {
   /// KST 기준 하루 최대 스탬프 (출시값). 서버 SQL도 동일해야 함.
@@ -15,6 +17,13 @@ abstract final class RewardLimits {
   static bool isWeekend(DateTime now) =>
       now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
 
+  /// 공휴일(대체공휴일 포함)에는 주말처럼 스탬프 미지급. 서버 grant_stamp와 동일해야 함
+  /// (공휴일 목록: 앱 lib/utils/korean_holidays.dart ↔ 서버 korean_public_holidays 테이블).
+  static bool isHoliday(DateTime now) => isKoreanPublicHoliday(now);
+
   static bool isWithinStampHours(DateTime now) =>
-      !isWeekend(now) && now.hour >= stampHourStart && now.hour < stampHourEnd;
+      !isWeekend(now) &&
+      !isHoliday(now) &&
+      now.hour >= stampHourStart &&
+      now.hour < stampHourEnd;
 }

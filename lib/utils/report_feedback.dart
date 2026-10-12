@@ -52,6 +52,9 @@ Future<void> submitCrowdReportFeedback(
   } else if (stamp.isWeekend) {
     message =
         '혼잡도 제보가 등록되었어요.\n주말에는 스탬프를 제공하지 않아요.';
+  } else if (stamp.isHoliday) {
+    message =
+        '혼잡도 제보가 등록되었어요.\n공휴일에는 스탬프를 제공하지 않아요.';
   } else if (stamp.isOutOfStampHours) {
     message =
         '혼잡도 제보가 등록되었어요.\n지금은 스탬프 제공 시간이 아니에요. (오전 11시~오후 7시)';

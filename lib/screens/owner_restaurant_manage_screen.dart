@@ -189,6 +189,11 @@ class _OwnerRestaurantManageScreenState
                     restaurant: restaurant,
                     onSaved: _showToast,
                   ),
+                  _ClosedDaysSection(
+                    key: ValueKey('closed-${restaurant.id}'),
+                    restaurant: restaurant,
+                    onSaved: _showToast,
+                  ),
                   _NoticeSection(
                     key: ValueKey('notice_${restaurant.id}'),
                     restaurant: restaurant,
@@ -734,8 +739,17 @@ class _MenuSection extends StatefulWidget {
 class _MenuRow {
   final TextEditingController nameCtrl;
   final TextEditingController priceCtrl;
-  _MenuRow({String name = '', String price = ''})
-      : nameCtrl = TextEditingController(text: name),
+
+  /// 어드민이 입력한 가격 범위의 최대 가격과, 그 범위가 붙어 있던 최소 가격.
+  /// 사장님이 가격을 건드리지 않으면 저장할 때 범위를 그대로 보존한다.
+  final int originalPrice;
+  final int priceMax;
+  _MenuRow({
+    String name = '',
+    String price = '',
+    this.originalPrice = 0,
+    this.priceMax = 0,
+  })  : nameCtrl = TextEditingController(text: name),
         priceCtrl = TextEditingController(text: price);
 
   void dispose() {
@@ -754,7 +768,12 @@ class _MenuSectionState extends State<_MenuSection> {
     _rows = widget.restaurant.menu.isEmpty
         ? [_MenuRow()]
         : widget.restaurant.menu
-            .map((m) => _MenuRow(name: m.name, price: m.price.toString()))
+            .map((m) => _MenuRow(
+                  name: m.name,
+                  price: m.price.toString(),
+                  originalPrice: m.price,
+                  priceMax: m.priceMax,
+                ))
             .toList();
   }
 
@@ -781,7 +800,13 @@ class _MenuSectionState extends State<_MenuSection> {
       final name = row.nameCtrl.text.trim();
       if (name.isEmpty) continue;
       final price = int.tryParse(row.priceCtrl.text.trim()) ?? 0;
-      items.add(MenuItem(name: name, price: price));
+      // 가격을 그대로 두었으면 어드민이 입력한 가격 범위(최대 가격)도 유지한다.
+      final keepMax = row.priceMax > row.originalPrice && price == row.originalPrice;
+      items.add(MenuItem(
+        name: name,
+        price: price,
+        priceMax: keepMax ? row.priceMax : 0,
+      ));
     }
     setState(() => _saving = true);
     final err = await context
@@ -1030,6 +1055,108 @@ class _TimeBox extends StatelessWidget {
       ),
       child: Center(
         child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+// ── 4-2. 정기 휴무 (요일 · 공휴일) ──
+
+class _ClosedDaysSection extends StatefulWidget {
+  final Restaurant restaurant;
+  final ValueChanged<String> onSaved;
+  const _ClosedDaysSection({super.key, required this.restaurant, required this.onSaved});
+
+  @override
+  State<_ClosedDaysSection> createState() => _ClosedDaysSectionState();
+}
+
+class _ClosedDaysSectionState extends State<_ClosedDaysSection> {
+  static const _labels = ['월', '화', '수', '목', '금', '토', '일'];
+  late Set<int> _days;
+  late bool _holidays;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _days = widget.restaurant.closedWeekdays.toSet();
+    _holidays = widget.restaurant.closedOnHolidays;
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final err = await context.read<AppProvider>().ownerUpdateRestaurantClosures(
+          widget.restaurant.id,
+          closedDays: (_days.toList()..sort()),
+          closedOnHolidays: _holidays,
+        );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    widget.onSaved(err ?? '휴무일이 저장되었어요.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: '정기 휴무',
+      subtitle: '쉬는 요일과 공휴일을 정해 두면 그날은 "영업안함"으로 보여요.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < _labels.length; i++)
+                _dayChip(_labels[i], i + 1),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Checkbox(
+                value: _holidays,
+                onChanged: (v) => setState(() => _holidays = v ?? false),
+                activeColor: AppColors.primaryCta,
+              ),
+              const Text('공휴일 휴무 (대체공휴일 포함)', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          _SaveButton(loading: _saving, onTap: _save),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayChip(String label, int day) {
+    final on = _days.contains(day);
+    return GestureDetector(
+      onTap: () => setState(() {
+        if (on) {
+          _days.remove(day);
+        } else {
+          _days.add(day);
+        }
+      }),
+      child: Container(
+        width: 40,
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: on ? AppColors.primaryCta : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: on ? Colors.white : const Color(0xFF374151),
+            ),
+          ),
+        ),
       ),
     );
   }

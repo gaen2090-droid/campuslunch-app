@@ -614,7 +614,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                                     padding: const EdgeInsets.only(bottom: 4),
                                     child: Text(
                                       m.price > 0
-                                          ? '${m.name} · ${_won(m.price)}'
+                                          ? (m.hasPriceRange
+                                              ? '${m.name} · ${_won(m.price)} ~ ${_won(m.priceMax)}'
+                                              : '${m.name} · ${_won(m.price)}')
                                           : m.name,
                                       style: const TextStyle(
                                           fontSize: 15,

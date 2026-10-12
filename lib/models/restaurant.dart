@@ -1,15 +1,30 @@
 class MenuItem {
   final String name;
+
+  /// 가격. 가격 범위인 메뉴는 최소 가격(예산 판단에도 이 값을 쓴다).
   final int price;
 
-  const MenuItem({required this.name, required this.price});
+  /// 가격 범위의 최대 가격. 0이거나 [price] 이하면 범위 없음(단일 가격).
+  /// 어드민이 "6,000원 ~ 9,000원"처럼 입력한 경우에만 채워진다.
+  final int priceMax;
+
+  const MenuItem({required this.name, required this.price, this.priceMax = 0});
+
+  /// 최소~최대 범위로 보여줘야 하는 메뉴인지.
+  bool get hasPriceRange => price > 0 && priceMax > price;
 
   factory MenuItem.fromMap(Map<String, dynamic> m) => MenuItem(
         name: m['name'] as String? ?? '',
         price: (m['price'] as num?)?.round() ?? 0,
+        priceMax: (m['price_max'] as num?)?.round() ?? 0,
       );
 
-  Map<String, dynamic> toMap() => {'name': name, 'price': price};
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'price': price,
+        // 범위가 있을 때만 저장한다 (사장님 앱에서 메뉴를 저장해도 보존되도록).
+        if (priceMax > price) 'price_max': priceMax,
+      };
 }
 
 class Restaurant {
@@ -64,6 +79,10 @@ class Restaurant {
   final bool soloFriendly;
   /// 어드민이 등록한 "밥약하기 좋은 매장". description.date_friendly == true 일 때만 true.
   final bool dateFriendly;
+  /// 어드민이 지정한 정기 휴무 요일 (월=1 … 일=7). description.closed_days.
+  final List<int> closedWeekdays;
+  /// 공휴일 휴무 여부. description.closed_on_holidays.
+  final bool closedOnHolidays;
   /// 어드민이 지정한 대표메뉴 이름(최대 2개, description.signature_menus).
   /// menu[].name 과 일치할 때만 유효하며, 사장님이 메뉴를 바꿔 일치하지 않으면
   /// 그 항목은 미지정으로 취급한다.
@@ -106,6 +125,8 @@ class Restaurant {
     this.ownerNotice = '',
     this.soloFriendly = false,
     this.dateFriendly = false,
+    this.closedWeekdays = const [],
+    this.closedOnHolidays = false,
     this.signatureMenus = const [],
   });
 
@@ -163,8 +184,21 @@ class Restaurant {
         ownerNotice: ownerNotice ?? this.ownerNotice,
         soloFriendly: soloFriendly,
         dateFriendly: dateFriendly,
+        closedWeekdays: closedWeekdays,
+        closedOnHolidays: closedOnHolidays,
         signatureMenus: signatureMenus,
       );
+
+  /// 상세 화면용 휴무 안내. 휴무일이 없으면 빈 문자열. 예) "휴무: 일요일 · 공휴일"
+  String get closedDaysLabel {
+    const names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+    final days = (closedWeekdays.toSet().toList()..sort())
+        .where((d) => d >= 1 && d <= 7)
+        .map((d) => names[d - 1])
+        .toList();
+    final parts = [...days, if (closedOnHolidays) '공휴일'];
+    return parts.isEmpty ? '' : '휴무: ${parts.join(' · ')}';
+  }
 
   /// 대표사진 출처로 화면에 보여줄 이름. 사장님이 직접 올린 사진이 최우선이고,
   /// 그다음 어드민이 입력한 문구, 없으면 'Google Maps'.

@@ -1,6 +1,8 @@
 /// 영업시간 파싱·영업 여부 판단 (Google Places / 앱 canonical 형식)
 library;
 
+import 'korean_holidays.dart';
+
 class BusinessHoursData {
   /// 앱·DB 저장용: `11:00 - 21:00` 또는 `11:00 - 14:00, 17:00 - 22:00`
   final String hoursCanonical;
@@ -11,11 +13,36 @@ class BusinessHoursData {
   /// Google `opening_hours.periods` 원본
   final List<Map<String, dynamic>> periods;
 
+  /// 정기 휴무 요일 (DateTime.weekday 기준: 월=1 … 일=7). 어드민이 매장별로 지정.
+  final Set<int> closedWeekdays;
+
+  /// 공휴일에 쉬는 매장인지 (공휴일 목록은 korean_holidays.dart).
+  final bool closedOnHolidays;
+
   const BusinessHoursData({
     required this.hoursCanonical,
     this.hoursDisplay = '',
     this.periods = const [],
+    this.closedWeekdays = const {},
+    this.closedOnHolidays = false,
   });
+
+  BusinessHoursData _withClosures(Set<int> weekdays, bool onHolidays) =>
+      BusinessHoursData(
+        hoursCanonical: hoursCanonical,
+        hoursDisplay: hoursDisplay,
+        periods: periods,
+        closedWeekdays: weekdays,
+        closedOnHolidays: onHolidays,
+      );
+
+  /// [now]가 휴무일에 속하는지. 새벽(5시 전)은 전날 영업의 연장으로 보고 전날 기준으로 판단한다.
+  bool isClosedOn(DateTime now) {
+    if (closedWeekdays.isEmpty && !closedOnHolidays) return false;
+    final d = now.hour < 5 ? now.subtract(const Duration(days: 1)) : now;
+    if (closedWeekdays.contains(d.weekday)) return true;
+    return closedOnHolidays && isKoreanPublicHoliday(d);
+  }
 
   static const defaultHours = '11:00 - 21:00';
 
@@ -24,7 +51,22 @@ class BusinessHoursData {
         hoursDisplay: defaultHours,
       );
 
+  /// description(JSON)에서 영업시간과 휴무일(closed_days, closed_on_holidays)을 함께 읽는다.
   factory BusinessHoursData.fromDescription(Map<String, dynamic>? extra) {
+    final base = BusinessHoursData._fromDescriptionBase(extra);
+    if (extra == null) return base;
+    final raw = extra['closed_days'];
+    final weekdays = <int>{
+      if (raw is List)
+        for (final v in raw)
+          if (v is num && v.toInt() >= 1 && v.toInt() <= 7) v.toInt(),
+    };
+    final onHolidays = extra['closed_on_holidays'] == true;
+    if (weekdays.isEmpty && !onHolidays) return base;
+    return base._withClosures(weekdays, onHolidays);
+  }
+
+  factory BusinessHoursData._fromDescriptionBase(Map<String, dynamic>? extra) {
     if (extra == null) return BusinessHoursData.fallback();
 
     final periods = _readPeriods(extra['hours_periods']);
@@ -109,6 +151,7 @@ class BusinessHoursData {
   }
 
   bool isOpenAt(DateTime now) {
+    if (isClosedOn(now)) return false;
     if (periods.isNotEmpty) {
       return _isOpenInGooglePeriods(now, periods);
     }

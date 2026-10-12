@@ -37,10 +37,15 @@ class StampResult {
     required this.totalStamps,
     this.autoRedeem = AutoRedeemResult.none,
     this.reason,
+    this.isHoliday = false,
   });
 
   bool get isOutOfStampHours => reason == 'out_of_hours';
   bool get isWeekend => reason == 'weekend';
+
+  /// 공휴일이라 미지급. 서버는 reason='out_of_hours' + is_holiday=true 로 내려준다
+  /// (이전 앱이 시간대 밖 문구로 안내하도록).
+  final bool isHoliday;
 
   factory StampResult.fromJson(Map<String, dynamic> json) {
     final granted = json['granted'] as bool? ?? false;
@@ -56,6 +61,7 @@ class StampResult {
       totalStamps: (json['total_stamps'] as num?)?.toInt() ?? 0,
       autoRedeem: auto,
       reason: json['reason'] as String?,
+      isHoliday: json['is_holiday'] == true,
     );
   }
 

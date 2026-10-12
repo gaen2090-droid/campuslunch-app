@@ -440,7 +440,9 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               child: Text(
                 RewardLimits.isWeekend(DateTime.now())
                     ? '주말에는 스탬프를 제공하지 않아요. (제보는 영업시간 내 항상 가능해요)'
-                    : '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 11시~오후 7시)',
+                    : RewardLimits.isHoliday(DateTime.now())
+                        ? '공휴일에는 스탬프를 제공하지 않아요. (제보는 영업시간 내 항상 가능해요)'
+                        : '지금은 스탬프가 제공되지 않는 시간대예요. (스탬프 제공 시간: 오전 11시~오후 7시)',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 style: const TextStyle(
@@ -1462,7 +1464,7 @@ class StampInfoPopup extends StatelessWidget {
       '최초 제보 시에는 스탬프를 2개 받아요.',
       '단, 하루 최대 3개의 스탬프를 획득할 수 있어요.',
       '스탬프는 평일 오전 11시~오후 7시에만 제공돼요. (제보는 영업시간 내 항상 가능해요)',
-      '주말(토·일)에는 스탬프를 제공하지 않아요.',
+      '주말(토·일)과 공휴일에는 스탬프를 제공하지 않아요.',
       '획득한 스탬프는 마이페이지에서 확인할 수 있어요.',
     ];
 

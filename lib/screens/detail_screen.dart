@@ -344,7 +344,7 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
             ),
 
-            BusinessHoursSection(hours: r.hours),
+            BusinessHoursSection(hours: r.hours, closedNote: r.closedDaysLabel),
 
             // 맛집컬렉션 전용 매장(crowdEnabled=false)은 사장님 공지/좌석메시지/최근제보를
             // 표시하지 않는다. 사장님 영입은 제보 대상 매장에만 이뤄지므로 실제로는
@@ -633,7 +633,9 @@ class _MenuSection extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${formatPrice(e.value.price)}원',
+                      e.value.hasPriceRange
+                          ? '${formatPrice(e.value.price)}원 ~ ${formatPrice(e.value.priceMax)}원'
+                          : '${formatPrice(e.value.price)}원',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
