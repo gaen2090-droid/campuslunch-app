@@ -21,6 +21,7 @@ Restaurant _r(
   List<String> signatures = const [],
   bool solo = false,
   bool date = false,
+  String area = '정문',
   double meters = 200,
   String hours = '11:00 - 21:00',
   int popularity = 0,
@@ -30,8 +31,8 @@ Restaurant _r(
     id: id,
     name: id,
     category: category,
-    area: '정문',
-    address: '정문',
+    area: area,
+    address: area,
     status: status,
     updated: freshMinutes ?? 0,
     imageUrl: '',
@@ -342,6 +343,45 @@ void main() {
           fairyPickMenu(two, null, Random(seed))!.name,
       };
       expect(names, {'제육덮밥', '돈까스'});
+    });
+  });
+
+  group('지역(흑석=정문, 상도=후문)', () {
+    test('정문을 고르면 정문 매장만 나온다', () {
+      final list = [_r('front'), _r('back', area: '후문')];
+      for (var seed = 0; seed < 30; seed++) {
+        final pick = _run(list,
+                request: const FairyRequest(area: '정문'), seed: seed)
+            .pick!;
+        expect(pick.restaurant.id, 'front');
+        expect(pick.relaxed, isEmpty);
+      }
+    });
+
+    test('후문을 고르면 후문 매장만 나온다', () {
+      final list = [_r('front'), _r('back', area: '후문')];
+      for (var seed = 0; seed < 30; seed++) {
+        final pick = _run(list,
+                request: const FairyRequest(area: '후문'), seed: seed)
+            .pick!;
+        expect(pick.restaurant.id, 'back');
+      }
+    });
+
+    test('위치 정보가 없어도 지역 조건은 적용된다', () {
+      final list = [_r('front'), _r('back', area: '후문')];
+      final pick = _run(list,
+              request: const FairyRequest(area: '후문'), position: null)
+          .pick!;
+      expect(pick.restaurant.id, 'back');
+    });
+
+    test('지역에 후보가 없으면 지역(거리) 조건을 넓힌다', () {
+      final list = [_r('front')];
+      final pick =
+          _run(list, request: const FairyRequest(area: '후문')).pick!;
+      expect(pick.restaurant.id, 'front');
+      expect(pick.relaxed, contains(FairyRelax.distance));
     });
   });
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -108,6 +109,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   static const _kCuisine = 'fairy_cuisine';
   static const _kBudget = 'fairy_budget';
   static const _kWalk = 'fairy_walk';
+  static const _kArea = 'fairy_area';
   static const _kFriend = 'fairy_friend';
   static const _kCompanion = 'fairy_companion';
 
@@ -127,6 +129,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   String? _cuisine;
   int? _budget;
   int? _walk;
+
+  /// 흑석(=정문) / 상도(=후문). 도보 조건과 함께 고를 수 없다(같은 질문의 단일 선택).
+  String? _area;
   FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
@@ -153,6 +158,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         _cuisine = prefs.getString(_kCuisine);
         _budget = prefs.containsKey(_kBudget) ? prefs.getInt(_kBudget) : null;
         _walk = prefs.containsKey(_kWalk) ? prefs.getInt(_kWalk) : null;
+        final savedArea = prefs.getString(_kArea);
+        _area = (savedArea == '정문' || savedArea == '후문') ? savedArea : null;
+        if (_area != null) _walk = null;
         final saved = prefs.getString(_kCompanion);
         _companion = FairyCompanion.values.firstWhere(
           (c) => c.name == saved,
@@ -179,6 +187,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       }
       await putInt(_kBudget, _budget);
       await putInt(_kWalk, _walk);
+      if (_area == null) {
+        await prefs.remove(_kArea);
+      } else {
+        await prefs.setString(_kArea, _area!);
+      }
       await prefs.setString(_kCompanion, _companion.name);
     } catch (_) {}
   }
@@ -198,6 +211,50 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       _locationReady = ready;
       if (!ready) _walk = null;
     });
+  }
+
+  /// 도보 5분/10분 선택. 위치가 꺼져 있으면 OS 위치 권한 팝업을 띄우고, 허용되면 선택한다.
+  /// 이미 "다시 묻지 않음"으로 거부해 OS가 팝업을 더 띄울 수 없으면 설정 이동을 안내한다.
+  Future<void> _selectWalk(int minutes) async {
+    if (!_locationReady) {
+      await _enableLocation();
+      if (!mounted) return;
+      if (!_locationReady) {
+        await _showLocationDeniedDialog();
+        return;
+      }
+    }
+    setState(() {
+      _walk = minutes;
+      _area = null;
+    });
+  }
+
+  Future<void> _showLocationDeniedDialog() async {
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('위치 권한이 필요해요'),
+        content: const Text(
+          '도보 거리로 고르려면 현재 위치가 필요해요.\n설정에서 위치 권한을 허용해 주세요.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('닫기'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('설정 열기'),
+          ),
+        ],
+      ),
+    );
+    if (openSettings == true) {
+      try {
+        await Geolocator.openAppSettings();
+      } catch (_) {}
+    }
   }
 
   Future<void> _enableLocation() async {
@@ -252,6 +309,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       cuisine: _cuisine,
       budgetLimit: _budget,
       walkMinutes: _lastPosition == null ? null : _walk,
+      area: _area,
       companion: _companion,
     );
     if (!mounted) return;
@@ -383,15 +441,42 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             _chip(label, _budget == value, () => setState(() => _budget = value)),
         ]),
         _section(
-          '얼마나 가까운 게 좋은가요?',
+          '위치는 어디가 좋을까요?',
           [
             for (final (label, value) in _walks)
               _chip(
                 label,
-                _walk == value,
-                () => setState(() => _walk = value),
-                enabled: _locationReady || value == null,
+                // "상관없음"은 도보도 지역도 고르지 않았을 때만 선택된 상태
+                value == null ? (_walk == null && _area == null) : _walk == value,
+                () {
+                  if (value == null) {
+                    setState(() {
+                      _walk = null;
+                      _area = null;
+                    });
+                  } else {
+                    // 도보 조건은 위치가 필요하다. 권한이 없으면 OS 허용 팝업을 띄운다.
+                    unawaited(_selectWalk(value));
+                  }
+                },
               ),
+            // 흑석(정문) / 상도(후문): 위치 권한 없이도 고를 수 있다.
+            _chip(
+              '흑석',
+              _area == '정문',
+              () => setState(() {
+                _area = '정문';
+                _walk = null;
+              }),
+            ),
+            _chip(
+              '상도',
+              _area == '후문',
+              () => setState(() {
+                _area = '후문';
+                _walk = null;
+              }),
+            ),
           ],
           footer: _locationReady
               ? null
