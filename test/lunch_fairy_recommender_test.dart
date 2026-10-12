@@ -69,7 +69,7 @@ FairyOutcome _run(
         now: _now, position: position, seenIds: seen, random: Random(seed));
 
 void main() {
-  group('신선 제보 풀', () {
+  group('신선 제보 묶음', () {
     test('15분 이내 여유로움 제보가 있으면 제보 없는 매장보다 항상 우선', () {
       final list = [
         _r('fresh', status: '여유로움', freshMinutes: 10, menu: _lunch, meters: 600),
@@ -94,7 +94,7 @@ void main() {
         expect(pick.reason, isNot(FairyReason.freshRelaxed));
         seen.add(pick.restaurant.id);
       }
-      // 신선 풀이 없으므로 가까운 곳이 점수상 앞서고, 오래된 제보 때문에 일방적으로 밀리지 않는다.
+      // 신선 제보 매장이 없으므로 가까운 곳이 점수상 앞서고, 오래된 제보 때문에 일방적으로 밀리지 않는다.
       expect(seen, contains('near'));
     });
 
@@ -119,7 +119,7 @@ void main() {
       expect(out16.pick?.restaurant.id, 'full');
     });
 
-    test('조건을 풀어도 자리없음 제외는 풀리지 않는다', () {
+    test('조건을 넓혀도 자리없음 제외는 그대로 유지된다', () {
       final list = [_r('full', status: '자리없음', freshMinutes: 3, category: '분식')];
       final out = _run(list, request: const FairyRequest(cuisine: '분식', budgetLimit: 8000));
       expect(out.pick, isNull);
@@ -197,7 +197,7 @@ void main() {
       }
     });
 
-    test('조건을 풀기 전에 컬렉션 전용을 먼저 시도한다', () {
+    test('조건을 넓히기 전에 컬렉션 전용을 먼저 시도한다', () {
       final list = [
         _r('rep', category: '한식'),
         _r('col', crowdEnabled: false, category: '일식'),
@@ -209,7 +209,7 @@ void main() {
   });
 
   group('조건 완화', () {
-    test('예산 → 음식종류 순으로 풀고 풀린 항목을 기록', () {
+    test('예산 → 음식종류 순으로 넓히고 넓힌 항목을 기록', () {
       final list = [
         _r('korean',
             category: '한식', menu: const [MenuItem(name: '코스', price: 20000)]),
@@ -229,7 +229,7 @@ void main() {
       expect(pick.relaxed, [FairyRelax.cuisine, FairyRelax.distance]);
     });
 
-    test('도보 5분(350m) 이내면 거리 조건을 풀지 않는다', () {
+    test('도보 5분(350m) 이내면 거리 조건을 넓히지 않는다', () {
       final list = [_r('near', meters: 300), _r('far', meters: 900)];
       final pick = _run(list,
               request: const FairyRequest(walkMinutes: 5), position: _campus)
@@ -319,7 +319,7 @@ void main() {
       expect(pick.menu?.name, '돈까스'); // 0원 = 예산 안으로 간주
     });
 
-    test('대표메뉴가 모두 예산 밖이면 후보에서 빠지고 예산 조건이 풀린다', () {
+    test('대표메뉴가 모두 예산 밖이면 후보에서 빠지고 예산 조건이 넓어진다', () {
       final pricey = _r('pricey', signatures: const ['스테이크', '파스타'], menu: const [
         MenuItem(name: '스테이크', price: 15000),
         MenuItem(name: '파스타', price: 12000),
