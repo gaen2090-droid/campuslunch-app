@@ -189,10 +189,14 @@ List<MenuItem> fairySignatureMenus(Restaurant r) {
 
 /// 예산 판정에 쓸 대표 가격. 알 수 없으면 null(= 예산 필터를 통과시킨다).
 /// 대표메뉴가 있으면 그중 가장 싼 가격 — 둘 중 하나라도 예산 안이면 갈 만하다.
+/// 대표메뉴 중 하나라도 가격이 0(미확인)이면 판정할 수 없으므로 통과시킨다
+/// (추천 메뉴 선택 단계가 0원을 "예산 안"으로 보는 것과 일치).
 int? fairyBudgetPrice(Restaurant r) {
+  final sigs = fairySignatureMenus(r);
+  if (sigs.any((m) => m.price == 0)) return null;
   int? sigBest;
-  for (final m in fairySignatureMenus(r)) {
-    if (m.price > 0 && (sigBest == null || m.price < sigBest)) sigBest = m.price;
+  for (final m in sigs) {
+    if (sigBest == null || m.price < sigBest) sigBest = m.price;
   }
   if (sigBest != null) return sigBest;
   int? best;

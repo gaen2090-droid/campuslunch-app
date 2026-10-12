@@ -272,6 +272,28 @@ void main() {
       expect(pick.relaxed, isEmpty); // 돈까스(7천)가 예산 안
     });
 
+    test('대표메뉴 중 하나가 가격 미확인(0원)이면 예산 필터를 통과', () {
+      final mixed = _r('mixed', signatures: const ['제육덮밥', '돈까스'], menu: const [
+        MenuItem(name: '제육덮밥', price: 9000),
+        MenuItem(name: '돈까스', price: 0),
+      ]);
+      expect(fairyBudgetPrice(mixed), isNull);
+      final pick =
+          _run([mixed], request: const FairyRequest(budgetLimit: 8000)).pick!;
+      expect(pick.relaxed, isEmpty);
+      expect(pick.menu?.name, '돈까스'); // 0원 = 예산 안으로 간주
+    });
+
+    test('대표메뉴가 모두 예산 밖이면 후보에서 빠지고 예산 조건이 풀린다', () {
+      final pricey = _r('pricey', signatures: const ['스테이크', '파스타'], menu: const [
+        MenuItem(name: '스테이크', price: 15000),
+        MenuItem(name: '파스타', price: 12000),
+      ]);
+      final pick =
+          _run([pricey], request: const FairyRequest(budgetLimit: 8000)).pick!;
+      expect(pick.relaxed, [FairyRelax.budget]);
+    });
+
     test('예산 안의 대표메뉴만 추천 메뉴로 나온다', () {
       for (var seed = 0; seed < 20; seed++) {
         final m = fairyPickMenu(two, 8000, Random(seed))!;
