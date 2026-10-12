@@ -12,6 +12,15 @@ import { Pagination } from "../components/Pagination";
 import { usePagination } from "../hooks/usePagination";
 
 type CrowdFilter = "crowdOnly" | "collectionOnly" | "all";
+/** 점심메뉴 요정용 등록 현황 필터 */
+type FairyFilter = "all" | "noSolo" | "noSignature" | "noMenu";
+
+/** 대표메뉴가 지정돼 있지만 현재 메뉴 목록에 없는 경우 (사장님이 이름을 바꾸거나 삭제) */
+function isSignatureMismatch(r: AdminRestaurant): boolean {
+  const sig = r.signatureMenu?.trim();
+  if (!sig) return false;
+  return !r.menu.some((m) => m.name.trim() === sig);
+}
 
 interface Props {
   restaurants: AdminRestaurant[];
@@ -34,6 +43,7 @@ function statusDotColor(status: string): string {
 export function RestaurantsPage({ restaurants, onReload }: Props) {
   const [query, setQuery] = useState("");
   const [crowdFilter, setCrowdFilter] = useState<CrowdFilter>("crowdOnly");
+  const [fairyFilter, setFairyFilter] = useState<FairyFilter>("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reportsCache, setReportsCache] = useState<
@@ -56,15 +66,23 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         : crowdFilter === "collectionOnly"
           ? sorted.filter((r) => !r.crowdEnabled)
           : sorted;
+    const byFairy =
+      fairyFilter === "noSolo"
+        ? base.filter((r) => !r.soloFriendly)
+        : fairyFilter === "noSignature"
+          ? base.filter((r) => !r.signatureMenu?.trim() || isSignatureMismatch(r))
+          : fairyFilter === "noMenu"
+            ? base.filter((r) => r.menu.length === 0)
+            : base;
     const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter(
+    if (!q) return byFairy;
+    return byFairy.filter(
       (r) =>
         r.name.toLowerCase().includes(q) ||
         r.area.includes(q) ||
         r.category.includes(q),
     );
-  }, [restaurants, query, crowdFilter]);
+  }, [restaurants, query, crowdFilter, fairyFilter]);
 
   const { page, setPage, totalPages, pageItems } = usePagination(filtered, 20);
 
@@ -167,6 +185,28 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
         </label>
       </div>
 
+      <div className="radio-group">
+        <span className="muted xs">요정 등록 현황</span>
+        {(
+          [
+            ["all", "전체"],
+            ["noSolo", "혼밥 미등록"],
+            ["noSignature", "대표메뉴 미지정·불일치"],
+            ["noMenu", "메뉴 없음"],
+          ] as const
+        ).map(([value, label]) => (
+          <label key={value} className="checkbox-row">
+            <input
+              type="radio"
+              name="fairyFilter"
+              checked={fairyFilter === value}
+              onChange={() => setFairyFilter(value)}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+
       <button
         type="button"
         className="dashed-btn"
@@ -197,7 +237,18 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                       {r.ownerId && (
                         <span className="owner-registered-tag">등록 완료</span>
                       )}
+                      {r.soloFriendly && (
+                        <span className="badge assigned">혼밥</span>
+                      )}
+                      {isSignatureMismatch(r) && (
+                        <span className="badge warning">
+                          대표메뉴 불일치: {r.signatureMenu}
+                        </span>
+                      )}
                     </div>
+                    {r.signatureMenu?.trim() && !isSignatureMismatch(r) && (
+                      <p className="muted xs">★ 대표메뉴 · {r.signatureMenu}</p>
+                    )}
                     {!r.isActive && (
                       <p className="inactive-tag">DB 비활성 (삭제 대상)</p>
                     )}

@@ -70,6 +70,21 @@ export function RestaurantFormModal({
   const [menu, setMenu] = useState<MenuItem[]>(
     restaurant?.menu.length ? restaurant.menu : [{ name: "", price: 0 }],
   );
+  // 대표메뉴는 이름이 아니라 행 인덱스로 추적한다 — 같은 저장 안에서 이름을 바꿔도
+  // 연결이 끊기지 않게. 저장 시점에 이름으로 변환해 signature_menu 키에 쓴다.
+  const [signatureIdx, setSignatureIdx] = useState<number | null>(() => {
+    const sig = restaurant?.signatureMenu?.trim();
+    if (!sig || !restaurant) return null;
+    const idx = restaurant.menu.findIndex((m) => m.name.trim() === sig);
+    return idx >= 0 ? idx : null;
+  });
+  const [soloFriendly, setSoloFriendly] = useState(
+    restaurant?.soloFriendly ?? false,
+  );
+  // 영업시간을 실제로 건드렸을 때만 hours를 저장한다. 저장 시 hours가 오면
+  // hours_periods(구글 요일별 캐시)를 지우므로, 혼밥/대표메뉴만 바꾸는 저장이
+  // 영업 여부 판정을 깨뜨리지 않게 막는다.
+  const [hoursDirty, setHoursDirty] = useState(false);
   const [crowdEnabled, setCrowdEnabled] = useState(
     restaurant?.crowdEnabled ?? defaultCrowdEnabled ?? true,
   );
@@ -102,6 +117,8 @@ export function RestaurantFormModal({
         ? ALWAYS_OPEN_HOURS
         : times.map((t) => `${t.from} - ${t.to}`).join(", ");
       const validMenu = menu.filter((m) => m.name.trim());
+      const signatureName =
+        signatureIdx != null ? (menu[signatureIdx]?.name.trim() ?? "") : "";
       const data: RestaurantFormData = {
         name: name.trim(),
         area,
@@ -110,12 +127,18 @@ export function RestaurantFormModal({
         hours,
         menu: validMenu,
         crowd_enabled: crowdEnabled,
+        solo_friendly: soloFriendly,
+        signature_menu: signatureName,
         ...(imageUrl ? { image_url: imageUrl } : {}),
       };
       if (mode === "add") {
         await insertRestaurant(data);
       } else if (restaurant) {
-        await updateRestaurant(restaurant.id, data);
+        const { hours: _hours, ...withoutHours } = data;
+        await updateRestaurant(
+          restaurant.id,
+          hoursDirty ? data : withoutHours,
+        );
       }
       onSaved();
       onClose();
@@ -177,6 +200,20 @@ export function RestaurantFormModal({
           </label>
         )}
 
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={soloFriendly}
+            onChange={(e) => setSoloFriendly(e.target.checked)}
+          />
+          <span>
+            혼밥하기 좋은 매장{" "}
+            <span className="muted xs">
+              (점심메뉴 요정에서 &quot;혼밥&quot; 선택 시 우선 추천돼요)
+            </span>
+          </span>
+        </label>
+
         <div className="form-row">
           <label className="field">
             <span className="field-label">지역 *</span>
@@ -209,7 +246,10 @@ export function RestaurantFormModal({
             <input
               type="checkbox"
               checked={alwaysOpen}
-              onChange={(e) => setAlwaysOpen(e.target.checked)}
+              onChange={(e) => {
+                setAlwaysOpen(e.target.checked);
+                setHoursDirty(true);
+              }}
             />
             <span>24시간 운영</span>
           </label>
@@ -218,33 +258,36 @@ export function RestaurantFormModal({
               <input
                 type="time"
                 value={t.from}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setHoursDirty(true);
                   setTimes((prev) =>
                     prev.map((row, idx) =>
                       idx === i ? { ...row, from: e.target.value } : row,
                     ),
-                  )
-                }
+                  );
+                }}
               />
               <span>~</span>
               <input
                 type="time"
                 value={t.to}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setHoursDirty(true);
                   setTimes((prev) =>
                     prev.map((row, idx) =>
                       idx === i ? { ...row, to: e.target.value } : row,
                     ),
-                  )
-                }
+                  );
+                }}
               />
               {times.length > 1 && (
                 <button
                   type="button"
                   className="btn ghost sm"
-                  onClick={() =>
-                    setTimes((prev) => prev.filter((_, idx) => idx !== i))
-                  }
+                  onClick={() => {
+                    setHoursDirty(true);
+                    setTimes((prev) => prev.filter((_, idx) => idx !== i));
+                  }}
                 >
                   삭제
                 </button>
@@ -255,9 +298,10 @@ export function RestaurantFormModal({
             <button
               type="button"
               className="btn ghost sm"
-              onClick={() =>
-                setTimes((prev) => [...prev, { from: "11:00", to: "21:00" }])
-              }
+              onClick={() => {
+                setHoursDirty(true);
+                setTimes((prev) => [...prev, { from: "11:00", to: "21:00" }]);
+              }}
             >
               + 시간 추가
             </button>
@@ -296,6 +340,17 @@ export function RestaurantFormModal({
                   )
                 }
               />
+              <button
+                type="button"
+                className={`btn sm ${signatureIdx === i ? "primary" : "ghost"}`}
+                disabled={!item.name.trim()}
+                title="점심메뉴 요정이 이 매장의 대표메뉴로 소개해요"
+                onClick={() =>
+                  setSignatureIdx((cur) => (cur === i ? null : i))
+                }
+              >
+                {signatureIdx === i ? "★ 대표" : "☆ 대표로"}
+              </button>
             </div>
           ))}
           <button

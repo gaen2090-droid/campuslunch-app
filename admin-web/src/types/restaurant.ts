@@ -33,6 +33,10 @@ export interface AdminRestaurant {
   imageSource?: string;
   /** 사장님이 직접 입력한 매장 공지 (최대 500자) */
   ownerNotice?: string;
+  /** 어드민이 등록한 "혼밥하기 좋은 매장". 키가 없으면 미등록(중립). */
+  soloFriendly?: boolean;
+  /** 어드민이 지정한 대표메뉴 이름. menu[].name 과 일치할 때만 유효. */
+  signatureMenu?: string;
   createdAt: Date;
 }
 
@@ -61,6 +65,10 @@ export interface RestaurantFormData {
   menu_photo_urls?: string[];
   image_source?: string;
   owner_notice?: string;
+  /** 혼밥하기 좋은 매장. true면 키 저장, false면 키 삭제(미등록). */
+  solo_friendly?: boolean;
+  /** 대표메뉴 이름. 빈 문자열이면 키 삭제. */
+  signature_menu?: string;
   /** 제보 대상 매장 여부. 기본 true. false로 등록하면 맛집컬렉션 전용 매장이 된다. */
   crowd_enabled?: boolean;
 }

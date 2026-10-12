@@ -157,6 +157,9 @@ function mergeRestaurant(
       : [],
     imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
+    soloFriendly: extra?.solo_friendly === true,
+    signatureMenu:
+      typeof extra?.signature_menu === "string" ? extra.signature_menu : "",
     createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(0),
   };
 }
@@ -244,6 +247,8 @@ export async function insertRestaurant(
   if (data.google_place_id) desc.google_place_id = data.google_place_id;
   if (data.hours_display) desc.hours_display = data.hours_display;
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
+  if (data.solo_friendly) desc.solo_friendly = true;
+  if (data.signature_menu?.trim()) desc.signature_menu = data.signature_menu.trim();
 
   const { error } = await supabase.from("restaurants").insert({
     name: data.name,
@@ -273,7 +278,12 @@ export async function updateRestaurant(
   if (data.image_url != null) patch.image_url = data.image_url;
   if (data.crowd_enabled != null) patch.crowd_enabled = data.crowd_enabled;
 
-  if (data.hours != null || data.menu != null) {
+  if (
+    data.hours != null ||
+    data.menu != null ||
+    data.solo_friendly != null ||
+    data.signature_menu != null
+  ) {
     const { data: existing, error: fetchErr } = await supabase
       .from("restaurants")
       .select("description")
@@ -296,6 +306,17 @@ export async function updateRestaurant(
       }
     }
     if (data.menu != null) desc.menu = data.menu;
+    // 미등록 = 키 없음. false/빈 문자열은 키를 지워 "중립"으로 되돌린다.
+    // 사장님 RPC는 이 키들을 화이트리스트 밖이라 건드리지 않는다.
+    if (data.solo_friendly != null) {
+      if (data.solo_friendly) desc.solo_friendly = true;
+      else delete desc.solo_friendly;
+    }
+    if (data.signature_menu != null) {
+      const sig = data.signature_menu.trim();
+      if (sig) desc.signature_menu = sig;
+      else delete desc.signature_menu;
+    }
     patch.description = JSON.stringify(desc);
   }
 
