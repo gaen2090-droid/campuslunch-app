@@ -9,6 +9,7 @@ import '../widgets/rice_ball_icon.dart';
 import 'bookmark_list_screen.dart';
 import 'coupon_box_screen.dart';
 import 'legal_policy_hub_screen.dart';
+import 'lunch_fairy_screen.dart';
 import 'referral_invite_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
@@ -168,6 +169,16 @@ class _MyScreenState extends State<MyScreen> {
               ),
 
               const SizedBox(height: 16),
+
+              // ══ 점메추 요정 배너: 홈과 같은 배너를 시간 제한 없이 항상 노출 ══
+              LunchFairyBanner(
+                compact: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const LunchFairyScreen()),
+                ),
+              ),
 
               // ══ 카드 2: 쿠폰/이벤트 ══
               _MyCardSection(

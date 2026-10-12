@@ -12,6 +12,10 @@ import 'business_hours.dart';
 /// 최근 이 시간 안의 제보만 "신선"하다고 본다 (자리없음 제외 규칙도 동일 기준).
 const Duration fairyFreshWindow = Duration(minutes: 15);
 
+/// 결과 화면에서 혼잡도 뱃지를 보여주는 제보의 최대 경과 시간.
+/// 이보다 오래된 제보는 뱃지를 아예 띄우지 않는다.
+const Duration fairyBadgeWindow = Duration(minutes: 30);
+
 /// 마감까지 이 시간 이상 남은 매장만 추천한다.
 const Duration fairyClosingSoonWindow = Duration(minutes: 30);
 
@@ -32,6 +36,9 @@ bool isFairyBannerTime(DateTime now) =>
     now.hour >= fairyBannerStartHour &&
     now.hour < fairyBannerEndHour;
 
+/// 누구랑 먹는지.
+enum FairyCompanion { solo, friend, date }
+
 /// 유저가 질문 시트에서 고른 조건. null = "상관없음".
 class FairyRequest {
   /// 음식종류 (한식·중식·…). null이면 전체.
@@ -43,14 +50,17 @@ class FairyRequest {
   /// 도보 한도(분). null이면 상관없음. 위치를 켠 사용자만 값을 가질 수 있다.
   final int? walkMinutes;
 
-  /// true=친구랑, false=혼밥.
-  final bool withFriend;
+  /// 혼밥 / 친구랑 / 밥약.
+  final FairyCompanion companion;
+
+  /// 혼자가 아니면 true (친구랑·밥약).
+  bool get withOthers => companion != FairyCompanion.solo;
 
   const FairyRequest({
     this.cuisine,
     this.budgetLimit,
     this.walkMinutes,
-    this.withFriend = false,
+    this.companion = FairyCompanion.solo,
   });
 
   FairyRequest copyWithout({
@@ -62,7 +72,7 @@ class FairyRequest {
         cuisine: cuisine ? null : this.cuisine,
         budgetLimit: budget ? null : budgetLimit,
         walkMinutes: distance ? null : walkMinutes,
-        withFriend: withFriend,
+        companion: companion,
       );
 }
 
@@ -88,6 +98,9 @@ enum FairyReason {
 
   /// 혼밥 선택 + 어드민 혼밥 표시 매장
   soloFriendly,
+
+  /// 밥약 선택 + 어드민 밥약 표시 매장
+  dateFriendly,
 
   /// 위 어디에도 해당하지 않는 일반 추천 (거리·인기 기반)
   general,
@@ -141,6 +154,17 @@ bool isFairyFresh(Restaurant r, DateTime now) {
   if (at == null) return false;
   // 시계 오차로 updatedAt이 미래여도 difference가 음수가 되어 신선으로 취급된다.
   return now.difference(at) <= fairyFreshWindow;
+}
+
+/// 결과 화면 혼잡도 뱃지에 쓸 "제보 후 경과 분". 뱃지를 띄우면 안 되면 null.
+/// 제보가 없거나 [fairyBadgeWindow](30분)보다 오래됐으면 null.
+int? fairyCrowdBadgeMinutes(Restaurant r, DateTime now) {
+  if (!r.hasCrowdUpdate) return null;
+  final at = r.updatedAt;
+  if (at == null) return null;
+  final age = now.difference(at);
+  if (age > fairyBadgeWindow) return null;
+  return age.inMinutes < 0 ? 0 : age.inMinutes;
 }
 
 bool _isFreshFullRecently(Restaurant r, DateTime now) =>
@@ -245,6 +269,9 @@ class _Scored {
 ///
 /// 후보 풀 순서: ① 제보 대상 매장(조건 그대로) → ② 컬렉션 전용 매장(조건 그대로)
 /// → ③ 예산 → 음식종류 → 거리 순으로 조건을 풀어 다시 ①②.
+/// ①에 조건을 통과한 매장이 하나라도 남아 있으면 컬렉션 전용 매장은 혼밥/밥약 표시가 있어도
+/// 나오지 않는다. ①이 소진(다른 곳 볼래요로 모두 본 경우)되어야 ②로 넘어가며, ② 안에서는
+/// 혼밥/밥약 표시가 있는 매장이 점수상 앞선다.
 /// 15분 안에 자리없음으로 제보된 매장은 어느 단계에서도 제외한다.
 FairyOutcome fairyRecommend(
   List<Restaurant> restaurants,
@@ -339,9 +366,9 @@ FairyPick? _choose(
 
   // 신선 제보(여유로움/약간혼잡)가 있는 매장이 하나라도 있으면 그 안에서만 고른다.
   // 없으면 혼잡도는 아예 점수에 반영하지 않는다(오래된 제보로 순위를 가르지 않음).
-  final fresh = tier == FairyTier.reportTarget
-      ? pool.where((r) => _isFreshPositive(r, now)).toList()
-      : <Restaurant>[];
+  // 컬렉션 전용 매장은 제보를 받지 않으므로 신선 제보 풀에는 들어가지 않는다.
+  final fresh =
+      pool.where((r) => r.crowdEnabled && _isFreshPositive(r, now)).toList();
   final useFresh = fresh.isNotEmpty;
   final candidates = useFresh ? fresh : pool;
 
@@ -367,8 +394,8 @@ FairyPick? _choose(
     if (useFresh) {
       final v = r.status == '여유로움'
           ? 1.0
-          // 친구랑이면 약간혼잡은 같이 앉기 어려우니 크게 감점
-          : (req.withFriend ? 0.25 : 0.55);
+          // 친구랑·밥약이면 약간혼잡은 같이 앉기 어려우니 크게 감점
+          : (req.withOthers ? 0.25 : 0.55);
       s += wCrowd * v;
     }
     double? meters;
@@ -377,7 +404,10 @@ FairyPick? _choose(
       s += wDist * (1 - (meters / refMeters)).clamp(0.0, 1.0);
     }
     var pref = 0.4; // 미등록은 중립
-    if (!req.withFriend && r.soloFriendly) pref += 0.4;
+    if (req.companion == FairyCompanion.solo && r.soloFriendly) pref += 0.4;
+    if (req.companion == FairyCompanion.date && r.dateFriendly) pref += 0.4;
+    // 친구랑은 전체에서 고르되, 혼자 가기 좋다고 표시된 매장은 후순위로 (제외는 아님).
+    if (req.companion == FairyCompanion.friend && r.soloFriendly) pref -= 0.4;
     if (bookmarkIds.contains(r.id)) pref += 0.2;
     final price = fairyBudgetPrice(r);
     if (req.budgetLimit != null && price != null && price <= req.budgetLimit!) {
@@ -419,8 +449,10 @@ FairyPick? _choose(
         : now.difference(r.updatedAt!).inMinutes.clamp(0, 99999);
   } else if (walkSelected) {
     reason = FairyReason.nearby;
-  } else if (!req.withFriend && r.soloFriendly) {
+  } else if (req.companion == FairyCompanion.solo && r.soloFriendly) {
     reason = FairyReason.soloFriendly;
+  } else if (req.companion == FairyCompanion.date && r.dateFriendly) {
+    reason = FairyReason.dateFriendly;
   } else {
     reason = FairyReason.general;
   }
@@ -428,7 +460,8 @@ FairyPick? _choose(
   return FairyPick(
     restaurant: r,
     menu: fairyPickMenu(r, req.budgetLimit, rng),
-    tier: tier,
+    // 승격된 컬렉션 전용 매장이 뽑힐 수 있으니 매장 기준으로 정한다 (뱃지 노출 판단에 쓰임).
+    tier: r.crowdEnabled ? FairyTier.reportTarget : FairyTier.collectionOnly,
     reason: reason,
     relaxed: relaxed,
     walkMinutes: chosen.meters == null

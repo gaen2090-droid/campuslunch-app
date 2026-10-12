@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,10 @@ import 'detail_screen.dart';
 /// 홈 11~14시 배너. 평일 점심시간에만 노출한다 (판정은 [isFairyBannerTime]).
 class LunchFairyBanner extends StatelessWidget {
   final VoidCallback onTap;
-  const LunchFairyBanner({super.key, required this.onTap});
+
+  /// 마이 탭처럼 다른 카드와 나란히 놓일 때: 회색 테두리를 두르고 부제를 뺀다.
+  final bool compact;
+  const LunchFairyBanner({super.key, required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -25,34 +29,63 @@ class LunchFairyBanner extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(20, 4, 20, 14),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFE6F3EC),
-          borderRadius: BorderRadius.circular(18),
+          // 홈은 연두색, 마이 탭은 다른 카드와 같은 흰색.
+          color: compact ? Colors.white : const Color(0xFFE6F3EC),
+          borderRadius: BorderRadius.circular(compact ? 20 : 18),
+          border: compact ? Border.all(color: const Color(0xFFE5E7EB)) : null,
+          boxShadow: compact
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 8,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
-            const Text('🧚', style: TextStyle(fontSize: 28)),
+            Image.asset(_kFairyAsset, width: 46, height: 46),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 홈 배너는 Ok단단체, 마이 탭은 다른 카드 행과 같은 프리텐다드.
                   Text(
-                    '점심메뉴 정해주는 요정',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                    compact ? '점메추 요정과 점심 메뉴 고르기' : '점메추 요정',
+                    style: compact
+                        ? const TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF000000),
+                          )
+                        : const TextStyle(
+                            fontFamily: 'OkDanDan',
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    '뭐 먹을지 고민이면 3초만 눌러봐!',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4B5563),
+                  if (!compact) ...[
+                    const SizedBox(height: 2),
+                    const Text(
+                      '3초만에 점심 메뉴 추천해드릴게요!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4B5563),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Color(0xFF26BC7D)),
+            // 마이 탭에서는 다른 카드 행(MyPageSectionRow)과 같은 회색 화살표.
+            compact
+                ? const Icon(Icons.chevron_right,
+                    size: 18, color: Color(0xFFD1D5DB))
+                : const Icon(Icons.chevron_right, color: Color(0xFF26BC7D)),
           ],
         ),
       ),
@@ -60,7 +93,9 @@ class LunchFairyBanner extends StatelessWidget {
   }
 }
 
-enum _Phase { questions, thinking, result, exhausted, nothingOpen }
+const String _kFairyAsset = 'assets/images/fairy.png';
+
+enum _Phase { questions, thinking, result, exhausted, nothingOpen, error }
 
 class LunchFairyScreen extends StatefulWidget {
   const LunchFairyScreen({super.key});
@@ -74,11 +109,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   static const _kBudget = 'fairy_budget';
   static const _kWalk = 'fairy_walk';
   static const _kFriend = 'fairy_friend';
+  static const _kCompanion = 'fairy_companion';
 
   static const _cuisines = ['한식', '중식', '일식', '양식', '분식', '아시아'];
   static const _budgets = <(String, int?)>[
     ('~8천', 8000),
     ('~1만', 10000),
+    ('~1만3천', 13000),
     ('상관없음', null),
   ];
   static const _walks = <(String, int?)>[
@@ -90,7 +127,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   String? _cuisine;
   int? _budget;
   int? _walk;
-  bool _friend = false;
+  FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
   bool _locationReady = false;
@@ -116,7 +153,14 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         _cuisine = prefs.getString(_kCuisine);
         _budget = prefs.containsKey(_kBudget) ? prefs.getInt(_kBudget) : null;
         _walk = prefs.containsKey(_kWalk) ? prefs.getInt(_kWalk) : null;
-        _friend = prefs.getBool(_kFriend) ?? false;
+        final saved = prefs.getString(_kCompanion);
+        _companion = FairyCompanion.values.firstWhere(
+          (c) => c.name == saved,
+          // 예전 버전(혼밥/친구랑 bool) 답변도 이어받는다.
+          orElse: () => (prefs.getBool(_kFriend) ?? false)
+              ? FairyCompanion.friend
+              : FairyCompanion.solo,
+        );
       });
     } catch (_) {
       // 저장된 답변이 없어도 기본값(상관없음/혼밥)으로 동작한다.
@@ -135,7 +179,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       }
       await putInt(_kBudget, _budget);
       await putInt(_kWalk, _walk);
-      await prefs.setBool(_kFriend, _friend);
+      await prefs.setString(_kCompanion, _companion.name);
     } catch (_) {}
   }
 
@@ -190,15 +234,25 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
     // 사장님이 방금 고친 메뉴·영업시간·혼잡도가 바로 반영되도록 매번 최신 데이터로 계산한다.
     // 갱신에 실패해도 가지고 있는 목록으로 계속 진행한다.
+    // 목록만 받고(푸시 동기화 등은 기다리지 않음) 시간 제한을 둔다. 느리거나 실패해도
+    // 가지고 있는 목록으로 계속 진행한다.
     try {
-      await provider.refreshRestaurants();
-    } catch (_) {}
-    _lastPosition = await _currentPosition();
+      await provider.reloadRestaurantsOnly().timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('[Fairy] reload skipped: $e');
+    }
+    try {
+      _lastPosition =
+          await _currentPosition().timeout(const Duration(seconds: 7));
+    } catch (e) {
+      debugPrint('[Fairy] position skipped: $e');
+      _lastPosition = null;
+    }
     _lastRequest = FairyRequest(
       cuisine: _cuisine,
       budgetLimit: _budget,
       walkMinutes: _lastPosition == null ? null : _walk,
-      withFriend: _friend,
+      companion: _companion,
     );
     if (!mounted) return;
     _recommend();
@@ -208,15 +262,27 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     final provider = context.read<AppProvider>();
     final req = _lastRequest;
     if (req == null) return;
-    final outcome = fairyRecommend(
-      provider.restaurants,
-      req,
-      now: DateTime.now(),
-      position: _lastPosition,
-      seenIds: _seen,
-      bookmarkIds: provider.bookmarks,
-      random: _random,
-    );
+    final FairyOutcome outcome;
+    try {
+      outcome = fairyRecommend(
+        provider.restaurants,
+        req,
+        now: DateTime.now(),
+        position: _lastPosition,
+        seenIds: _seen,
+        bookmarkIds: provider.bookmarks,
+        random: _random,
+      );
+    } catch (e, st) {
+      // 어떤 경우에도 로딩에서 빠져나오지 못하는 일이 없게 오류 화면으로 보낸다.
+      debugPrint('[Fairy] recommend failed: $e');
+      debugPrint('$st');
+      setState(() {
+        _pick = null;
+        _phase = _Phase.error;
+      });
+      return;
+    }
     setState(() {
       if (outcome.pick != null) {
         _pick = outcome.pick;
@@ -243,16 +309,30 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 즐겨찾기한 매장 화면과 같은 AppBar 구성: 뒤로가기 IconButton(18) + titleSpacing 0 +
+    // 제목 Pretendard 18 / w700 / letterSpacing -0.5, 왼쪽 정렬.
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: Colors.black,
-        title: const Text(
-          '점심메뉴 정해주는 요정',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              size: 18, color: Color(0xFF000000)),
+          onPressed: () => Navigator.pop(context),
         ),
+        titleSpacing: 0,
+        title: const Text(
+          '점메추 요정',
+          style: TextStyle(
+            fontFamily: 'Pretendard',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF000000),
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
       ),
       body: SafeArea(
         child: switch (_phase) {
@@ -260,10 +340,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           _Phase.thinking => _buildThinking(),
           _Phase.result => _buildResult(),
           _Phase.exhausted => _buildMessage(
-              '더 보여줄 곳이 없어.\n조건을 바꿔서 다시 골라볼까?',
+              '더 보여드릴 곳이 없어요.\n조건을 바꿔서 다시 골라볼까요?',
+            ),
+          _Phase.error => _buildMessage(
+              '앗, 고르다가 문제가 생겼어요.\n잠시 후 다시 시도해 주세요!',
             ),
           _Phase.nothingOpen => _buildMessage(
-              '지금은 영업 중인 곳을 못 찾았어.\n조금 있다가 다시 와줘!',
+              '지금은 영업 중인 곳을 찾지 못했어요.\n조금 있다가 다시 와 주세요!',
             ),
         },
       ),
@@ -275,29 +358,32 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
-        const Text('🧚', style: TextStyle(fontSize: 40)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Image.asset(_kFairyAsset, width: 84, height: 84),
+        ),
         const SizedBox(height: 8),
         const Text(
-          '오늘 점심 뭐 먹을지\n내가 골라줄게!',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, height: 1.3),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          '안 골라도 돼. 상관없으면 그냥 눌러!',
-          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          '오늘 점심 메뉴\n제가 골라드릴게요!',
+          style: TextStyle(
+            fontFamily: 'OkDanDan',
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            height: 1.3,
+          ),
         ),
         const SizedBox(height: 24),
-        _section('뭐 땡겨?', [
+        _section('뭐가 땡기시나요?', [
           _chip('상관없음', _cuisine == null, () => setState(() => _cuisine = null)),
           for (final c in _cuisines)
             _chip(c, _cuisine == c, () => setState(() => _cuisine = c)),
         ]),
-        _section('예산은?', [
+        _section('1인당 예산은 얼마인가요?', [
           for (final (label, value) in _budgets)
             _chip(label, _budget == value, () => setState(() => _budget = value)),
         ]),
         _section(
-          '얼마나 가까워야 해?',
+          '얼마나 가까운 게 좋은가요?',
           [
             for (final (label, value) in _walks)
               _chip(
@@ -311,9 +397,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               ? null
               : _LocationHint(onEnable: _enableLocation),
         ),
-        _section('누구랑 먹어?', [
-          _chip('혼밥', !_friend, () => setState(() => _friend = false)),
-          _chip('친구랑', _friend, () => setState(() => _friend = true)),
+        _section('누구랑 드시나요?', [
+          _chip('혼밥', _companion == FairyCompanion.solo,
+              () => setState(() => _companion = FairyCompanion.solo)),
+          _chip('친구랑', _companion == FairyCompanion.friend,
+              () => setState(() => _companion = FairyCompanion.friend)),
+          _chip('밥약', _companion == FairyCompanion.date,
+              () => setState(() => _companion = FairyCompanion.date)),
         ]),
         const SizedBox(height: 12),
         SizedBox(
@@ -329,7 +419,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             ),
             onPressed: _start,
             child: const Text(
-              '요정아 골라줘!',
+              '골라주세요!',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
@@ -349,7 +439,18 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: chips),
+          // 칩은 항상 한 줄. 화면보다 길면(음식종류) 옆으로 밀어서 볼 수 있다.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var i = 0; i < chips.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  chips[i],
+                ],
+              ],
+            ),
+          ),
           if (footer != null) ...[const SizedBox(height: 8), footer],
         ],
       ),
@@ -388,14 +489,14 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   // ── 생각 중 ──
   Widget _buildThinking() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('🧚', style: TextStyle(fontSize: 48)),
+          Image.asset(_kFairyAsset, width: 110, height: 110),
           SizedBox(height: 12),
           Text(
-            '요정이 고르는 중…',
+            '요정이 고르는 중이에요…',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
           SizedBox(height: 16),
@@ -413,8 +514,14 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   Widget _buildResult() {
     final pick = _pick!;
     final r = pick.restaurant;
-    final showCrowd = pick.tier == FairyTier.reportTarget && r.hasCrowdUpdate;
+    // 30분 넘은 제보는 뱃지를 아예 띄우지 않는다 (경과 분도 지금 시각 기준으로 계산).
+    final badgeMinutes = pick.tier == FairyTier.reportTarget
+        ? fairyCrowdBadgeMinutes(r, DateTime.now())
+        : null;
+    final showCrowd = badgeMinutes != null;
     final meta = crowdStatusMeta(r.status);
+    // 가격 필터는 엔진에서 끝났으니, 화면에는 대표메뉴를 가격과 상관없이 모두 보여준다.
+    final signatures = fairySignatureMenus(r);
     final menu = pick.menu;
 
     return ListView(
@@ -474,7 +581,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '${meta.label} · ${r.updated}분 전',
+                          '${meta.label} · $badgeMinutes분 전',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
@@ -483,20 +590,38 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                         ),
                       ),
                     ],
-                    if (menu != null) ...[
+                    if (signatures.isNotEmpty || menu != null) ...[
                       const SizedBox(height: 14),
                       const Divider(height: 1, color: Color(0xFFF3F4F6)),
                       const SizedBox(height: 14),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('추천 메뉴', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                          Text(
+                            signatures.isNotEmpty ? '대표메뉴' : '추천 메뉴',
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF9CA3AF)),
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(
-                              menu.price > 0
-                                  ? '${menu.name} · ${_won(menu.price)}'
-                                  : menu.name,
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final m in signatures.isNotEmpty
+                                    ? signatures
+                                    : [menu!])
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      m.price > 0
+                                          ? '${m.name} · ${_won(m.price)}'
+                                          : m.name,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -520,7 +645,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             ),
             onPressed: () => _openDetail(r),
             child: const Text(
-              '갈래!',
+              '매장 자세히 보기',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
@@ -537,7 +662,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: _reroll,
-                child: const Text('다른 데!', style: TextStyle(fontWeight: FontWeight.w800)),
+                child: const Text('다른 곳 볼래요', style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
             const SizedBox(width: 10),
@@ -566,7 +691,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🧚', style: TextStyle(fontSize: 48)),
+            Image.asset(_kFairyAsset, width: 96, height: 96),
             const SizedBox(height: 12),
             Text(
               text,
@@ -592,20 +717,20 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   // 말투는 여기서만 만든다. 엔진은 이유 코드만 돌려준다.
   String _headline(FairyPick pick) {
     final r = pick.restaurant;
-    final menu = pick.menu;
-    final eat = menu == null ? '여기 가봐!' : '가서 ${menu.name} 먹어!';
     switch (pick.reason) {
       case FairyReason.freshRelaxed:
-        return '지금 ${r.name} 여유로워!\n$eat';
+        return '지금 ${r.name} 여유로워요!';
       case FairyReason.freshModerate:
-        return '${r.name}, 조금 붐비지만 자리는 있대.\n$eat';
+        return '${r.name}, 조금 붐비지만 자리는 있다고 해요.';
       case FairyReason.nearby:
         final w = pick.walkMinutes;
-        return '${r.name}, ${w != null ? '걸어서 $w분이면 가!' : '가까워!'}\n$eat';
+        return '${r.name}, ${w != null ? '걸어서 $w분이면 가요!' : '가까워요!'}';
       case FairyReason.soloFriendly:
-        return '${r.name}, 혼자 가기 편한 곳이야.\n$eat';
+        return '${r.name}, 혼자 가기 편한 곳이에요.';
+      case FairyReason.dateFriendly:
+        return '${r.name}, 밥약하기 좋은 곳이에요.';
       case FairyReason.general:
-        return '${r.name} 어때?\n$eat';
+        return '${r.name} 어떠세요?';
     }
   }
 
@@ -621,7 +746,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           parts.add('거리');
       }
     }
-    return '조건에 딱 맞는 곳이 없어서 ${parts.join('·')} 조건을 조금 넓혀봤어!';
+    return '조건에 딱 맞는 곳이 없어서 ${parts.join('·')} 조건을 조금 넓혀봤어요!';
   }
 
   String _won(int v) {

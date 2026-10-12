@@ -13,7 +13,7 @@ import { usePagination } from "../hooks/usePagination";
 
 type CrowdFilter = "crowdOnly" | "collectionOnly" | "all";
 /** 점심메뉴 요정용 등록 현황 필터 */
-type FairyFilter = "all" | "noSolo" | "noSignature" | "noMenu";
+type FairyFilter = "all" | "noSolo" | "noDate" | "noSignature" | "noMenu";
 
 /** 지정된 대표메뉴 중 현재 메뉴 목록에 없는 이름 (사장님이 이름을 바꾸거나 삭제) */
 function missingSignatures(r: AdminRestaurant): string[] {
@@ -73,6 +73,8 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
     const byFairy =
       fairyFilter === "noSolo"
         ? base.filter((r) => !r.soloFriendly)
+        : fairyFilter === "noDate"
+          ? base.filter((r) => !r.dateFriendly)
         : fairyFilter === "noSignature"
           ? base.filter(
                 (r) => !(r.signatureMenus?.length) || isSignatureMismatch(r),
@@ -197,6 +199,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
           [
             ["all", "전체"],
             ["noSolo", "혼밥 미등록"],
+            ["noDate", "밥약 미등록"],
             ["noSignature", "대표메뉴 미지정·불일치"],
             ["noMenu", "메뉴 없음"],
           ] as const
@@ -245,6 +248,9 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                       )}
                       {r.soloFriendly && (
                         <span className="badge assigned">혼밥</span>
+                      )}
+                      {r.dateFriendly && (
+                        <span className="badge assigned">밥약</span>
                       )}
                       {isSignatureMismatch(r) && (
                         <span className="badge warning">

@@ -86,6 +86,9 @@ export function RestaurantFormModal({
   const [soloFriendly, setSoloFriendly] = useState(
     restaurant?.soloFriendly ?? false,
   );
+  const [dateFriendly, setDateFriendly] = useState(
+    restaurant?.dateFriendly ?? false,
+  );
   // 영업시간을 실제로 건드렸을 때만 hours를 저장한다. 저장 시 hours가 오면
   // hours_periods(구글 요일별 캐시)를 지우므로, 혼밥/대표메뉴만 바꾸는 저장이
   // 영업 여부 판정을 깨뜨리지 않게 막는다.
@@ -134,6 +137,7 @@ export function RestaurantFormModal({
         menu: validMenu,
         crowd_enabled: crowdEnabled,
         solo_friendly: soloFriendly,
+        date_friendly: dateFriendly,
         signature_menus: signatureNames,
         ...(imageUrl ? { image_url: imageUrl } : {}),
       };
@@ -215,7 +219,21 @@ export function RestaurantFormModal({
           <span>
             혼밥하기 좋은 매장{" "}
             <span className="muted xs">
-              (점심메뉴 요정에서 &quot;혼밥&quot; 선택 시 우선 추천돼요)
+              (점메추 요정에서 &quot;혼밥&quot; 선택 시 우선 추천돼요)
+            </span>
+          </span>
+        </label>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={dateFriendly}
+            onChange={(e) => setDateFriendly(e.target.checked)}
+          />
+          <span>
+            밥약하기 좋은 매장{" "}
+            <span className="muted xs">
+              (점메추 요정에서 &quot;밥약&quot; 선택 시 우선 추천돼요)
             </span>
           </span>
         </label>

@@ -59,6 +59,8 @@ class Restaurant {
   /// 어드민이 등록한 "혼밥하기 좋은 매장". description.solo_friendly == true 일 때만 true,
   /// 키가 없으면 미등록(중립)이라 false.
   final bool soloFriendly;
+  /// 어드민이 등록한 "밥약하기 좋은 매장". description.date_friendly == true 일 때만 true.
+  final bool dateFriendly;
   /// 어드민이 지정한 대표메뉴 이름(최대 2개, description.signature_menus).
   /// menu[].name 과 일치할 때만 유효하며, 사장님이 메뉴를 바꿔 일치하지 않으면
   /// 그 항목은 미지정으로 취급한다.
@@ -99,6 +101,7 @@ class Restaurant {
     this.googleImageUrl = '',
     this.ownerNotice = '',
     this.soloFriendly = false,
+    this.dateFriendly = false,
     this.signatureMenus = const [],
   });
 
@@ -154,6 +157,7 @@ class Restaurant {
         googleImageUrl: googleImageUrl ?? this.googleImageUrl,
         ownerNotice: ownerNotice ?? this.ownerNotice,
         soloFriendly: soloFriendly,
+        dateFriendly: dateFriendly,
         signatureMenus: signatureMenus,
       );
 

@@ -736,6 +736,7 @@ class SupabaseRestaurantRepository {
       googleImageUrl: extra?['google_image_url'] as String? ?? '',
       ownerNotice: extra?['owner_notice'] as String? ?? '',
       soloFriendly: extra?['solo_friendly'] == true,
+      dateFriendly: extra?['date_friendly'] == true,
       signatureMenus: _parseSignatureMenus(extra),
     );
   }

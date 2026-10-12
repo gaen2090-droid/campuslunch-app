@@ -1543,23 +1543,33 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshRestaurants() async {
+  /// 매장 목록만 다시 받는다. 푸시 동기화 같은 후속 작업은 기다리지 않는다.
+  /// 최신 매장 정보만 필요하고 화면이 그 응답을 기다리는 곳(점심메뉴 요정 등)용.
+  Future<void> reloadRestaurantsOnly() => _reloadRestaurantList();
+
+  /// 목록을 받아 반영했으면 true. 더 새로운 요청에 밀렸거나 실패했으면 false.
+  Future<bool> _reloadRestaurantList() async {
     final repo = _restaurantRepo;
-    if (repo == null) return;
+    if (repo == null) return false;
     final gen = ++_restaurantRefreshGen;
     try {
       final fetched = await repo.fetchAll();
-      if (gen != _restaurantRefreshGen) return;
+      if (gen != _restaurantRefreshGen) return false;
       _restaurants = fetched;
       _restaurantsLoadFailed = false;
       notifyListeners();
       unawaited(_updateDistances());
+      return true;
     } catch (e, st) {
       debugPrint('[Supabase] refreshRestaurants failed: $e\n$st');
       _restaurantsLoadFailed = true;
       notifyListeners();
-      return;
+      return false;
     }
+  }
+
+  Future<void> refreshRestaurants() async {
+    if (!await _reloadRestaurantList()) return;
     try {
       await _syncOwnerRestaurantIdsFromDb();
       await _syncPushNotifications();

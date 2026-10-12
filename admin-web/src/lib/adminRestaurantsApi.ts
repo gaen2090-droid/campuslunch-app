@@ -183,6 +183,7 @@ function mergeRestaurant(
     imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
     soloFriendly: extra?.solo_friendly === true,
+    dateFriendly: extra?.date_friendly === true,
     signatureMenus: parseSignatureMenus(extra),
     createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(0),
   };
@@ -272,6 +273,7 @@ export async function insertRestaurant(
   if (data.hours_display) desc.hours_display = data.hours_display;
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
   if (data.solo_friendly) desc.solo_friendly = true;
+  if (data.date_friendly) desc.date_friendly = true;
   const sigs = normalizeSignatureMenus(data.signature_menus);
   if (sigs.length) desc.signature_menus = sigs;
 
@@ -307,6 +309,7 @@ export async function updateRestaurant(
     data.hours != null ||
     data.menu != null ||
     data.solo_friendly != null ||
+    data.date_friendly != null ||
     data.signature_menus != null
   ) {
     const { data: existing, error: fetchErr } = await supabase
@@ -336,6 +339,10 @@ export async function updateRestaurant(
     if (data.solo_friendly != null) {
       if (data.solo_friendly) desc.solo_friendly = true;
       else delete desc.solo_friendly;
+    }
+    if (data.date_friendly != null) {
+      if (data.date_friendly) desc.date_friendly = true;
+      else delete desc.date_friendly;
     }
     if (data.signature_menus != null) {
       const sigs = normalizeSignatureMenus(data.signature_menus);

@@ -20,6 +20,7 @@ Restaurant _r(
   List<MenuItem> menu = const [],
   List<String> signatures = const [],
   bool solo = false,
+  bool date = false,
   double meters = 200,
   String hours = '11:00 - 21:00',
   int popularity = 0,
@@ -46,6 +47,7 @@ Restaurant _r(
     updatedAt: hasUpdate ? _now.subtract(Duration(minutes: freshMinutes)) : null,
     crowdEnabled: crowdEnabled,
     soloFriendly: solo,
+    dateFriendly: date,
     signatureMenus: signatures,
     popularityScore: popularity,
   );
@@ -153,6 +155,39 @@ void main() {
       final pick = _run(list, request: const FairyRequest(cuisine: '일식')).pick!;
       expect(pick.tier, FairyTier.collectionOnly);
       expect(pick.relaxed, isEmpty);
+    });
+
+    test('혼밥 표시가 있어도 제보 대상 후보가 남아 있으면 컬렉션 전용은 나오지 않는다', () {
+      final list = [
+        _r('rep'),
+        _r('col', crowdEnabled: false, solo: true, date: true),
+      ];
+      for (final c in FairyCompanion.values) {
+        for (var seed = 0; seed < 50; seed++) {
+          expect(
+            _run(list, request: FairyRequest(companion: c), seed: seed)
+                .pick!
+                .restaurant
+                .id,
+            'rep',
+          );
+        }
+      }
+    });
+
+    test('제보 대상을 모두 본 뒤에는 표시 있는 컬렉션 전용이 먼저 나온다', () {
+      final list = [
+        _r('rep'),
+        _r('plain', crowdEnabled: false),
+        _r('solo', crowdEnabled: false, solo: true),
+      ];
+      var solo = 0;
+      for (var seed = 0; seed < 100; seed++) {
+        final pick = _run(list, seen: {'rep'}, seed: seed).pick!;
+        expect(pick.tier, FairyTier.collectionOnly);
+        if (pick.restaurant.id == 'solo') solo++;
+      }
+      expect(solo, greaterThan(50));
     });
 
     test('제보 대상 후보가 있으면 컬렉션 전용은 쓰지 않는다', () {
@@ -318,9 +353,76 @@ void main() {
 
     test('친구랑이면 혼밥 표시를 이유로 쓰지 않는다', () {
       final pick = _run([_r('solo', solo: true)],
-              request: const FairyRequest(withFriend: true))
+              request: const FairyRequest(companion: FairyCompanion.friend))
           .pick!;
       expect(pick.reason, FairyReason.general);
+    });
+
+    test('친구랑이면 혼밥 표시 매장은 후순위지만 후보에서 빠지지는 않는다', () {
+      const req = FairyRequest(companion: FairyCompanion.friend);
+      for (var seed = 1; seed <= 20; seed++) {
+        final pick = _run(
+          [_r('solo', solo: true), _r('plain')],
+          request: req,
+          seed: seed,
+        ).pick!;
+        expect(pick.reason, isNot(FairyReason.soloFriendly));
+      }
+      // 혼밥 표시 매장뿐이면 그곳이라도 추천한다.
+      expect(_run([_r('solo', solo: true)], request: req).pick!.restaurant.id,
+          'solo');
+    });
+
+    test('친구랑이면 일반 매장이 혼밥 표시 매장보다 더 자주 추천된다', () {
+      const req = FairyRequest(companion: FairyCompanion.friend);
+      var plain = 0;
+      var solo = 0;
+      for (var seed = 1; seed <= 200; seed++) {
+        final id = _run([_r('solo', solo: true), _r('plain')],
+                request: req, seed: seed)
+            .pick!
+            .restaurant
+            .id;
+        id == 'plain' ? plain++ : solo++;
+      }
+      expect(plain, greaterThan(solo));
+    });
+
+    test('밥약이면 밥약 표시 매장이 이유로 노출', () {
+      final pick = _run([_r('date', date: true)],
+              request: const FairyRequest(companion: FairyCompanion.date))
+          .pick!;
+      expect(pick.reason, FairyReason.dateFriendly);
+    });
+
+    test('밥약이면 밥약 표시 매장이 혼밥 표시 매장보다 우선', () {
+      for (var seed = 1; seed <= 20; seed++) {
+        final pick = _run(
+          [_r('solo', solo: true), _r('date', date: true)],
+          request: const FairyRequest(companion: FairyCompanion.date),
+          seed: seed,
+        ).pick!;
+        expect(pick.reason, isNot(FairyReason.soloFriendly));
+      }
+    });
+
+    test('혼밥이면 밥약 표시를 이유로 쓰지 않는다', () {
+      final pick = _run([_r('date', date: true)]).pick!;
+      expect(pick.reason, FairyReason.general);
+    });
+  });
+
+  group('혼잡도 뱃지', () {
+    test('30분 이내 제보만 뱃지 경과 분을 돌려준다', () {
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '여유로움', freshMinutes: 0), _now), 0);
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '여유로움', freshMinutes: 12), _now), 12);
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '약간혼잡', freshMinutes: 30), _now), 30);
+    });
+
+    test('30분을 넘긴 제보와 제보 없음은 뱃지를 띄우지 않는다', () {
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '여유로움', freshMinutes: 31), _now), isNull);
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '여유로움', freshMinutes: 120), _now), isNull);
+      expect(fairyCrowdBadgeMinutes(_r('a', status: '여유로움'), _now), isNull);
     });
   });
 
