@@ -15,11 +15,15 @@ type CrowdFilter = "crowdOnly" | "collectionOnly" | "all";
 /** 점심메뉴 요정용 등록 현황 필터 */
 type FairyFilter = "all" | "noSolo" | "noSignature" | "noMenu";
 
-/** 대표메뉴가 지정돼 있지만 현재 메뉴 목록에 없는 경우 (사장님이 이름을 바꾸거나 삭제) */
+/** 지정된 대표메뉴 중 현재 메뉴 목록에 없는 이름 (사장님이 이름을 바꾸거나 삭제) */
+function missingSignatures(r: AdminRestaurant): string[] {
+  return (r.signatureMenus ?? []).filter(
+    (sig) => !r.menu.some((m) => m.name.trim() === sig.trim()),
+  );
+}
+
 function isSignatureMismatch(r: AdminRestaurant): boolean {
-  const sig = r.signatureMenu?.trim();
-  if (!sig) return false;
-  return !r.menu.some((m) => m.name.trim() === sig);
+  return missingSignatures(r).length > 0;
 }
 
 interface Props {
@@ -70,7 +74,9 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
       fairyFilter === "noSolo"
         ? base.filter((r) => !r.soloFriendly)
         : fairyFilter === "noSignature"
-          ? base.filter((r) => !r.signatureMenu?.trim() || isSignatureMismatch(r))
+          ? base.filter(
+                (r) => !(r.signatureMenus?.length) || isSignatureMismatch(r),
+              )
           : fairyFilter === "noMenu"
             ? base.filter((r) => r.menu.length === 0)
             : base;
@@ -242,12 +248,14 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                       )}
                       {isSignatureMismatch(r) && (
                         <span className="badge warning">
-                          대표메뉴 불일치: {r.signatureMenu}
+                          대표메뉴 불일치: {missingSignatures(r).join(", ")}
                         </span>
                       )}
                     </div>
-                    {r.signatureMenu?.trim() && !isSignatureMismatch(r) && (
-                      <p className="muted xs">★ 대표메뉴 · {r.signatureMenu}</p>
+                    {!!r.signatureMenus?.length && !isSignatureMismatch(r) && (
+                      <p className="muted xs">
+                        ★ 대표메뉴 · {r.signatureMenus.join(", ")}
+                      </p>
                     )}
                     {!r.isActive && (
                       <p className="inactive-tag">DB 비활성 (삭제 대상)</p>

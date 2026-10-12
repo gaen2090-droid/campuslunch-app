@@ -39,6 +39,31 @@ function crowdLevelToStatus(
   return map[level] ?? "여유로움";
 }
 
+/** 대표메뉴 이름 목록. 신규 키(signature_menus) 우선, 예전 단일 키(signature_menu)도 읽는다. */
+function parseSignatureMenus(extra: Record<string, unknown> | null): string[] {
+  const out: string[] = [];
+  const multi = extra?.signature_menus;
+  if (Array.isArray(multi)) {
+    for (const v of multi) {
+      const s = String(v ?? "").trim();
+      if (s && !out.includes(s)) out.push(s);
+    }
+  } else if (typeof extra?.signature_menu === "string") {
+    const s = extra.signature_menu.trim();
+    if (s) out.push(s);
+  }
+  return out.slice(0, 2);
+}
+
+function normalizeSignatureMenus(names: string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const v of names ?? []) {
+    const s = String(v ?? "").trim();
+    if (s && !out.includes(s)) out.push(s);
+  }
+  return out.slice(0, 2);
+}
+
 function parseMenu(raw: unknown): MenuItem[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -158,8 +183,7 @@ function mergeRestaurant(
     imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
     soloFriendly: extra?.solo_friendly === true,
-    signatureMenu:
-      typeof extra?.signature_menu === "string" ? extra.signature_menu : "",
+    signatureMenus: parseSignatureMenus(extra),
     createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(0),
   };
 }
@@ -248,7 +272,8 @@ export async function insertRestaurant(
   if (data.hours_display) desc.hours_display = data.hours_display;
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
   if (data.solo_friendly) desc.solo_friendly = true;
-  if (data.signature_menu?.trim()) desc.signature_menu = data.signature_menu.trim();
+  const sigs = normalizeSignatureMenus(data.signature_menus);
+  if (sigs.length) desc.signature_menus = sigs;
 
   const { error } = await supabase.from("restaurants").insert({
     name: data.name,
@@ -282,7 +307,7 @@ export async function updateRestaurant(
     data.hours != null ||
     data.menu != null ||
     data.solo_friendly != null ||
-    data.signature_menu != null
+    data.signature_menus != null
   ) {
     const { data: existing, error: fetchErr } = await supabase
       .from("restaurants")
@@ -312,10 +337,12 @@ export async function updateRestaurant(
       if (data.solo_friendly) desc.solo_friendly = true;
       else delete desc.solo_friendly;
     }
-    if (data.signature_menu != null) {
-      const sig = data.signature_menu.trim();
-      if (sig) desc.signature_menu = sig;
-      else delete desc.signature_menu;
+    if (data.signature_menus != null) {
+      const sigs = normalizeSignatureMenus(data.signature_menus);
+      if (sigs.length) desc.signature_menus = sigs;
+      else delete desc.signature_menus;
+      // 예전 단일 키는 새 키로 대체되므로 함께 지운다 (두 값이 어긋나지 않게).
+      delete desc.signature_menu;
     }
     patch.description = JSON.stringify(desc);
   }

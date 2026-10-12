@@ -26,6 +26,8 @@ interface TimeRange {
 }
 
 const ALWAYS_OPEN_HOURS = "00:00 - 24:00";
+/** 대표메뉴는 매장당 최대 2개까지 지정할 수 있다. */
+const MAX_SIGNATURE = 2;
 
 function pad2(s: string): string {
   const [h, m] = s.split(":");
@@ -72,11 +74,14 @@ export function RestaurantFormModal({
   );
   // 대표메뉴는 이름이 아니라 행 인덱스로 추적한다 — 같은 저장 안에서 이름을 바꿔도
   // 연결이 끊기지 않게. 저장 시점에 이름으로 변환해 signature_menu 키에 쓴다.
-  const [signatureIdx, setSignatureIdx] = useState<number | null>(() => {
-    const sig = restaurant?.signatureMenu?.trim();
-    if (!sig || !restaurant) return null;
-    const idx = restaurant.menu.findIndex((m) => m.name.trim() === sig);
-    return idx >= 0 ? idx : null;
+  const [signatureIdxs, setSignatureIdxs] = useState<number[]>(() => {
+    if (!restaurant) return [];
+    const out: number[] = [];
+    for (const sig of restaurant.signatureMenus ?? []) {
+      const idx = restaurant.menu.findIndex((m) => m.name.trim() === sig.trim());
+      if (idx >= 0 && !out.includes(idx)) out.push(idx);
+    }
+    return out.slice(0, MAX_SIGNATURE);
   });
   const [soloFriendly, setSoloFriendly] = useState(
     restaurant?.soloFriendly ?? false,
@@ -117,8 +122,9 @@ export function RestaurantFormModal({
         ? ALWAYS_OPEN_HOURS
         : times.map((t) => `${t.from} - ${t.to}`).join(", ");
       const validMenu = menu.filter((m) => m.name.trim());
-      const signatureName =
-        signatureIdx != null ? (menu[signatureIdx]?.name.trim() ?? "") : "";
+      const signatureNames = signatureIdxs
+        .map((i) => menu[i]?.name.trim() ?? "")
+        .filter((n) => n.length > 0);
       const data: RestaurantFormData = {
         name: name.trim(),
         area,
@@ -128,7 +134,7 @@ export function RestaurantFormModal({
         menu: validMenu,
         crowd_enabled: crowdEnabled,
         solo_friendly: soloFriendly,
-        signature_menu: signatureName,
+        signature_menus: signatureNames,
         ...(imageUrl ? { image_url: imageUrl } : {}),
       };
       if (mode === "add") {
@@ -309,7 +315,12 @@ export function RestaurantFormModal({
         </div>
 
         <div className="field">
-          <span className="field-label">메뉴</span>
+          <span className="field-label">
+            메뉴{" "}
+            <span className="muted xs">
+              (대표메뉴 {signatureIdxs.length}/{MAX_SIGNATURE})
+            </span>
+          </span>
           {menu.map((item, i) => (
             <div key={i} className="menu-row">
               <input
@@ -342,14 +353,27 @@ export function RestaurantFormModal({
               />
               <button
                 type="button"
-                className={`btn sm ${signatureIdx === i ? "primary" : "ghost"}`}
-                disabled={!item.name.trim()}
-                title="점심메뉴 요정이 이 매장의 대표메뉴로 소개해요"
+                className={`btn sm ${signatureIdxs.includes(i) ? "primary" : "ghost"}`}
+                disabled={
+                  !item.name.trim() ||
+                  (!signatureIdxs.includes(i) &&
+                    signatureIdxs.length >= MAX_SIGNATURE)
+                }
+                title={
+                  !signatureIdxs.includes(i) &&
+                  signatureIdxs.length >= MAX_SIGNATURE
+                    ? "대표메뉴는 최대 2개까지예요. 다른 대표를 먼저 해제해 주세요."
+                    : "점심메뉴 요정이 이 매장의 대표메뉴로 소개해요"
+                }
                 onClick={() =>
-                  setSignatureIdx((cur) => (cur === i ? null : i))
+                  setSignatureIdxs((cur) =>
+                    cur.includes(i)
+                      ? cur.filter((x) => x !== i)
+                      : [...cur, i].slice(0, MAX_SIGNATURE),
+                  )
                 }
               >
-                {signatureIdx === i ? "★ 대표" : "☆ 대표로"}
+                {signatureIdxs.includes(i) ? "★ 대표" : "☆ 대표로"}
               </button>
             </div>
           ))}
