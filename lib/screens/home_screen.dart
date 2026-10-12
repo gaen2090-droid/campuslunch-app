@@ -12,6 +12,7 @@ import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/lunch_fairy_recommender.dart';
 import '../utils/recent_history_store.dart';
 import '../utils/restaurant_sort.dart';
 import '../utils/report_feedback.dart';
@@ -20,6 +21,7 @@ import '../widgets/report_sheet.dart';
 import '../widgets/suspension_popup_dialog.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
+import 'lunch_fairy_screen.dart';
 import 'restaurant_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -998,6 +1000,14 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
           children: [
+            // 점심메뉴 요정 배너 — 평일 11~14시, 식당 탭에서만 (1분 ticker로 경계 시각에 갱신)
+            if (_mainTab == 0 && isFairyBannerTime(DateTime.now()))
+              LunchFairyBanner(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LunchFairyScreen()),
+                ),
+              ),
             // 로딩/에러
             if (loading || loadFailed)
               Padding(

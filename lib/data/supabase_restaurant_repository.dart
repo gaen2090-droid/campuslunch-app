@@ -735,6 +735,8 @@ class SupabaseRestaurantRepository {
       imageSource: extra?['image_source'] as String? ?? 'google',
       googleImageUrl: extra?['google_image_url'] as String? ?? '',
       ownerNotice: extra?['owner_notice'] as String? ?? '',
+      soloFriendly: extra?['solo_friendly'] == true,
+      signatureMenus: _parseSignatureMenus(extra),
     );
   }
 
@@ -968,6 +970,22 @@ class SupabaseRestaurantRepository {
 
   // ── 인기도 점수 계산 ──
   // (약간혼잡 지속 토큰*1 + 자리없음 지속 토큰*2), 토큰=5분, 영업시간 내만 집계, 최근 7일
+  /// 신규 키(signature_menus 배열)를 우선하고, 예전 단일 키(signature_menu)도 읽는다.
+  List<String> _parseSignatureMenus(Map<String, dynamic>? extra) {
+    final out = <String>[];
+    final multi = extra?['signature_menus'];
+    if (multi is List) {
+      for (final v in multi) {
+        final s = v?.toString().trim() ?? '';
+        if (s.isNotEmpty && !out.contains(s)) out.add(s);
+      }
+    } else {
+      final single = extra?['signature_menu'];
+      if (single is String && single.trim().isNotEmpty) out.add(single.trim());
+    }
+    return out.length > 2 ? out.sublist(0, 2) : out;
+  }
+
   int _calcPopularityScore(List<Map<String, dynamic>> reports, String hours) {
     final ranges = _parseHoursRanges(hours);
     if (ranges.isEmpty || reports.isEmpty) return 0;

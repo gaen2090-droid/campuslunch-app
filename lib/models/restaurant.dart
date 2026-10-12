@@ -56,6 +56,13 @@ class Restaurant {
   final String googleImageUrl;
   /// 사장님이 직접 입력한 매장 공지 (최대 500자)
   final String ownerNotice;
+  /// 어드민이 등록한 "혼밥하기 좋은 매장". description.solo_friendly == true 일 때만 true,
+  /// 키가 없으면 미등록(중립)이라 false.
+  final bool soloFriendly;
+  /// 어드민이 지정한 대표메뉴 이름(최대 2개, description.signature_menus).
+  /// menu[].name 과 일치할 때만 유효하며, 사장님이 메뉴를 바꿔 일치하지 않으면
+  /// 그 항목은 미지정으로 취급한다.
+  final List<String> signatureMenus;
 
   Restaurant({
     required this.id,
@@ -91,6 +98,8 @@ class Restaurant {
     this.imageSource = 'google',
     this.googleImageUrl = '',
     this.ownerNotice = '',
+    this.soloFriendly = false,
+    this.signatureMenus = const [],
   });
 
   Restaurant copyWith({
@@ -108,6 +117,7 @@ class Restaurant {
     List<MenuItem>? menu,
     String? hours,
     String? ownerNotice,
+    int? manualRank,
   }) =>
       Restaurant(
         id: id,
@@ -120,7 +130,7 @@ class Restaurant {
         updated: updated ?? this.updated,
         imageUrl: imageUrl ?? this.imageUrl,
         popularityScore: popularityScore,
-        manualRank: manualRank,
+        manualRank: manualRank ?? this.manualRank,
         ownerId: ownerId,
         distance: distance ?? this.distance,
         latitude: latitude,
@@ -143,6 +153,8 @@ class Restaurant {
         imageSource: imageSource ?? this.imageSource,
         googleImageUrl: googleImageUrl ?? this.googleImageUrl,
         ownerNotice: ownerNotice ?? this.ownerNotice,
+        soloFriendly: soloFriendly,
+        signatureMenus: signatureMenus,
       );
 
   int get totalReports =>

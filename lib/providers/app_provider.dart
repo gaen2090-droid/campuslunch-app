@@ -3257,24 +3257,8 @@ class AppProvider extends ChangeNotifier {
     _restaurants = _restaurants.map((r) {
       final rank = rankById[r.id];
       if (rank == null) return r;
-      return Restaurant(
-        id: r.id,
-        name: r.name,
-        category: r.category,
-        area: r.area,
-        address: r.address,
-        status: r.status,
-        updated: r.updated,
-        imageUrl: r.imageUrl,
-        distance: r.distance,
-        x: r.x,
-        y: r.y,
-        hours: r.hours,
-        reports: r.reports,
-        menu: r.menu,
-        popularityScore: r.popularityScore,
-        manualRank: rank,
-      );
+      // 필드를 하나하나 옮겨 담으면 새 필드(혼밥/대표메뉴 등)가 조용히 사라진다.
+      return r.copyWith(manualRank: rank);
     }).toList();
     notifyListeners();
 
