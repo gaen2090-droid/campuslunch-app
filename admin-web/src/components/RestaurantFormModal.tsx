@@ -83,6 +83,9 @@ export function RestaurantFormModal({
     }
     return out.slice(0, MAX_SIGNATURE);
   });
+  const [imageSourceLabel, setImageSourceLabel] = useState(
+    restaurant?.imageSourceLabel || "Google Maps",
+  );
   const [soloFriendly, setSoloFriendly] = useState(
     restaurant?.soloFriendly ?? false,
   );
@@ -136,6 +139,7 @@ export function RestaurantFormModal({
         hours,
         menu: validMenu,
         crowd_enabled: crowdEnabled,
+        image_source_label: imageSourceLabel,
         solo_friendly: soloFriendly,
         date_friendly: dateFriendly,
         signature_menus: signatureNames,
@@ -180,6 +184,22 @@ export function RestaurantFormModal({
               onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
             />
           </div>
+        </label>
+
+        <label className="field">
+          <span className="field-label">
+            이미지 출처{" "}
+            <span className="muted xs">
+              (앱 상세 화면 사진 우측 하단에 &quot;출처: ○○&quot;로 표시 · 기본값 Google Maps ·
+              사장님이 직접 올린 사진은 &quot;사장님&quot;으로 자동 표시)
+            </span>
+          </span>
+          <input
+            value={imageSourceLabel}
+            maxLength={20}
+            placeholder="Google Maps"
+            onChange={(e) => setImageSourceLabel(e.target.value)}
+          />
         </label>
 
         <label className="field">

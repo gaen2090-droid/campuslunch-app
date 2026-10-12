@@ -51,6 +51,9 @@ class Restaurant {
   final List<String> menuPhotoUrls;
   /// 대표사진(imageUrl) 출처. 'owner' | 'google' (기본값 'google')
   final String imageSource;
+  /// 어드민이 입력한 대표사진 출처 문구(예: '매장 제공'). 현재 대표사진에 대해 입력된 값일 때만
+  /// 채워지고(사진이 바뀌면 비워짐), 비어 있으면 기본값 'Google Maps'를 쓴다.
+  final String imageSourceLabel;
   /// 사장님이 대표사진을 처음 교체할 때 보존해둔 원본 구글 사진 URL.
   /// 비어있으면 "구글맵 사진으로 되돌리기"를 보여줄 수 없음(보존값 없음).
   final String googleImageUrl;
@@ -98,6 +101,7 @@ class Restaurant {
     this.crowdEnabled = true,
     this.menuPhotoUrls = const [],
     this.imageSource = 'google',
+    this.imageSourceLabel = '',
     this.googleImageUrl = '',
     this.ownerNotice = '',
     this.soloFriendly = false,
@@ -154,12 +158,20 @@ class Restaurant {
         crowdEnabled: crowdEnabled,
         menuPhotoUrls: menuPhotoUrls ?? this.menuPhotoUrls,
         imageSource: imageSource ?? this.imageSource,
+        imageSourceLabel: imageSourceLabel,
         googleImageUrl: googleImageUrl ?? this.googleImageUrl,
         ownerNotice: ownerNotice ?? this.ownerNotice,
         soloFriendly: soloFriendly,
         dateFriendly: dateFriendly,
         signatureMenus: signatureMenus,
       );
+
+  /// 대표사진 출처로 화면에 보여줄 이름. 사장님이 직접 올린 사진이 최우선이고,
+  /// 그다음 어드민이 입력한 문구, 없으면 'Google Maps'.
+  String get imageSourceDisplayName {
+    if (imageSource == 'owner') return '사장님';
+    return imageSourceLabel.isNotEmpty ? imageSourceLabel : 'Google Maps';
+  }
 
   int get totalReports =>
       reports.values.fold(0, (sum, v) => sum + v);

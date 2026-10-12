@@ -181,6 +181,11 @@ function mergeRestaurant(
       ? (extra!.menu_photo_urls as unknown[]).map(String)
       : [],
     imageSource: typeof extra?.image_source === "string" ? extra.image_source : "google",
+    imageSourceLabel:
+      typeof extra?.image_source_label === "string" &&
+      extra.image_source_label_url === String(row.image_url ?? "")
+        ? extra.image_source_label
+        : "",
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
     soloFriendly: extra?.solo_friendly === true,
     dateFriendly: extra?.date_friendly === true,
@@ -274,6 +279,12 @@ export async function insertRestaurant(
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
   if (data.solo_friendly) desc.solo_friendly = true;
   if (data.date_friendly) desc.date_friendly = true;
+  const srcLabel = normalizeImageSourceLabel(data.image_source_label);
+  if (srcLabel) {
+    desc.image_source_label = srcLabel;
+    // 어떤 사진에 대한 출처인지 함께 저장 — 사진이 바뀌면 앱이 이 문구를 쓰지 않는다.
+    desc.image_source_label_url = data.image_url ?? "";
+  }
   const sigs = normalizeSignatureMenus(data.signature_menus);
   if (sigs.length) desc.signature_menus = sigs;
 
@@ -293,6 +304,16 @@ export async function insertRestaurant(
   if (error) throw error;
 }
 
+// 기본값은 "Google Maps". 같은 뜻의 다른 표기도 기본값으로 취급해 키를 저장하지 않는다.
+const DEFAULT_IMAGE_SOURCE_NAMES = ["google maps", "googlemaps", "google", "구글맵", "구글 맵"];
+
+/** 대표사진 출처 문구 정리. 기본값(Google Maps)이거나 비어 있으면 ""(= 키 삭제). */
+function normalizeImageSourceLabel(label: string | undefined): string {
+  const v = (label ?? "").trim().slice(0, 20);
+  if (!v) return "";
+  return DEFAULT_IMAGE_SOURCE_NAMES.includes(v.toLowerCase()) ? "" : v;
+}
+
 export async function updateRestaurant(
   id: string,
   data: Partial<RestaurantFormData>,
@@ -310,11 +331,12 @@ export async function updateRestaurant(
     data.menu != null ||
     data.solo_friendly != null ||
     data.date_friendly != null ||
+    data.image_source_label != null ||
     data.signature_menus != null
   ) {
     const { data: existing, error: fetchErr } = await supabase
       .from("restaurants")
-      .select("description")
+      .select("description, image_url")
       .eq("id", id)
       .single();
     if (fetchErr) throw fetchErr;
@@ -343,6 +365,17 @@ export async function updateRestaurant(
     if (data.date_friendly != null) {
       if (data.date_friendly) desc.date_friendly = true;
       else delete desc.date_friendly;
+    }
+    if (data.image_source_label != null) {
+      const srcLabel = normalizeImageSourceLabel(data.image_source_label);
+      if (srcLabel) {
+        desc.image_source_label = srcLabel;
+        desc.image_source_label_url =
+          data.image_url ?? String(existing?.image_url ?? "");
+      } else {
+        delete desc.image_source_label;
+        delete desc.image_source_label_url;
+      }
     }
     if (data.signature_menus != null) {
       const sigs = normalizeSignatureMenus(data.signature_menus);

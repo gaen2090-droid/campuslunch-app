@@ -733,6 +733,7 @@ class SupabaseRestaurantRepository {
       crowdEnabled: row['crowd_enabled'] as bool? ?? true,
       menuPhotoUrls: menuPhotoUrls,
       imageSource: extra?['image_source'] as String? ?? 'google',
+      imageSourceLabel: _parseImageSourceLabel(extra, row['image_url'] as String? ?? ''),
       googleImageUrl: extra?['google_image_url'] as String? ?? '',
       ownerNotice: extra?['owner_notice'] as String? ?? '',
       soloFriendly: extra?['solo_friendly'] == true,
@@ -972,6 +973,15 @@ class SupabaseRestaurantRepository {
   // ── 인기도 점수 계산 ──
   // (약간혼잡 지속 토큰*1 + 자리없음 지속 토큰*2), 토큰=5분, 영업시간 내만 집계, 최근 7일
   /// 신규 키(signature_menus 배열)를 우선하고, 예전 단일 키(signature_menu)도 읽는다.
+  /// 어드민이 입력한 대표사진 출처 문구. 입력 당시의 대표사진(image_source_label_url)과 현재
+  /// 대표사진이 같을 때만 쓴다 — 사장님이 사진을 바꾸거나 되돌리면 자동으로 무효가 된다.
+  String _parseImageSourceLabel(Map<String, dynamic>? extra, String imageUrl) {
+    final label = (extra?['image_source_label'] as String? ?? '').trim();
+    if (label.isEmpty) return '';
+    final boundUrl = extra?['image_source_label_url'] as String? ?? '';
+    return boundUrl == imageUrl ? label : '';
+  }
+
   List<String> _parseSignatureMenus(Map<String, dynamic>? extra) {
     final out = <String>[];
     final multi = extra?['signature_menus'];

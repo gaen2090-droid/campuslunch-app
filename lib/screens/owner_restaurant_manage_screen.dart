@@ -455,7 +455,7 @@ class _MainPhotoSectionState extends State<_MainPhotoSection> {
           ),
           const SizedBox(height: 4),
           Text(
-            r.imageSource == 'owner' ? '현재 출처: 사장님' : '현재 출처: Google Maps',
+            '현재 출처: ${r.imageSourceDisplayName}',
             style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
           ),
           const SizedBox(height: 10),

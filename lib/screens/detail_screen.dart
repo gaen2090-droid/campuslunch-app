@@ -193,8 +193,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       right: 12,
                       bottom: (1 + r.menuPhotoUrls.length) > 1 ? 24 : 12,
                       child: Text(
-                        _photoIndex == 0
-                            ? (r.imageSource == 'owner' ? '출처: 사장님' : '출처: Google Maps')
+                        // 대표사진이 없으면 첫 사진도 메뉴 사진(사장님)이다.
+                        (_photoIndex == 0 && r.imageUrl.isNotEmpty)
+                            ? '출처: ${r.imageSourceDisplayName}'
                             : '출처: 사장님',
                         style: const TextStyle(
                           fontSize: 11,
@@ -423,7 +424,12 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ),
 
-            if (r.menu.isNotEmpty) _MenuSection(menu: r.menu, formatPrice: _formatPrice),
+            if (r.menu.isNotEmpty)
+              _MenuSection(
+                menu: r.menu,
+                formatPrice: _formatPrice,
+                signatureNames: r.signatureMenus,
+              ),
 
             SizedBox(height: 88 + MediaQuery.paddingOf(context).bottom),
           ],
@@ -556,10 +562,18 @@ class _OwnerNoticeBanner extends StatelessWidget {
 class _MenuSection extends StatelessWidget {
   final List<MenuItem> menu;
   final String Function(int) formatPrice;
-  const _MenuSection({required this.menu, required this.formatPrice});
+
+  /// 어드민이 지정한 대표메뉴 이름. 메뉴명 옆에 별을 붙인다.
+  final List<String> signatureNames;
+  const _MenuSection({
+    required this.menu,
+    required this.formatPrice,
+    this.signatureNames = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
+    final signature = signatureNames.map((n) => n.trim()).toSet();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Container(
@@ -584,13 +598,30 @@ class _MenuSection extends StatelessWidget {
             const SizedBox(height: 10),
             ...menu.asMap().entries.map((e) {
               final isLast = e.key == menu.length - 1;
+              final isSignature = signature.contains(e.value.name.trim());
               return Padding(
                 padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        e.value.name,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: e.value.name),
+                            if (isSignature)
+                              const WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: 4),
+                                  child: Icon(
+                                    Icons.star_rounded,
+                                    size: 16,
+                                    color: AppColors.primaryCta,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

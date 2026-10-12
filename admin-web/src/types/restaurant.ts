@@ -31,6 +31,8 @@ export interface AdminRestaurant {
   menuPhotoUrls?: string[];
   /** 대표사진(imageUrl) 출처. 'owner' | 'google' */
   imageSource?: string;
+  /** 어드민이 입력한 대표사진 출처 문구. 현재 대표사진에 대해 입력된 값일 때만 채워짐. 비면 "Google Maps". */
+  imageSourceLabel?: string;
   /** 사장님이 직접 입력한 매장 공지 (최대 500자) */
   ownerNotice?: string;
   /** 어드민이 등록한 "혼밥하기 좋은 매장". 키가 없으면 미등록(중립). */
@@ -66,6 +68,8 @@ export interface RestaurantFormData {
   hours_periods?: Record<string, unknown>[];
   menu_photo_urls?: string[];
   image_source?: string;
+  /** 대표사진 출처 문구. 비어 있거나 "Google Maps"면 기본값(키 삭제). */
+  image_source_label?: string;
   owner_notice?: string;
   /** 혼밥하기 좋은 매장. true면 키 저장, false면 키 삭제(미등록). */
   solo_friendly?: boolean;
