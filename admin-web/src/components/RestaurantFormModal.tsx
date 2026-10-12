@@ -8,6 +8,7 @@ import {
 } from "../lib/adminApi";
 import type { AdminRestaurant, MenuItem, RestaurantFormData } from "../types/restaurant";
 import { errorMessage } from "../lib/errors";
+import { geocodeAddress, type GeocodeCandidate } from "../lib/places";
 import { Modal } from "./Modal";
 
 interface Props {
@@ -58,6 +59,13 @@ export function RestaurantFormModal({
 }: Props) {
   const [name, setName] = useState(restaurant?.name ?? "");
   const [area, setArea] = useState(restaurant?.area ?? AREAS[0]);
+  // 위치: 주소로 좌표를 찾거나 위도/경도를 직접 입력한다. 0/0이면 "위치 없음".
+  const [addressText, setAddressText] = useState(restaurant?.address ?? "");
+  const [latitude, setLatitude] = useState<number>(restaurant?.latitude ?? 0);
+  const [longitude, setLongitude] = useState<number>(restaurant?.longitude ?? 0);
+  const [candidates, setCandidates] = useState<GeocodeCandidate[]>([]);
+  const [locating, setLocating] = useState(false);
+  const [locationMsg, setLocationMsg] = useState("");
   const [category, setCategory] = useState(
     restaurant?.category ?? CATEGORIES[0],
   );
@@ -86,6 +94,12 @@ export function RestaurantFormModal({
   const [imageSourceLabel, setImageSourceLabel] = useState(
     restaurant?.imageSourceLabel || "Google Maps",
   );
+  const [closedDays, setClosedDays] = useState<number[]>(
+    restaurant?.closedDays ?? [],
+  );
+  const [closedOnHolidays, setClosedOnHolidays] = useState(
+    restaurant?.closedOnHolidays ?? false,
+  );
   const [soloFriendly, setSoloFriendly] = useState(
     restaurant?.soloFriendly ?? false,
   );
@@ -111,10 +125,48 @@ export function RestaurantFormModal({
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
 
+  async function findLocation() {
+    setLocating(true);
+    setLocationMsg("");
+    setCandidates([]);
+    try {
+      const found = await geocodeAddress(addressText);
+      if (found.length === 0) {
+        setLocationMsg("주소를 찾지 못했어요. 도로명/지번 주소를 더 자세히 입력해 주세요.");
+      } else if (found.length === 1) {
+        applyCandidate(found[0]);
+      } else {
+        setCandidates(found);
+        setLocationMsg("아래에서 맞는 위치를 선택해 주세요.");
+      }
+    } catch (err) {
+      setLocationMsg(errorMessage(err));
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  function applyCandidate(c: GeocodeCandidate) {
+    setLatitude(c.latitude);
+    setLongitude(c.longitude);
+    setAddressText(c.address);
+    setCandidates([]);
+    setLocationMsg("위치를 설정했어요. 저장하면 반영돼요.");
+  }
+
+  const hasLocation = Math.abs(latitude) > 0.0001 && Math.abs(longitude) > 0.0001;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
       setError("매장명을 입력해주세요.");
+      return;
+    }
+    if (
+      hasLocation &&
+      (latitude < 33 || latitude > 39 || longitude < 124 || longitude > 132)
+    ) {
+      setError("위도/경도가 한국 범위를 벗어났어요. 위도·경도 순서를 확인해 주세요.");
       return;
     }
     setSaving(true);
@@ -127,7 +179,12 @@ export function RestaurantFormModal({
       const hours = alwaysOpen
         ? ALWAYS_OPEN_HOURS
         : times.map((t) => `${t.from} - ${t.to}`).join(", ");
-      const validMenu = menu.filter((m) => m.name.trim());
+      // 최대 가격은 최소 가격보다 클 때만 범위로 저장한다 (아니면 단일 가격).
+      const validMenu = menu
+        .filter((m) => m.name.trim())
+        .map(({ price_max, ...m }) =>
+          price_max && price_max > m.price ? { ...m, price_max } : m,
+        );
       const signatureNames = signatureIdxs
         .map((i) => menu[i]?.name.trim() ?? "")
         .filter((n) => n.length > 0);
@@ -135,11 +192,15 @@ export function RestaurantFormModal({
         name: name.trim(),
         area,
         category,
-        address: area,
+        address: addressText.trim() || area,
+        latitude: hasLocation ? latitude : 0,
+        longitude: hasLocation ? longitude : 0,
         hours,
         menu: validMenu,
         crowd_enabled: crowdEnabled,
         image_source_label: imageSourceLabel,
+        closed_days: closedDays,
+        closed_on_holidays: closedOnHolidays,
         solo_friendly: soloFriendly,
         date_friendly: dateFriendly,
         signature_menus: signatureNames,
@@ -206,6 +267,84 @@ export function RestaurantFormModal({
           <span className="field-label">매장명 *</span>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
+
+        <div className="field">
+          <span className="field-label">
+            위치{" "}
+            <span className="muted xs">
+              (주소만 입력해도 돼요 · 위치가 없으면 지도·거리 기능에서 빠져요)
+            </span>
+          </span>
+          <div className="menu-row">
+            <input
+              placeholder="도로명 또는 지번 주소 (예: 서울 동작구 흑석로 84)"
+              value={addressText}
+              onChange={(e) => setAddressText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void findLocation();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn ghost sm"
+              disabled={locating || addressText.trim().length < 2}
+              onClick={() => void findLocation()}
+            >
+              {locating ? "찾는 중…" : "위치 찾기"}
+            </button>
+          </div>
+          {candidates.length > 0 && (
+            <ul style={{ listStyle: "none", margin: "4px 0", padding: 0, display: "grid", gap: 4 }}>
+              {candidates.map((c, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() => applyCandidate(c)}
+                  >
+                    {c.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {locationMsg && <p className="muted xs">{locationMsg}</p>}
+          <div className="menu-row">
+            <input
+              type="number"
+              step="any"
+              placeholder="위도 (예: 37.5070)"
+              value={latitude || ""}
+              onChange={(e) => setLatitude(Number.parseFloat(e.target.value) || 0)}
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="경도 (예: 126.9571)"
+              value={longitude || ""}
+              onChange={(e) => setLongitude(Number.parseFloat(e.target.value) || 0)}
+            />
+          </div>
+          <p className="muted xs">
+            {hasLocation ? (
+              <>
+                현재 위치: {latitude.toFixed(6)}, {longitude.toFixed(6)} ·{" "}
+                <a
+                  href={`https://map.kakao.com/link/map/${encodeURIComponent(name || "매장")},${latitude},${longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  카카오맵에서 확인
+                </a>
+              </>
+            ) : (
+              "위치 미설정"
+            )}
+          </p>
+        </div>
 
         {lockCrowdEnabled ? (
           <p className="muted sm">
@@ -354,6 +493,45 @@ export function RestaurantFormModal({
 
         <div className="field">
           <span className="field-label">
+            정기 휴무{" "}
+            <span className="muted xs">
+              (휴무 요일엔 앱에서 "영업안함"으로 보이고, 점메추 요정에서도 빠져요)
+            </span>
+          </span>
+          <div className="menu-row">
+            {["월", "화", "수", "목", "금", "토", "일"].map((label, i) => {
+              const day = i + 1;
+              const on = closedDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  className={`btn sm ${on ? "primary" : "ghost"}`}
+                  onClick={() =>
+                    setClosedDays((cur) =>
+                      cur.includes(day)
+                        ? cur.filter((d) => d !== day)
+                        : [...cur, day].sort((a, b) => a - b),
+                    )
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={closedOnHolidays}
+              onChange={(e) => setClosedOnHolidays(e.target.checked)}
+            />
+            <span>공휴일 휴무 (대체공휴일 포함)</span>
+          </label>
+        </div>
+
+        <div className="field">
+          <span className="field-label">
             메뉴{" "}
             <span className="muted xs">
               (대표메뉴 {signatureIdxs.length}/{MAX_SIGNATURE})
@@ -389,6 +567,26 @@ export function RestaurantFormModal({
                   )
                 }
               />
+              <span className="muted xs">~</span>
+              <input
+                type="number"
+                placeholder="최대 (선택)"
+                title="가격이 범위일 때만 입력하세요. 예: 6000 ~ 9000원"
+                value={item.price_max || ""}
+                onChange={(e) =>
+                  setMenu((prev) =>
+                    prev.map((m, idx) =>
+                      idx === i
+                        ? {
+                            ...m,
+                            price_max:
+                              Number.parseInt(e.target.value, 10) || undefined,
+                          }
+                        : m,
+                    ),
+                  )
+                }
+              />
               <button
                 type="button"
                 className={`btn sm ${signatureIdxs.includes(i) ? "primary" : "ghost"}`}
@@ -401,7 +599,7 @@ export function RestaurantFormModal({
                   !signatureIdxs.includes(i) &&
                   signatureIdxs.length >= MAX_SIGNATURE
                     ? "대표메뉴는 최대 2개까지예요. 다른 대표를 먼저 해제해 주세요."
-                    : "점심메뉴 요정이 이 매장의 대표메뉴로 소개해요"
+                    : "점메추 요정이 이 매장의 대표메뉴로 소개해요"
                 }
                 onClick={() =>
                   setSignatureIdxs((cur) =>

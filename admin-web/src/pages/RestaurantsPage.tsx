@@ -252,6 +252,17 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                       {r.dateFriendly && (
                         <span className="badge assigned">밥약</span>
                       )}
+                      {((r.closedDays?.length ?? 0) > 0 || r.closedOnHolidays) && (
+                        <span className="badge">
+                          휴무:{" "}
+                          {[
+                            ...(r.closedDays ?? []).map(
+                              (d) => ["월", "화", "수", "목", "금", "토", "일"][d - 1],
+                            ),
+                            ...(r.closedOnHolidays ? ["공휴일"] : []),
+                          ].join("·")}
+                        </span>
+                      )}
                       {isSignatureMismatch(r) && (
                         <span className="badge warning">
                           대표메뉴 불일치: {missingSignatures(r).join(", ")}

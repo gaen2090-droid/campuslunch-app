@@ -1,6 +1,9 @@
 export interface MenuItem {
   name: string;
+  /** 가격. 가격 범위 메뉴는 최소 가격. */
   price: number;
+  /** 가격 범위의 최대 가격. 없거나 price 이하면 단일 가격. */
+  price_max?: number;
 }
 
 export interface AdminRestaurant {
@@ -39,6 +42,10 @@ export interface AdminRestaurant {
   soloFriendly?: boolean;
   /** 어드민이 등록한 "밥약하기 좋은 매장". 키가 없으면 미등록(중립). */
   dateFriendly?: boolean;
+  /** 정기 휴무 요일 (월=1 … 일=7). 없으면 휴무 없음. */
+  closedDays?: number[];
+  /** 공휴일 휴무 여부. */
+  closedOnHolidays?: boolean;
   /** 어드민이 지정한 대표메뉴 이름(최대 2개). menu[].name 과 일치할 때만 유효. */
   signatureMenus?: string[];
   createdAt: Date;
@@ -75,6 +82,10 @@ export interface RestaurantFormData {
   solo_friendly?: boolean;
   /** 밥약하기 좋은 매장. true면 키 저장, false면 키 삭제(미등록). */
   date_friendly?: boolean;
+  /** 정기 휴무 요일 (월=1 … 일=7). 빈 배열이면 키 삭제. */
+  closed_days?: number[];
+  /** 공휴일 휴무. true면 키 저장, false면 키 삭제. */
+  closed_on_holidays?: boolean;
   /** 대표메뉴 이름(최대 2개). 빈 배열이면 키 삭제. */
   signature_menus?: string[];
   /** 제보 대상 매장 여부. 기본 true. false로 등록하면 맛집컬렉션 전용 매장이 된다. */

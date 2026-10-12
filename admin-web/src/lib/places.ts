@@ -129,6 +129,85 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
   });
 }
 
+export interface GeocodeCandidate {
+  /** 후보 목록에 보여줄 이름(주소 검색이면 주소, 장소 검색이면 매장명) */
+  label: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+async function kakaoJson(url: string): Promise<{
+  documents?: Array<Record<string, unknown>>;
+}> {
+  const res = await fetch(url, { headers: kakaoHeaders() });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const err = (await res.json()) as { message?: string };
+      detail = err.message ?? "";
+    } catch {
+      /* ignore */
+    }
+    throw new Error(
+      detail ? `위치 검색 실패 (${res.status}): ${detail}` : `위치 검색 실패 (${res.status})`,
+    );
+  }
+  return (await res.json()) as { documents?: Array<Record<string, unknown>> };
+}
+
+/**
+ * 주소(도로명/지번)로 좌표를 찾는다. 주소 검색에 결과가 없으면 같은 문구로
+ * 장소(매장명) 검색을 한 번 더 시도한다.
+ */
+export async function geocodeAddress(query: string): Promise<GeocodeCandidate[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  if (!hasKakaoKey()) {
+    throw new Error("KAKAO_REST_API_KEY가 설정되지 않았어요.");
+  }
+
+  const byAddress = await kakaoJson(
+    `https://dapi.kakao.com/v2/local/search/address.json?${new URLSearchParams({ query: q, size: "10" })}`,
+  );
+  const fromAddress = (byAddress.documents ?? [])
+    .map((d) => {
+      const road = (d.road_address as { address_name?: string } | null)?.address_name ?? "";
+      const jibun = String(d.address_name ?? "");
+      const address = road || jibun;
+      return {
+        label: address,
+        address,
+        latitude: Number.parseFloat(String(d.y ?? "0")),
+        longitude: Number.parseFloat(String(d.x ?? "0")),
+      };
+    })
+    .filter((c) => c.latitude && c.longitude);
+  if (fromAddress.length > 0) return fromAddress;
+
+  const byKeyword = await kakaoJson(
+    `https://dapi.kakao.com/v2/local/search/keyword.json?${new URLSearchParams({
+      query: q,
+      x: "126.95707",
+      y: "37.50699",
+      sort: "distance",
+      size: "10",
+    })}`,
+  );
+  return (byKeyword.documents ?? [])
+    .map((d) => {
+      const address =
+        String(d.road_address_name ?? "").trim() || String(d.address_name ?? "").trim();
+      return {
+        label: `${String(d.place_name ?? "")} · ${address}`,
+        address,
+        latitude: Number.parseFloat(String(d.y ?? "0")),
+        longitude: Number.parseFloat(String(d.x ?? "0")),
+      };
+    })
+    .filter((c) => c.latitude && c.longitude);
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }

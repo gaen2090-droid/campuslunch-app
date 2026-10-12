@@ -75,7 +75,13 @@ function parseMenu(raw: unknown): MenuItem[] {
         typeof item.price === "number"
           ? item.price
           : Number.parseInt(String(item.price ?? "0"), 10) || 0;
-      return name ? { name, price } : null;
+      const rawMax = item.price_max;
+      const priceMax =
+        typeof rawMax === "number"
+          ? rawMax
+          : Number.parseInt(String(rawMax ?? "0"), 10) || 0;
+      if (!name) return null;
+      return priceMax > price ? { name, price, price_max: priceMax } : { name, price };
     })
     .filter((m): m is MenuItem => m != null);
 }
@@ -189,6 +195,8 @@ function mergeRestaurant(
     ownerNotice: typeof extra?.owner_notice === "string" ? extra.owner_notice : "",
     soloFriendly: extra?.solo_friendly === true,
     dateFriendly: extra?.date_friendly === true,
+    closedDays: parseClosedDays(extra?.closed_days),
+    closedOnHolidays: extra?.closed_on_holidays === true,
     signatureMenus: parseSignatureMenus(extra),
     createdAt: row.created_at ? new Date(String(row.created_at)) : new Date(0),
   };
@@ -279,6 +287,9 @@ export async function insertRestaurant(
   if (data.hours_periods?.length) desc.hours_periods = data.hours_periods;
   if (data.solo_friendly) desc.solo_friendly = true;
   if (data.date_friendly) desc.date_friendly = true;
+  const closed = parseClosedDays(data.closed_days);
+  if (closed.length) desc.closed_days = closed;
+  if (data.closed_on_holidays) desc.closed_on_holidays = true;
   const srcLabel = normalizeImageSourceLabel(data.image_source_label);
   if (srcLabel) {
     desc.image_source_label = srcLabel;
@@ -305,6 +316,16 @@ export async function insertRestaurant(
 }
 
 // 기본값은 "Google Maps". 같은 뜻의 다른 표기도 기본값으로 취급해 키를 저장하지 않는다.
+function parseClosedDays(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const set = new Set<number>();
+  for (const v of raw) {
+    const n = typeof v === "number" ? v : Number.parseInt(String(v), 10);
+    if (Number.isInteger(n) && n >= 1 && n <= 7) set.add(n);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 const DEFAULT_IMAGE_SOURCE_NAMES = ["google maps", "googlemaps", "google", "구글맵", "구글 맵"];
 
 /** 대표사진 출처 문구 정리. 기본값(Google Maps)이거나 비어 있으면 ""(= 키 삭제). */
@@ -324,6 +345,8 @@ export async function updateRestaurant(
   if (data.area != null) patch.area = data.area;
   if (data.address != null) patch.address = data.address;
   if (data.image_url != null) patch.image_url = data.image_url;
+  if (data.latitude != null) patch.latitude = data.latitude;
+  if (data.longitude != null) patch.longitude = data.longitude;
   if (data.crowd_enabled != null) patch.crowd_enabled = data.crowd_enabled;
 
   if (
@@ -332,6 +355,8 @@ export async function updateRestaurant(
     data.solo_friendly != null ||
     data.date_friendly != null ||
     data.image_source_label != null ||
+    data.closed_days != null ||
+    data.closed_on_holidays != null ||
     data.signature_menus != null
   ) {
     const { data: existing, error: fetchErr } = await supabase
@@ -365,6 +390,16 @@ export async function updateRestaurant(
     if (data.date_friendly != null) {
       if (data.date_friendly) desc.date_friendly = true;
       else delete desc.date_friendly;
+    }
+    // 휴무일: 미지정 = 키 없음(매일 영업). 사장님 RPC는 이 키를 건드리지 않는다.
+    if (data.closed_days != null) {
+      const closed = parseClosedDays(data.closed_days);
+      if (closed.length) desc.closed_days = closed;
+      else delete desc.closed_days;
+    }
+    if (data.closed_on_holidays != null) {
+      if (data.closed_on_holidays) desc.closed_on_holidays = true;
+      else delete desc.closed_on_holidays;
     }
     if (data.image_source_label != null) {
       const srcLabel = normalizeImageSourceLabel(data.image_source_label);
