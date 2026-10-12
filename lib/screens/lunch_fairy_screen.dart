@@ -131,8 +131,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   int? _budget;
   int? _walk;
 
-  /// 흑석(=정문) / 상도(=후문). 복수 선택 가능하고, 도보 조건과 함께 쓸 수 있다.
+  /// 흑석(=정문+중문) / 상도(=후문). 복수 선택 가능하고, 도보 조건과 함께 쓸 수 있다.
+  /// 값은 매장의 area 그대로(정문·중문·후문)이다.
   final Set<String> _areas = {};
+
+  static const _heukseokAreas = ['정문', '중문'];
+  static const _sangdoAreas = ['후문'];
   FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
@@ -163,7 +167,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             [if (prefs.getString(_kArea) != null) prefs.getString(_kArea)!];
         _areas
           ..clear()
-          ..addAll(savedAreas.where((a) => a == '정문' || a == '후문'));
+          ..addAll(savedAreas.where((a) => a == '정문' || a == '중문' || a == '후문'));
+        // 흑석은 정문+중문을 함께 다룬다. 예전에 정문만 저장된 값도 흑석 전체로 맞춘다.
+        if (_areas.contains('정문') || _areas.contains('중문')) {
+          _areas.addAll(_heukseokAreas);
+        }
         final saved = prefs.getString(_kCompanion);
         _companion = FairyCompanion.values.firstWhere(
           (c) => c.name == saved,
@@ -217,8 +225,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     });
   }
 
-  void _toggleArea(String area) {
-    if (!_areas.remove(area)) _areas.add(area);
+  /// 칩 하나가 여러 지역(흑석 = 정문+중문)을 묶는다. 모두 선택돼 있으면 해제, 아니면 모두 선택.
+  void _toggleAreas(List<String> group) {
+    if (_areas.containsAll(group)) {
+      _areas.removeAll(group);
+    } else {
+      _areas.addAll(group);
+    }
   }
 
   /// 도보 5분/10분 선택. 위치가 꺼져 있으면 OS 위치 권한 팝업을 띄우고, 허용되면 선택한다.
@@ -470,13 +483,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             // 도보 5분/10분과 함께 고르면 "그 지역 안에서 도보 N분 이내"가 된다.
             _chip(
               '흑석',
-              _areas.contains('정문'),
-              () => setState(() => _toggleArea('정문')),
+              _areas.containsAll(_heukseokAreas),
+              () => setState(() => _toggleAreas(_heukseokAreas)),
             ),
             _chip(
               '상도',
-              _areas.contains('후문'),
-              () => setState(() => _toggleArea('후문')),
+              _areas.containsAll(_sangdoAreas),
+              () => setState(() => _toggleAreas(_sangdoAreas)),
             ),
           ],
           footer: _locationReady

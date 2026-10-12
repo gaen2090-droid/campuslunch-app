@@ -386,6 +386,23 @@ void main() {
       expect(ids, {'front', 'back'});
     });
 
+    test('흑석은 정문과 중문을 함께 포함한다 (상도=후문은 제외)', () {
+      final list = [
+        _r('front'),
+        _r('mid', area: '중문'),
+        _r('back', area: '후문'),
+      ];
+      final ids = <String>{};
+      for (var seed = 0; seed < 100; seed++) {
+        ids.add(_run(list,
+                request: const FairyRequest(areas: {'정문', '중문'}), seed: seed)
+            .pick!
+            .restaurant
+            .id);
+      }
+      expect(ids, {'front', 'mid'});
+    });
+
     test('지역과 도보를 함께 쓰면 두 조건을 모두 만족해야 한다', () {
       // 정문 매장은 가까움(100m), 후문 매장도 가까움(100m), 정문 매장 하나는 멀다(2km)
       final list = [
