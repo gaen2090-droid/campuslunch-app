@@ -193,6 +193,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   /// (호출부에서 정문 폴백).
   Future<LatLng?> _tryGetInitialUserLocation() async {
     if (!widget.myLocationEnabled) return null;
+    if (_startLocation != null) return _startLocation;
     try {
       final permission = await Geolocator.checkPermission();
       if (permission != LocationPermission.always &&
@@ -201,7 +202,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       }
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 8));
       return LatLng(latitude: pos.latitude, longitude: pos.longitude);
     } catch (e) {
       debugPrint('[RestaurantKakaoMap] initial location fetch failed: $e');
@@ -211,11 +212,43 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
   bool _waitingKakaoMapSdk = false;
 
+  /// 지도를 만들기 전에 미리 구한 시작 위치(마지막으로 알려진 위치). 있으면 지도를
+  /// 처음부터 내 위치에서 띄워, 학교가 먼저 보였다가 한참 뒤 이동하는 현상을 없앤다.
+  LatLng? _startLocation;
+  bool _startLocationResolved = false;
+
+  bool get _wantsStartLocation =>
+      widget.myLocationEnabled && (widget.initialFocusRestaurants?.isNotEmpty ?? false);
+
+  /// 마지막으로 알려진 위치는 거의 즉시 나온다. 짧게만 기다리고, 없으면 기다리지 않고
+  /// 정문 일대로 시작한 뒤 위치가 잡히면 이동한다(_tryGetInitialUserLocation).
+  Future<void> _resolveStartLocation() async {
+    try {
+      if (_wantsStartLocation) {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          final pos = await Geolocator.getLastKnownPosition()
+              .timeout(const Duration(milliseconds: 700));
+          if (pos != null) {
+            _startLocation = LatLng(latitude: pos.latitude, longitude: pos.longitude);
+            _cachedMyLocation ??= _startLocation;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[RestaurantKakaoMap] start location lookup failed: $e');
+    }
+    if (!mounted) return;
+    setState(() => _startLocationResolved = true);
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _ensureKakaoMapSdk();
+    unawaited(_resolveStartLocation());
   }
 
   void _ensureKakaoMapSdk() {
@@ -792,10 +825,16 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       );
     }
 
+    // 마지막 위치 조회(최대 0.7초)가 끝나기 전에는 지도를 만들지 않는다 — 시작 위치를
+    // 알고 만들어야 처음부터 내 위치에서 열린다.
+    if (!_startLocationResolved && _wantsStartLocation) {
+      return const ColoredBox(color: Colors.white, child: SizedBox.expand());
+    }
+
     return KakaoMap(
       onMapCreated: _onMapCreated,
-      initialPosition: _campus,
-      initialLevel: 15,
+      initialPosition: _startLocation ?? _campus,
+      initialLevel: _startLocation != null ? 17 : 15,
       logo: const Logo(alignment: LogoAlignment.bottomLeft),
     );
   }
