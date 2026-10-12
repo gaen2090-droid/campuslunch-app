@@ -189,15 +189,15 @@ class Restaurant {
         signatureMenus: signatureMenus,
       );
 
-  /// 상세 화면용 휴무 안내. 휴무일이 없으면 빈 문자열. 예) "휴무: 일요일 · 공휴일"
+  /// 상세 화면용 휴무 안내. 휴무일이 없으면 빈 문자열. 예) "휴무: 토, 일, 공휴일"
   String get closedDaysLabel {
-    const names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+    const names = ['월', '화', '수', '목', '금', '토', '일'];
     final days = (closedWeekdays.toSet().toList()..sort())
         .where((d) => d >= 1 && d <= 7)
         .map((d) => names[d - 1])
         .toList();
     final parts = [...days, if (closedOnHolidays) '공휴일'];
-    return parts.isEmpty ? '' : '휴무: ${parts.join(' · ')}';
+    return parts.isEmpty ? '' : '휴무: ${parts.join(', ')}';
   }
 
   /// 대표사진 출처로 화면에 보여줄 이름. 사장님이 직접 올린 사진이 최우선이고,
