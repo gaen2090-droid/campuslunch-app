@@ -76,7 +76,8 @@ class RestaurantCard extends StatelessWidget {
             // 배지 유무 자체가 "제보 대상인지"를 알려주는 규칙이라 별도 라벨을 넣지 않는다.
             if (r.crowdEnabled) ...[
               const SizedBox(width: 8),
-              if (r.hasCrowdUpdate && r.crowdBaseSource == 'owner') ...[
+              if (r.hasCrowdUpdate &&
+                  (r.crowdBaseSource == 'owner' || r.isSeatDerived)) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -105,7 +106,8 @@ class RestaurantCard extends StatelessWidget {
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: displayStatus,
+                        // 사장님 좌석 입력으로 가정한 상태는 "4명가능"처럼 인원으로 보여준다.
+                        text: r.seatBadgeLabel ?? displayStatus,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
@@ -226,7 +228,8 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (r.hasCrowdUpdate && r.crowdBaseSource == 'owner') ...[
+                        if (r.hasCrowdUpdate &&
+                            (r.crowdBaseSource == 'owner' || r.isSeatDerived)) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -252,7 +255,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                           ),
                           child: Text.rich(
                             TextSpan(
-                              text: statusLabel,
+                              text: r.seatBadgeLabel ?? statusLabel,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,

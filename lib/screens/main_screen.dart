@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/coach_mark_step.dart';
@@ -82,7 +83,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      context.read<AppProvider>().recordAppSession();
+      final provider = context.read<AppProvider>();
+      provider.recordAppSession();
+      // 다른 앱을 쓰다 돌아오면 혼잡도·사장님 좌석 입력이 바뀌어 있을 수 있어 목록을 새로 받는다.
+      unawaited(provider.refreshRestaurantsOnResume());
     }
   }
 

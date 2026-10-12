@@ -396,7 +396,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        '${restaurant.crowdBaseSource == 'owner' ? '사장님' : '소비자'} · '
+                                        '${(restaurant.crowdBaseSource == 'owner' || restaurant.isSeatDerived) ? '사장님' : '소비자'} · '
                                         '${formatUpdateAgeFromDateTime(restaurant.updatedAt)}',
                                         style: const TextStyle(
                                           fontSize: 11,

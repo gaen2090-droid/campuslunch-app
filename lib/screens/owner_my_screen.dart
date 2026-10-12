@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
@@ -218,7 +219,11 @@ class _OwnerMyScreenState extends State<OwnerMyScreen> {
                     label: '사장님 이용 가이드',
                     icon: const Icon(Icons.help_rounded,
                         size: 20, color: Color(0xFF000000)),
-                    onTap: () => _showToast('준비 중이에요. 곧 만나요!'),
+                    onTap: () => launchUrl(
+                      Uri.parse(
+                          'https://sheer-parent-7ed.notion.site/3f7c273f6bec80d99e17ce8d8026478f?source=copy_link'),
+                      mode: LaunchMode.externalApplication,
+                    ),
                   ),
                   MyPageSectionRow(
                     label: '개선 제안',

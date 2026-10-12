@@ -1,3 +1,5 @@
+import 'owner_seat_update.dart';
+
 class MenuItem {
   final String name;
 
@@ -79,6 +81,9 @@ class Restaurant {
   final bool soloFriendly;
   /// 어드민이 등록한 "밥약하기 좋은 매장". description.date_friendly == true 일 때만 true.
   final bool dateFriendly;
+  /// 사장님이 입력한 입장 가능 인원에서 상태를 가정해 반영한 경우의 인원 수.
+  /// crowdBaseSource == 'owner_seat' 일 때만 의미가 있다.
+  final int? ownerSeatCount;
   /// 어드민이 지정한 정기 휴무 요일 (월=1 … 일=7). description.closed_days.
   final List<int> closedWeekdays;
   /// 공휴일 휴무 여부. description.closed_on_holidays.
@@ -128,6 +133,7 @@ class Restaurant {
     this.closedWeekdays = const [],
     this.closedOnHolidays = false,
     this.signatureMenus = const [],
+    this.ownerSeatCount,
   });
 
   Restaurant copyWith({
@@ -146,6 +152,8 @@ class Restaurant {
     String? hours,
     String? ownerNotice,
     int? manualRank,
+    DateTime? updatedAt,
+    int? ownerSeatCount,
   }) =>
       Restaurant(
         id: id,
@@ -172,7 +180,7 @@ class Restaurant {
         crowdBaseSource: crowdBaseSource ?? this.crowdBaseSource,
         crowdConfidence: crowdConfidence ?? this.crowdConfidence,
         hasCrowdUpdate: hasCrowdUpdate ?? this.hasCrowdUpdate,
-        updatedAt: updatedAt,
+        updatedAt: updatedAt ?? this.updatedAt,
         createdAt: createdAt,
         ownerUpdatedAt: ownerUpdatedAt,
         isActive: isActive,
@@ -187,7 +195,22 @@ class Restaurant {
         closedWeekdays: closedWeekdays,
         closedOnHolidays: closedOnHolidays,
         signatureMenus: signatureMenus,
+        ownerSeatCount: ownerSeatCount ?? this.ownerSeatCount,
       );
+
+  /// 사장님 좌석 입력을 상태로 가정해 보여주는 중인지. 이후 다른 제보로 상태가 바뀌어
+  /// 가정한 상태와 달라졌다면 false.
+  bool get isSeatDerived =>
+      crowdBaseSource == 'owner_seat' &&
+      ownerSeatCount != null &&
+      status == ownerSeatImpliedStatus(ownerSeatCount!);
+
+  /// 카드 뱃지에 상태명 대신 쓸 문구. 예) "4명가능", "입장 어려움". 해당 없으면 null.
+  String? get seatBadgeLabel {
+    if (!isSeatDerived) return null;
+    final n = ownerSeatCount!;
+    return n <= 0 ? '입장 어려움' : '$n명가능';
+  }
 
   /// 상세 화면용 휴무 안내. 휴무일이 없으면 빈 문자열. 예) "휴무: 토, 일, 공휴일"
   String get closedDaysLabel {

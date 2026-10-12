@@ -27,15 +27,29 @@ class OwnerSeatMessageCard extends StatelessWidget {
             const Icon(Icons.event_seat, size: 19, color: Color(0xFF26BC7D)),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(
-                ownerSeatCardLine(update),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: ownerSeatCardHeadline(update),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                    TextSpan(
+                      text: '  ${ownerSeatCardMeta(update)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF374151),
-                ),
               ),
             ),
           ],

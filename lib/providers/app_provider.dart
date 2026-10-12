@@ -37,6 +37,7 @@ import '../services/fcm_push_service.dart';
 import '../services/push_notification_service.dart';
 import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
+import '../utils/owner_seat_signal.dart';
 import '../utils/business_hours.dart';
 import '../utils/profanity_filter.dart';
 
@@ -1553,7 +1554,21 @@ class AppProvider extends ChangeNotifier {
     if (repo == null) return false;
     final gen = ++_restaurantRefreshGen;
     try {
-      final fetched = await repo.fetchAll();
+      var fetched = await repo.fetchAll();
+      if (gen != _restaurantRefreshGen) return false;
+      // 사장님 좌석 입력(4명 이상=여유로움, 1~3명=약간혼잡, 0명=자리없음)을 혼잡도 신호로 반영.
+      // 실패해도 목록 자체는 그대로 쓴다.
+      try {
+        final seats = await repo.fetchRecentOwnerSeatUpdates(ownerSeatSignalWindow);
+        if (seats.isNotEmpty) {
+          final now = DateTime.now();
+          fetched = fetched
+              .map((r) => applyOwnerSeatSignal(r, seats[r.id], now))
+              .toList();
+        }
+      } catch (e) {
+        debugPrint('[Supabase] owner seat signal skipped: $e');
+      }
       if (gen != _restaurantRefreshGen) return false;
       _restaurants = fetched;
       _restaurantsLoadFailed = false;
@@ -2902,6 +2917,31 @@ class AppProvider extends ChangeNotifier {
     return repo.fetchOwnerVerifiedSince(restaurantId);
   }
 
+  /// 방금 조회한 사장님 좌석 입력을 목록의 상태에 바로 반영한다.
+  /// (목록은 새로고침 전까지 오래된 상태를 들고 있으므로, 상세 화면이 최신 좌석을 받았을 때 호출)
+  void applyOwnerSeatUpdateLocally(String restaurantId, OwnerSeatUpdate seat) {
+    final now = DateTime.now();
+    var changed = false;
+    _restaurants = _restaurants.map((r) {
+      if (r.id != restaurantId) return r;
+      final next = applyOwnerSeatSignal(r, seat, now);
+      if (!identical(next, r)) changed = true;
+      return next;
+    }).toList();
+    if (changed) notifyListeners();
+  }
+
+  DateTime? _lastResumeRefreshAt;
+
+  /// 앱이 다시 앞으로 올 때 목록을 새로 받는다(짧은 간격의 반복 호출은 무시).
+  Future<void> refreshRestaurantsOnResume() async {
+    final now = DateTime.now();
+    final last = _lastResumeRefreshAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 20)) return;
+    _lastResumeRefreshAt = now;
+    await _reloadRestaurantList();
+  }
+
   Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {
     final repo = _restaurantRepo;
     if (repo == null) return null;
@@ -2953,6 +2993,8 @@ class AppProvider extends ChangeNotifier {
         latitude: coords!.lat,
         longitude: coords.lng,
       );
+      // 입력한 인원이 목록의 혼잡도 상태에도 바로 반영되도록 목록을 다시 받는다.
+      unawaited(_reloadRestaurantList());
       return null;
     } on PostgrestException catch (e) {
       debugPrint('[Supabase] submitOwnerSeatUpdate: ${e.message}');

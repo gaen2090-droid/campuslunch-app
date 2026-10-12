@@ -770,6 +770,26 @@ class SupabaseRestaurantRepository {
     }).toList();
   }
 
+  /// 최근 [within] 안의 사장님 좌석 입력을 매장별 최신 1건씩 한 번에 가져온다.
+  Future<Map<String, OwnerSeatUpdate>> fetchRecentOwnerSeatUpdates(
+    Duration within,
+  ) async {
+    final since = DateTime.now().subtract(within).toUtc().toIso8601String();
+    final rows = await _client
+        .from('owner_seat_updates')
+        .select('restaurant_id, available_seats, created_at')
+        .gte('created_at', since)
+        .order('created_at', ascending: false);
+    final out = <String, OwnerSeatUpdate>{};
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final id = row['restaurant_id'] as String?;
+      if (id == null || out.containsKey(id)) continue; // 최신순이라 첫 건이 최신
+      out[id] = OwnerSeatUpdate.fromMap(row);
+    }
+    return out;
+  }
+
   Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {
     try {
       final raw = await _client.rpc(

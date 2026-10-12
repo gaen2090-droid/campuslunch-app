@@ -74,6 +74,12 @@ class _DetailScreenState extends State<DetailScreen> {
         .fetchOwnerSeatUpdate(widget.restaurant.id);
     if (!mounted) return;
     setState(() => _ownerSeatUpdate = update);
+    // 좌석 카드와 같은 시점에 목록·상세의 혼잡도 상태도 맞춘다.
+    if (update != null) {
+      context
+          .read<AppProvider>()
+          .applyOwnerSeatUpdateLocally(widget.restaurant.id, update);
+    }
   }
 
   Future<void> _loadRecentReports() async {
@@ -82,6 +88,33 @@ class _DetailScreenState extends State<DetailScreen> {
         .fetchRecentCrowdReports(widget.restaurant.id);
     if (!mounted) return;
     setState(() => _recentReports = reports.take(3).toList());
+  }
+
+  /// 최근 제보 목록: 제보 + 사장님이 입력한 입장 가능 인원을 시간순(최신 먼저)으로 합쳐 3건.
+  List<_RecentEntry> _recentEntries() {
+    final entries = <_RecentEntry>[
+      for (final rep in _recentReports)
+        _RecentEntry(
+          label: rep.status,
+          isOwner: rep.isOwner,
+          createdAt: rep.createdAt,
+        ),
+    ];
+    final seat = _ownerSeatUpdate;
+    if (seat != null && seat.isVisibleAt(DateTime.now())) {
+      entries.add(
+        _RecentEntry(
+          // 가정한 상태와 인원을 함께: "약간혼잡(3명가능)", "자리없음(입장 어려움)"
+          label: seat.availableSeats <= 0
+              ? '${ownerSeatImpliedStatus(0)}(입장 어려움)'
+              : '${ownerSeatImpliedStatus(seat.availableSeats)}(${seat.availableSeats}명가능)',
+          isOwner: true,
+          createdAt: seat.createdAt,
+        ),
+      );
+    }
+    entries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return entries.take(3).toList();
   }
 
   Future<void> _submitReport(String restaurantId, String status) async {
@@ -323,7 +356,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
                                 const SizedBox(height: 4),
                                 Text(
-                                  r.crowdBaseSource == 'owner'
+                                  (r.crowdBaseSource == 'owner' || r.isSeatDerived)
                                       ? '사장님 · ${formatUpdateAgeFromDateTime(r.updatedAt)}'
                                       : formatUpdateAgeFromDateTime(r.updatedAt),
                                   maxLines: 1,
@@ -357,9 +390,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
 
-            if (r.crowdEnabled && _recentReports.isNotEmpty)
+            if (r.crowdEnabled && _recentEntries().isNotEmpty)
               _RecentReportsSection(
-                reports: _recentReports,
+                reports: _recentEntries(),
                 showPriorityNote: ownerPriorityActive,
               ),
 
@@ -748,8 +781,20 @@ class _ActionButtonBar extends StatelessWidget {
   }
 }
 
+/// 최근 제보 한 줄. 일반 제보(상태명) 또는 사장님의 입장 가능 인원("4명가능").
+class _RecentEntry {
+  final String label;
+  final bool isOwner;
+  final DateTime createdAt;
+  const _RecentEntry({
+    required this.label,
+    required this.isOwner,
+    required this.createdAt,
+  });
+}
+
 class _RecentReportsSection extends StatelessWidget {
-  final List<RecentCrowdReport> reports;
+  final List<_RecentEntry> reports;
   final bool showPriorityNote;
   const _RecentReportsSection({
     required this.reports,
@@ -781,7 +826,7 @@ class _RecentReportsSection extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             ...reports.map((r) {
-              final statusLabel = r.status;
+              final statusLabel = r.label;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text.rich(
