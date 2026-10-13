@@ -30,10 +30,10 @@ export interface PeakPushSchedule {
   enabled: boolean;
   hour: number;
   minute: number;
-  /** 즐겨찾기 중 여유로운 매장이 있을 때 사용. {restaurant} 치환 가능 */
+  /** 즐겨찾기 중 입장 가능한 매장이 있을 때 사용. {restaurant} 치환 가능 */
   titleTemplate: string;
   bodyTemplate: string;
-  /** 즐겨찾기가 없거나, 있어도 여유로운 곳이 없을 때 사용하는 고정 홍보 문구 */
+  /** 즐겨찾기가 없거나, 있어도 입장 가능한 곳이 없을 때 사용하는 고정 홍보 문구 */
   fallbackTitleTemplate: string;
   fallbackBodyTemplate: string;
 }

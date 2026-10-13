@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../Modal";
 import { fetchRecentCrowdReports } from "../../lib/adminApi";
+import { crowdStatusLabel } from "../../lib/adminRestaurantsApi";
 import { errorMessage } from "../../lib/errors";
 import type { RecentCrowdReport } from "../../types/restaurant";
 import type { Top5RestaurantRow } from "../../types/realtimeMetrics";
@@ -71,7 +72,7 @@ export function RestaurantDetailModal({ restaurant, onClose }: Props) {
             {reports.map((r) => (
               <li key={r.id} className="feedback-row">
                 <div className="feedback-row-head">
-                  <strong>{r.status}</strong>
+                  <strong>{crowdStatusLabel(r.status)}</strong>
                   <span className="muted sm">
                     {r.source === "owner" ? "사장님" : "사용자"} ·{" "}
                     {r.createdAt.toLocaleString("ko-KR", {

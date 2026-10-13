@@ -246,7 +246,7 @@ export function cumulativeCounts(dates: Date[], months: number): number[] {
 export function levelToLabel(level: number | null): string {
   switch (level) {
     case 1:
-      return "여유로움";
+      return "입장가능";
     case 2:
       return "약간혼잡";
     case 3:

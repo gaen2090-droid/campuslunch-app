@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { errorMessage } from "../lib/errors";
+import { crowdStatusLabel } from "../lib/adminRestaurantsApi";
 import {
   deleteRestaurant,
   fetchRecentCrowdReports,
@@ -291,7 +292,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                         style={{ background: statusDotColor(r.status) }}
                         aria-hidden="true"
                       />
-                      {r.status}
+                      {crowdStatusLabel(r.status)}
                       {r.hasCrowdUpdate ? ` · ${r.updated}분 전` : ""}
                       {r.crowdBaseSource
                         ? ` (${r.crowdBaseSource}·${r.crowdConfidence})`
@@ -319,7 +320,7 @@ export function RestaurantsPage({ restaurants, onReload }: Props) {
                           <ul className="reports-list">
                             {reports.map((rep) => (
                               <li key={rep.id}>
-                                {rep.status} · {rep.source} ·{" "}
+                                {crowdStatusLabel(rep.status)} · {rep.source} ·{" "}
                                 {rep.createdAt.toLocaleString("ko-KR")}
                               </li>
                             ))}

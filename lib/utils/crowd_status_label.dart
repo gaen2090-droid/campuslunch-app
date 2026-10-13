@@ -24,7 +24,7 @@ String formatUpdateAgeWithTime(DateTime createdAt) {
   return '$age · $hh:$mm';
 }
 
-/// 화면 표시: `여유로움` 또는 `여유로움 · 5분 전`
+/// 화면 표시: `입장가능` 또는 `입장가능 · 5분 전` (status는 [crowdStatusLabel]로 변환해 넘길 것)
 String formatCrowdStatusLine(
   String status, {
   required int updatedMinutes,

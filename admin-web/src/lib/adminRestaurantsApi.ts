@@ -25,6 +25,11 @@ function parseDescription(raw: unknown): Record<string, unknown> | null {
   return null;
 }
 
+/** 저장값(status, DB·앱 공용 '여유로움') → 화면/엑셀 표시 문구. 표시 지점에서만 변환한다. */
+export function crowdStatusLabel(status: string): string {
+  return status === "여유로움" ? "입장가능" : status;
+}
+
 function crowdLevelToStatus(
   level: string,
   metadata?: Record<string, unknown>,

@@ -225,7 +225,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
 
   String get _title {
     switch (widget.mode) {
-      case RestaurantListMode.available: return '바로 입장 가능해요';
+      case RestaurantListMode.available: return '지금 입장 가능해요';
       case RestaurantListMode.slightlyBusy: return '빈자리 조금 있어요';
       case RestaurantListMode.stamp: return '혼잡도를 알려주세요';
       case RestaurantListMode.busy: return '붐비고 있어요';

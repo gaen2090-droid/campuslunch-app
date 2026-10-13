@@ -558,7 +558,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                   </div>
                   <div className="peak-template-group">
                     <span className="muted sm">
-                      개인화용 (즐겨찾기 중 여유로운 매장 있을 때 · {"{restaurant}"} 사용 가능)
+                      개인화용 (즐겨찾기 중 입장 가능한 매장 있을 때 · {"{restaurant}"} 사용 가능)
                     </span>
                     <input
                       className="peak-title"
@@ -581,7 +581,7 @@ export function PushSettingsPage({ config, loading, error, onReload }: Props) {
                   </div>
                   <div className="peak-template-group">
                     <span className="muted sm">
-                      고정 홍보용 (즐겨찾기 없거나, 있어도 여유로운 곳 없을 때)
+                      고정 홍보용 (즐겨찾기 없거나, 있어도 입장 가능한 곳 없을 때)
                     </span>
                     <input
                       className="peak-title"

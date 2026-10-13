@@ -95,7 +95,7 @@ class _DetailScreenState extends State<DetailScreen> {
     final entries = <_RecentEntry>[
       for (final rep in _recentReports)
         _RecentEntry(
-          label: rep.status,
+          label: crowdStatusLabel(rep.status),
           isOwner: rep.isOwner,
           createdAt: rep.createdAt,
         ),
@@ -339,7 +339,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                 r.status == '영업안함'
                                     ? r.status
                                     : r.hasCrowdUpdate
-                                        ? r.status
+                                        ? crowdStatusLabel(r.status)
                                         : '제보필요',
                                 maxLines: 1,
                                 textAlign: TextAlign.right,

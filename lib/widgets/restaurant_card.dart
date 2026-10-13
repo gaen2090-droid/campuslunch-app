@@ -107,7 +107,7 @@ class RestaurantCard extends StatelessWidget {
                     children: [
                       TextSpan(
                         // 사장님 좌석 입력으로 가정한 상태는 "4명가능"처럼 인원으로 보여준다.
-                        text: r.seatBadgeLabel ?? displayStatus,
+                        text: r.seatBadgeLabel ?? crowdStatusLabel(displayStatus),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
@@ -181,7 +181,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
     final isBusy = r.status == '약간혼잡';
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFFCDE9DC);
     const reportTextColor = Color(0xFF26BC7D);
-    final statusLabel = r.status;
+    final statusLabel = crowdStatusLabel(r.status);
     final meta = crowdStatusMeta(r.status);
 
     return GestureDetector(

@@ -61,7 +61,7 @@ class NotificationPermissionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        '점심시간 알림, 여유로운 매장 알림 등\n서비스 기본 알림을 보내드려요.',
+                        '점심시간 알림, 입장 가능한 매장 알림 등\n서비스 기본 알림을 보내드려요.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,

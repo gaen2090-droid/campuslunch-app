@@ -6,7 +6,7 @@ import type { KpiMetricsV2 } from "../types/kpiMetrics";
 import type { OpsMetrics } from "../types/opsMetrics";
 import type { DailyExportRow, HourlyExportRow, RestaurantExportRow } from "../types/exportRangeMetrics";
 import type { RewardSpendReport } from "../types/rewardSpend";
-import { totalReports } from "./adminRestaurantsApi";
+import { crowdStatusLabel, totalReports } from "./adminRestaurantsApi";
 import type { TrustSignalsReport } from "../types/trustAbuse";
 
 export const EXPORT_SECTIONS = [
@@ -420,7 +420,7 @@ export async function buildMetricsWorkbook(
       [
         "매장명",
         "구역",
-        "여유로움",
+        "입장가능",
         "약간혼잡",
         "자리없음",
         "기간 내 합계",
@@ -463,7 +463,7 @@ export async function buildMetricsWorkbook(
         r.name,
         r.area,
         r.category,
-        r.status,
+        crowdStatusLabel(r.status),
         r.ownerId ? "등록" : "미등록",
         totalReports(r),
         r.hours,

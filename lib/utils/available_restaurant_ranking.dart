@@ -1,4 +1,5 @@
 import '../models/restaurant.dart';
+import 'restaurant_sort.dart';
 
 int availablePopularScore(Restaurant r, bool useAlgorithmRanking) =>
     useAlgorithmRanking
@@ -80,16 +81,19 @@ AvailableSection buildAvailableSection(
             .compareTo(availablePopularScore(a, useAlgo));
       };
 
+  final now = DateTime.now();
   final relaxedRecent = available
       .where((r) =>
           r.status == '여유로움' &&
           r.hasCrowdUpdate &&
           r.updatedAt != null &&
-          DateTime.now().difference(r.updatedAt!).inMinutes <= 10)
+          now.difference(r.updatedAt!).inMinutes <= 10)
       .toList()
     ..sort(recSort(useAlgorithmRanking));
 
-  final recommended = relaxedRecent.isNotEmpty ? relaxedRecent.first : null;
+  // 5분 이내 사장님 제보 매장이 있으면 그 중 최신 매장이 우선 (홈 섹션 정렬과 같은 규칙)
+  final prioritized = prioritizeFreshOwnerReports(relaxedRecent, now);
+  final recommended = prioritized.isNotEmpty ? prioritized.first : null;
 
   final sorted = sortAvailableRestaurants(available, useAlgorithmRanking);
   return AvailableSection(

@@ -207,7 +207,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (updatedD != 0) return updatedD;
       return pop(b).compareTo(pop(a));
     });
-    return sorted;
+    // 5분 이내 사장님 제보는 어떤 정렬 기준이든 섹션 최상단 (그 안에서 최신순)
+    if (isClosed) return sorted;
+    return prioritizeFreshOwnerReports(sorted, DateTime.now());
   }
 
   bool _isAll(Set<String> values) =>
@@ -1022,7 +1024,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 ),
               ),
 
-            // ── 바로 입장 가능해요 ──
+            // ── 지금 입장 가능해요 ──
             // 각 섹션 블록 전체에 고유 key 부여: "혼잡도를 알려주세요" 섹션처럼
             // 조건부로 나타났다 사라지는 블록이 있으면 뒤따르는 섹션들이 리스트에서
             // 밀리는데, key가 없으면 Flutter가 위치 기준으로 element를 재사용하다가
@@ -1032,7 +1034,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 sectionHeader(
-                  title: '바로 입장 가능해요',
+                  title: '지금 입장 가능해요',
                   dotColor: const Color(0xFF26BC7D),
                   onMore: () => goTo(RestaurantListMode.available),
                   // 필터줄 바로 아래 첫 섹션이라 다른 섹션(top 20 유지)보다
@@ -1064,7 +1066,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       const SizedBox(width: 6),
                       KeyedSubtree(
                         key: HomeScreen.availableBadgeKey,
-                        child: crowdBadge('여유로움', const Color(0xFFE6F3EC), const Color(0xFF26BC7D)),
+                        child: crowdBadge('입장가능',const Color(0xFFE6F3EC), const Color(0xFF26BC7D)),
                       ),
                     ],
                   ),
@@ -1565,7 +1567,7 @@ class StatusBadgePreview extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          status,
+          crowdStatusLabel(status),
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,

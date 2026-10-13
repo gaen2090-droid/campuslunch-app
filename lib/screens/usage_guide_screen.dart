@@ -346,7 +346,7 @@ class _CrowdListMockup extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Text(
-                '바로 입장 가능해요',
+                '지금 입장 가능해요',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
@@ -428,7 +428,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
             ),
             child: Text.rich(
               TextSpan(
-                text: '여유로움',
+                text: '입장가능',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w900,

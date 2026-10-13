@@ -250,13 +250,18 @@ class StatusMeta {
 }
 
 const Map<String, StatusMeta> statusMetaMap = {
-  '여유로움': StatusMeta(label: '여유로움', color: 0xFF26BC7D, bgColor: 0xFFE6F3EC),
+  // 키('여유로움')는 DB·RPC·구버전 앱과 호환되는 저장값. 화면 표시는 label('입장가능')을 쓴다.
+  '여유로움': StatusMeta(label: '입장가능', color: 0xFF26BC7D, bgColor: 0xFFE6F3EC),
   '약간혼잡': StatusMeta(label: '약간혼잡', color: 0xFFF59E0B, bgColor: 0xFFFEF3C7),
   // 자리없음: 빨강 — 약간혼잡(노란 앰버)과 명확히 구분
   '자리없음': StatusMeta(label: '자리없음', color: 0xFFEF4444, bgColor: 0xFFFEE2E2),
   '영업안함': StatusMeta(label: '영업안함', color: 0xFF9CA3AF, bgColor: 0xFFF3F4F6),
   '제보필요': StatusMeta(label: '제보필요', color: 0xFF000000, bgColor: 0xFFF3F4F6),
 };
+
+/// 저장값(status) → 화면 표시 문구. 표시 지점에서는 raw status 대신 반드시 이 함수를 쓴다.
+String crowdStatusLabel(String status) =>
+    statusMetaMap[status]?.label ?? status;
 
 StatusMeta crowdStatusMeta(String status) =>
     statusMetaMap[status] ??
