@@ -179,9 +179,12 @@ export async function deleteNicknameReservedWord(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function fetchCommunityNotices(): Promise<CommunityNoticeAdmin[]> {
+// 공지 테이블 2종: 커뮤니티 공지(유저 앱 커뮤니티 탭) / 사장님 공지(사장님 제보 탭)
+type NoticeTable = "community_notices" | "owner_notices";
+
+async function fetchNotices(table: NoticeTable): Promise<CommunityNoticeAdmin[]> {
   const { data, error } = await supabase
-    .from("community_notices")
+    .from(table)
     .select("id, content, is_active, created_at")
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -189,42 +192,58 @@ export async function fetchCommunityNotices(): Promise<CommunityNoticeAdmin[]> {
   return (data as Record<string, unknown>[]).map(parseCommunityNoticeAdmin);
 }
 
-export async function createCommunityNotice(content: string): Promise<void> {
-  const { error } = await supabase
-    .from("community_notices")
-    .insert({ content: content.trim() });
+async function createNotice(table: NoticeTable, content: string): Promise<void> {
+  const { error } = await supabase.from(table).insert({ content: content.trim() });
   if (error) throw error;
 }
 
-export async function updateCommunityNotice(
+async function updateNotice(
+  table: NoticeTable,
   id: string,
   content: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from("community_notices")
+    .from(table)
     .update({ content: content.trim() })
     .eq("id", id);
   if (error) throw error;
 }
 
-export async function setCommunityNoticeActive(
+async function setNoticeActive(
+  table: NoticeTable,
   id: string,
   active: boolean,
 ): Promise<void> {
   const { error } = await supabase
-    .from("community_notices")
+    .from(table)
     .update({ is_active: active })
     .eq("id", id);
   if (error) throw error;
 }
 
-export async function deleteCommunityNotice(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("community_notices")
-    .delete()
-    .eq("id", id);
+async function deleteNotice(table: NoticeTable, id: string): Promise<void> {
+  const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) throw error;
 }
+
+export const fetchCommunityNotices = () => fetchNotices("community_notices");
+export const createCommunityNotice = (content: string) =>
+  createNotice("community_notices", content);
+export const updateCommunityNotice = (id: string, content: string) =>
+  updateNotice("community_notices", id, content);
+export const setCommunityNoticeActive = (id: string, active: boolean) =>
+  setNoticeActive("community_notices", id, active);
+export const deleteCommunityNotice = (id: string) =>
+  deleteNotice("community_notices", id);
+
+export const fetchOwnerNotices = () => fetchNotices("owner_notices");
+export const createOwnerNotice = (content: string) =>
+  createNotice("owner_notices", content);
+export const updateOwnerNotice = (id: string, content: string) =>
+  updateNotice("owner_notices", id, content);
+export const setOwnerNoticeActive = (id: string, active: boolean) =>
+  setNoticeActive("owner_notices", id, active);
+export const deleteOwnerNotice = (id: string) => deleteNotice("owner_notices", id);
 
 export async function fetchAdminCollections(): Promise<RestaurantCollection[]> {
   const { data, error } = await supabase.rpc("admin_list_collections");

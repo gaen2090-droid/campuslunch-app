@@ -382,6 +382,20 @@ class CommunityRepository {
     return CommunityNotice.fromMap(list.first as Map<String, dynamic>);
   }
 
+  /// 관리자가 사장님에게 보내는 공지 (활성 공지 중 최신 1건). 사장님 제보 탭 상단에 표시.
+  /// community_notices 와 별도 테이블 — 구버전 앱이 커뮤니티에 노출하지 않도록 분리했다.
+  Future<CommunityNotice?> fetchActiveOwnerNotice() async {
+    final rows = await _client
+        .from('owner_notices')
+        .select('id, content')
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(1);
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return null;
+    return CommunityNotice.fromMap(list.first as Map<String, dynamic>);
+  }
+
   Future<List<CommunityPost>> fetchPinnedPosts() async {
     final rows = await _client.rpc('community_pinned_posts');
     return (rows as List<dynamic>)

@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
+import '../models/community_notice.dart';
+import '../models/owner_seat_update.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
 import '../widgets/keyboard_safe.dart';
 import '../widgets/load_error_view.dart';
+import '../widgets/owner_notice_banner.dart';
 import '../widgets/owner_restaurant_dropdown.dart';
 import '../widgets/owner_verify_sheet.dart';
 import '../widgets/report_sheet.dart';
@@ -30,15 +33,31 @@ class _OwnerScreenState extends State<OwnerScreen> {
   bool _statusSubmitting = false;
   String? _seatSuccessMessage;
   Timer? _refreshTicker;
+  CommunityNotice? _ownerNotice;
 
   @override
   void initState() {
     super.initState();
+    _loadOwnerNotice();
     // "n분 전" 표시 갱신 + 최신 혼잡도 상태 동기화 (유저 홈 화면과 동일한 1분 주기)
+    // 관리자 공지도 같은 주기로 다시 읽어, 어드민에서 올리면 1분 안에 반영된다.
     _refreshTicker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (!mounted) return;
       context.read<AppProvider>().refreshRestaurants();
+      _loadOwnerNotice();
     });
+  }
+
+  Future<void> _loadOwnerNotice() async {
+    try {
+      final notice = await context.read<AppProvider>().community.fetchActiveOwnerNotice();
+      if (!mounted) return;
+      if (notice?.id != _ownerNotice?.id || notice?.content != _ownerNotice?.content) {
+        setState(() => _ownerNotice = notice);
+      }
+    } catch (_) {
+      // 공지는 부가 정보 — 실패(오프라인 등)해도 제보 화면은 그대로 동작해야 한다.
+    }
   }
 
   @override
@@ -86,9 +105,27 @@ class _OwnerScreenState extends State<OwnerScreen> {
       _showToast(err);
       return;
     }
+    final impliedLabel = crowdStatusLabel(ownerSeatImpliedStatus(seats));
     setState(() {
-      _seatSuccessMessage = '입장 가능 인원이 반영되었어요.\n1시간 동안 유저 화면에 표시됩니다.';
+      _seatSuccessMessage = '입장 가능 인원이 반영되었어요.\n'
+          '혼잡도는 \'$impliedLabel\'(으)로 표시되고, 1시간 동안 유저 화면에 보입니다.';
     });
+  }
+
+  /// 안내문용: 상태 표시 문구를 뱃지와 같은 색으로 강조 (status는 저장값 키).
+  TextSpan _seatLegendSpan(String status) => TextSpan(
+        text: crowdStatusLabel(status),
+        style: TextStyle(
+          color: Color(crowdStatusMeta(status).color),
+          fontWeight: FontWeight.w800,
+        ),
+      );
+
+  /// 입력한 인원이 혼잡도에 어떻게 반영되는지 (미입력이면 null).
+  String? _seatImpliedLine() {
+    final seats = _parseSeatInput();
+    if (seats == null) return null;
+    return '혼잡도는 \'${crowdStatusLabel(ownerSeatImpliedStatus(seats))}\'(으)로 함께 반영돼요';
   }
 
   String _seatPreviewText() {
@@ -235,6 +272,13 @@ class _OwnerScreenState extends State<OwnerScreen> {
                   selected: restaurant,
                 ),
 
+                // ── 관리자 공지 (웹어드민 '사장님 공지'에서 작성) ──
+                if (_ownerNotice != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                    child: OwnerNoticeBanner(content: _ownerNotice!.content),
+                  ),
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -312,7 +356,7 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 return;
                               }
                               _showToast(
-                                  '\'${restaurant.name}\' 혼잡도를 \'${opt.status}\'으로 업데이트했어요');
+                                  '\'${restaurant.name}\' 혼잡도를 \'${crowdStatusLabel(opt.status)}\'으로 업데이트했어요');
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -507,14 +551,52 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 color: const Color(0xFFF3F4F6),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(
-                                _seatPreviewText(),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF374151),
-                                ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _seatPreviewText(),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF374151),
+                                    ),
+                                  ),
+                                  if (_seatImpliedLine() != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _seatImpliedLine()!,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(crowdStatusMeta(
+                                          ownerSeatImpliedStatus(
+                                              _parseSeatInput()!),
+                                        ).color),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text.rich(
+                              TextSpan(
+                                text: '입력한 인원은 혼잡도에도 자동 반영돼요.\n0명 ',
+                                children: [
+                                  _seatLegendSpan('자리없음'),
+                                  const TextSpan(text: ' · 1~3명 '),
+                                  _seatLegendSpan('약간혼잡'),
+                                  const TextSpan(text: ' · 4명 이상 '),
+                                  _seatLegendSpan('여유로움'),
+                                ],
+                              ),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6B7280),
+                                height: 1.45,
                               ),
                             ),
                             const SizedBox(height: 14),

@@ -3,21 +3,26 @@ import { errorMessage } from "../lib/errors";
 import {
   addBannedWord,
   createCommunityNotice,
+  createOwnerNotice,
   deleteBannedWord,
   deleteCommunityComment,
   deleteCommunityNotice,
   deleteCommunityPost,
+  deleteOwnerNotice,
   fetchBannedWords,
   fetchCommunityNotices,
   fetchCommunityPosts,
   fetchCommunityReports,
+  fetchOwnerNotices,
   fetchPinnedPosts,
   reorderPinnedPosts,
   setCommunityCommentHidden,
   setCommunityNoticeActive,
   setCommunityPostHidden,
   setCommunityPostPinned,
+  setOwnerNoticeActive,
   updateCommunityNotice,
+  updateOwnerNotice,
 } from "../lib/adminApi";
 import type {
   BannedWord,
@@ -32,6 +37,9 @@ export function useCommunity(enabled: boolean) {
   const [pinnedPosts, setPinnedPosts] = useState<CommunityPostAdmin[]>([]);
   const [bannedWords, setBannedWordsState] = useState<BannedWord[]>([]);
   const [notices, setNotices] = useState<CommunityNoticeAdmin[]>([]);
+  const [ownerNotices, setOwnerNotices] = useState<CommunityNoticeAdmin[]>([]);
+  // 사장님 공지 테이블(owner_notices) 미생성 등으로 실패해도 커뮤니티 관리 화면은 정상 동작해야 한다.
+  const [ownerNoticesError, setOwnerNoticesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postQuery, setPostQuery] = useState("");
@@ -41,18 +49,25 @@ export function useCommunity(enabled: boolean) {
     setLoading(true);
     setError(null);
     try {
-      const [reportList, postList, pinnedList, wordList, noticeList] = await Promise.all([
-        fetchCommunityReports(),
-        fetchCommunityPosts(postQuery),
-        fetchPinnedPosts(),
-        fetchBannedWords(),
-        fetchCommunityNotices(),
-      ]);
+      const [reportList, postList, pinnedList, wordList, noticeList, ownerNoticeResult] =
+        await Promise.all([
+          fetchCommunityReports(),
+          fetchCommunityPosts(postQuery),
+          fetchPinnedPosts(),
+          fetchBannedWords(),
+          fetchCommunityNotices(),
+          fetchOwnerNotices().then(
+            (list) => ({ list, error: null as string | null }),
+            (e) => ({ list: [] as CommunityNoticeAdmin[], error: errorMessage(e) }),
+          ),
+        ]);
       setReports(reportList);
       setPosts(postList);
       setPinnedPosts(pinnedList);
       setBannedWordsState(wordList);
       setNotices(noticeList);
+      setOwnerNotices(ownerNoticeResult.list);
+      setOwnerNoticesError(ownerNoticeResult.error);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -178,12 +193,46 @@ export function useCommunity(enabled: boolean) {
     [reload],
   );
 
+  const addOwnerNotice = useCallback(
+    async (content: string) => {
+      await createOwnerNotice(content);
+      await reload();
+    },
+    [reload],
+  );
+
+  const editOwnerNotice = useCallback(
+    async (id: string, content: string) => {
+      await updateOwnerNotice(id, content);
+      await reload();
+    },
+    [reload],
+  );
+
+  const toggleOwnerNoticeActive = useCallback(
+    async (id: string, active: boolean) => {
+      await setOwnerNoticeActive(id, active);
+      await reload();
+    },
+    [reload],
+  );
+
+  const removeOwnerNotice = useCallback(
+    async (id: string) => {
+      await deleteOwnerNotice(id);
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     reports,
     posts,
     pinnedPosts,
     bannedWords,
     notices,
+    ownerNotices,
+    ownerNoticesError,
     loading,
     error,
     postQuery,
@@ -199,6 +248,10 @@ export function useCommunity(enabled: boolean) {
     editNotice,
     toggleNoticeActive,
     removeNotice,
+    addOwnerNotice,
+    editOwnerNotice,
+    toggleOwnerNoticeActive,
+    removeOwnerNotice,
     addWord,
     removeWord,
   };

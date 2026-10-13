@@ -250,6 +250,12 @@ export default function App() {
           onEditNotice={communityState.editNotice}
           onToggleNoticeActive={communityState.toggleNoticeActive}
           onRemoveNotice={communityState.removeNotice}
+          ownerNotices={communityState.ownerNotices}
+          ownerNoticesError={communityState.ownerNoticesError}
+          onAddOwnerNotice={communityState.addOwnerNotice}
+          onEditOwnerNotice={communityState.editOwnerNotice}
+          onToggleOwnerNoticeActive={communityState.toggleOwnerNoticeActive}
+          onRemoveOwnerNotice={communityState.removeOwnerNotice}
         />
       );
     }

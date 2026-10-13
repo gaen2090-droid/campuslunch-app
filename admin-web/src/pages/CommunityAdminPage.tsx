@@ -28,6 +28,12 @@ interface Props {
   onEditNotice: (id: string, content: string) => Promise<void>;
   onToggleNoticeActive: (id: string, active: boolean) => Promise<void>;
   onRemoveNotice: (id: string) => Promise<void>;
+  ownerNotices: CommunityNoticeAdmin[];
+  ownerNoticesError: string | null;
+  onAddOwnerNotice: (content: string) => Promise<void>;
+  onEditOwnerNotice: (id: string, content: string) => Promise<void>;
+  onToggleOwnerNoticeActive: (id: string, active: boolean) => Promise<void>;
+  onRemoveOwnerNotice: (id: string) => Promise<void>;
 }
 
 function formatDate(d: Date): string {
@@ -59,11 +65,15 @@ export function CommunityAdminPage({
   onEditNotice,
   onToggleNoticeActive,
   onRemoveNotice,
+  ownerNotices,
+  ownerNoticesError,
+  onAddOwnerNotice,
+  onEditOwnerNotice,
+  onToggleOwnerNoticeActive,
+  onRemoveOwnerNotice,
 }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [newNotice, setNewNotice] = useState("");
-  const [noticeBusy, setNoticeBusy] = useState(false);
   const [postQueryInput, setPostQueryInput] = useState(postQuery);
   const [deleteTarget, setDeleteTarget] = useState<
     { kind: "post" | "comment"; id: string } | null
@@ -71,21 +81,6 @@ export function CommunityAdminPage({
 
   const reportsPage = usePagination(reports, 20);
   const postsPage = usePagination(posts, 20);
-
-  async function submitNotice() {
-    const content = newNotice.trim();
-    if (!content || noticeBusy) return;
-    setNoticeBusy(true);
-    setActionError(null);
-    try {
-      await onAddNotice(content);
-      setNewNotice("");
-    } catch (e) {
-      setActionError(errorMessage(e));
-    } finally {
-      setNoticeBusy(false);
-    }
-  }
 
   async function run(id: string, fn: () => Promise<void>) {
     setBusyId(id);
@@ -110,49 +105,29 @@ export function CommunityAdminPage({
 
   return (
     <div className="page">
-      <div className="panel-head">
-        <h2>관리자 공지</h2>
-      </div>
-
       {(error || actionError) && <div className="alert">{error ?? actionError}</div>}
 
-      <div className="field-group">
-        <input
-          className="search-input"
-          type="text"
-          placeholder="공지 내용 (커뮤니티 탭 최상단에 노출)"
-          value={newNotice}
-          onChange={(e) => setNewNotice(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submitNotice();
-          }}
-        />
-        <button
-          type="button"
-          className="btn sm"
-          disabled={noticeBusy || !newNotice.trim()}
-          onClick={submitNotice}
-        >
-          공지 추가
-        </button>
-      </div>
+      <NoticePanel
+        title="관리자 공지"
+        placeholder="공지 내용 (커뮤니티 탭 최상단에 노출)"
+        notices={notices}
+        onAdd={onAddNotice}
+        onEdit={onEditNotice}
+        onToggleActive={onToggleNoticeActive}
+        onRemove={onRemoveNotice}
+      />
 
-      {notices.length === 0 ? (
-        <p className="muted center">등록된 공지가 없어요.</p>
-      ) : (
-        <ul className="feedback-list">
-          {notices.map((n) => (
-            <NoticeRow
-              key={n.id}
-              notice={n}
-              busy={busyId === n.id}
-              onEdit={(content) => onEditNotice(n.id, content)}
-              onToggleActive={() => run(n.id, () => onToggleNoticeActive(n.id, !n.isActive))}
-              onRemove={() => run(n.id, () => onRemoveNotice(n.id))}
-            />
-          ))}
-        </ul>
-      )}
+      <NoticePanel
+        title="사장님 공지"
+        placeholder="공지 내용 (사장님 제보 탭 상단에 노출, 최대 300자)"
+        notices={ownerNotices}
+        loadError={ownerNoticesError}
+        onAdd={onAddOwnerNotice}
+        onEdit={onEditOwnerNotice}
+        onToggleActive={onToggleOwnerNoticeActive}
+        onRemove={onRemoveOwnerNotice}
+        className="mt-8"
+      />
 
       <div className="panel-head mt-8">
         <h2>커뮤니티 신고함</h2>
@@ -360,6 +335,120 @@ export function CommunityAdminPage({
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
         />
+      )}
+    </div>
+  );
+}
+
+/** 공지 입력 + 목록. 커뮤니티 공지와 사장님 공지가 같은 UI를 공유한다. */
+function NoticePanel({
+  title,
+  placeholder,
+  notices,
+  loadError,
+  onAdd,
+  onEdit,
+  onToggleActive,
+  onRemove,
+  className,
+}: {
+  title: string;
+  placeholder: string;
+  notices: CommunityNoticeAdmin[];
+  loadError?: string | null;
+  onAdd: (content: string) => Promise<void>;
+  onEdit: (id: string, content: string) => Promise<void>;
+  onToggleActive: (id: string, active: boolean) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    const content = draft.trim();
+    if (!content || adding) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await onAdd(content);
+      setDraft("");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function run(id: string, fn: () => Promise<void>) {
+    setBusyId(id);
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className={className}>
+      <div className="panel-head">
+        <h2>{title}</h2>
+      </div>
+
+      {loadError ? (
+        <div className="alert">
+          불러오지 못했어요: {loadError}
+          <br />
+          (테이블이 없다면 supabase/owner_notices.sql 을 SQL Editor에서 실행해 주세요)
+        </div>
+      ) : (
+        <>
+          {error && <div className="alert">{error}</div>}
+
+          <div className="field-group">
+            <input
+              className="search-input"
+              type="text"
+              maxLength={300}
+              placeholder={placeholder}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void submit();
+              }}
+            />
+            <button
+              type="button"
+              className="btn sm"
+              disabled={adding || !draft.trim()}
+              onClick={() => void submit()}
+            >
+              공지 추가
+            </button>
+          </div>
+
+          {notices.length === 0 ? (
+            <p className="muted center">등록된 공지가 없어요.</p>
+          ) : (
+            <ul className="feedback-list">
+              {notices.map((n) => (
+                <NoticeRow
+                  key={n.id}
+                  notice={n}
+                  busy={busyId === n.id}
+                  onEdit={(content) => onEdit(n.id, content)}
+                  onToggleActive={() => run(n.id, () => onToggleActive(n.id, !n.isActive))}
+                  onRemove={() => run(n.id, () => onRemove(n.id))}
+                />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );
