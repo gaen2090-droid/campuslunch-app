@@ -5,7 +5,7 @@ export interface CrowdPredictionSlot {
   /** 720=12:00, 735=12:15, 750=12:30, 765=12:45 (자정 기준 분) */
   slotStartMinute: number;
   sampleSize: number;
-  /** 1=여유로움, 2=약간혼잡, 3=자리없음. 표본 부족(3건 미만) 시 null */
+  /** 1=입장가능, 2=약간혼잡, 3=자리없음. 표본 부족(3건 미만) 시 null */
   predictedLevel: number | null;
   predictedStatus: string | null;
   level1Count: number;
@@ -30,6 +30,17 @@ export function slotLabel(slotStartMinute: number): string {
   const em = endTotal % 60;
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${pad(h)}:${pad(m)}~${pad(eh)}:${pad(em)}`;
+}
+
+/**
+ * "자리 있을 확률" (%) — 입장가능(1) + 약간혼잡(2) 제보 비율.
+ * 표본이 적을 때 3/3 → 100% 같은 극단값이 나오지 않도록 라플라스 보정
+ * ((자리 있음 + 1) / (n + 2))을 적용한다. 표본 0이면 null.
+ */
+export function seatAvailableProbability(slot: CrowdPredictionSlot): number | null {
+  if (slot.sampleSize <= 0) return null;
+  const available = slot.level1Count + slot.level2Count;
+  return Math.round(((available + 1) / (slot.sampleSize + 2)) * 100);
 }
 
 function toNumber(value: unknown, fallback = 0): number {

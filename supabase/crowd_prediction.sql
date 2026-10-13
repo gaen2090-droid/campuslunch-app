@@ -11,8 +11,13 @@
 --       ("청룡의 아들", 관리자 제보 전용 계정)은 지금 표본이 적은 초기
 --       단계라 예외적으로 포함한다. 다른 통계 제외 계정은 그대로 제외.
 --       그 외: '영업안함' 제보, 주말(토/일) 제보
+-- 구간 교차: 제보는 상황을 본 뒤 조금 늦게 올라오므로 각 구간의 끝을 2분 늘려 적용한다.
+--            12:00~12:17 / 12:15~12:32 / 12:30~12:47 / 12:45~13:02 (시작은 그대로).
+--            겹치는 2분의 제보는 이웃한 두 구간에 모두 반영된다.
 -- 중복 처리: 같은 유저가 같은 매장·같은 15분 구간·같은 날짜에 여러 번
 --            제보해도 그 날 그 구간엔 최신 1건만 반영 (헤비 제보자 방지)
+--            단, campuslunch2026@gmail.com(관리자 제보 전용, "청룡의 아들")은
+--            중복 제거 없이 제보 건건이 모두 반영한다.
 -- 최소 표본: 구간당 유효 제보 3건 미만이면 sample_size만 채우고
 --            predicted_level/predicted_status는 null ("데이터 부족")
 
@@ -41,10 +46,11 @@ begin
   return query
   with local_reports as (
     -- KST 로컬시각 기준 요일/시각으로 필터링 + 매장별 유저별 15분 구간별
-    -- 최신 제보 1건만 남긴다.
-    select distinct on (cr.restaurant_id, r_local.slot_start_minute, cr.user_id)
+    -- "날짜마다" 최신 제보 1건만 남긴다. (report_date 를 빼면 한 유저가 같은 매장·구간에
+    -- 며칠을 제보해도 평생 1건으로만 집계되어 표본이 쌓이지 않는다.)
+    select distinct on (cr.restaurant_id, slot.slot_start_minute, r_local.dedupe_key, r_local.report_date)
       cr.restaurant_id,
-      r_local.slot_start_minute,
+      slot.slot_start_minute,
       public.report_row_level(cr.metadata, cr.level::text) as report_level,
       cr.created_at
     from public.crowd_reports cr
@@ -52,18 +58,31 @@ begin
     cross join lateral (
       select
         (extract(dow from timezone('Asia/Seoul', cr.created_at))::int) as dow,
+        (timezone('Asia/Seoul', cr.created_at))::date as report_date,
+        -- 중복 제거 키: 일반 유저는 user_id(날짜·구간당 최신 1건),
+        -- 관리자 제보 전용 계정(campuslunch2026@gmail.com)은 제보마다 고유 키라 전부 센다.
+        (case
+          when lower(u.email) = 'campuslunch2026@gmail.com' then cr.id::text
+          else cr.user_id::text
+        end) as dedupe_key,
+        -- 자정 기준 분 (KST)
         (extract(hour from timezone('Asia/Seoul', cr.created_at))::int * 60
-          + extract(minute from timezone('Asia/Seoul', cr.created_at))::int
-          / 15 * 15) as slot_start_minute
+          + extract(minute from timezone('Asia/Seoul', cr.created_at))::int) as minute_of_day
     ) r_local
+    -- 구간 [시작, 시작+15+2분) 에 드는 구간들. 겹치는 2분은 두 구간에 모두 들어간다.
+    cross join lateral (
+      select s.slot_start_minute
+      from unnest(array[720, 735, 750, 765]) as s(slot_start_minute)
+      where r_local.minute_of_day >= s.slot_start_minute
+        and r_local.minute_of_day < s.slot_start_minute + 15 + 2
+    ) slot
     where r_local.dow between 1 and 5  -- 평일(월=1~금=5)만
-      and r_local.slot_start_minute in (720, 735, 750, 765)  -- 12:00~13:00, 15분 단위
       and coalesce(nullif(trim(cr.metadata->>'status'), ''), '') <> '영업안함'
       and (
         not public.is_stats_excluded(cr.user_id)
         or lower(u.email) = 'campuslunch2026@gmail.com'
       )
-    order by cr.restaurant_id, r_local.slot_start_minute, cr.user_id, cr.created_at desc
+    order by cr.restaurant_id, slot.slot_start_minute, r_local.dedupe_key, r_local.report_date, cr.created_at desc
   ),
   slots as (
     select unnest(array[720, 735, 750, 765]) as slot_start_minute
@@ -127,13 +146,15 @@ revoke all on function public.admin_crowd_prediction_lunch() from public;
 grant execute on function public.admin_crowd_prediction_lunch() to authenticated;
 
 comment on function public.admin_crowd_prediction_lunch() is
-  '점심(12~13시, 평일, KST) 15분 단위 매장별 대표 혼잡도 통계 집계. admin-web "혼잡도 AI 예측" 탭 전용. 구간당 표본 3건 미만이면 predicted_level/status=null. campuslunch2026@gmail.com(관리자 제보 전용)은 통계 제외 예외로 포함.';
+  '점심(12~13시, 평일, KST) 15분 단위 매장별 대표 혼잡도 통계 집계. 구간 끝은 2분 교차(마지막 구간은 13:02까지). admin-web "혼잡도 AI 예측" 탭 전용. 구간당 표본 3건 미만이면 predicted_level/status=null. campuslunch2026@gmail.com(관리자 제보 전용)은 통계 제외 예외로 포함하고 중복 제거도 하지 않는다.';
 
 -- ── 표본 추적: 최근 7일 일별 유효 제보 수 ──
 -- admin_crowd_prediction_lunch()와 동일한 필터(평일·12~13시·영업안함 제외·
 -- 청룡의 아들 계정 예외 포함, 매장·구간·유저 중복은 최신 1건)를 쓰되,
 -- 매장/구간으로 나누지 않고 날짜별 총합만 낸다 — "하루에 얼마나 쌓이는지"
 -- 증가 속도 추정용. 표본 추적 카드(admin-web "혼잡도 AI 예측" 상단)에서 사용.
+-- 구간 교차(+2분)는 여기서는 중복 집계가 되므로 적용하지 않는다: 제보 한 건은 한 번만
+-- 세고, 13:00~13:02 제보만 마지막 구간(12:45)에 포함한다.
 create or replace function public.admin_crowd_prediction_daily_counts(p_days int default 7)
 returns table (
   report_date date,
@@ -151,7 +172,7 @@ begin
 
   return query
   with local_reports as (
-    select distinct on (cr.restaurant_id, r_local.slot_start_minute, cr.user_id, r_local.report_date)
+    select distinct on (cr.restaurant_id, r_local.slot_start_minute, r_local.dedupe_key, r_local.report_date)
       cr.restaurant_id,
       r_local.slot_start_minute,
       r_local.report_date,
@@ -162,19 +183,31 @@ begin
       select
         (extract(dow from timezone('Asia/Seoul', cr.created_at))::int) as dow,
         (timezone('Asia/Seoul', cr.created_at))::date as report_date,
+        -- 중복 제거 키: 일반 유저는 user_id(날짜·구간당 최신 1건),
+        -- 관리자 제보 전용 계정(campuslunch2026@gmail.com)은 제보마다 고유 키라 전부 센다.
+        (case
+          when lower(u.email) = 'campuslunch2026@gmail.com' then cr.id::text
+          else cr.user_id::text
+        end) as dedupe_key,
+        -- 15분 구간 시작(자정 기준 분). 13:00~13:02 는 마지막 구간(765)으로 묶는다.
+        least(
+          (extract(hour from timezone('Asia/Seoul', cr.created_at))::int * 60
+            + extract(minute from timezone('Asia/Seoul', cr.created_at))::int) / 15 * 15,
+          765
+        ) as slot_start_minute,
         (extract(hour from timezone('Asia/Seoul', cr.created_at))::int * 60
-          + extract(minute from timezone('Asia/Seoul', cr.created_at))::int
-          / 15 * 15) as slot_start_minute
+          + extract(minute from timezone('Asia/Seoul', cr.created_at))::int) as minute_of_day
     ) r_local
     where r_local.dow between 1 and 5
-      and r_local.slot_start_minute in (720, 735, 750, 765)
+      and r_local.minute_of_day >= 720      -- 12:00
+      and r_local.minute_of_day < 782       -- 13:02 (마지막 구간 끝 +2분)
       and r_local.report_date >= (timezone('Asia/Seoul', now()))::date - (greatest(1, p_days) - 1)
       and coalesce(nullif(trim(cr.metadata->>'status'), ''), '') <> '영업안함'
       and (
         not public.is_stats_excluded(cr.user_id)
         or lower(u.email) = 'campuslunch2026@gmail.com'
       )
-    order by cr.restaurant_id, r_local.slot_start_minute, cr.user_id, r_local.report_date, cr.created_at desc
+    order by cr.restaurant_id, r_local.slot_start_minute, r_local.dedupe_key, r_local.report_date, cr.created_at desc
   )
   select lr.report_date, count(*)::int as valid_report_count
   from local_reports lr
@@ -187,6 +220,6 @@ revoke all on function public.admin_crowd_prediction_daily_counts(int) from publ
 grant execute on function public.admin_crowd_prediction_daily_counts(int) to authenticated;
 
 comment on function public.admin_crowd_prediction_daily_counts(int) is
-  '최근 N일(기본 7일) 평일 점심(12~13시) 유효 제보 수를 날짜별로 집계. admin_crowd_prediction_lunch()와 동일 필터. 표본 추적(증가 속도 추정)용.';
+  '최근 N일(기본 7일) 평일 점심(12:00~13:02) 유효 제보 수를 날짜별로 집계. admin_crowd_prediction_lunch()와 동일 필터이되 구간 교차는 적용하지 않아 제보를 중복 집계하지 않는다. 표본 추적(증가 속도 추정)용.';
 
 select 'crowd_prediction.sql ok' as status;

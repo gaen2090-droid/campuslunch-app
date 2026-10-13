@@ -4,6 +4,7 @@ import {
   CROWD_PREDICTION_SLOT_MINUTES,
   computeCoverage,
   estimateDaysToReady,
+  seatAvailableProbability,
   slotLabel,
   type CrowdPredictionDailyCount,
   type CrowdPredictionRestaurant,
@@ -19,6 +20,9 @@ interface Props {
 }
 
 const MIN_SAMPLE_SIZE = 3;
+/** "자리 있을 확률" 뱃지 색 구간: 70% 이상 초록, 40~69% 주황, 40% 미만 빨강 (임의 기준, 조정 가능). */
+const SEAT_PROB_HIGH = 70;
+const SEAT_PROB_MID = 40;
 /** 학습 모델(로지스틱 회귀 등)로 전환을 고려할 구간당 표본 기준(매장당
  * 4구간 합산 시 40건). "본격 신뢰"보다는 "일단 시도해볼 최소선". */
 const READY_SAMPLE_SIZE = 10;
@@ -41,17 +45,18 @@ function SlotCell({ slot }: { slot: CrowdPredictionSlot | undefined }) {
       </td>
     );
   }
-  const statusClass =
-    slot.predictedStatus === "자리없음"
-      ? "danger"
-      : slot.predictedStatus === "약간혼잡"
-        ? "warning"
-        : "assigned";
+  // 메인 지표는 "자리 있을 확률". 최빈값 뱃지는 표본이 적을 때 과하게 단정적이라 쓰지 않는다.
+  const seatProb = seatAvailableProbability(slot) ?? 0;
+  const probClass =
+    seatProb >= SEAT_PROB_HIGH ? "assigned" : seatProb >= SEAT_PROB_MID ? "warning" : "danger";
   return (
     <td>
       <div className="crowd-prediction-cell">
-        <span className={`badge ${statusClass}`}>{slot.predictedStatus}</span>
-        <span className="crowd-prediction-n">n={slot.sampleSize}</span>
+        <span className={`badge ${probClass}`}>자리 있을 확률 {seatProb}%</span>
+        <span className="crowd-prediction-n">
+          입장가능 {slot.level1Count} · 약간혼잡 {slot.level2Count} · 자리없음{" "}
+          {slot.level3Count} (n={slot.sampleSize})
+        </span>
       </div>
     </td>
   );
@@ -89,11 +94,14 @@ export function CrowdPredictionPage({
           </button>
         </div>
         <p className="muted">
-          점심시간(12:00~13:00, 평일) 제보를 15분 단위로 모아 매장별 대표
-          혼잡도를 통계로 낸 화면입니다. 실제 학습 모델이 아니라 제보
-          누적치 기반 통계 집계이며, 구간당 유효 제보가 {MIN_SAMPLE_SIZE}건
-          미만이면 "데이터 부족"으로 표시합니다. 앱 화면에는 아직 노출되지
-          않습니다.
+          점심시간(12:00~13:00, 평일) 제보를 15분 단위로 모아 매장별로
+          "자리 있을 확률"을 통계로 낸 화면입니다. 늦게 올라오는 제보를 위해
+          구간 끝은 2분씩 겹쳐 적용합니다(마지막 구간은 13:02까지). 실제 학습
+          모델이 아니라 제보 누적치 기반 통계 집계이며, 구간당 유효 제보가{" "}
+          {MIN_SAMPLE_SIZE}건 미만이면 "데이터 부족"으로 표시합니다. "자리 있을
+          확률"은 입장가능+약간혼잡 제보 비율(표본이 적을 때를 위해 보정)이고,
+          {SEAT_PROB_HIGH}% 이상 초록 · {SEAT_PROB_MID}% 이상 주황 · 그 미만
+          빨강으로 표시합니다. 앱 화면에는 아직 노출되지 않습니다.
         </p>
       </section>
 
@@ -163,6 +171,11 @@ export function CrowdPredictionPage({
         <div className="panel-head">
           <h2>매장별 예측</h2>
         </div>
+        <p className="muted sm">
+          구간은 끝이 2분씩 겹쳐 적용돼요. 예) 12:00~12:15 구간은 12:17까지의
+          제보를 포함하고, 마지막 12:45~13:00 구간은 13:02까지 포함해요. 겹치는
+          2분의 제보는 이웃한 두 구간에 모두 반영됩니다.
+        </p>
         {loading && restaurants.length === 0 ? (
           <p className="muted center">불러오는 중…</p>
         ) : restaurants.length === 0 ? (
