@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_colors.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/lunch_fairy_flavor.dart';
 import '../utils/lunch_fairy_recommender.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
@@ -147,6 +149,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   FairyPosition? _lastPosition;
   final Set<String> _seen = {};
   final math.Random _random = math.Random();
+
+  /// 결과 말투를 고르는 값. 추천이 새로 나올 때마다 바뀌고, 화면이 다시 그려져도 유지된다.
+  int _flavorSeed = 0;
+
+  /// "고르는 중" 연출(카드 섞기)을 보여주는 최소 시간.
+  static const _minThinking = Duration(milliseconds: 1400);
 
   @override
   void initState() {
@@ -304,6 +312,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   Future<void> _start() async {
     final provider = context.read<AppProvider>();
+    final startedAt = DateTime.now();
     setState(() => _phase = _Phase.thinking);
     _seen.clear();
     await _saveAnswers();
@@ -331,6 +340,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       areas: _areas.toSet(),
       companion: _companion,
     );
+    // 계산이 금방 끝나도 카드 섞기 연출을 짧게라도 보여준다.
+    final remain = _minThinking - DateTime.now().difference(startedAt);
+    if (remain > Duration.zero) await Future<void>.delayed(remain);
     if (!mounted) return;
     _recommend();
   }
@@ -363,6 +375,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     setState(() {
       if (outcome.pick != null) {
         _pick = outcome.pick;
+        _flavorSeed = _random.nextInt(1 << 20);
         _seen.add(outcome.pick!.restaurant.id);
         _phase = _Phase.result;
       } else {
@@ -374,7 +387,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   Future<void> _reroll() async {
     setState(() => _phase = _Phase.thinking);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    await Future<void>.delayed(_minThinking);
     if (!mounted) return;
     _recommend();
   }
@@ -588,21 +601,15 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   // ── 생각 중 ──
   Widget _buildThinking() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(_kFairyAsset, width: 110, height: 110),
-          SizedBox(height: 12),
+          _ShuffleCards(),
+          SizedBox(height: 20),
           Text(
             '요정이 고르는 중이에요…',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: 16),
-          SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
           ),
         ],
       ),
@@ -622,14 +629,23 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     // 가격 필터는 엔진에서 끝났으니, 화면에는 대표메뉴를 가격과 상관없이 모두 보여준다.
     final signatures = fairySignatureMenus(r);
     final menu = pick.menu;
+    final rarity = fairyRarity(pick);
+    final timeNote = fairyTimeNote(pick, DateTime.now());
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
         Text(
-          _headline(pick),
+          fairyHeadline(pick, _flavorSeed),
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, height: 1.35),
         ),
+        if (timeNote != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            timeNote,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+        ],
         if (pick.relaxed.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
@@ -638,11 +654,22 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           ),
         ],
         const SizedBox(height: 16),
-        Container(
+        // 카드가 뒤집히며 결과가 공개된다. 탭하면 바로 공개, 같은 결과가 다시 그려져도 재생하지 않는다.
+        _FlipReveal(
+          key: ValueKey('${r.id}_$_flavorSeed'),
+          onRevealed: () {
+            if (rarity != FairyRarity.normal) HapticFeedback.mediumImpact();
+          },
+          front: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+            border: Border.all(
+              color: rarity == FairyRarity.normal
+                  ? const Color(0xFFE5E7EB)
+                  : _rarityColor(rarity),
+              width: rarity == FairyRarity.normal ? 1 : 2,
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -661,6 +688,10 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (rarity != FairyRarity.normal) ...[
+                      _rarityChip(rarity),
+                      const SizedBox(height: 8),
+                    ],
                     Text(
                       r.name,
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
@@ -733,6 +764,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               ),
             ],
           ),
+        ),
         ),
         const SizedBox(height: 20),
         SizedBox(
@@ -815,24 +847,42 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     );
   }
 
-  // 말투는 여기서만 만든다. 엔진은 이유 코드만 돌려준다.
-  String _headline(FairyPick pick) {
-    final r = pick.restaurant;
-    switch (pick.reason) {
-      case FairyReason.freshRelaxed:
-        return '지금 ${r.name} 여유로워요!';
-      case FairyReason.freshModerate:
-        return '${r.name}, 조금 붐비지만 자리는 있다고 해요.';
-      case FairyReason.nearby:
-        final w = pick.walkMinutes;
-        return '${r.name}, ${w != null ? '걸어서 $w분이면 가요!' : '가까워요!'}';
-      case FairyReason.soloFriendly:
-        return '${r.name}, 혼자 가기 편한 곳이에요.';
-      case FairyReason.dateFriendly:
-        return '${r.name}, 밥약하기 좋은 곳이에요.';
-      case FairyReason.general:
-        return '${r.name} 어떠세요?';
-    }
+  // 말투(헤드라인·시간대 멘트·희귀도 문구)는 lunch_fairy_flavor.dart 에서 만든다.
+  // 엔진은 이유 코드만 돌려준다.
+
+  Color _rarityColor(FairyRarity rarity) => rarity == FairyRarity.epic
+      ? const Color(0xFF7C3AED)
+      : const Color(0xFF2563EB);
+
+  Widget _rarityChip(FairyRarity rarity) {
+    final color = _rarityColor(rarity);
+    final bg = rarity == FairyRarity.epic
+        ? const Color(0xFFEDE9FE)
+        : const Color(0xFFDBEAFE);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, size: 13, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '${fairyRarityLabel(rarity)} · ${fairyRarityReason(rarity)}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _relaxedNote(List<FairyRelax> relaxed) {
@@ -858,6 +908,175 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       buf.write(s[i]);
     }
     return '$buf원';
+  }
+}
+
+/// 카드 뒷면 (섞이는 연출과 뒤집기 직전 모습이 같다).
+Widget _fairyCardBack({double width = 96, double height = 128}) {
+  return Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: const Color(0xFFE6F3EC),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFCDE9DC), width: 2),
+    ),
+    child: Center(
+      child: Image.asset(_kFairyAsset, width: width * 0.55, height: width * 0.55),
+    ),
+  );
+}
+
+/// "고르는 중" — 카드 세 장이 좌우로 섞인다. 모션 줄이기 설정이면 정지 상태로 보여준다.
+class _ShuffleCards extends StatefulWidget {
+  const _ShuffleCards();
+
+  @override
+  State<_ShuffleCards> createState() => _ShuffleCardsState();
+}
+
+class _ShuffleCardsState extends State<_ShuffleCards>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.of(context).disableAnimations;
+    return SizedBox(
+      width: 240,
+      height: 150,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              for (var i = 0; i < 3; i++)
+                () {
+                  final phase = reduce ? i / 3 : (_c.value + i / 3) % 1.0;
+                  final dx = math.sin(phase * 2 * math.pi) * 62;
+                  final tilt = math.cos(phase * 2 * math.pi) * 0.18;
+                  // 가운데를 지날 때(dx≈0) 위로 올라와 서로 겹쳐 섞이는 느낌을 준다.
+                  final lift = -math.cos(phase * 2 * math.pi).abs() * 8;
+                  return Transform.translate(
+                    offset: Offset(dx, lift),
+                    child: Transform.rotate(angle: tilt, child: _fairyCardBack()),
+                  );
+                }(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 결과 카드를 뒷면에서 앞면으로 뒤집으며 공개한다. 탭하면 즉시 공개한다.
+class _FlipReveal extends StatefulWidget {
+  final Widget front;
+  final VoidCallback? onRevealed;
+  const _FlipReveal({super.key, required this.front, this.onRevealed});
+
+  @override
+  State<_FlipReveal> createState() => _FlipRevealState();
+}
+
+class _FlipRevealState extends State<_FlipReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+  bool _notified = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addStatusListener((s) {
+      if (s == AnimationStatus.completed) _notifyRevealed();
+    });
+    _c.forward();
+  }
+
+  void _notifyRevealed() {
+    if (_notified || !mounted) return;
+    _notified = true;
+    widget.onRevealed?.call();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 모션 줄이기 설정이면 뒤집지 않고 바로 보여준다.
+    if (MediaQuery.of(context).disableAnimations && _c.value < 1) {
+      _c.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        if (_c.isAnimating) _c.value = 1;
+      },
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final angle = Curves.easeInOut.transform(_c.value) * math.pi;
+          final showFront = angle > math.pi / 2;
+          final transform = Matrix4.identity()
+            ..setEntry(3, 2, 0.0012)
+            ..rotateY(angle);
+          return Transform(
+            alignment: Alignment.center,
+            transform: transform,
+            child: showFront
+                // 앞면은 이미 반 바퀴 돌아간 상태라 거울상이 되므로 한 번 더 뒤집어 바로 세운다.
+                ? Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(math.pi),
+                    child: widget.front,
+                  )
+                // 뒷면: 앞면과 같은 크기를 유지하려고 투명한 앞면 위에 뒷면 장식을 얹는다.
+                : Stack(
+                    children: [
+                      Opacity(opacity: 0, child: widget.front),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F3EC),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: const Color(0xFFCDE9DC), width: 2),
+                          ),
+                          child: Center(
+                            child: Image.asset(_kFairyAsset,
+                                width: 72, height: 72),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
+      ),
+    );
   }
 }
 
