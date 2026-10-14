@@ -510,20 +510,6 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
-  /// [step] 질문 앞까지 확정된 답변만 담은 조건. 단계별 "남은 후보" 계산용.
-  FairyRequest _requestBefore(int step) => FairyRequest(
-        cuisine: step > 1 ? _cuisine : null,
-        budgetLimit: step > 2 ? _budget : null,
-        areas: step > 3 ? _areas.toSet() : const {},
-        companion: _companion,
-      );
-
-  int _countFor(FairyRequest req) => fairyCountCandidates(
-        context.read<AppProvider>().restaurants,
-        req,
-        now: DateTime.now(),
-      );
-
   /// 위치 질문의 현재 선택: 'any' | 'heukseok' | 'sangdo' | 'near'.
   String get _locationChoice {
     if (_walk != null) return 'near';
@@ -579,8 +565,6 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           '어디서 드실래요?'
         ),
     };
-
-    final count = _countFor(_requestBefore(_step));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -681,9 +665,10 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      count == 0
-                          ? '조건에 딱 맞는 곳이 없으면 요정이 조금씩 넓혀서 찾아줄게요.'
-                          : '지금 갈 수 있는 곳 $count곳',
+                      // 마지막 질문에서만 조건을 넓혀 찾는다는 안내를 남긴다.
+                      _step == _lastStep
+                          ? '조건에 딱 맞는 곳이 없으면 조금씩 넓혀서 찾아줄게요.'
+                          : '고민은 제가 할게요, 선택만 해주세요!',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
