@@ -5,7 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
+    show Button, Link, ShareClient, TextTemplate;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_colors.dart';
@@ -13,6 +16,7 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/lunch_fairy_flavor.dart';
 import '../utils/lunch_fairy_recommender.dart';
+import '../widgets/share_sheet.dart' show buildShareLink;
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 
@@ -430,6 +434,49 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         _phase = _Phase.questions;
       });
 
+  /// 결과를 카카오톡으로 공유한다. 카카오톡을 쓸 수 없으면 기본 공유창으로 넘어간다.
+  /// 혼잡도는 시간이 지나면 달라지므로 문구에 넣지 않는다.
+  Future<void> _shareResult(FairyPick pick) async {
+    final r = pick.restaurant;
+    final menus = fairySignatureMenus(r).map((m) => m.name).toList();
+    final menuLine = menus.isNotEmpty
+        ? '\n대표메뉴: ${menus.join(' · ')}'
+        : (pick.menu != null ? '\n추천메뉴: ${pick.menu!.name}' : '');
+    final text = '오늘 점심, 점메추 요정의 선택은 ${r.name}!'
+        '$menuLine\n캠퍼스런치에서 점메추 요정에게 맡겨보세요.';
+
+    final url = Uri.parse(buildShareLink(r));
+    final params = r.linkNo > 0
+        ? <String, String>{'r': '${r.linkNo}'}
+        : <String, String>{'path': 'home'};
+    final link = Link(
+      webUrl: url,
+      mobileWebUrl: url,
+      androidExecutionParams: params,
+      iosExecutionParams: params,
+    );
+    final template = TextTemplate(
+      text: text,
+      link: link,
+      buttons: [Button(title: '앱에서 열기', link: link)],
+    );
+
+    try {
+      if (await ShareClient.instance.isKakaoTalkSharingAvailable()) {
+        final uri = await ShareClient.instance.shareDefault(template: template);
+        await ShareClient.instance.launchKakaoTalk(uri);
+        return;
+      }
+      await Share.share('$text\n${buildShareLink(r)}');
+    } catch (e) {
+      debugPrint('[Fairy] share failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유를 열지 못했어요. 잠시 후 다시 시도해주세요.')),
+      );
+    }
+  }
+
   void _openDetail(Restaurant r) => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
@@ -658,7 +705,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                       question,
                       style: const TextStyle(
                         fontFamily: 'OkDanDan',
-                        fontSize: 24,
+                        fontSize: 28,
                         fontWeight: FontWeight.w700,
                         height: 1.3,
                       ),
@@ -667,10 +714,10 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     Text(
                       // 마지막 질문에서만 조건을 넓혀 찾는다는 안내를 남긴다.
                       _step == _lastStep
-                          ? '조건에 딱 맞는 곳이 없으면 조금씩 넓혀서 찾아줄게요.'
+                          ? '딱 맞는 곳이 없으면 조금씩 넓혀서 찾아줄게요.'
                           : '고민은 제가 할게요, 선택만 해주세요!',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF6B7280),
                       ),
@@ -696,7 +743,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               if (_step > 0) ...[
                 SizedBox(
                   width: 96,
-                  height: 52,
+                  height: 58,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black,
@@ -707,14 +754,14 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     onPressed: _prev,
                     child: const Text('이전',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w800)),
+                            fontSize: 16, fontWeight: FontWeight.w800)),
                   ),
                 ),
                 const SizedBox(width: 10),
               ],
               Expanded(
                 child: SizedBox(
-                  height: 52,
+                  height: 58,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryCta,
@@ -727,7 +774,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     child: Text(
                       _step >= _lastStep ? '골라주세요! 🪄' : '다음',
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w900),
+                          fontSize: 18, fontWeight: FontWeight.w900),
                     ),
                   ),
                 ),
@@ -810,7 +857,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFE6F3EC) : Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -824,21 +871,21 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               Text(
                 label,
                 style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   sub,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF6B7280),
                   ),
                 ),
               ),
               const Icon(Icons.chevron_right,
-                  size: 18, color: Color(0xFFD1D5DB)),
+                  size: 20, color: Color(0xFFD1D5DB)),
             ],
           ),
         ),
@@ -861,7 +908,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                 child: GestureDetector(
                   onTap: onTap,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: selected ? const Color(0xFFE6F3EC) : Colors.white,
@@ -876,7 +923,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     child: Text(
                       label,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w900),
+                          fontSize: 17, fontWeight: FontWeight.w900),
                     ),
                   ),
                 ),
@@ -896,7 +943,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         style: TextButton.styleFrom(
           backgroundColor: const Color(0xFFE5E7EB),
           foregroundColor: const Color(0xFF4B5563),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 15),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
@@ -920,11 +967,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.history, size: 17),
+                Icon(Icons.history, size: 19),
                 SizedBox(width: 6),
                 Text(
                   '지난번처럼 바로 고르기',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -932,7 +979,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             Text(
               _savedAnswers?.summary ?? '',
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF9CA3AF),
               ),
@@ -976,7 +1023,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     final rarity = fairyRarity(pick);
     final timeNote = fairyTimeNote(pick, DateTime.now());
 
-    return ListView(
+    final list = ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
         Text(
@@ -1168,6 +1215,39 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         ),
       ],
     );
+
+    // 공유 버튼은 질문 화면의 하단 버튼처럼 맨 아래에 고정한다.
+    return Column(
+      children: [
+        Expanded(child: list),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 58,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFEE500),
+                foregroundColor: const Color(0xFF3C1E1E),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => _shareResult(pick),
+              icon: const Icon(Icons.chat_bubble, size: 18),
+              label: Text(
+                // 혼밥이면 일반 공유, 친구랑·밥약이면 사달라고 조르는 문구.
+                (_lastRequest?.companion ?? _companion) == FairyCompanion.solo
+                    ? '카카오톡으로 공유하기'
+                    : '친구에게 사달라고 조르기',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildMessage(String text) {
@@ -1251,7 +1331,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           parts.add('거리');
       }
     }
-    return '조건에 딱 맞는 곳이 없어서 ${parts.join('·')} 조건을 조금 넓혀봤어요!';
+    return '딱 맞는 곳이 없어서 ${parts.join('·')} 조건을 조금 넓혀봤어요!';
   }
 
   String _won(int v) {
