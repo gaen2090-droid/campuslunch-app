@@ -358,12 +358,16 @@ int fairyCountCandidates(
 }) {
   return restaurants
       .where((r) =>
-          r.category != '카페' &&
-          _isOpenForFairy(r, now) &&
-          !_isFreshFullRecently(r, now) &&
-          _matches(r, request, position))
+          fairyIsEligible(r, now) && _matches(r, request, position))
       .length;
 }
+
+/// 점심 후보가 될 수 있는 매장인가: 카페 제외, 영업 중(마감 30분 전 이상),
+/// 최근 15분 안에 자리없음으로 제보되지 않은 곳. 점메추 요정과 룰렛이 함께 쓴다.
+bool fairyIsEligible(Restaurant r, DateTime now) =>
+    r.category != '카페' &&
+    _isOpenForFairy(r, now) &&
+    !_isFreshFullRecently(r, now);
 
 bool _matches(Restaurant r, FairyRequest req, FairyPosition? position) {
   if (req.cuisine != null && r.category != req.cuisine) return false;

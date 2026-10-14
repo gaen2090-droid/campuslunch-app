@@ -449,6 +449,7 @@ class AppProvider extends ChangeNotifier {
   Uri? _queuedIncomingUri;
   AppLinkTarget? _pendingAppLink;
   int? _pendingRestaurantLinkNo;
+  List<int> _pendingRouletteLinkNos = const [];
   // restaurantId → 마지막 제보 시각 (5분 재제보 금지)
   final Map<String, DateTime> _lastReportTime = {};
   DateTime _tabEnteredAt = DateTime.now();
@@ -492,6 +493,14 @@ class AppProvider extends ChangeNotifier {
   void handleIncomingUri(Uri uri) {
     if (_bootstrapping) {
       _queuedIncomingUri = uri;
+      return;
+    }
+    final rouletteNos = AppLinks.parseRouletteLinkNos(uri);
+    if (rouletteNos != null) {
+      if (!_isLoggedIn || _stage != 'app') return;
+      _pendingAppLink = AppLinkTarget.roulette;
+      _pendingRouletteLinkNos = rouletteNos;
+      notifyListeners();
       return;
     }
     final parsed = AppLinks.parse(uri);
@@ -549,13 +558,16 @@ class AppProvider extends ChangeNotifier {
   }
 
   /// MainScreen에서 소비 후 null 반환
-  ({AppLinkTarget target, int? linkNo})? consumePendingAppLink() {
+  ({AppLinkTarget target, int? linkNo, List<int> rouletteLinkNos})?
+      consumePendingAppLink() {
     final target = _pendingAppLink;
     final linkNo = _pendingRestaurantLinkNo;
+    final rouletteNos = _pendingRouletteLinkNos;
     _pendingAppLink = null;
     _pendingRestaurantLinkNo = null;
+    _pendingRouletteLinkNos = const [];
     if (target == null) return null;
-    return (target: target, linkNo: linkNo);
+    return (target: target, linkNo: linkNo, rouletteLinkNos: rouletteNos);
   }
 
   Restaurant? restaurantByLinkNo(int linkNo) {

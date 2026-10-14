@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
@@ -21,7 +22,9 @@ import '../widgets/report_sheet.dart';
 import '../widgets/suspension_popup_dialog.dart';
 import 'detail_screen.dart';
 import 'location_permission_screen.dart';
+import '../widgets/lunch_home_tiles.dart';
 import 'lunch_fairy_screen.dart';
+import 'lunch_roulette_screen.dart';
 import 'restaurant_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1004,12 +1007,19 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
           children: [
-            // 점심메뉴 요정 배너 — 평일 11~14시, 식당 탭에서만 (1분 ticker로 경계 시각에 갱신)
-            if (_mainTab == 0 && isFairyBannerTime(DateTime.now()))
-              LunchFairyBanner(
-                onTap: () => Navigator.push(
+            // 점메추 요정 + 점심 룰렛 타일 — 평일 11~14시, 식당 탭에서만 (1분 ticker로 경계 시각에 갱신)
+            // TODO(미리보기): `kDebugMode ||` 는 디버그 빌드에서 시간과 무관하게 보이려는 임시 조건. 출시 전 제거.
+            if (_mainTab == 0 &&
+                (kDebugMode || isFairyBannerTime(DateTime.now())))
+              LunchHomeTiles(
+                onFairyTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const LunchFairyScreen()),
+                ),
+                onRouletteTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const LunchRouletteScreen()),
                 ),
               ),
             // 로딩/에러

@@ -10,6 +10,7 @@ import 'bookmark_list_screen.dart';
 import 'coupon_box_screen.dart';
 import 'legal_policy_hub_screen.dart';
 import 'lunch_fairy_screen.dart';
+import 'lunch_roulette_screen.dart';
 import 'referral_invite_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
@@ -177,6 +178,15 @@ class _MyScreenState extends State<MyScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (_) => const LunchFairyScreen()),
+                ),
+              ),
+              // 점메추 요정 바로 아래 점심 룰렛 배너
+              LunchRouletteBanner(
+                compact: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const LunchRouletteScreen()),
                 ),
               ),
 

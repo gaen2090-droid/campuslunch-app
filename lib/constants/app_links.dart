@@ -6,6 +6,9 @@ enum AppLinkTarget {
   coupons,
   restaurant,
   bookmarks,
+
+  /// 친구가 보낸 점심 룰렛 후보 (카카오톡 공유 링크, `rl=12,15,3`)
+  roulette,
 }
 
 class AppLinks {
@@ -50,6 +53,32 @@ class AppLinks {
     final code = referralCode.trim();
     if (code.isEmpty) return const {};
     return {'ref': code};
+  }
+
+  /// 점심 룰렛 후보를 친구에게 보내는 카카오톡 공유 버튼용. 매장 linkNo 목록만 담는다.
+  static Map<String, String> rouletteExecutionParams(List<int> linkNos) {
+    final valid = linkNos.where((n) => n > 0).toList();
+    if (valid.isEmpty) return const {};
+    return {'rl': valid.join(',')};
+  }
+
+  /// 카카오톡 공유 링크의 룰렛 후보 linkNo 목록. 룰렛 링크가 아니면 null.
+  static List<int>? parseRouletteLinkNos(Uri uri) {
+    final kakaoKey = Env.kakaoNativeAppKey;
+    if (kakaoKey.isEmpty ||
+        uri.scheme != 'kakao$kakaoKey' ||
+        uri.host != 'kakaolink') {
+      return null;
+    }
+    final raw = uri.queryParameters['rl'];
+    if (raw == null || raw.trim().isEmpty) return null;
+    final nos = <int>[];
+    for (final part in raw.split(',')) {
+      final n = int.tryParse(part.trim());
+      if (n != null && n > 0 && !nos.contains(n)) nos.add(n);
+      if (nos.length >= 8) break;
+    }
+    return nos.isEmpty ? null : nos;
   }
 
   /// 수신 URI → (target, restaurant linkNo, invite ref). 미지원이면 null.
@@ -98,7 +127,11 @@ class AppLinks {
           referralCode: ref != null && ref.isNotEmpty ? ref : null,
         );
       case 'coupons':
-        return (target: AppLinkTarget.coupons, linkNo: null, referralCode: null);
+        return (
+          target: AppLinkTarget.coupons,
+          linkNo: null,
+          referralCode: null
+        );
       case 'r':
       case 'restaurant':
         if (segments.length < 2) return null;

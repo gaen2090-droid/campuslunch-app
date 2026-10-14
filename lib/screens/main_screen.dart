@@ -12,6 +12,7 @@ import 'community_screen.dart';
 import 'coupon_box_screen.dart';
 import 'detail_screen.dart';
 import 'home_screen.dart';
+import 'lunch_roulette_screen.dart';
 import 'map_screen.dart';
 import 'my_screen.dart';
 import 'owner_my_screen.dart';
@@ -126,6 +127,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           if (!mounted) return;
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const BookmarkListScreen()),
+          );
+        case AppLinkTarget.roulette:
+          if (!mounted) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  LunchRouletteScreen(presetLinkNos: pending.rouletteLinkNos),
+            ),
           );
       }
     } finally {
