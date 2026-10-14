@@ -121,12 +121,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   /// 음식 종류를 고른 뒤 요정이 하는 말.
   static const _cuisineReactions = <String, String>{
-    '한식': '한식 좋죠! 따끈한 국밥 먹고싶당',
-    '중식': '중식 좋죠! 짜장면 먹고싶당',
-    '일식': '일식 좋죠! 돈카츠 먹고싶당',
-    '양식': '양식 좋죠! 파스타 먹고싶당',
-    '분식': '분식 좋죠! 떡볶이 먹고싶당',
-    '아시아': '아시아 음식 좋죠! 쌀국수 먹고싶당',
+    '한식': '한식 좋죠! 따끈한 국밥 먹고싶당 ( ›´-`‹ )',
+    '중식': '중식 좋죠! 짜장면 먹고싶당 ( ›´-`‹ )',
+    '일식': '일식 좋죠! 돈카츠 먹고싶당 ( ›´-`‹ )',
+    '양식': '양식 좋죠! 파스타 먹고싶당 ( ›´-`‹ )',
+    '분식': '분식 좋죠! 떡볶이 먹고싶당 ( ›´-`‹ )',
+    '아시아': '아시아 음식 좋죠! 쌀국수 먹고싶당 ( ›´-`‹ )',
   };
   static const _budgets = <(String, int?)>[
     ('~8천', 8000),
@@ -557,7 +557,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   Widget _buildQuestions() {
     final (reaction, question) = switch (_step) {
-      0 => ('점심 메뉴 추천은 저에게 맡겨주세요!', '오늘 누구랑 드세요?'),
+      0 => ('오늘 점심 메뉴는 저에게 맡겨주세요 (・ω<)', '오늘 누구랑 드세요?'),
       1 => (
           switch (_companion) {
             FairyCompanion.solo => '혼밥이시군요! 편한 곳으로 찾아볼게요.',
@@ -573,7 +573,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
           '1인당 예산은 어느 정도예요?'
         ),
       _ => (
-          _budget == null ? '예산 걱정 없는 날이군요!' : '${_budgetLabel()} 안쪽으로 볼게요.',
+          _budget == null
+              ? '예산 걱정 없는 날이군요! 〜(^∇^〜）'
+              : '${_budgetLabel()} 안쪽으로 볼게요.',
           '어디서 드실래요?'
         ),
     };
@@ -614,23 +616,23 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Image.asset(_kFairyAsset, width: 64, height: 64),
-                        const SizedBox(width: 14),
+                        Image.asset(_kFairyAsset, width: 72, height: 72),
+                        const SizedBox(width: 12),
                         // 말풍선: 왼쪽(요정 쪽)에 꼬리가 달린다.
                         Expanded(
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Positioned(
-                                left: -5,
+                                left: -6,
                                 top: 0,
                                 bottom: 0,
                                 child: Center(
                                   child: Transform.rotate(
                                     angle: math.pi / 4,
                                     child: Container(
-                                      width: 12,
-                                      height: 12,
+                                      width: 14,
+                                      height: 14,
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFE6F3EC),
                                         borderRadius: BorderRadius.circular(2),
@@ -642,17 +644,23 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
+                                    horizontal: 14, vertical: 14),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE6F3EC),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                child: Text(
-                                  reaction,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF374151),
+                                // 한 줄로 고정한다. 폭이 모자라는 기기에서는 글자가 잘리지 않고 조금 줄어든다.
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    reaction,
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF374151),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -732,7 +740,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                     ),
                     onPressed: _next,
                     child: Text(
-                      _step >= _lastStep ? '골라주세요!' : '다음',
+                      _step >= _lastStep ? '골라주세요! 🪄' : '다음',
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w900),
                     ),
