@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
@@ -14,7 +13,6 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/lunch_fairy_recommender.dart';
 import '../utils/lunch_roulette.dart';
-import '../utils/roulette_preview_fakes.dart';
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 
@@ -160,14 +158,7 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
     super.dispose();
   }
 
-  /// 후보로 쓸 전체 매장. 디버그 빌드에서는 미리보기용 가짜 매장을 섞는다(임시).
-  List<Restaurant> get _all {
-    final real = context.read<AppProvider>().restaurants;
-    if (kDebugMode && kRoulettePreviewFakes) {
-      return [...real, ...rouletteFakeStores()];
-    }
-    return real;
-  }
+  List<Restaurant> get _all => context.read<AppProvider>().restaurants;
 
   /// 사장님이 방금 고친 영업 상태가 바로 반영되도록 최신 목록으로 칸을 구성한다.
   Future<void> _load() async {
@@ -714,7 +705,7 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
       length += r.name.length + 3;
     }
     final rest = withLink.length - names.length;
-    final text = '점심 룰렛 후보를 골랐어요!\n'
+    final text = '식당 룰렛 후보를 골랐어요!\n'
         '${names.join(' · ')}${rest > 0 ? ' 외 $rest곳' : ''}\n'
         '가고 싶은 곳을 더 골라서 같이 돌려봐요.';
 

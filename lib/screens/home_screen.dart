@@ -1,6 +1,5 @@
 ﻿import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
@@ -1008,9 +1007,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 100),
           children: [
             // 점메추 요정 + 점심 룰렛 타일 — 평일 11~14시, 식당 탭에서만 (1분 ticker로 경계 시각에 갱신)
-            // TODO(미리보기): `kDebugMode ||` 는 디버그 빌드에서 시간과 무관하게 보이려는 임시 조건. 출시 전 제거.
-            if (_mainTab == 0 &&
-                (kDebugMode || isFairyBannerTime(DateTime.now())))
+            if (_mainTab == 0 && isFairyBannerTime(DateTime.now()))
               LunchHomeTiles(
                 onFairyTap: () => Navigator.push(
                   context,
