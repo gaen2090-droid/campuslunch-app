@@ -348,6 +348,23 @@ FairyOutcome fairyRecommend(
   return const FairyOutcome();
 }
 
+/// 지금 [request] 조건을 그대로 만족하는 후보 수. 조건을 넓히지 않고 세므로
+/// 질문 단계에서 "남은 후보" 표시용으로만 쓴다.
+int fairyCountCandidates(
+  List<Restaurant> restaurants,
+  FairyRequest request, {
+  required DateTime now,
+  FairyPosition? position,
+}) {
+  return restaurants
+      .where((r) =>
+          r.category != '카페' &&
+          _isOpenForFairy(r, now) &&
+          !_isFreshFullRecently(r, now) &&
+          _matches(r, request, position))
+      .length;
+}
+
 bool _matches(Restaurant r, FairyRequest req, FairyPosition? position) {
   if (req.cuisine != null && r.category != req.cuisine) return false;
   if (req.areas.isNotEmpty && !req.areas.contains(r.area)) return false;

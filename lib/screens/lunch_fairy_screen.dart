@@ -22,7 +22,8 @@ class LunchFairyBanner extends StatelessWidget {
 
   /// 마이 탭처럼 다른 카드와 나란히 놓일 때: 회색 테두리를 두르고 부제를 뺀다.
   final bool compact;
-  const LunchFairyBanner({super.key, required this.onTap, this.compact = false});
+  const LunchFairyBanner(
+      {super.key, required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -117,18 +118,22 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   static const _kCompanion = 'fairy_companion';
 
   static const _cuisines = ['한식', '중식', '일식', '양식', '분식', '아시아'];
+
+  /// 음식 종류를 고른 뒤 요정이 하는 말.
+  static const _cuisineReactions = <String, String>{
+    '한식': '한식 좋죠! 따끈한 국밥 먹고싶당',
+    '중식': '중식 좋죠! 짜장면 먹고싶당',
+    '일식': '일식 좋죠! 돈카츠 먹고싶당',
+    '양식': '양식 좋죠! 파스타 먹고싶당',
+    '분식': '분식 좋죠! 떡볶이 먹고싶당',
+    '아시아': '아시아 음식 좋죠! 쌀국수 먹고싶당',
+  };
   static const _budgets = <(String, int?)>[
     ('~8천', 8000),
     ('~1만', 10000),
     ('~1만3천', 13000),
     ('상관없음', null),
   ];
-  static const _walks = <(String, int?)>[
-    ('상관없음', null),
-    ('도보 5분', 5),
-    ('도보 10분', 10),
-  ];
-
   String? _cuisine;
   int? _budget;
   int? _walk;
@@ -139,6 +144,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   static const _heukseokAreas = ['정문', '중문'];
   static const _sangdoAreas = ['후문'];
+
+  /// 질문은 한 화면에 하나씩: 0 동행 → 1 음식종류 → 2 예산 → 3 위치.
+  static const _lastStep = 3;
+  int _step = 0;
+
+  /// 저장된 지난 답변이 있으면 첫 화면에 "지난번처럼" 버튼을 보여준다.
+  bool _hasSaved = false;
   FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
@@ -175,11 +187,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             [if (prefs.getString(_kArea) != null) prefs.getString(_kArea)!];
         _areas
           ..clear()
-          ..addAll(savedAreas.where((a) => a == '정문' || a == '중문' || a == '후문'));
+          ..addAll(
+              savedAreas.where((a) => a == '정문' || a == '중문' || a == '후문'));
         // 흑석은 정문+중문을 함께 다룬다. 예전에 정문만 저장된 값도 흑석 전체로 맞춘다.
         if (_areas.contains('정문') || _areas.contains('중문')) {
           _areas.addAll(_heukseokAreas);
         }
+        _hasSaved = prefs.containsKey(_kCompanion);
         final saved = prefs.getString(_kCompanion);
         _companion = FairyCompanion.values.firstWhere(
           (c) => c.name == saved,
@@ -233,18 +247,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     });
   }
 
-  /// 칩 하나가 여러 지역(흑석 = 정문+중문)을 묶는다. 모두 선택돼 있으면 해제, 아니면 모두 선택.
-  void _toggleAreas(List<String> group) {
-    if (_areas.containsAll(group)) {
-      _areas.removeAll(group);
-    } else {
-      _areas.addAll(group);
-    }
-  }
-
-  /// 도보 5분/10분 선택. 위치가 꺼져 있으면 OS 위치 권한 팝업을 띄우고, 허용되면 선택한다.
+  /// "가까운 곳"(도보 10분). 위치가 꺼져 있으면 OS 위치 권한 팝업을 띄우고, 허용되면 선택한다.
   /// 이미 "다시 묻지 않음"으로 거부해 OS가 팝업을 더 띄울 수 없으면 설정 이동을 안내한다.
-  Future<void> _selectWalk(int minutes) async {
+  Future<void> _chooseNear() async {
     if (!_locationReady) {
       await _enableLocation();
       if (!mounted) return;
@@ -253,8 +258,10 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         return;
       }
     }
-    // 이미 고른 도보 칩을 다시 누르면 해제한다.
-    setState(() => _walk = _walk == minutes ? null : minutes);
+    _answer(() {
+      _walk = 10;
+      _areas.clear();
+    });
   }
 
   Future<void> _showLocationDeniedDialog() async {
@@ -322,7 +329,9 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     // 목록만 받고(푸시 동기화 등은 기다리지 않음) 시간 제한을 둔다. 느리거나 실패해도
     // 가지고 있는 목록으로 계속 진행한다.
     try {
-      await provider.reloadRestaurantsOnly().timeout(const Duration(seconds: 8));
+      await provider
+          .reloadRestaurantsOnly()
+          .timeout(const Duration(seconds: 8));
     } catch (e) {
       debugPrint('[Fairy] reload skipped: $e');
     }
@@ -392,6 +401,11 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     _recommend();
   }
 
+  void _restartQuestions() => setState(() {
+        _step = 0;
+        _phase = _Phase.questions;
+      });
+
   void _openDetail(Restaurant r) => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
@@ -401,199 +415,487 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   Widget build(BuildContext context) {
     // 즐겨찾기한 매장 화면과 같은 AppBar 구성: 뒤로가기 IconButton(18) + titleSpacing 0 +
     // 제목 Pretendard 18 / w700 / letterSpacing -0.5, 왼쪽 정렬.
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              size: 18, color: Color(0xFF000000)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        titleSpacing: 0,
-        title: const Text(
-          '점메추 요정',
-          style: TextStyle(
-            fontFamily: 'Pretendard',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF000000),
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: switch (_phase) {
-          _Phase.questions => _buildQuestions(),
-          _Phase.thinking => _buildThinking(),
-          _Phase.result => _buildResult(),
-          _Phase.exhausted => _buildMessage(
-              '더 보여드릴 곳이 없어요.\n조건을 바꿔서 다시 골라볼까요?',
-            ),
-          _Phase.error => _buildMessage(
-              '앗, 고르다가 문제가 생겼어요.\n잠시 후 다시 시도해 주세요!',
-            ),
-          _Phase.nothingOpen => _buildMessage(
-              '지금은 영업 중인 곳을 찾지 못했어요.\n조금 있다가 다시 와 주세요!',
-            ),
+    final inSteps = _phase == _Phase.questions && _step > 0;
+    return PopScope(
+        canPop: !inSteps,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && inSteps) setState(() => _step--);
         },
-      ),
-    );
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new,
+                  size: 18, color: Color(0xFF000000)),
+              onPressed: () {
+                if (inSteps) {
+                  setState(() => _step--);
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            titleSpacing: 0,
+            title: const Text(
+              '점메추 요정',
+              style: TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF000000),
+                letterSpacing: -0.5,
+              ),
+            ),
+            centerTitle: false,
+          ),
+          body: SafeArea(
+            child: switch (_phase) {
+              _Phase.questions => _buildQuestions(),
+              _Phase.thinking => _buildThinking(),
+              _Phase.result => _buildResult(),
+              _Phase.exhausted => _buildMessage(
+                  '더 보여드릴 곳이 없어요.\n조건을 바꿔서 다시 골라볼까요?',
+                ),
+              _Phase.error => _buildMessage(
+                  '앗, 고르다가 문제가 생겼어요.\n잠시 후 다시 시도해 주세요!',
+                ),
+              _Phase.nothingOpen => _buildMessage(
+                  '지금은 영업 중인 곳을 찾지 못했어요.\n조금 있다가 다시 와 주세요!',
+                ),
+            },
+          ),
+        ));
   }
 
-  // ── 질문 ──
+  // ── 질문 (한 화면에 하나씩) ──
+
+  /// 선택만 반영한다. 다음 질문으로는 아래 "다음" 버튼으로 넘어간다.
+  void _answer(VoidCallback apply) => setState(apply);
+
+  void _next() {
+    if (_step >= _lastStep) {
+      _start();
+    } else {
+      setState(() => _step++);
+    }
+  }
+
+  void _prev() {
+    if (_step > 0) setState(() => _step--);
+  }
+
+  /// [step] 질문 앞까지 확정된 답변만 담은 조건. 단계별 "남은 후보" 계산용.
+  FairyRequest _requestBefore(int step) => FairyRequest(
+        cuisine: step > 1 ? _cuisine : null,
+        budgetLimit: step > 2 ? _budget : null,
+        areas: step > 3 ? _areas.toSet() : const {},
+        companion: _companion,
+      );
+
+  int _countFor(FairyRequest req) => fairyCountCandidates(
+        context.read<AppProvider>().restaurants,
+        req,
+        now: DateTime.now(),
+      );
+
+  /// 위치 질문의 현재 선택: 'any' | 'heukseok' | 'sangdo' | 'near'.
+  String get _locationChoice {
+    if (_walk != null) return 'near';
+    final h = _areas.containsAll(_heukseokAreas);
+    final s = _areas.containsAll(_sangdoAreas);
+    if (h && !s) return 'heukseok';
+    if (s && !h) return 'sangdo';
+    return 'any';
+  }
+
+  String _companionLabel(FairyCompanion c) => switch (c) {
+        FairyCompanion.solo => '혼밥',
+        FairyCompanion.friend => '친구랑',
+        FairyCompanion.date => '밥약',
+      };
+
+  String _budgetLabel() =>
+      _budgets.firstWhere((b) => b.$2 == _budget, orElse: () => ('', null)).$1;
+
+  String get _savedSummary => [
+        _companionLabel(_companion),
+        _cuisine ?? '음식 상관없음',
+        _budget == null ? '예산 상관없음' : _budgetLabel(),
+        switch (_locationChoice) {
+          'near' => '가까운 곳',
+          'heukseok' => '흑석',
+          'sangdo' => '상도',
+          _ => '위치 상관없음',
+        },
+      ].join(' · ');
+
   Widget _buildQuestions() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Image.asset(_kFairyAsset, width: 84, height: 84),
+    final (reaction, question) = switch (_step) {
+      0 => ('점심 메뉴 추천은 저에게 맡겨주세요!', '오늘 누구랑 드세요?'),
+      1 => (
+          switch (_companion) {
+            FairyCompanion.solo => '혼밥이시군요! 편한 곳으로 찾아볼게요.',
+            FairyCompanion.friend => '함께 먹는 점심이 제일 즐겁죠!',
+            FairyCompanion.date => '밥약이군요, 제대로 골라볼게요!',
+          },
+          '뭐가 땡기세요?'
         ),
-        const SizedBox(height: 8),
-        const Text(
-          '오늘 점심 메뉴\n제가 골라드릴게요!',
-          style: TextStyle(
-            fontFamily: 'OkDanDan',
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            height: 1.3,
-          ),
+      2 => (
+          _cuisine == null
+              ? '다 좋다니, 폭넓게 볼게요!'
+              : (_cuisineReactions[_cuisine] ?? '$_cuisine 좋죠!'),
+          '1인당 예산은 어느 정도예요?'
         ),
-        const SizedBox(height: 24),
-        _section('뭐가 땡기시나요?', [
-          _chip('상관없음', _cuisine == null, () => setState(() => _cuisine = null)),
-          for (final c in _cuisines)
-            _chip(c, _cuisine == c, () => setState(() => _cuisine = c)),
-        ]),
-        _section('1인당 예산은 얼마인가요?', [
-          for (final (label, value) in _budgets)
-            _chip(label, _budget == value, () => setState(() => _budget = value)),
-        ]),
-        _section(
-          '위치는 어디가 좋을까요?',
-          [
-            for (final (label, value) in _walks)
-              _chip(
-                label,
-                // "상관없음"은 도보도 지역도 고르지 않았을 때만 선택된 상태
-                value == null ? (_walk == null && _areas.isEmpty) : _walk == value,
-                () {
-                  if (value == null) {
-                    setState(() {
-                      _walk = null;
-                      _areas.clear();
-                    });
-                  } else {
-                    // 도보 조건은 위치가 필요하다. 권한이 없으면 OS 허용 팝업을 띄운다.
-                    unawaited(_selectWalk(value));
-                  }
-                },
-              ),
-            // 흑석(정문) / 상도(후문): 위치 권한 없이도 고를 수 있고, 둘 다 고를 수 있다.
-            // 도보 5분/10분과 함께 고르면 "그 지역 안에서 도보 N분 이내"가 된다.
-            _chip(
-              '흑석',
-              _areas.containsAll(_heukseokAreas),
-              () => setState(() => _toggleAreas(_heukseokAreas)),
-            ),
-            _chip(
-              '상도',
-              _areas.containsAll(_sangdoAreas),
-              () => setState(() => _toggleAreas(_sangdoAreas)),
-            ),
-          ],
-          footer: _locationReady
-              ? null
-              : _LocationHint(onEnable: _enableLocation),
+      _ => (
+          _budget == null ? '예산 걱정 없는 날이군요!' : '${_budgetLabel()} 안쪽으로 볼게요.',
+          '어디서 드실래요?'
         ),
-        _section('누구랑 드시나요?', [
-          _chip('혼밥', _companion == FairyCompanion.solo,
-              () => setState(() => _companion = FairyCompanion.solo)),
-          _chip('친구랑', _companion == FairyCompanion.friend,
-              () => setState(() => _companion = FairyCompanion.friend)),
-          _chip('밥약', _companion == FairyCompanion.date,
-              () => setState(() => _companion = FairyCompanion.date)),
-        ]),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 52,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryCta,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onPressed: _start,
-            child: const Text(
-              '골라주세요!',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    };
 
-  Widget _section(String title, List<Widget> chips, {Widget? footer}) {
+    final count = _countFor(_requestBefore(_step));
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          // 칩은 항상 한 줄. 화면보다 길면(음식종류) 옆으로 밀어서 볼 수 있다.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < chips.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  chips[i],
-                ],
-              ],
+          _StepDots(current: _step, total: _lastStep + 1),
+          const SizedBox(height: 16),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              // 기본 레이아웃은 내용을 세로 가운데에 놓으므로, 위쪽부터 채우도록 바꾼다.
+              layoutBuilder: (current, previous) => Stack(
+                fit: StackFit.expand,
+                alignment: Alignment.topCenter,
+                children: [...previous, if (current != null) current],
+              ),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.06, 0),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: SingleChildScrollView(
+                key: ValueKey(_step),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(_kFairyAsset, width: 64, height: 64),
+                        const SizedBox(width: 14),
+                        // 말풍선: 왼쪽(요정 쪽)에 꼬리가 달린다.
+                        Expanded(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                left: -5,
+                                top: 0,
+                                bottom: 0,
+                                child: Center(
+                                  child: Transform.rotate(
+                                    angle: math.pi / 4,
+                                    child: Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE6F3EC),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE6F3EC),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  reaction,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF374151),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      question,
+                      style: const TextStyle(
+                        fontFamily: 'OkDanDan',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      count == 0
+                          ? '조건에 딱 맞는 곳이 없으면 요정이 조금씩 넓혀서 찾아줄게요.'
+                          : '지금 갈 수 있는 곳 $count곳',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ..._stepOptions(),
+                    if (_step == _lastStep && !_locationReady) ...[
+                      const SizedBox(height: 4),
+                      _LocationHint(onEnable: _enableLocation),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
-          if (footer != null) ...[const SizedBox(height: 8), footer],
+          if (_step == 0 && _hasSaved) ...[
+            const SizedBox(height: 8),
+            _repeatButton(),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (_step > 0) ...[
+                SizedBox(
+                  width: 96,
+                  height: 52,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: _prev,
+                    child: const Text('이전',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryCta,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: _next,
+                    child: Text(
+                      _step >= _lastStep ? '골라주세요!' : '다음',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _chip(String label, bool selected, VoidCallback onTap,
-      {bool enabled = true}) {
-    final Color bg;
-    final Color fg;
-    if (!enabled) {
-      bg = const Color(0xFFF3F4F6);
-      fg = const Color(0xFFD1D5DB);
-    } else if (selected) {
-      bg = AppColors.primaryCta;
-      fg = Colors.white;
-    } else {
-      bg = const Color(0xFFF3F4F6);
-      fg = const Color(0xFF374151);
+  List<Widget> _stepOptions() {
+    switch (_step) {
+      case 0:
+        return [
+          _optionCard('혼밥', '혼자 조용히', _companion == FairyCompanion.solo,
+              () => _answer(() => _companion = FairyCompanion.solo)),
+          _optionCard('친구랑', '같이 왁자지껄', _companion == FairyCompanion.friend,
+              () => _answer(() => _companion = FairyCompanion.friend)),
+          _optionCard('밥약', '약속 잡고 제대로', _companion == FairyCompanion.date,
+              () => _answer(() => _companion = FairyCompanion.date)),
+        ];
+      case 1:
+        return [
+          _optionGrid([
+            ('상관없음', _cuisine == null, () => _answer(() => _cuisine = null)),
+            for (final c in _cuisines)
+              (c, _cuisine == c, () => _answer(() => _cuisine = c)),
+          ]),
+        ];
+      case 2:
+        return [
+          _optionGrid([
+            for (final (label, value) in _budgets)
+              (label, _budget == value, () => _answer(() => _budget = value)),
+          ]),
+        ];
+      default:
+        final choice = _locationChoice;
+        return [
+          _optionCard(
+              '상관없음',
+              '어디든 좋아요',
+              choice == 'any',
+              () => _answer(() {
+                    _walk = null;
+                    _areas.clear();
+                  })),
+          _optionCard(
+              '흑석',
+              '정문 근처에서 먹고싶어요',
+              choice == 'heukseok',
+              () => _answer(() {
+                    _walk = null;
+                    _areas
+                      ..clear()
+                      ..addAll(_heukseokAreas);
+                  })),
+          _optionCard(
+              '상도',
+              '후문 근처에서 먹고싶어요',
+              choice == 'sangdo',
+              () => _answer(() {
+                    _walk = null;
+                    _areas
+                      ..clear()
+                      ..addAll(_sangdoAreas);
+                  })),
+          _optionCard(
+              '가까운 곳', '내 위치에서 도보 10분 이내', choice == 'near', _chooseNear),
+        ];
     }
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
+  }
+
+  Widget _optionCard(
+      String label, String sub, bool selected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE6F3EC) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.primaryCta : const Color(0xFFE5E7EB),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  sub,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  size: 18, color: Color(0xFFD1D5DB)),
+            ],
+          ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: fg),
+      ),
+    );
+  }
+
+  /// 선택지가 많은 질문(음식종류·예산)은 2열 카드.
+  Widget _optionGrid(List<(String, bool, VoidCallback)> items) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = (c.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final (label, selected, onTap) in items)
+              SizedBox(
+                width: w,
+                child: GestureDetector(
+                  onTap: onTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFFE6F3EC) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primaryCta
+                            : const Color(0xFFE5E7EB),
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 지난번 답변 그대로 질문을 건너뛰고 바로 추천받는다.
+  Widget _repeatButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFE6F3EC),
+          foregroundColor: const Color(0xFF1F8F5F),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        onPressed: _start,
+        child: Column(
+          children: [
+            const Text(
+              '지난번처럼 바로 고르기',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _savedSummary,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );
@@ -637,7 +939,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
       children: [
         Text(
           fairyHeadline(pick, _flavorSeed),
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, height: 1.35),
+          style: const TextStyle(
+              fontSize: 20, fontWeight: FontWeight.w900, height: 1.35),
         ),
         if (timeNote != null) ...[
           const SizedBox(height: 6),
@@ -661,110 +964,113 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             if (rarity != FairyRarity.normal) HapticFeedback.mediumImpact();
           },
           front: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: rarity == FairyRarity.normal
-                  ? const Color(0xFFE5E7EB)
-                  : _rarityColor(rarity),
-              width: rarity == FairyRarity.normal ? 1 : 2,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: rarity == FairyRarity.normal
+                    ? const Color(0xFFE5E7EB)
+                    : _rarityColor(rarity),
+                width: rarity == FairyRarity.normal ? 1 : 2,
+              ),
             ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (r.imageUrl.isNotEmpty)
-                SizedBox(
-                  height: 160,
-                  child: RestaurantImage(
-                    url: r.imageUrl,
-                    fallback: () => Container(color: const Color(0xFFF3F4F6)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (r.imageUrl.isNotEmpty)
+                  SizedBox(
+                    height: 160,
+                    child: RestaurantImage(
+                      url: r.imageUrl,
+                      fallback: () => Container(color: const Color(0xFFF3F4F6)),
+                    ),
                   ),
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (rarity != FairyRarity.normal) ...[
-                      _rarityChip(rarity),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(
-                      r.name,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${r.area} · ${r.category}'
-                      '${pick.walkMinutes != null ? ' · 걸어서 약 ${pick.walkMinutes}분' : ''}',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                    ),
-                    if (showCrowd) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color(meta.bgColor),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${meta.label} · $badgeMinutes분 전',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: Color(meta.color),
-                          ),
-                        ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (rarity != FairyRarity.normal) ...[
+                        _rarityChip(rarity),
+                        const SizedBox(height: 8),
+                      ],
+                      Text(
+                        r.name,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w900),
                       ),
-                    ],
-                    if (signatures.isNotEmpty || menu != null) ...[
-                      const SizedBox(height: 14),
-                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            signatures.isNotEmpty ? '대표메뉴' : '추천 메뉴',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF9CA3AF)),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${r.area} · ${r.category}'
+                        '${pick.walkMinutes != null ? ' · 걸어서 약 ${pick.walkMinutes}분' : ''}',
+                        style: const TextStyle(
+                            fontSize: 13, color: Color(0xFF6B7280)),
+                      ),
+                      if (showCrowd) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Color(meta.bgColor),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (final m in signatures.isNotEmpty
-                                    ? signatures
-                                    : [menu!])
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text(
-                                      m.price > 0
-                                          ? (m.hasPriceRange
-                                              ? '${m.name} · ${_won(m.price)} ~ ${_won(m.priceMax)}'
-                                              : '${m.name} · ${_won(m.price)}')
-                                          : m.name,
-                                      style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800),
-                                    ),
-                                  ),
-                              ],
+                          child: Text(
+                            '${meta.label} · $badgeMinutes분 전',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: Color(meta.color),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                      if (signatures.isNotEmpty || menu != null) ...[
+                        const SizedBox(height: 14),
+                        const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              signatures.isNotEmpty ? '대표메뉴' : '추천 메뉴',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF9CA3AF)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (final m in signatures.isNotEmpty
+                                      ? signatures
+                                      : [menu!])
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        m.price > 0
+                                            ? (m.hasPriceRange
+                                                ? '${m.name} · ${_won(m.price)} ~ ${_won(m.priceMax)}'
+                                                : '${m.name} · ${_won(m.price)}')
+                                            : m.name,
+                                        style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
         const SizedBox(height: 20),
         SizedBox(
@@ -774,7 +1080,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               backgroundColor: AppColors.primaryCta,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
             onPressed: () => _openDetail(r),
             child: const Text(
@@ -792,10 +1099,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                   minimumSize: const Size.fromHeight(48),
                   foregroundColor: Colors.black,
                   side: const BorderSide(color: Color(0xFFE5E7EB)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: _reroll,
-                child: const Text('다른 곳 볼래요', style: TextStyle(fontWeight: FontWeight.w800)),
+                child: const Text('다른 곳 볼래요',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
             const SizedBox(width: 10),
@@ -805,10 +1114,12 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                   minimumSize: const Size.fromHeight(48),
                   foregroundColor: Colors.black,
                   side: const BorderSide(color: Color(0xFFE5E7EB)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: () => setState(() => _phase = _Phase.questions),
-                child: const Text('조건 바꾸기', style: TextStyle(fontWeight: FontWeight.w800)),
+                onPressed: _restartQuestions,
+                child: const Text('조건 바꾸기',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -829,7 +1140,8 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.5),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w700, height: 1.5),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -838,7 +1150,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
               ),
-              onPressed: () => setState(() => _phase = _Phase.questions),
+              onPressed: _restartQuestions,
               child: const Text('조건 바꾸기'),
             ),
           ],
@@ -922,7 +1234,8 @@ Widget _fairyCardBack({double width = 96, double height = 128}) {
       border: Border.all(color: const Color(0xFFCDE9DC), width: 2),
     ),
     child: Center(
-      child: Image.asset(_kFairyAsset, width: width * 0.55, height: width * 0.55),
+      child:
+          Image.asset(_kFairyAsset, width: width * 0.55, height: width * 0.55),
     ),
   );
 }
@@ -969,7 +1282,8 @@ class _ShuffleCardsState extends State<_ShuffleCards>
                   final lift = -math.cos(phase * 2 * math.pi).abs() * 8;
                   return Transform.translate(
                     offset: Offset(dx, lift),
-                    child: Transform.rotate(angle: tilt, child: _fairyCardBack()),
+                    child:
+                        Transform.rotate(angle: tilt, child: _fairyCardBack()),
                   );
                 }(),
             ],
@@ -1076,6 +1390,33 @@ class _FlipRevealState extends State<_FlipReveal>
           );
         },
       ),
+    );
+  }
+}
+
+/// 질문 진행 점.
+class _StepDots extends StatelessWidget {
+  final int current;
+  final int total;
+  const _StepDots({required this.current, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < total; i++)
+          Container(
+            margin: const EdgeInsets.only(right: 6),
+            width: i == current ? 22 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color:
+                  i <= current ? AppColors.primaryCta : const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+      ],
     );
   }
 }

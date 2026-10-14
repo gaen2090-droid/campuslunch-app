@@ -536,4 +536,27 @@ void main() {
       expect(isFairyBannerTime(DateTime(2026, 10, 17, 12, 0)), isFalse); // 토요일
     });
   });
+
+  group('후보 수 세기', () {
+    final list = [
+      _r('a', category: '한식', area: '정문'),
+      _r('b', category: '일식', area: '후문'),
+      _r('c', category: '카페', area: '정문'),
+      _r('d', category: '한식', area: '후문', status: '자리없음', freshMinutes: 5),
+      _r('e', category: '한식', area: '후문', hours: '17:00 - 22:00'),
+    ];
+
+    int count(FairyRequest req) =>
+        fairyCountCandidates(list, req, now: _now);
+
+    test('카페·영업 전·15분 내 자리없음 매장은 세지 않는다', () {
+      expect(count(const FairyRequest()), 2);
+    });
+
+    test('음식종류·지역 조건을 그대로 적용한다', () {
+      expect(count(const FairyRequest(cuisine: '한식')), 1);
+      expect(count(const FairyRequest(areas: {'후문'})), 1);
+      expect(count(const FairyRequest(cuisine: '중식')), 0);
+    });
+  });
 }
