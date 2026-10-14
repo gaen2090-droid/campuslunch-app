@@ -151,6 +151,16 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
 
   /// 저장된 지난 답변이 있으면 첫 화면에 "지난번처럼" 버튼을 보여준다.
   bool _hasSaved = false;
+
+  /// 저장돼 있던 지난 답변의 스냅샷. 화면에서 선택을 바꿔도 변하지 않는다.
+  ({
+    FairyCompanion companion,
+    String? cuisine,
+    int? budget,
+    int? walk,
+    Set<String> areas,
+    String summary,
+  })? _savedAnswers;
   FairyCompanion _companion = FairyCompanion.solo;
 
   /// 앱 위치 모드 ON + OS 권한 허용일 때만 거리 질문을 고를 수 있다.
@@ -202,10 +212,23 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               ? FairyCompanion.friend
               : FairyCompanion.solo,
         );
+        if (_hasSaved) _snapshotAnswers();
       });
     } catch (_) {
       // 저장된 답변이 없어도 기본값(상관없음/혼밥)으로 동작한다.
     }
+  }
+
+  /// 지금 답변을 "지난번" 답변으로 기억한다. 추천을 실행할 때마다 갱신된다.
+  void _snapshotAnswers() {
+    _savedAnswers = (
+      companion: _companion,
+      cuisine: _cuisine,
+      budget: _budget,
+      walk: _walk,
+      areas: _areas.toSet(),
+      summary: _savedSummary,
+    );
   }
 
   Future<void> _saveAnswers() async {
@@ -322,6 +345,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     final startedAt = DateTime.now();
     setState(() => _phase = _Phase.thinking);
     _seen.clear();
+    _snapshotAnswers();
     await _saveAnswers();
 
     // 사장님이 방금 고친 메뉴·영업시간·혼잡도가 바로 반영되도록 매번 최신 데이터로 계산한다.
@@ -669,7 +693,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
               ),
             ),
           ),
-          if (_step == 0 && _hasSaved) ...[
+          if (_step == 0 && _savedAnswers != null) ...[
             const SizedBox(height: 8),
             _repeatButton(),
           ],
@@ -874,26 +898,51 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   Widget _repeatButton() {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFE6F3EC),
-          foregroundColor: const Color(0xFF1F8F5F),
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+      // 주 버튼(다음)과 헷갈리지 않게 회색 배경의 보조 버튼으로 둔다.
+      child: TextButton(
+        style: TextButton.styleFrom(
+          backgroundColor: const Color(0xFFE5E7EB),
+          foregroundColor: const Color(0xFF4B5563),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        onPressed: _start,
+        onPressed: () {
+          // 지금 화면에서 바꾼 선택이 아니라 저장돼 있던 지난 답변으로 추천한다.
+          final saved = _savedAnswers;
+          if (saved == null) return;
+          setState(() {
+            _companion = saved.companion;
+            _cuisine = saved.cuisine;
+            _budget = saved.budget;
+            _walk = saved.walk;
+            _areas
+              ..clear()
+              ..addAll(saved.areas);
+          });
+          _start();
+        },
         child: Column(
           children: [
-            const Text(
-              '지난번처럼 바로 고르기',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history, size: 17),
+                SizedBox(width: 6),
+                Text(
+                  '지난번처럼 바로 고르기',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                ),
+              ],
             ),
             const SizedBox(height: 2),
             Text(
-              _savedSummary,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              _savedAnswers?.summary ?? '',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF9CA3AF),
+              ),
             ),
           ],
         ),
