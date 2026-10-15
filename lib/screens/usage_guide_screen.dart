@@ -28,7 +28,7 @@ class _GuidePage {
 final _pages = [
   _GuidePage(
     title: '실시간 혼잡도를\n한눈에 확인해요',
-    subtitle: '중앙대 주변 매장의 혼잡도를 확인하고\n지금 바로 입장 가능한 곳을 찾아보세요',
+    subtitle: '중앙대 주변 매장의 혼잡도를 확인하고\n바로 입장 가능한 곳을 찾아보세요',
     mockupBuilder: (context) => const _CrowdListMockup(),
   ),
   _GuidePage(
@@ -346,7 +346,7 @@ class _CrowdListMockup extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Text(
-                '지금 입장 가능해요',
+                '바로 입장 가능해요',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
@@ -428,7 +428,7 @@ class _PreviewRestaurantRow extends StatelessWidget {
             ),
             child: Text.rich(
               TextSpan(
-                text: '입장가능',
+                text: '바로입장',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w900,

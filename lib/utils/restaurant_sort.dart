@@ -5,7 +5,7 @@ int popularityScore(Restaurant r, bool useAlgorithmRanking) =>
         ? (r.popularityScore > 0 ? r.popularityScore : r.totalReports)
         : (r.manualRank > 0 ? -r.manualRank : -9999);
 
-/// 바로입장가능(여유로움/약간혼잡) 최신순 그룹 — 0이 가장 우선
+/// 바로입장(여유로움/약간혼잡) 최신순 그룹 — 0이 가장 우선
 /// 여유 ≤15 → 여유 16~30 → 약간혼잡 ≤15 → 약간혼잡 16~30 → 여유 31+ → 약간혼잡 31+
 int availableLatestGroup(Restaurant r) {
   final isRelaxed = r.status == '여유로움';

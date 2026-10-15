@@ -354,11 +354,11 @@ class _OwnerReportMockup extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: o.label == '지금 입장 가능해요' ? o.bgColor : Colors.white,
+                  color: o.label == '바로 입장 가능해요' ? o.bgColor : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: o.label == '지금 입장 가능해요' ? o.borderColor : const Color(0xFFE5E7EB),
-                    width: o.label == '지금 입장 가능해요' ? 2 : 1,
+                    color: o.label == '바로 입장 가능해요' ? o.borderColor : const Color(0xFFE5E7EB),
+                    width: o.label == '바로 입장 가능해요' ? 2 : 1,
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -378,12 +378,12 @@ class _OwnerReportMockup extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: o.label == '지금 입장 가능해요' ? o.textColor : const Color(0xFF374151),
+                            color: o.label == '바로 입장 가능해요' ? o.textColor : const Color(0xFF374151),
                           ),
                         ),
                       ],
                     ),
-                    if (o.label == '지금 입장 가능해요')
+                    if (o.label == '바로 입장 가능해요')
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(

@@ -58,7 +58,7 @@ RouletteDeal _deal(
         random: Random(seed));
 
 void main() {
-  group('입장가능 최대 4곳 포함', () {
+  group('바로입장 최대 4곳 포함', () {
     test('15분 이내 여유로움 제보 매장은 최대 4곳만 우선 들어간다', () {
       final fresh = [
         for (var i = 0; i < 6; i++)
@@ -73,7 +73,7 @@ void main() {
       }
     });
 
-    test('약간혼잡 제보는 입장가능 우선 칸에 포함하지 않는다', () {
+    test('약간혼잡 제보는 바로입장 우선 칸에 포함하지 않는다', () {
       final list = [
         for (var i = 0; i < 5; i++)
           _r('busy$i', status: '약간혼잡', freshMinutes: 5),
@@ -85,12 +85,12 @@ void main() {
       expect(deal.slots.length, 8);
     });
 
-    test('15분이 지난 여유로움 제보는 입장가능으로 보지 않는다', () {
+    test('15분이 지난 여유로움 제보는 바로입장으로 보지 않는다', () {
       final stale = _r('stale', status: '여유로움', freshMinutes: 20);
       expect(isFreshRelaxed(stale, _now), isFalse);
     });
 
-    test('입장가능 매장이 4곳 미만이면 있는 만큼만 들어간다', () {
+    test('바로입장 매장이 4곳 미만이면 있는 만큼만 들어간다', () {
       final list = [
         _r('f0', status: '여유로움', freshMinutes: 3),
         _r('f1', status: '여유로움', freshMinutes: 3),

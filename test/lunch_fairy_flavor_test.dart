@@ -41,18 +41,18 @@ FairyPick _pick({
 
 void main() {
   group('fairyRarity', () {
-    test('최근 입장가능 + 사장님 제보 → 에픽', () {
+    test('최근 바로입장 + 사장님 제보 → 에픽', () {
       final p = _pick(
           reason: FairyReason.freshRelaxed, restaurant: _r(source: 'owner'));
       expect(fairyRarity(p), FairyRarity.epic);
     });
 
-    test('최근 입장가능 + 유저 제보 → 레어', () {
+    test('최근 바로입장 + 유저 제보 → 레어', () {
       final p = _pick(reason: FairyReason.freshRelaxed);
       expect(fairyRarity(p), FairyRarity.rare);
     });
 
-    test('입장가능이 아닌 이유(약간혼잡·근거리 등)는 일반', () {
+    test('바로입장이 아닌 이유(약간혼잡·근거리 등)는 일반', () {
       for (final reason in [
         FairyReason.freshModerate,
         FairyReason.nearby,

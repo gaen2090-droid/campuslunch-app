@@ -286,7 +286,7 @@ class PushNotificationService {
       useAlgorithmRanking,
     );
     if (recommended == null) {
-      return '바로 입장 가능 매장(입장가능/약간혼잡)이 없어서 예약할 수 없어요.';
+      return '바로 입장 가능 매장(바로입장/약간혼잡)이 없어서 예약할 수 없어요.';
     }
 
     final at = tz.TZDateTime.now(tz.local).add(delay);

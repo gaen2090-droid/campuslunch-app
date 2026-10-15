@@ -646,7 +646,7 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      '입장가능 · 최근 제보',
+                      '바로입장 · 최근 제보',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,

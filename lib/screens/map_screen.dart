@@ -791,7 +791,7 @@ class _CrowdLegend extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LegendItem(color: Color(0xFF26BC7D), label: '입장가능'),
+          _LegendItem(color: Color(0xFF26BC7D), label: '바로입장'),
           SizedBox(height: 4),
           _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
           SizedBox(height: 4),

@@ -179,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (_sortBy == '인기순') {
         if (isClosed) return pop(b).compareTo(pop(a));
-        // 바로입장가능/붐비는매장 공통: 인기순 → 최신순
+        // 바로입장/붐비는매장 공통: 인기순 → 최신순
         final pd = pop(b).compareTo(pop(a));
         if (pd != 0) return pd;
         return a.updated.compareTo(b.updated);
@@ -1031,7 +1031,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                 ),
               ),
 
-            // ── 지금 입장 가능해요 ──
+            // ── 바로 입장 가능해요 ──
             // 각 섹션 블록 전체에 고유 key 부여: "혼잡도를 알려주세요" 섹션처럼
             // 조건부로 나타났다 사라지는 블록이 있으면 뒤따르는 섹션들이 리스트에서
             // 밀리는데, key가 없으면 Flutter가 위치 기준으로 element를 재사용하다가
@@ -1041,7 +1041,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 sectionHeader(
-                  title: '지금 입장 가능해요',
+                  title: '바로 입장 가능해요',
                   dotColor: const Color(0xFF26BC7D),
                   onMore: () => goTo(RestaurantListMode.available),
                   // 필터줄 바로 아래 첫 섹션이라 다른 섹션(top 20 유지)보다
@@ -1073,7 +1073,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       const SizedBox(width: 6),
                       KeyedSubtree(
                         key: HomeScreen.availableBadgeKey,
-                        child: crowdBadge('입장가능',const Color(0xFFE6F3EC), const Color(0xFF26BC7D)),
+                        child: crowdBadge('바로입장',const Color(0xFFE6F3EC), const Color(0xFF26BC7D)),
                       ),
                     ],
                   ),

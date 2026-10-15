@@ -173,7 +173,7 @@ class ReportOption {
 
 const reportOptions = [
   ReportOption(
-    label: '지금 입장 가능해요',
+    label: '바로 입장 가능해요',
     subtitle: '바로 앉을 수 있어요',
     status: '여유로움',
     icon: Icons.sentiment_satisfied_alt,

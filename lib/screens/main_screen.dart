@@ -264,7 +264,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     CoachMarkStep(
                       targetKeys: [HomeScreen.availableBadgeKey],
                       title: '혼잡도를 한눈에 확인',
-                      subtitle: '지금 입장 가능한 매장을 확인해보세요',
+                      subtitle: '바로 입장 가능한 매장을 확인해보세요',
                     ),
                     // 추천 배너(Hero) 제외, 화면에 실제로 존재하는 첫 카드를 섹션 순서대로 후보에 넣는다.
                     // 대상이 스크롤 뷰포트 밖이어도 CoachMarkOverlay가 자동 스크롤 후 가리킨다.

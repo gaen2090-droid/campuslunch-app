@@ -75,7 +75,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   List<Restaurant> _applyFilter(List<Restaurant> all) {
     final bookmarks = context.read<AppProvider>().bookmarks;
     return all.where((r) {
-      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 상태별(바로입장가능/붐빔 등)
+      // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 상태별(바로입장/붐빔 등)
       // 리스트에 안 뜬다 (docs/PLAN_two_tier_restaurants.md §6).
       final crowdOk = r.crowdEnabled;
       final tabOk = widget.mainTab == 1 ? r.category == '카페' : r.category != '카페';
@@ -225,7 +225,7 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
 
   String get _title {
     switch (widget.mode) {
-      case RestaurantListMode.available: return '지금 입장 가능해요';
+      case RestaurantListMode.available: return '바로 입장 가능해요';
       case RestaurantListMode.slightlyBusy: return '빈자리 조금 있어요';
       case RestaurantListMode.stamp: return '혼잡도를 알려주세요';
       case RestaurantListMode.busy: return '붐비고 있어요';

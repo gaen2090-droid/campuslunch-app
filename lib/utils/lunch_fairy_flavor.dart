@@ -7,8 +7,8 @@ import 'restaurant_sort.dart';
 
 enum FairyRarity { normal, rare, epic }
 
-/// - 에픽: 최근 15분 내 입장가능이고, 그 상태를 사장님이 직접(또는 좌석 입력으로) 알려준 경우
-/// - 레어: 최근 15분 내 입장가능 제보가 있는 경우
+/// - 에픽: 최근 15분 내 바로입장이고, 그 상태를 사장님이 직접(또는 좌석 입력으로) 알려준 경우
+/// - 레어: 최근 15분 내 바로입장 제보가 있는 경우
 /// - 일반: 그 외 (라벨을 띄우지 않는다)
 FairyRarity fairyRarity(FairyPick pick) {
   if (pick.tier != FairyTier.reportTarget) return FairyRarity.normal;
@@ -46,7 +46,7 @@ List<String> fairyHeadlineTemplates(FairyReason reason, {required bool hasWalk})
   switch (reason) {
     case FairyReason.freshRelaxed:
       return const [
-        '지금 {name} 입장 가능해요!',
+        '{name}, 바로 입장 가능해요!',
         '{name}, 지금 자리가 여유로워요!',
         '오늘은 {name}! 지금 바로 들어갈 수 있대요.',
         '{name} 어때요? 방금 확인했더니 입장 가능해요!',

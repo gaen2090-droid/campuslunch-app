@@ -420,7 +420,7 @@ export async function buildMetricsWorkbook(
       [
         "매장명",
         "구역",
-        "입장가능",
+        "바로입장",
         "약간혼잡",
         "자리없음",
         "기간 내 합계",

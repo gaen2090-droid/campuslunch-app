@@ -9,8 +9,8 @@ interface Props {
 }
 
 const LEVEL_LABELS: Record<string, string> = {
-  normal: "입장가능",
-  relaxed: "입장가능",
+  normal: "바로입장",
+  relaxed: "바로입장",
   full: "혼잡/만석",
   closed: "영업종료",
 };

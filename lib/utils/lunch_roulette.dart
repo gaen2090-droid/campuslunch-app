@@ -5,7 +5,7 @@ import 'lunch_fairy_recommender.dart';
 
 /// 점심 룰렛의 칸 구성과 결과 선택. 화면과 분리한 순수 로직이다.
 ///
-/// 칸 구성: 최근 15분 이내 "입장가능(여유로움)" 제보 매장을 최대 [rouletteMaxFresh]곳 먼저 넣고,
+/// 칸 구성: 최근 15분 이내 "바로입장(여유로움)" 제보 매장을 최대 [rouletteMaxFresh]곳 먼저 넣고,
 /// 나머지는 음식 종류가 골고루 퍼지도록 채워 총 [rouletteMaxSlots]곳으로 만든다.
 /// 멈추는 곳은 칸 구성과 무관하게 균등 랜덤이다([rouletteWinnerIndex]).
 
@@ -51,7 +51,7 @@ class RouletteDeal {
   bool get canSpin => slots.length >= rouletteMinSlots;
 }
 
-/// 최근 15분 안에 "여유로움(입장가능)"으로 제보된 매장인가.
+/// 최근 15분 안에 "여유로움(바로입장)"으로 제보된 매장인가.
 /// 약간혼잡은 포함하지 않는다. 제보를 받지 않는 컬렉션 전용 매장도 제외한다.
 bool isFreshRelaxed(Restaurant r, DateTime now) =>
     r.crowdEnabled && isFairyFresh(r, now) && r.status == '여유로움';
@@ -133,7 +133,7 @@ RouletteDeal dealRoulette(
     final fresh = source.where((r) => isFreshRelaxed(r, now)).toList();
     final first =
         _pickBalanced(fresh, math.min(rouletteMaxFresh, n), counts, rng);
-    // 입장가능 매장은 최대 [rouletteMaxFresh]곳만 넣고, 넘친 매장은 일반 칸에서도 뺀다.
+    // 바로입장 매장은 최대 [rouletteMaxFresh]곳만 넣고, 넘친 매장은 일반 칸에서도 뺀다.
     // 일반 후보만으로 칸이 모자랄 때에 한해 넘친 매장으로 채운다.
     final freshIds = fresh.map((r) => r.id).toSet();
     final rest = source.where((r) => !freshIds.contains(r.id)).toList();
@@ -154,7 +154,7 @@ RouletteDeal dealRoulette(
     final preferred = source.where((r) => !avoidIds.contains(r.id)).toList();
     final picked = pickFrom(preferred, n, counts);
     if (picked.length >= n) return picked;
-    // 모자라면 피하던 매장으로 채운다. 입장가능 매장은 4곳을 넘기지 않도록 일반 매장을 먼저 쓴다.
+    // 모자라면 피하던 매장으로 채운다. 바로입장 매장은 4곳을 넘기지 않도록 일반 매장을 먼저 쓴다.
     final back = source.where((r) => avoidIds.contains(r.id)).toList();
     final backPlain = back.where((r) => !isFreshRelaxed(r, now)).toList();
     final backFresh = back.where((r) => isFreshRelaxed(r, now)).toList();
