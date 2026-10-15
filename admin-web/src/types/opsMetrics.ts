@@ -30,7 +30,27 @@ export interface RecentReferralRow {
   referredNickname: string;
 }
 
+/** 점메추 요정/식당 룰렛 한 기능의 최근 7일 지표 (supabase/feature_analytics.sql) */
+export interface FeatureStats {
+  actions7d: Record<string, number>;
+  actionsPrev7d: Record<string, number>;
+  actionsToday: Record<string, number>;
+  users7d: number;
+  shareUsers7d: number;
+  /** 결과 공유 클릭 ÷ 결과 노출 (%) */
+  shareCtr7d: number;
+  shareCtrPrev7d: number;
+  daily7d: { resultShown: number; shareClicks: number }[];
+}
+
+export interface FeatureMetrics {
+  fairy: FeatureStats;
+  roulette: FeatureStats;
+}
+
 export interface OpsMetrics {
+  /** 기능 지표 SQL이 아직 적용되지 않았으면 null */
+  featureMetrics: FeatureMetrics | null;
   bannerImpressions7d: number;
   bannerClicks7d: number;
   bannerCtr7d: number;
@@ -132,8 +152,47 @@ function parseRecentReferrals(value: unknown): RecentReferralRow[] {
   });
 }
 
+function parseCountRecord(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+      k,
+      Number(v) || 0,
+    ]),
+  );
+}
+
+function parseFeatureStats(value: unknown): FeatureStats {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const daily = Array.isArray(raw.daily_7d) ? raw.daily_7d : [];
+  return {
+    actions7d: parseCountRecord(raw.actions_7d),
+    actionsPrev7d: parseCountRecord(raw.actions_prev_7d),
+    actionsToday: parseCountRecord(raw.actions_today),
+    users7d: Number(raw.users_7d ?? 0),
+    shareUsers7d: Number(raw.share_users_7d ?? 0),
+    shareCtr7d: Number(raw.share_ctr_7d ?? 0),
+    shareCtrPrev7d: Number(raw.share_ctr_prev_7d ?? 0),
+    daily7d: daily.map((d) => {
+      const row = (d ?? {}) as Record<string, unknown>;
+      return {
+        resultShown: Number(row.result_shown ?? 0),
+        shareClicks: Number(row.share_clicks ?? 0),
+      };
+    }),
+  };
+}
+
+export function parseFeatureMetrics(map: Record<string, unknown>): FeatureMetrics {
+  return {
+    fairy: parseFeatureStats(map.fairy),
+    roulette: parseFeatureStats(map.roulette),
+  };
+}
+
 export function parseOpsMetrics(map: Record<string, unknown>): OpsMetrics {
   return {
+    featureMetrics: null,
     bannerImpressions7d: Number(map.banner_impressions_7d ?? 0),
     bannerClicks7d: Number(map.banner_clicks_7d ?? 0),
     bannerCtr7d: Number(map.banner_ctr_7d ?? 0),

@@ -4,7 +4,11 @@ import { Modal } from "../components/Modal";
 import { PeriodToggle } from "../components/PeriodToggle";
 import { TrendChart } from "../components/TrendChart";
 import { formatCount, lastNDayLabels } from "../lib/metrics";
-import type { OpsMetrics, BannerRestaurantRow } from "../types/opsMetrics";
+import type {
+  BannerRestaurantRow,
+  FeatureStats,
+  OpsMetrics,
+} from "../types/opsMetrics";
 
 interface Props {
   metrics: OpsMetrics | null;
@@ -17,7 +21,93 @@ function diffPct(current: number, prev: number): string {
   return `${diff >= 0 ? "+" : ""}${diff}%p`;
 }
 
+type FeatureKey = "fairy" | "roulette";
+
+const FEATURE_LABEL: Record<FeatureKey, string> = {
+  fairy: "점메추 요정",
+  roulette: "식당 룰렛",
+};
+
+/** 결과 공유 버튼의 액션 이름 (요정: share_click, 룰렛: result_share_click) */
+const RESULT_SHARE_ACTION: Record<FeatureKey, string> = {
+  fairy: "share_click",
+  roulette: "result_share_click",
+};
+
+const FEATURE_ROWS: Record<FeatureKey, [string, string][]> = {
+  fairy: [
+    ["화면 진입", "open"],
+    ["결과 노출", "result_shown"],
+    ["카톡 공유 클릭", "share_click"],
+    ["다른 곳 볼래요", "reroll"],
+    ["매장 자세히 보기", "detail_click"],
+  ],
+  roulette: [
+    ["화면 진입", "open"],
+    ["친구 링크로 진입", "preset_open"],
+    ["룰렛 돌리기", "spin"],
+    ["결과 노출", "result_shown"],
+    ["결과 공유 클릭", "result_share_click"],
+    ["후보 공유 클릭", "candidates_share_click"],
+    ["매장 자세히 보기", "detail_click"],
+  ],
+};
+
+function FeatureDetail({
+  feature,
+  stats,
+}: {
+  feature: FeatureKey;
+  stats: FeatureStats;
+}) {
+  return (
+    <>
+      <div className="two-col">
+        <TrendChart
+          title="일별 결과 공유 클릭 수 (최근 7일)"
+          labels={lastNDayLabels(7)}
+          values={stats.daily7d.map((d) => d.shareClicks)}
+          kind="bar"
+        />
+        <TrendChart
+          title="일별 결과 노출 수 (최근 7일)"
+          labels={lastNDayLabels(7)}
+          values={stats.daily7d.map((d) => d.resultShown)}
+          kind="bar"
+        />
+      </div>
+      <div className="table-wrap mt-8">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>동작</th>
+              <th>최근 7일</th>
+              <th>오늘</th>
+            </tr>
+          </thead>
+          <tbody>
+            {FEATURE_ROWS[feature].map(([label, action]) => (
+              <tr key={action}>
+                <td>{label}</td>
+                <td>{formatCount(stats.actions7d[action] ?? 0)}</td>
+                <td>{formatCount(stats.actionsToday[action] ?? 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted sm mt-8">
+        결과 공유 CTR {stats.shareCtr7d}% = {RESULT_SHARE_ACTION[feature]} ÷ result_shown.
+        이용자 {formatCount(stats.users7d)}명 중 공유 버튼을 누른 사람은{" "}
+        {formatCount(stats.shareUsers7d)}명이에요. 결과 노출은 추천이 보이거나 룰렛이
+        멈출 때마다 집계돼서, 다시 돌리면 다시 집계됩니다.
+      </p>
+    </>
+  );
+}
+
 export function OpsPage({ metrics, loading, error }: Props) {
+  const [featureModal, setFeatureModal] = useState<FeatureKey | null>(null);
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -53,6 +143,26 @@ export function OpsPage({ metrics, loading, error }: Props) {
           onClick={() => setShowPushModal(true)}
         />
       </section>
+
+      {metrics.featureMetrics && (
+        <section className="metric-grid metric-grid--primary">
+          {(["fairy", "roulette"] as FeatureKey[]).map((key) => {
+            const stats = metrics.featureMetrics![key];
+            const shown = stats.actions7d.result_shown ?? 0;
+            const shared = stats.actions7d[RESULT_SHARE_ACTION[key]] ?? 0;
+            return (
+              <MetricCard
+                key={key}
+                size="primary"
+                label={`${FEATURE_LABEL[key]} 공유 CTR (최근 7일)`}
+                value={`${stats.shareCtr7d}%`}
+                unit={`결과 ${formatCount(shown)} · 공유 ${formatCount(shared)} · 이용자 ${formatCount(stats.users7d)}명 · 전주대비 ${diffPct(stats.shareCtr7d, stats.shareCtrPrev7d)}`}
+                onClick={() => setFeatureModal(key)}
+              />
+            );
+          })}
+        </section>
+      )}
 
       <section className="metric-grid">
         <MetricCard
@@ -123,6 +233,19 @@ export function OpsPage({ metrics, loading, error }: Props) {
           onClick={() => setShowReferralModal(true)}
         />
       </section>
+
+      {featureModal && metrics.featureMetrics && (
+        <Modal
+          title={`${FEATURE_LABEL[featureModal]} 운영 지표`}
+          onClose={() => setFeatureModal(null)}
+          wide
+        >
+          <FeatureDetail
+            feature={featureModal}
+            stats={metrics.featureMetrics[featureModal]}
+          />
+        </Modal>
+      )}
 
       {showBannerModal && (
         <Modal title="추천 배너 성과" onClose={() => setShowBannerModal(false)} wide>

@@ -2,7 +2,11 @@ import { supabase } from "./supabase";
 import type { DashboardMetrics } from "../types/metrics";
 import { parseKpiMetricsV2, type KpiMetricsV2 } from "../types/kpiMetrics";
 import { parseRealtimeMetrics, type RealtimeMetrics } from "../types/realtimeMetrics";
-import { parseOpsMetrics, type OpsMetrics } from "../types/opsMetrics";
+import {
+  parseFeatureMetrics,
+  parseOpsMetrics,
+  type OpsMetrics,
+} from "../types/opsMetrics";
 import {
   parseDailyExportRows,
   parseHourlyExportRows,
@@ -105,7 +109,24 @@ export async function fetchOpsMetrics(): Promise<OpsMetrics> {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("admin_ops_metrics returned invalid data");
   }
-  return parseOpsMetrics(data as Record<string, unknown>);
+  const ops = parseOpsMetrics(data as Record<string, unknown>);
+  // 점메추/룰렛 지표는 별도 RPC. SQL 미적용 등으로 실패해도 운영 성과 탭은 그대로 보여준다.
+  try {
+    const { data: feature, error: featureError } = await supabase.rpc(
+      "admin_feature_metrics",
+    );
+    if (
+      !featureError &&
+      feature &&
+      typeof feature === "object" &&
+      !Array.isArray(feature)
+    ) {
+      ops.featureMetrics = parseFeatureMetrics(feature as Record<string, unknown>);
+    }
+  } catch {
+    // 지표 SQL 미적용 시 카드만 숨긴다.
+  }
+  return ops;
 }
 
 export async function fetchDailyExportMetrics(
