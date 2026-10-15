@@ -11,6 +11,7 @@ import 'coupon_box_screen.dart';
 import 'legal_policy_hub_screen.dart';
 import 'lunch_fairy_screen.dart';
 import 'lunch_roulette_screen.dart';
+import 'partner_restaurants_screen.dart';
 import 'referral_invite_screen.dart';
 import 'reward_screen.dart';
 import 'settings_screen.dart';
@@ -237,12 +238,22 @@ class _MyScreenState extends State<MyScreen> {
                       label: '약관 및 정책',
                       icon: const Icon(Icons.description_outlined,
                           size: 20, color: Color(0xFF000000)),
-                      showBottomBorder: false,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (_) =>
                                 const LegalPolicyHubScreen()),
+                      ),
+                    ),
+                    MyPageSectionRow(
+                      label: '우리와 함께하는 매장',
+                      icon: const Icon(Icons.storefront_outlined,
+                          size: 20, color: Color(0xFF000000)),
+                      showBottomBorder: false,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const PartnerRestaurantsScreen()),
                       ),
                     ),
                   ],
