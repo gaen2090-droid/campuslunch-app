@@ -10,6 +10,11 @@ import {
 export async function fetchCrowdPredictionLunch(): Promise<
   CrowdPredictionRestaurant[]
 > {
+  // v2는 서버가 계산한 relax_probability 를 함께 준다. 아직 SQL이 적용되지 않았으면
+  // 기존 RPC로 폴백하고, 확률은 같은 식으로 클라이언트에서 계산한다.
+  const v2 = await supabase.rpc("admin_crowd_prediction_lunch_v2");
+  if (!v2.error) return groupByRestaurant((v2.data as unknown[]) ?? []);
+
   const { data, error } = await supabase.rpc("admin_crowd_prediction_lunch");
   if (error) throw error;
   return groupByRestaurant((data as unknown[]) ?? []);

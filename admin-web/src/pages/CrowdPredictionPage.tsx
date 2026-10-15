@@ -4,7 +4,6 @@ import {
   CROWD_PREDICTION_SLOT_MINUTES,
   computeCoverage,
   estimateDaysToReady,
-  seatAvailableProbability,
   slotLabel,
   type CrowdPredictionDailyCount,
   type CrowdPredictionRestaurant,
@@ -20,7 +19,8 @@ interface Props {
 }
 
 const MIN_SAMPLE_SIZE = 3;
-/** "자리 있을 확률" 뱃지 색 구간: 70% 이상 초록, 40~69% 주황, 40% 미만 빨강 (임의 기준, 조정 가능). */
+/** "여유로울 확률" 뱃지 색 구간: 70% 이상 초록(대체로 여유), 40~69% 주황(약간혼잡 위주),
+ * 40% 미만 빨강(자리없음 위주). 약간혼잡을 0.5점으로 계산하므로 약간혼잡만 쌓이면 50%대가 된다. */
 const SEAT_PROB_HIGH = 70;
 const SEAT_PROB_MID = 40;
 /** 학습 모델(로지스틱 회귀 등)로 전환을 고려할 구간당 표본 기준(매장당
@@ -45,16 +45,16 @@ function SlotCell({ slot }: { slot: CrowdPredictionSlot | undefined }) {
       </td>
     );
   }
-  // 메인 지표는 "자리 있을 확률". 최빈값 뱃지는 표본이 적을 때 과하게 단정적이라 쓰지 않는다.
-  const seatProb = seatAvailableProbability(slot) ?? 0;
+  // 메인 지표는 "여유로울 확률". 최빈값 뱃지는 표본이 적을 때 과하게 단정적이라 쓰지 않는다.
+  const seatProb = slot.relaxProbability ?? 0;
   const probClass =
     seatProb >= SEAT_PROB_HIGH ? "assigned" : seatProb >= SEAT_PROB_MID ? "warning" : "danger";
   return (
     <td>
       <div className="crowd-prediction-cell">
-        <span className={`badge ${probClass}`}>자리 있을 확률 {seatProb}%</span>
+        <span className={`badge ${probClass}`}>여유로울 확률 {seatProb}%</span>
         <span className="crowd-prediction-n">
-          입장가능 {slot.level1Count} · 약간혼잡 {slot.level2Count} · 자리없음{" "}
+          바로입장 {slot.level1Count} · 약간혼잡 {slot.level2Count} · 자리없음{" "}
           {slot.level3Count} (n={slot.sampleSize})
         </span>
       </div>
@@ -95,11 +95,12 @@ export function CrowdPredictionPage({
         </div>
         <p className="muted">
           점심시간(12:00~13:00, 평일) 제보를 15분 단위로 모아 매장별로
-          "자리 있을 확률"을 통계로 낸 화면입니다. 늦게 올라오는 제보를 위해
+          "여유로울 확률"을 통계로 낸 화면입니다. 늦게 올라오는 제보를 위해
           구간 끝은 2분씩 겹쳐 적용합니다(마지막 구간은 13:02까지). 실제 학습
           모델이 아니라 제보 누적치 기반 통계 집계이며, 구간당 유효 제보가{" "}
-          {MIN_SAMPLE_SIZE}건 미만이면 "데이터 부족"으로 표시합니다. "자리 있을
-          확률"은 입장가능+약간혼잡 제보 비율(표본이 적을 때를 위해 보정)이고,
+          {MIN_SAMPLE_SIZE}건 미만이면 "데이터 부족"으로 표시합니다. "여유로울
+          확률"은 바로입장 1점 · 약간혼잡 0.5점 · 자리없음 0점으로 계산한 비율(표본이
+          적을 때를 위해 보정)이고,
           {SEAT_PROB_HIGH}% 이상 초록 · {SEAT_PROB_MID}% 이상 주황 · 그 미만
           빨강으로 표시합니다. 앱 화면에는 아직 노출되지 않습니다.
         </p>

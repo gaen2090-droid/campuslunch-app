@@ -5,12 +5,14 @@ export interface CrowdPredictionSlot {
   /** 720=12:00, 735=12:15, 750=12:30, 765=12:45 (자정 기준 분) */
   slotStartMinute: number;
   sampleSize: number;
-  /** 1=입장가능, 2=약간혼잡, 3=자리없음. 표본 부족(3건 미만) 시 null */
+  /** 1=바로입장, 2=약간혼잡, 3=자리없음. 표본 부족(3건 미만) 시 null */
   predictedLevel: number | null;
   predictedStatus: string | null;
   level1Count: number;
   level2Count: number;
   level3Count: number;
+  /** 여유로울 확률(%). 서버 crowd_relax_probability() 값, 표본 0이면 null */
+  relaxProbability: number | null;
 }
 
 /** 매장 하나의 4개 구간(12:00~13:00, 15분 단위) 묶음 */
@@ -33,14 +35,19 @@ export function slotLabel(slotStartMinute: number): string {
 }
 
 /**
- * "자리 있을 확률" (%) — 입장가능(1) + 약간혼잡(2) 제보 비율.
- * 표본이 적을 때 3/3 → 100% 같은 극단값이 나오지 않도록 라플라스 보정
- * ((자리 있음 + 1) / (n + 2))을 적용한다. 표본 0이면 null.
+ * "여유로울 확률" (%) — 바로입장 1.0 · 약간혼잡 0.5 · 자리없음 0 가중.
+ * 계산은 서버(supabase/crowd_prediction_relax_probability.sql)가 하고,
+ * 이 함수는 SQL 적용 전 구버전 RPC 응답일 때만 쓰는 같은 식의 폴백이다.
+ * 표본이 적을 때 극단값이 나오지 않도록 라플라스 보정 (+1 / n+2)을 적용한다.
  */
-export function seatAvailableProbability(slot: CrowdPredictionSlot): number | null {
-  if (slot.sampleSize <= 0) return null;
-  const available = slot.level1Count + slot.level2Count;
-  return Math.round(((available + 1) / (slot.sampleSize + 2)) * 100);
+export function relaxProbabilityFallback(
+  level1: number,
+  level2: number,
+  level3: number,
+): number | null {
+  const n = level1 + level2 + level3;
+  if (n <= 0) return null;
+  return Math.round(((level1 + 0.5 * level2 + 1) / (n + 2)) * 100);
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -65,6 +72,14 @@ function parseSlot(row: Record<string, unknown>): CrowdPredictionSlot {
     level1Count: toNumber(row.level_1_count),
     level2Count: toNumber(row.level_2_count),
     level3Count: toNumber(row.level_3_count),
+    relaxProbability:
+      row.relax_probability === null || row.relax_probability === undefined
+        ? relaxProbabilityFallback(
+            toNumber(row.level_1_count),
+            toNumber(row.level_2_count),
+            toNumber(row.level_3_count),
+          )
+        : toNumber(row.relax_probability),
   };
 }
 
