@@ -185,8 +185,14 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   @override
   void initState() {
     super.initState();
+    _track('open');
     _restoreAnswers();
     _checkLocation();
+  }
+
+  /// 어드민 운영 지표용 사용 기록. 실패해도 화면에는 영향이 없다.
+  void _track(String action) {
+    unawaited(context.read<AppProvider>().recordFeatureEvent('fairy', action));
   }
 
   Future<void> _restoreAnswers() async {
@@ -415,6 +421,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
         _flavorSeed = _random.nextInt(1 << 20);
         _seen.add(outcome.pick!.restaurant.id);
         _phase = _Phase.result;
+        _track('result_shown');
       } else {
         _pick = null;
         _phase = outcome.nothingOpen ? _Phase.nothingOpen : _Phase.exhausted;
@@ -423,6 +430,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   }
 
   Future<void> _reroll() async {
+    _track('reroll');
     setState(() => _phase = _Phase.thinking);
     await Future<void>.delayed(_minThinking);
     if (!mounted) return;
@@ -437,6 +445,7 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
   /// 결과를 카카오톡으로 공유한다. 카카오톡을 쓸 수 없으면 기본 공유창으로 넘어간다.
   /// 혼잡도는 시간이 지나면 달라지므로 문구에 넣지 않는다.
   Future<void> _shareResult(FairyPick pick) async {
+    _track('share_click');
     final r = pick.restaurant;
     final menus = fairySignatureMenus(r).map((m) => m.name).toList();
     final menuLine = menus.isNotEmpty
@@ -477,10 +486,13 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     }
   }
 
-  void _openDetail(Restaurant r) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
-      );
+  void _openDetail(Restaurant r) {
+    _track('detail_click');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

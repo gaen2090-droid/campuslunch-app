@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
     show Button, Link, ShareClient, TextTemplate;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_links.dart';
@@ -14,6 +15,7 @@ import '../providers/app_provider.dart';
 import '../utils/lunch_fairy_recommender.dart';
 import '../utils/lunch_roulette.dart';
 import '../widgets/restaurant_image.dart';
+import '../widgets/share_sheet.dart' show buildShareLink;
 import 'detail_screen.dart';
 
 /// 점메추 요정 아래에 놓는 룰렛 배너. 홈은 요정 배너와 같은 시간대에만 보인다.
@@ -51,11 +53,7 @@ class LunchRouletteBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const SizedBox(
-              width: 46,
-              height: 46,
-              child: Center(child: Text('🎡', style: TextStyle(fontSize: 34))),
-            ),
+            Image.asset('assets/images/roulette.png', width: 46, height: 46),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -160,6 +158,13 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
 
   List<Restaurant> get _all => context.read<AppProvider>().restaurants;
 
+  /// 어드민 운영 지표용 사용 기록. 실패해도 화면에는 영향이 없다.
+  void _track(String action, {Map<String, dynamic>? metadata}) {
+    unawaited(context
+        .read<AppProvider>()
+        .recordFeatureEvent('roulette', action, metadata: metadata));
+  }
+
   /// 사장님이 방금 고친 영업 상태가 바로 반영되도록 최신 목록으로 칸을 구성한다.
   Future<void> _load() async {
     try {
@@ -172,6 +177,7 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
     }
     if (!mounted) return;
     final preset = widget.presetLinkNos.toSet();
+    _track(preset.isNotEmpty ? 'preset_open' : 'open');
     setState(() {
       _loading = false;
       if (preset.isNotEmpty) {
@@ -228,6 +234,7 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
     var delta = (target - current) % (2 * math.pi);
     if (delta < 0) delta += 2 * math.pi;
     final turns = reduce ? 0 : 5 + _rng.nextInt(2);
+    _track('spin', metadata: {'tab': _tab == 0 ? 'random' : 'pick'});
     setState(() {
       _winner = winner;
       _spinning = true;
@@ -249,12 +256,16 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
       _rotation = _to;
       _spinning = false;
     });
+    _track('result_shown', metadata: {'tab': _tab == 0 ? 'random' : 'pick'});
   }
 
-  void _openDetail(Restaurant r) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
-      );
+  void _openDetail(Restaurant r) {
+    _track('detail_click');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)),
+    );
+  }
 
   // ── 화면 ──
   @override
@@ -668,6 +679,24 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
                         style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFEE500),
+                      foregroundColor: const Color(0xFF3C1E1E),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () => _shareResult(r),
+                    icon: const Icon(Icons.chat_bubble, size: 16),
+                    label: const Text('친구에게 결과 공유하기',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -676,22 +705,71 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
     );
   }
 
+  /// 룰렛이 정한 매장을 카카오톡으로 공유한다. 카카오톡을 쓸 수 없으면 기본 공유창으로 넘어간다.
+  Future<void> _shareResult(Restaurant r) async {
+    _track('result_share_click',
+        metadata: {'tab': _tab == 0 ? 'random' : 'pick'});
+    final menus = fairySignatureMenus(r).map((m) => m.name).toList();
+    final menuLine = menus.isNotEmpty ? '\n대표메뉴: ${menus.join(' · ')}' : '';
+    final text = '오늘 점심, 식당 룰렛이 고른 곳은 ${r.name}!'
+        '$menuLine\n캠퍼스런치에서 같이 돌려봐요.';
+
+    final url = Uri.parse(buildShareLink(r));
+    final params = r.linkNo > 0
+        ? <String, String>{'r': '${r.linkNo}'}
+        : <String, String>{'path': 'home'};
+    final link = Link(
+      webUrl: url,
+      mobileWebUrl: url,
+      androidExecutionParams: params,
+      iosExecutionParams: params,
+    );
+    final template = TextTemplate(
+      text: text,
+      link: link,
+      buttons: [Button(title: '앱에서 열기', link: link)],
+    );
+    try {
+      if (await ShareClient.instance.isKakaoTalkSharingAvailable()) {
+        final uri = await ShareClient.instance.shareDefault(template: template);
+        await ShareClient.instance.launchKakaoTalk(uri);
+        return;
+      }
+      await Share.share('$text\n${buildShareLink(r)}');
+    } catch (e) {
+      debugPrint('[Roulette] result share failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유를 열지 못했어요. 잠시 후 다시 시도해주세요.')),
+      );
+    }
+  }
+
   // ── 같이 고르기 ──
 
   /// 지금 고른 후보를 카카오톡으로 친구에게 보낸다. 친구가 링크를 열면
   /// 이 후보가 미리 채워진 "같이 고르기"가 열리고, 거기에 자기 후보를 더해 돌릴 수 있다.
-  Future<void> _sendPicksToFriend() async {
+  Future<void> _sendPicksToFriend() {
     final byId = {for (final r in _all) r.id: r};
     final picked = [
       for (final id in _picked)
         if (byId[id] != null) byId[id]!,
     ];
-    final withLink = picked.where((r) => r.linkNo > 0).toList();
+    return _shareCandidates(
+      picked,
+      emptyMessage: _picked.isEmpty ? '먼저 후보를 골라주세요.' : '보낼 수 있는 후보가 없어요.',
+    );
+  }
+
+  Future<void> _shareCandidates(
+    List<Restaurant> candidates, {
+    required String emptyMessage,
+  }) async {
+    _track('candidates_share_click');
+    final withLink = candidates.where((r) => r.linkNo > 0).toList();
     if (withLink.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_picked.isEmpty ? '먼저 후보를 골라주세요.' : '보낼 수 있는 후보가 없어요.'),
-        ),
+        SnackBar(content: Text(emptyMessage)),
       );
       return;
     }

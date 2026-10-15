@@ -34,13 +34,8 @@ class LunchHomeTiles extends StatelessWidget {
             Expanded(
               child: _Tile(
                 color: const Color(0xFFFFF4CC),
-                icon: const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: Text('🎡', style: TextStyle(fontSize: 30)),
-                  ),
-                ),
+                icon: Image.asset('assets/images/roulette.png',
+                    width: 40, height: 40),
                 title: '식당 룰렛',
                 subtitle: '고민될땐 룰렛 돌리기',
                 onTap: onRouletteTap,

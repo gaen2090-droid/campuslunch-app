@@ -177,6 +177,29 @@ class AnalyticsRepository {
     }
   }
 
+  /// 점메추 요정/식당 룰렛 사용 기록 (어드민 "점메추·룰렛" 지표용).
+  /// feature: 'fairy' | 'roulette', action 목록은 supabase/feature_analytics.sql 참고.
+  Future<void> recordFeatureEvent({
+    required String feature,
+    required String action,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (!SupabaseService.isReady) return;
+    if (_client.auth.currentUser == null) return;
+    try {
+      await _client.rpc(
+        'record_feature_event',
+        params: {
+          'p_feature': feature,
+          'p_action': action,
+          'p_metadata': metadata ?? <String, dynamic>{},
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[Analytics] feature_event $feature/$action: $e\n$st');
+    }
+  }
+
   Future<void> recordScreenDwell({
     required String screen,
     required int dwellMs,

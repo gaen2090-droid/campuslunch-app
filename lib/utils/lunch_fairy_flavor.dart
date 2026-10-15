@@ -21,9 +21,9 @@ FairyRarity fairyRarity(FairyPick pick) {
 String fairyRarityLabel(FairyRarity rarity) {
   switch (rarity) {
     case FairyRarity.epic:
-      return '에픽';
+      return '✅ 사장님 픽';
     case FairyRarity.rare:
-      return '레어';
+      return '🔥 따끈한 제보';
     case FairyRarity.normal:
       return '';
   }
@@ -33,9 +33,9 @@ String fairyRarityLabel(FairyRarity rarity) {
 String fairyRarityReason(FairyRarity rarity) {
   switch (rarity) {
     case FairyRarity.epic:
-      return '사장님이 직접 알려줬어요';
+      return '사장님의 최신 제보가 있어요';
     case FairyRarity.rare:
-      return '방금 올라온 제보로 확인했어요';
+      return '방금 올라온 제보가 있어요';
     case FairyRarity.normal:
       return '';
   }

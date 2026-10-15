@@ -77,8 +77,8 @@ void main() {
     test('일반은 라벨·근거 문구가 비어 있다(화면에 띄우지 않음)', () {
       expect(fairyRarityLabel(FairyRarity.normal), '');
       expect(fairyRarityReason(FairyRarity.normal), '');
-      expect(fairyRarityLabel(FairyRarity.epic), '에픽');
-      expect(fairyRarityLabel(FairyRarity.rare), '레어');
+      expect(fairyRarityLabel(FairyRarity.epic), '✅ 사장님 픽');
+      expect(fairyRarityLabel(FairyRarity.rare), '🔥 따끈한 제보');
     });
   });
 

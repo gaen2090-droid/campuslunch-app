@@ -3302,6 +3302,18 @@ class AppProvider extends ChangeNotifier {
     await _analyticsRepo.recordBannerClick(restaurantId);
   }
 
+  Future<void> recordFeatureEvent(
+    String feature,
+    String action, {
+    Map<String, dynamic>? metadata,
+  }) async {
+    await _analyticsRepo.recordFeatureEvent(
+      feature: feature,
+      action: action,
+      metadata: metadata,
+    );
+  }
+
   Future<void> fetchMetrics() async {
     final repo = _restaurantRepo;
     if (repo == null) return;
