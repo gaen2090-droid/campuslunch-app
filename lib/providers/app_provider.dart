@@ -1568,7 +1568,7 @@ class AppProvider extends ChangeNotifier {
     try {
       var fetched = await repo.fetchAll();
       if (gen != _restaurantRefreshGen) return false;
-      // 사장님 좌석 입력(4명 이상=여유로움, 1~3명=약간혼잡, 0명=자리없음)을 혼잡도 신호로 반영.
+      // 사장님 좌석 입력(5명 이상=여유로움, 1~4명=약간혼잡, 0명=자리없음)을 혼잡도 신호로 반영.
       // 실패해도 목록 자체는 그대로 쓴다.
       try {
         final seats = await repo.fetchRecentOwnerSeatUpdates(ownerSeatSignalWindow);

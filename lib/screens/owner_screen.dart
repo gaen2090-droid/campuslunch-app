@@ -586,9 +586,9 @@ class _OwnerScreenState extends State<OwnerScreen> {
                                 text: '입력한 인원은 혼잡도에도 자동 반영돼요.\n0명 ',
                                 children: [
                                   _seatLegendSpan('자리없음'),
-                                  const TextSpan(text: ' · 1~3명 '),
+                                  const TextSpan(text: ' · 1~4명 '),
                                   _seatLegendSpan('약간혼잡'),
-                                  const TextSpan(text: ' · 4명 이상 '),
+                                  const TextSpan(text: ' · 5명 이상 '),
                                   _seatLegendSpan('여유로움'),
                                 ],
                               ),

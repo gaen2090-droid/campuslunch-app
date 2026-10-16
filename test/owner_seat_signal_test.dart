@@ -40,30 +40,30 @@ OwnerSeatUpdate _seat(int seats, {int minutesAgo = 5}) => OwnerSeatUpdate(
 
 void main() {
   group('좌석 → 상태 가정', () {
-    test('0명=자리없음, 1~3명=약간혼잡, 4명 이상=여유로움', () {
+    test('0명=자리없음, 1~4명=약간혼잡, 5명 이상=여유로움', () {
       expect(ownerSeatImpliedStatus(0), '자리없음');
       expect(ownerSeatImpliedStatus(1), '약간혼잡');
-      expect(ownerSeatImpliedStatus(3), '약간혼잡');
-      expect(ownerSeatImpliedStatus(4), '여유로움');
+      expect(ownerSeatImpliedStatus(4), '약간혼잡');
+      expect(ownerSeatImpliedStatus(5), '여유로움');
       expect(ownerSeatImpliedStatus(12), '여유로움');
     });
   });
 
   group('applyOwnerSeatSignal', () {
     test('제보가 없으면 좌석으로 상태를 정하고 사장님 입력으로 표시', () {
-      final r = applyOwnerSeatSignal(_r(), _seat(4), _now);
+      final r = applyOwnerSeatSignal(_r(), _seat(5), _now);
       expect(r.status, '여유로움');
       expect(r.hasCrowdUpdate, isTrue);
       expect(r.crowdBaseSource, 'owner_seat');
-      expect(r.ownerSeatCount, 4);
-      expect(r.seatBadgeLabel, '4명가능');
-      expect(r.updatedAt, _seat(4).createdAt);
+      expect(r.ownerSeatCount, 5);
+      expect(r.seatBadgeLabel, '5명가능');
+      expect(r.updatedAt, _seat(5).createdAt);
     });
 
-    test('3명은 약간혼잡, 0명은 자리없음(입장 어려움)', () {
-      final three = applyOwnerSeatSignal(_r(), _seat(3), _now);
+    test('4명은 약간혼잡, 0명은 자리없음(입장 어려움)', () {
+      final three = applyOwnerSeatSignal(_r(), _seat(4), _now);
       expect(three.status, '약간혼잡');
-      expect(three.seatBadgeLabel, '3명가능');
+      expect(three.seatBadgeLabel, '4명가능');
       final zero = applyOwnerSeatSignal(_r(), _seat(0), _now);
       expect(zero.status, '자리없음');
       expect(zero.seatBadgeLabel, '입장 어려움');
