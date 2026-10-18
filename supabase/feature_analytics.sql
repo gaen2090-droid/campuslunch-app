@@ -7,6 +7,8 @@
 --   feature = 'fairy'    : open, result_shown, share_click, reroll, detail_click
 --   feature = 'roulette' : open, preset_open, spin, result_shown,
 --                          result_share_click, candidates_share_click, detail_click
+--   feature = 'prediction': impression(예측이 화면에 보임), click(예측이 붙은 매장을 누름)
+--                          metadata: surface(home/list/map/detail), restaurant_id, level
 --
 -- ⚠️ push_analytics.sql 주석의 2026-09 사고(제약 재생성 시 기존 행 위반)를 피하려고
 --    기존 이벤트 타입을 전부 포함하고, NOT VALID 로 기존 행은 재검사하지 않는다.
@@ -52,13 +54,14 @@ begin
   if uid is null then
     return;
   end if;
-  if p_feature not in ('fairy', 'roulette') then
+  if p_feature not in ('fairy', 'roulette', 'prediction') then
     raise exception 'invalid feature';
   end if;
   if p_action not in (
     'open', 'preset_open', 'spin', 'result_shown',
     'share_click', 'result_share_click', 'candidates_share_click',
-    'reroll', 'detail_click'
+    'reroll', 'detail_click',
+    'impression', 'click'
   ) then
     raise exception 'invalid feature action';
   end if;
@@ -85,6 +88,7 @@ grant execute on function public.record_feature_event(text, text, jsonb) to auth
 --   share_ctr_7d / share_ctr_prev_7d             : 결과 공유 클릭 ÷ 결과 노출 (%)
 --   daily_7d                                     : [{result_shown, share_clicks}] 오래된 순
 -- 결과 공유 클릭 = fairy 는 share_click, roulette 는 result_share_click.
+-- prediction 은 같은 모양으로 담는다: 노출 = impression, "공유 클릭" 자리 = click(클릭률).
 create or replace function public.admin_feature_metrics()
 returns jsonb
 language plpgsql
@@ -99,6 +103,7 @@ declare
   prev_start timestamptz := today_start - interval '13 days';
   feat text;
   share_action text;
+  shown_action text;
   result jsonb := '{}'::jsonb;
   a_7d jsonb;
   a_prev jsonb;
@@ -125,8 +130,13 @@ begin
     raise exception 'admin only';
   end if;
 
-  foreach feat in array array['fairy', 'roulette'] loop
-    share_action := case feat when 'fairy' then 'share_click' else 'result_share_click' end;
+  foreach feat in array array['fairy', 'roulette', 'prediction'] loop
+    share_action := case feat
+      when 'fairy' then 'share_click'
+      when 'prediction' then 'click'
+      else 'result_share_click'
+    end;
+    shown_action := case feat when 'prediction' then 'impression' else 'result_shown' end;
 
     select coalesce(jsonb_object_agg(action, cnt), '{}'::jsonb) into a_7d
     from (
@@ -165,7 +175,7 @@ begin
     from public.analytics_events e
     where e.event_type = 'feature_event'
       and e.metadata->>'feature' = feat
-      and e.metadata->>'action' in ('open', 'preset_open')
+      and e.metadata->>'action' in ('open', 'preset_open', 'impression')
       and e.created_at >= week_start
       and e.created_at < today_start + interval '1 day';
 
@@ -177,9 +187,9 @@ begin
       and e.created_at >= week_start
       and e.created_at < today_start + interval '1 day';
 
-    shown_7d := coalesce((a_7d->>'result_shown')::int, 0);
+    shown_7d := coalesce((a_7d->>shown_action)::int, 0);
     shared_7d := coalesce((a_7d->>share_action)::int, 0);
-    shown_prev := coalesce((a_prev->>'result_shown')::int, 0);
+    shown_prev := coalesce((a_prev->>shown_action)::int, 0);
     shared_prev := coalesce((a_prev->>share_action)::int, 0);
     ctr_7d := case when shown_7d > 0
       then round((shared_7d::numeric / shown_7d) * 1000) / 10 else 0 end;
@@ -191,7 +201,7 @@ begin
       d_start := today_start - ((6 - i) * interval '1 day');
       d_end := d_start + interval '1 day';
       select
-        count(*) filter (where e.metadata->>'action' = 'result_shown')::int,
+        count(*) filter (where e.metadata->>'action' = shown_action)::int,
         count(*) filter (where e.metadata->>'action' = share_action)::int
       into d_shown, d_shared
       from public.analytics_events e

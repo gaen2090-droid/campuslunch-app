@@ -46,6 +46,8 @@ export interface FeatureStats {
 export interface FeatureMetrics {
   fairy: FeatureStats;
   roulette: FeatureStats;
+  /** 혼잡도 예측: 노출(impression) ÷ 클릭(click). shareCtr 자리에 클릭률이 들어온다. */
+  prediction: FeatureStats;
 }
 
 export interface OpsMetrics {
@@ -187,6 +189,7 @@ export function parseFeatureMetrics(map: Record<string, unknown>): FeatureMetric
   return {
     fairy: parseFeatureStats(map.fairy),
     roulette: parseFeatureStats(map.roulette),
+    prediction: parseFeatureStats(map.prediction),
   };
 }
 

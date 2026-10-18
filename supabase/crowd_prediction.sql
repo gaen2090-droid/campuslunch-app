@@ -2,7 +2,7 @@
 -- Dashboard → SQL Editor: stats_excluded_users.sql 이후 실행
 -- (is_stats_excluded() 함수가 있어야 함)
 --
--- 점심시간(12:00~13:00, KST) 제보를 15분 단위 4개 구간으로 모아 매장별
+-- 점심시간(11:30~13:00, KST) 제보를 15분 단위 6개 구간으로 모아 매장별
 -- 대표 혼잡도(최빈값)를 계산하는 관리자 전용 RPC. 머신러닝이 아니라 통계
 -- 집계이며, "AI 예측"은 admin-web UI 라벨일 뿐이다.
 --
@@ -12,7 +12,7 @@
 --       단계라 예외적으로 포함한다. 다른 통계 제외 계정은 그대로 제외.
 --       그 외: '영업안함' 제보, 주말(토/일) 제보
 -- 구간 교차: 제보는 상황을 본 뒤 조금 늦게 올라오므로 각 구간의 끝을 2분 늘려 적용한다.
---            12:00~12:17 / 12:15~12:32 / 12:30~12:47 / 12:45~13:02 (시작은 그대로).
+--            11:30~11:47 / 11:45~12:02 / 12:00~12:17 / 12:15~12:32 / 12:30~12:47 / 12:45~13:02 (시작은 그대로).
 --            겹치는 2분의 제보는 이웃한 두 구간에 모두 반영된다.
 -- 중복 처리: 같은 유저가 같은 매장·같은 15분 구간·같은 날짜에 여러 번
 --            제보해도 그 날 그 구간엔 최신 1건만 반영 (헤비 제보자 방지)
@@ -21,11 +21,14 @@
 -- 최소 표본: 구간당 유효 제보 3건 미만이면 sample_size만 채우고
 --            predicted_level/predicted_status는 null ("데이터 부족")
 
-create or replace function public.admin_crowd_prediction_lunch()
+-- 집계 본체. 어드민(admin_crowd_prediction_lunch)과 앱(app_crowd_prediction,
+-- app_crowd_prediction.sql)이 같은 기준을 쓰도록 한 곳에만 둔다.
+-- 권한 검사가 없으므로 직접 호출은 막고(아래 revoke), 위 두 래퍼만 부른다.
+create or replace function public.crowd_prediction_lunch_core()
 returns table (
   restaurant_id uuid,
   restaurant_name varchar,
-  slot_start_minute int,   -- 720=12:00, 735=12:15, 750=12:30, 765=12:45 (자정 기준 분)
+  slot_start_minute int,   -- 690=11:30, 705=11:45, 720=12:00, 735=12:15, 750=12:30, 765=12:45 (자정 기준 분)
   sample_size int,
   predicted_level int,     -- 1=여유로움, 2=약간혼잡, 3=자리없음 (표본 부족 시 null)
   predicted_status text,   -- level_to_ui_status(predicted_level) (표본 부족 시 null)
@@ -39,10 +42,6 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.is_admin() then
-    raise exception 'admin only';
-  end if;
-
   return query
   with local_reports as (
     -- KST 로컬시각 기준 요일/시각으로 필터링 + 매장별 유저별 15분 구간별
@@ -72,7 +71,7 @@ begin
     -- 구간 [시작, 시작+15+2분) 에 드는 구간들. 겹치는 2분은 두 구간에 모두 들어간다.
     cross join lateral (
       select s.slot_start_minute
-      from unnest(array[720, 735, 750, 765]) as s(slot_start_minute)
+      from unnest(array[690, 705, 720, 735, 750, 765]) as s(slot_start_minute)
       where r_local.minute_of_day >= s.slot_start_minute
         and r_local.minute_of_day < s.slot_start_minute + 15 + 2
     ) slot
@@ -85,7 +84,7 @@ begin
     order by cr.restaurant_id, slot.slot_start_minute, r_local.dedupe_key, r_local.report_date, cr.created_at desc
   ),
   slots as (
-    select unnest(array[720, 735, 750, 765]) as slot_start_minute
+    select unnest(array[690, 705, 720, 735, 750, 765]) as slot_start_minute
   ),
   targets as (
     select r.id as restaurant_id, r.name as restaurant_name
@@ -142,14 +141,60 @@ begin
 end;
 $$;
 
+-- Supabase 는 public 스키마 새 함수에 anon/authenticated 실행 권한을 기본 부여하므로
+-- from public 만으로는 닫히지 않는다. 세 역할을 모두 명시해서 회수한다.
+revoke all on function public.crowd_prediction_lunch_core() from public, anon, authenticated;
+
+comment on function public.crowd_prediction_lunch_core() is
+  '혼잡도 예측 집계 본체(권한 검사 없음). 직접 호출 금지 — admin_crowd_prediction_lunch(), app_crowd_prediction()만 부른다.';
+
+-- 어드민 전용 래퍼: 반환 형태는 예전 admin_crowd_prediction_lunch()와 동일해야
+-- admin_crowd_prediction_lunch_v2()(crowd_prediction_relax_probability.sql)가 깨지지 않는다.
+create or replace function public.admin_crowd_prediction_lunch()
+returns table (
+  restaurant_id uuid,
+  restaurant_name varchar,
+  slot_start_minute int,
+  sample_size int,
+  predicted_level int,
+  predicted_status text,
+  level_1_count int,
+  level_2_count int,
+  level_3_count int
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'admin only';
+  end if;
+
+  return query
+  select
+    c.restaurant_id,
+    c.restaurant_name,
+    c.slot_start_minute,
+    c.sample_size,
+    c.predicted_level,
+    c.predicted_status,
+    c.level_1_count,
+    c.level_2_count,
+    c.level_3_count
+  from public.crowd_prediction_lunch_core() c;
+end;
+$$;
+
 revoke all on function public.admin_crowd_prediction_lunch() from public;
 grant execute on function public.admin_crowd_prediction_lunch() to authenticated;
 
 comment on function public.admin_crowd_prediction_lunch() is
-  '점심(12~13시, 평일, KST) 15분 단위 매장별 대표 혼잡도 통계 집계. 구간 끝은 2분 교차(마지막 구간은 13:02까지). admin-web "혼잡도 AI 예측" 탭 전용. 구간당 표본 3건 미만이면 predicted_level/status=null. campuslunch2026@gmail.com(관리자 제보 전용)은 통계 제외 예외로 포함하고 중복 제거도 하지 않는다.';
+  '점심(11:30~13시, 평일, KST) 15분 단위 매장별 대표 혼잡도 통계 집계. 구간 끝은 2분 교차(마지막 구간은 13:02까지). admin-web "혼잡도 AI 예측" 탭 전용. 구간당 표본 3건 미만이면 predicted_level/status=null. campuslunch2026@gmail.com(관리자 제보 전용)은 통계 제외 예외로 포함하고 중복 제거도 하지 않는다.';
 
 -- ── 표본 추적: 최근 7일 일별 유효 제보 수 ──
--- admin_crowd_prediction_lunch()와 동일한 필터(평일·12~13시·영업안함 제외·
+-- admin_crowd_prediction_lunch()와 동일한 필터(평일·11:30~13시·영업안함 제외·
 -- 청룡의 아들 계정 예외 포함, 매장·구간·유저 중복은 최신 1건)를 쓰되,
 -- 매장/구간으로 나누지 않고 날짜별 총합만 낸다 — "하루에 얼마나 쌓이는지"
 -- 증가 속도 추정용. 표본 추적 카드(admin-web "혼잡도 AI 예측" 상단)에서 사용.
@@ -199,7 +244,7 @@ begin
           + extract(minute from timezone('Asia/Seoul', cr.created_at))::int) as minute_of_day
     ) r_local
     where r_local.dow between 1 and 5
-      and r_local.minute_of_day >= 720      -- 12:00
+      and r_local.minute_of_day >= 690      -- 11:30
       and r_local.minute_of_day < 782       -- 13:02 (마지막 구간 끝 +2분)
       and r_local.report_date >= (timezone('Asia/Seoul', now()))::date - (greatest(1, p_days) - 1)
       and coalesce(nullif(trim(cr.metadata->>'status'), ''), '') <> '영업안함'
@@ -220,6 +265,6 @@ revoke all on function public.admin_crowd_prediction_daily_counts(int) from publ
 grant execute on function public.admin_crowd_prediction_daily_counts(int) to authenticated;
 
 comment on function public.admin_crowd_prediction_daily_counts(int) is
-  '최근 N일(기본 7일) 평일 점심(12:00~13:02) 유효 제보 수를 날짜별로 집계. admin_crowd_prediction_lunch()와 동일 필터이되 구간 교차는 적용하지 않아 제보를 중복 집계하지 않는다. 표본 추적(증가 속도 추정)용.';
+  '최근 N일(기본 7일) 평일 점심(11:30~13:02) 유효 제보 수를 날짜별로 집계. admin_crowd_prediction_lunch()와 동일 필터이되 구간 교차는 적용하지 않아 제보를 중복 집계하지 않는다. 표본 추적(증가 속도 추정)용.';
 
 select 'crowd_prediction.sql ok' as status;

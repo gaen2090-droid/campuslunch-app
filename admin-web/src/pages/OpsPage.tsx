@@ -21,17 +21,33 @@ function diffPct(current: number, prev: number): string {
   return `${diff >= 0 ? "+" : ""}${diff}%p`;
 }
 
-type FeatureKey = "fairy" | "roulette";
+type FeatureKey = "fairy" | "roulette" | "prediction";
 
 const FEATURE_LABEL: Record<FeatureKey, string> = {
   fairy: "점메추 요정",
   roulette: "식당 룰렛",
+  prediction: "혼잡도 예측",
 };
 
-/** 결과 공유 버튼의 액션 이름 (요정: share_click, 룰렛: result_share_click) */
+/** 결과 공유 버튼의 액션 이름 (요정: share_click, 룰렛: result_share_click, 예측: click) */
 const RESULT_SHARE_ACTION: Record<FeatureKey, string> = {
   fairy: "share_click",
   roulette: "result_share_click",
+  prediction: "click",
+};
+
+/** 노출 액션 이름 (요정/룰렛: result_shown, 예측: impression) */
+const RESULT_SHOWN_ACTION: Record<FeatureKey, string> = {
+  fairy: "result_shown",
+  roulette: "result_shown",
+  prediction: "impression",
+};
+
+/** 카드 제목에 붙는 지표 이름 (공유 CTR / 클릭률) */
+const CTR_LABEL: Record<FeatureKey, string> = {
+  fairy: "공유 CTR",
+  roulette: "공유 CTR",
+  prediction: "클릭률",
 };
 
 const FEATURE_ROWS: Record<FeatureKey, [string, string][]> = {
@@ -51,6 +67,10 @@ const FEATURE_ROWS: Record<FeatureKey, [string, string][]> = {
     ["후보 공유 클릭", "candidates_share_click"],
     ["매장 자세히 보기", "detail_click"],
   ],
+  prediction: [
+    ["예측이 화면에 보임", "impression"],
+    ["예측이 붙은 매장 클릭", "click"],
+  ],
 };
 
 function FeatureDetail({
@@ -60,17 +80,24 @@ function FeatureDetail({
   feature: FeatureKey;
   stats: FeatureStats;
 }) {
+  const isPrediction = feature === "prediction";
   return (
     <>
       <div className="two-col">
         <TrendChart
-          title="일별 결과 공유 클릭 수 (최근 7일)"
+          title={
+            isPrediction
+              ? "일별 클릭 수 (최근 7일)"
+              : "일별 결과 공유 클릭 수 (최근 7일)"
+          }
           labels={lastNDayLabels(7)}
           values={stats.daily7d.map((d) => d.shareClicks)}
           kind="bar"
         />
         <TrendChart
-          title="일별 결과 노출 수 (최근 7일)"
+          title={
+            isPrediction ? "일별 노출 수 (최근 7일)" : "일별 결과 노출 수 (최근 7일)"
+          }
           labels={lastNDayLabels(7)}
           values={stats.daily7d.map((d) => d.resultShown)}
           kind="bar"
@@ -96,12 +123,21 @@ function FeatureDetail({
           </tbody>
         </table>
       </div>
-      <p className="muted sm mt-8">
-        결과 공유 CTR {stats.shareCtr7d}% = {RESULT_SHARE_ACTION[feature]} ÷ result_shown.
-        이용자 {formatCount(stats.users7d)}명 중 공유 버튼을 누른 사람은{" "}
-        {formatCount(stats.shareUsers7d)}명이에요. 결과 노출은 추천이 보이거나 룰렛이
-        멈출 때마다 집계돼서, 다시 돌리면 다시 집계됩니다.
-      </p>
+      {isPrediction ? (
+        <p className="muted sm mt-8">
+          클릭률 {stats.shareCtr7d}% = 예측이 붙은 매장 클릭 ÷ 예측이 화면에 보인 횟수.
+          예측을 본 이용자 {formatCount(stats.users7d)}명 중 매장을 누른 사람은{" "}
+          {formatCount(stats.shareUsers7d)}명이에요. 노출은 홈 화면에서 예측 배지가 붙은
+          카드가 보일 때 같은 매장·같은 15분 구간당 앱 실행마다 한 번씩 집계됩니다.
+        </p>
+      ) : (
+        <p className="muted sm mt-8">
+          결과 공유 CTR {stats.shareCtr7d}% = {RESULT_SHARE_ACTION[feature]} ÷ result_shown.
+          이용자 {formatCount(stats.users7d)}명 중 공유 버튼을 누른 사람은{" "}
+          {formatCount(stats.shareUsers7d)}명이에요. 결과 노출은 추천이 보이거나 룰렛이
+          멈출 때마다 집계돼서, 다시 돌리면 다시 집계됩니다.
+        </p>
+      )}
     </>
   );
 }
@@ -146,17 +182,19 @@ export function OpsPage({ metrics, loading, error }: Props) {
 
       {metrics.featureMetrics && (
         <section className="metric-grid metric-grid--primary">
-          {(["fairy", "roulette"] as FeatureKey[]).map((key) => {
+          {(["fairy", "roulette", "prediction"] as FeatureKey[]).map((key) => {
             const stats = metrics.featureMetrics![key];
-            const shown = stats.actions7d.result_shown ?? 0;
+            const shown = stats.actions7d[RESULT_SHOWN_ACTION[key]] ?? 0;
             const shared = stats.actions7d[RESULT_SHARE_ACTION[key]] ?? 0;
+            const shownWord = key === "prediction" ? "노출" : "결과";
+            const sharedWord = key === "prediction" ? "클릭" : "공유";
             return (
               <MetricCard
                 key={key}
                 size="primary"
-                label={`${FEATURE_LABEL[key]} 공유 CTR (최근 7일)`}
+                label={`${FEATURE_LABEL[key]} ${CTR_LABEL[key]} (최근 7일)`}
                 value={`${stats.shareCtr7d}%`}
-                unit={`결과 ${formatCount(shown)} · 공유 ${formatCount(shared)} · 이용자 ${formatCount(stats.users7d)}명 · 전주대비 ${diffPct(stats.shareCtr7d, stats.shareCtrPrev7d)}`}
+                unit={`${shownWord} ${formatCount(shown)} · ${sharedWord} ${formatCount(shared)} · 이용자 ${formatCount(stats.users7d)}명 · 전주대비 ${diffPct(stats.shareCtr7d, stats.shareCtrPrev7d)}`}
                 onClick={() => setFeatureModal(key)}
               />
             );
