@@ -90,7 +90,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   static const double _labelOverlapRadiusPixels = 20;
   /// 마커 겹침 제거(간소화) on/off. 현재 제보 가능 매장 수가 적어 꺼둠 —
   /// 매장이 많아지면 true로 되돌려 재사용.
-  static const bool _markerOverlapEnabled = false;
+  static const bool _markerOverlapEnabled = true;
   int? _lastZoomLevel;
   LatLng? _cachedMyLocation;
   bool _myLocationFetchInFlight = false;
@@ -122,9 +122,18 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
         .join('|');
   }
 
+  Set<String> _locatedIds(List<Restaurant> list) =>
+      {for (final r in list) if (r.hasMapLocation) r.id};
+
   bool _shouldRefitCamera(RestaurantKakaoMap oldWidget) {
+    // 화면에서 직접 요청한 맞춤(지역 선택 등)은 항상 따른다.
     if (widget.cameraFitToken != oldWidget.cameraFitToken) return true;
-    if (widget.cameraFitProfile != oldWidget.cameraFitProfile) return true;
+    // 필터를 풀어서 매장이 늘어나기만 한 경우에는 카메라를 움직이지 않는다
+    // (축소되며 위치가 바뀌는 게 거슬린다는 피드백). 처음 목록이 채워질 때(이전이 빈 목록)는 맞춘다.
+    final oldIds = _locatedIds(oldWidget.restaurants);
+    if (oldIds.isNotEmpty && _locatedIds(widget.restaurants).containsAll(oldIds)) {
+      return false;
+    }
     return _fitKeyFor(widget.restaurants) != _fitKeyFor(oldWidget.restaurants);
   }
 
@@ -725,9 +734,12 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
           accuracy: LocationAccuracy.medium,
         ),
       );
+      // 점 하나는 프로필의 최대 확대(balanced 18)로 가는데 너무 축소돼 보인다는 피드백이라,
+      // 매장 포커스와 같은 tight 프로필(최대 19)로 더 확대한다.
       await MapCameraFit.moveToFitLatLngs(
         controller,
         [LatLng(latitude: pos.latitude, longitude: pos.longitude)],
+        profile: CameraFitProfile.tight,
         animate: true,
       );
     } catch (_) {}

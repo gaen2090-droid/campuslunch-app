@@ -386,7 +386,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                                 _reportFilter = _allLabel;
                               });
                               _saveMapFilter();
-                              _bumpCameraFit();
+                              // 필터를 풀 때는 카메라를 그 자리에 둔다(전체 맞춤으로 축소/이동하지 않음).
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -424,11 +424,12 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                               final isActive = _regions.length == 1 && _regions.contains(area);
                               setState(() {
                                 if (isActive) {
+                                  // 지역을 풀 때는 카메라를 그 자리에 둔다.
                                   _regions = {_allLabel};
                                 } else {
                                   _regions = {area};
+                                  _bumpCameraFit();
                                 }
-                                _bumpCameraFit();
                               });
                               _saveMapFilter();
                             },
@@ -466,7 +467,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                       children: [
                         _StampCriteriaBadge(onTap: _openStampCriteriaSheet),
                         const SizedBox(height: 8),
-                        _CrowdLegend(showPredictionNote: predictions.isNotEmpty),
+                        const _CrowdLegend(),
                       ],
                     ),
                   ),
@@ -707,7 +708,9 @@ class _StampCriteriaSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const _StampCriteriaLine('혼잡도를 제보하면 스탬프를 1개 받아요.'),
-            const _StampCriteriaMarkerLine(),
+            const _StampCriteriaLine('오늘 처음으로 제보하면 스탬프를 2개 받아요.'),
+            const _StampCriteriaLine(
+                '★ 스탬프 2개를 누르면 아직 제보가 없는 매장만 모아볼 수 있어요.'),
             const _StampCriteriaLine('단, 하루 최대 3개의 스탬프를 획득할 수 있어요.'),
             const _StampCriteriaLine('획득한 스탬프는 마이페이지에서 확인할 수 있어요.'),
             const SizedBox(height: 24),
@@ -763,55 +766,9 @@ class _StampCriteriaLine extends StatelessWidget {
   }
 }
 
-/// "스탬프 마커" 텍스트 대신 실제 별 마커 아이콘을 문장 안에 인라인으로 넣는 안내 줄.
-class _StampCriteriaMarkerLine extends StatelessWidget {
-  const _StampCriteriaMarkerLine();
-
-  @override
-  Widget build(BuildContext context) {
-    const textStyle = TextStyle(fontSize: 14, color: Color(0xFF374151), height: 1.4);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('· ', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                style: textStyle,
-                children: [
-                  const WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: EdgeInsets.only(right: 2),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CustomPaint(painter: StarPinPainter()),
-                      ),
-                    ),
-                  ),
-                  const TextSpan(
-                    text: ' 마커는 최초 제보가 필요한 매장이에요. '
-                        '제보하면 스탬프를 2개 받을 수 있어요.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── 혼잡도 범례 ──
 class _CrowdLegend extends StatelessWidget {
-  /// 지도에 `예측` 태그가 붙은 마커가 있을 때만 설명 한 줄을 덧붙인다.
-  final bool showPredictionNote;
-
-  const _CrowdLegend({this.showPredictionNote = false});
+  const _CrowdLegend();
 
   @override
   Widget build(BuildContext context) {
@@ -824,41 +781,14 @@ class _CrowdLegend extends StatelessWidget {
           BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 0)),
         ],
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _LegendItem(color: Color(0xFF26BC7D), label: '바로입장'),
-          const SizedBox(height: 4),
-          const _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
-          const SizedBox(height: 4),
-          const _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
-          if (showPredictionNote) ...[
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF9CA3AF)),
-                  ),
-                  child: const Text('예측',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF6B7280))),
-                ),
-                const SizedBox(width: 4),
-                const Text('이 시간대에 쌓인 제보로 계산한 확률이에요.',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280))),
-              ],
-            ),
-          ],
+          _LegendItem(color: Color(0xFF26BC7D), label: '바로입장'),
+          SizedBox(height: 4),
+          _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
+          SizedBox(height: 4),
+          _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
         ],
       ),
     );
@@ -1228,6 +1158,15 @@ class _SelectedCard extends StatelessWidget {
                                   fontWeight: FontWeight.w900,
                                   color: statusColor)),
                         ]),
+                        // 예측 가게는 배지 바로 아래에 확률이 어떻게 나온 건지 한 줄로 알려준다.
+                        if (p != null) ...[
+                          const SizedBox(height: 2),
+                          const Text('이 시간대에 쌓인 제보로 예측한 혼잡도예요.',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF9CA3AF))),
+                        ],
                       ],
                     ),
                   ),

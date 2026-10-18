@@ -99,13 +99,14 @@ class MapPinPainter extends CustomPainter {
       showInnerDot != old.showInnerDot;
 }
 
-/// 예측 마커의 `예측` 태그 — 캔버스 오른쪽 위에 흰 알약 + 상태 색 글자.
-/// 마커 이미지는 작게 표시되므로 글자를 크게(20) 잡았다.
+/// 예측 마커의 `예측` 태그 — 핀 바로 위 가운데에 흰 알약 + 상태 색 글자.
+/// [centerX] 를 가운데로 [top] 에서부터 그린다. 마커 이미지는 작게 표시되므로 글자를 크게(20) 잡았다.
+/// 테두리만 상태 색([color])이고 글자는 모든 상태에서 같은 회색이다.
 void paintPredictionTag(
   Canvas canvas, {
-  required double canvasWidth,
+  required double centerX,
+  required double top,
   required Color color,
-  Color? textColor,
 }) {
   final tp = TextPainter(
     text: TextSpan(
@@ -114,7 +115,7 @@ void paintPredictionTag(
         fontFamily: 'Pretendard',
         fontSize: 20,
         fontWeight: FontWeight.w800,
-        color: textColor ?? color,
+        color: const Color(0xFF6B7280),
         height: 1.0,
       ),
     ),
@@ -126,7 +127,7 @@ void paintPredictionTag(
   final tagW = tp.width + padX * 2;
   final tagH = tp.height + padY * 2;
   final rect = RRect.fromRectAndRadius(
-    Rect.fromLTWH(canvasWidth - tagW - 1, 1, tagW, tagH),
+    Rect.fromLTWH(centerX - tagW / 2, top, tagW, tagH),
     Radius.circular(tagH / 2),
   );
 

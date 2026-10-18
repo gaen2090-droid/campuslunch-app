@@ -363,7 +363,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               if (prediction != null && r.status != '영업안함') ...[
                                 const SizedBox(height: 4),
                                 const Text(
-                                  '예측',
+                                  '실시간 예측',
                                   maxLines: 1,
                                   textAlign: TextAlign.right,
                                   style: TextStyle(

@@ -119,8 +119,8 @@ class MapMarkerIcons {
     return png;
   }
 
-  /// 예측 마커 — 같은 색 핀 오른쪽 위에 작은 `예측` 태그를 붙인다.
-  /// 핀 머리가 가려지지 않도록 캔버스를 양옆으로 넓히고 핀은 가운데에 둔다
+  /// 예측 마커 — 같은 색 핀 바로 위 가운데에 작은 `예측` 태그를 붙인다.
+  /// 핀 머리가 가려지지 않도록 캔버스를 위로 늘리고 핀은 아래에 둔다
   /// (이미지 아래 가운데가 가게 위치라서 핀 끝 위치는 일반 핀과 같다).
   static final Map<int, Uint8List> _predictedCache = {};
 
@@ -143,8 +143,11 @@ class MapMarkerIcons {
 
   static Future<Uint8List> _predictedPinBytesFromCanvas(Color color) async {
     const pinW = 72;
-    const w = 124;
-    const h = 66;
+    const pinH = 66;
+    // 태그가 들어갈 위쪽 여백. 태그(글자 20 + 위아래 3)는 핀 머리 위에 살짝 걸쳐도 되는 높이.
+    const tagArea = 24;
+    const w = pinW;
+    const h = pinH + tagArea;
     const pixelRatio = 2;
 
     final recorder = ui.PictureRecorder();
@@ -152,18 +155,11 @@ class MapMarkerIcons {
     canvas.scale(pixelRatio.toDouble());
 
     canvas.save();
-    canvas.translate((w - pinW) / 2, 0);
-    MapPinPainter(fillColor: color).paint(canvas, Size(pinW.toDouble(), h.toDouble()));
+    canvas.translate(0, tagArea.toDouble());
+    MapPinPainter(fillColor: color).paint(canvas, Size(pinW.toDouble(), pinH.toDouble()));
     canvas.restore();
 
-    // 앰버는 흰 바탕에서 글자가 흐려서 글자만 조금 진하게 한다.
-    final isAmber = color.toARGB32() == mapStatusColor('약간혼잡');
-    paintPredictionTag(
-      canvas,
-      canvasWidth: w.toDouble(),
-      color: color,
-      textColor: isAmber ? const Color(0xFFD97706) : null,
-    );
+    paintPredictionTag(canvas, centerX: w / 2, top: 1, color: color);
 
     final picture = recorder.endRecording();
     final rw = w * pixelRatio;
