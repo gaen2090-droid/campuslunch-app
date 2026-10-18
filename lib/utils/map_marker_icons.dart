@@ -35,6 +35,7 @@ class MapMarkerIcons {
     _closedBytes = null;
     _noReportBytes = null;
     _colorCache.clear();
+    _predictedCache.clear();
     _cachedBundles = null;
     _bundlesInFlight = null;
     _uiReady = false;
@@ -92,6 +93,87 @@ class MapMarkerIcons {
 
     if (byteData == null) {
       throw StateError('Failed to render star marker bytes');
+    }
+
+    final hiRes = img.Image.fromBytes(
+      width: rw,
+      height: rh,
+      bytes: byteData.buffer,
+      bytesOffset: byteData.offsetInBytes,
+      numChannels: 4,
+      order: img.ChannelOrder.rgba,
+    );
+    final image = img.copyResize(
+      hiRes,
+      width: w,
+      height: h,
+      interpolation: img.Interpolation.linear,
+    );
+    final png = Uint8List.fromList(img.encodePng(image));
+    if (!_isValidPng(png)) {
+      throw StateError('Generated PNG failed signature check');
+    }
+    if (img.decodeImage(png) == null) {
+      throw StateError('Generated PNG failed round-trip decode');
+    }
+    return png;
+  }
+
+  /// 예측 마커 — 같은 색 핀 오른쪽 위에 작은 `예측` 태그를 붙인다.
+  /// 핀 머리가 가려지지 않도록 캔버스를 양옆으로 넓히고 핀은 가운데에 둔다
+  /// (이미지 아래 가운데가 가게 위치라서 핀 끝 위치는 일반 핀과 같다).
+  static final Map<int, Uint8List> _predictedCache = {};
+
+  static Future<Uint8List> predicted(String status) async {
+    final color = Color(mapStatusColor(status));
+    final key = color.toARGB32();
+    final cached = _predictedCache[key];
+    if (cached != null) return cached;
+    await _awaitFlutterUiReady();
+    Uint8List bytes;
+    try {
+      bytes = await _predictedPinBytesFromCanvas(color);
+    } catch (e, st) {
+      debugPrint('[MapMarkerIcons] canvas predicted pin failed, using plain pin: $e\n$st');
+      bytes = await forStatus(status);
+    }
+    _predictedCache[key] = bytes;
+    return bytes;
+  }
+
+  static Future<Uint8List> _predictedPinBytesFromCanvas(Color color) async {
+    const pinW = 72;
+    const w = 124;
+    const h = 66;
+    const pixelRatio = 2;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio.toDouble());
+
+    canvas.save();
+    canvas.translate((w - pinW) / 2, 0);
+    MapPinPainter(fillColor: color).paint(canvas, Size(pinW.toDouble(), h.toDouble()));
+    canvas.restore();
+
+    // 앰버는 흰 바탕에서 글자가 흐려서 글자만 조금 진하게 한다.
+    final isAmber = color.toARGB32() == mapStatusColor('약간혼잡');
+    paintPredictionTag(
+      canvas,
+      canvasWidth: w.toDouble(),
+      color: color,
+      textColor: isAmber ? const Color(0xFFD97706) : null,
+    );
+
+    final picture = recorder.endRecording();
+    final rw = w * pixelRatio;
+    final rh = h * pixelRatio;
+    final uiImage = await picture.toImage(rw, rh);
+    final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+    uiImage.dispose();
+
+    if (byteData == null) {
+      throw StateError('Failed to render predicted pin bytes');
     }
 
     final hiRes = img.Image.fromBytes(
@@ -311,6 +393,18 @@ class MapMarkerIcons {
         bytes[3] == 0x47;
   }
 
+  /// 예측 마커 스타일 id (일반 핀과 별개로 등록한다).
+  static String styleIdForPrediction(String status) {
+    switch (status) {
+      case '여유로움':
+        return 'pin_pred_relaxed';
+      case '약간혼잡':
+        return 'pin_pred_moderate';
+      default:
+        return 'pin_pred_full';
+    }
+  }
+
   static String styleIdForStatus(String status) {
     switch (status) {
       case '여유로움':
@@ -358,6 +452,12 @@ class MapMarkerIcons {
       styleId: 'pin_no_report',
       bytes: await noReport(),
     ));
+    for (final status in const ['여유로움', '약간혼잡', '자리없음']) {
+      styles.add(MarkerStyleBundle(
+        styleId: styleIdForPrediction(status),
+        bytes: await predicted(status),
+      ));
+    }
     styles.add(MarkerStyleBundle(
       styleId: 'pin_my_location',
       bytes: await _myLocationMarkerBytes(),

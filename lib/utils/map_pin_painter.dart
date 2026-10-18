@@ -99,6 +99,49 @@ class MapPinPainter extends CustomPainter {
       showInnerDot != old.showInnerDot;
 }
 
+/// 예측 마커의 `예측` 태그 — 캔버스 오른쪽 위에 흰 알약 + 상태 색 글자.
+/// 마커 이미지는 작게 표시되므로 글자를 크게(20) 잡았다.
+void paintPredictionTag(
+  Canvas canvas, {
+  required double canvasWidth,
+  required Color color,
+  Color? textColor,
+}) {
+  final tp = TextPainter(
+    text: TextSpan(
+      text: '예측',
+      style: TextStyle(
+        fontFamily: 'Pretendard',
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        color: textColor ?? color,
+        height: 1.0,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  const padX = 6.0;
+  const padY = 3.0;
+  final tagW = tp.width + padX * 2;
+  final tagH = tp.height + padY * 2;
+  final rect = RRect.fromRectAndRadius(
+    Rect.fromLTWH(canvasWidth - tagW - 1, 1, tagW, tagH),
+    Radius.circular(tagH / 2),
+  );
+
+  canvas.drawShadow(Path()..addRRect(rect), Colors.black.withAlpha(40), 3.0, false);
+  canvas.drawRRect(rect, Paint()..color = Colors.white);
+  canvas.drawRRect(
+    rect,
+    Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5,
+  );
+  tp.paint(canvas, Offset(rect.left + padX, rect.top + padY));
+}
+
 /// '제보필요' 마커 — 핀이 아닌 동그란 스탬프 배지 (검정 원 + 흰 별)
 class StarPinPainter extends CustomPainter {
   const StarPinPainter();

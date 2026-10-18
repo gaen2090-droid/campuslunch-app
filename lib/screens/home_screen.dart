@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/reward_limits.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../widgets/load_error_view.dart';
@@ -12,6 +13,7 @@ import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/crowd_prediction_target.dart';
 import '../utils/lunch_fairy_recommender.dart';
 import '../utils/recent_history_store.dart';
 import '../utils/restaurant_sort.dart';
@@ -364,15 +366,28 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
     const _sectionMaxMinutes = 30;
 
+    // 예측: 오늘 제보가 없거나 마지막 제보가 30분 넘은 매장에 붙는다. 확률로 정해진 섹션에서
+    // 확정 제보 매장 아래에 놓이고, 예측이 붙은 매장은 30분 넘은 옛 제보 목록에서는 빠진다.
+    final predictions = collectPredictions(filtered, provider.predictionFor);
+    final predictedAvailable = predictedForLevel(filtered, predictions, 1);
+    final predictedSlightlyBusy = predictedForLevel(filtered, predictions, 2);
+    final predictedBusy = predictedForLevel(filtered, predictions, 3);
+
     // 바로 입장 가능해요 = 여유로움만 (약간혼잡은 "빈자리 조금 있어요"로 분리)
     final availableListRecent = _sortSection(
       filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate && minutesSince(r) <= _sectionMaxMinutes).toList(),
     );
     final availableListAll = _sortSection(
-      filtered.where((r) => r.status == '여유로움' && r.hasCrowdUpdate).toList(),
+      filtered
+          .where((r) => r.status == '여유로움' && r.hasCrowdUpdate && !predictions.containsKey(r.id))
+          .toList(),
     );
-    final availableStale = availableListRecent.isEmpty && availableListAll.isNotEmpty;
-    final availableList = availableStale ? availableListAll : availableListRecent;
+    final availableStale = availableListRecent.isEmpty &&
+        predictedAvailable.isEmpty &&
+        availableListAll.isNotEmpty;
+    final availableList = availableStale
+        ? availableListAll
+        : [...availableListRecent, ...predictedAvailable];
 
     // 배너용: 10분 이내만
     final recentAvailable = availableListRecent.where((r) => minutesSince(r) <= 10).toList();
@@ -389,10 +404,16 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && minutesSince(r) <= _sectionMaxMinutes).toList(),
     );
     final slightlyBusyListAll = _sortSection(
-      filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate).toList(),
+      filtered
+          .where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate && !predictions.containsKey(r.id))
+          .toList(),
     );
-    final slightlyBusyStale = slightlyBusyListRecent.isEmpty && slightlyBusyListAll.isNotEmpty;
-    final slightlyBusyList = slightlyBusyStale ? slightlyBusyListAll : slightlyBusyListRecent;
+    final slightlyBusyStale = slightlyBusyListRecent.isEmpty &&
+        predictedSlightlyBusy.isEmpty &&
+        slightlyBusyListAll.isNotEmpty;
+    final slightlyBusyList = slightlyBusyStale
+        ? slightlyBusyListAll
+        : [...slightlyBusyListRecent, ...predictedSlightlyBusy];
 
     final stampList = filtered
         .where((r) => r.status != '영업안함' && !r.hasCrowdUpdate)
@@ -408,11 +429,14 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       isBusy: true,
     );
     final busyListAll = _sortSection(
-      filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate).toList(),
+      filtered
+          .where((r) => isBusyStatus(r) && r.hasCrowdUpdate && !predictions.containsKey(r.id))
+          .toList(),
       isBusy: true,
     );
-    final busyStale = busyListRecent.isEmpty && busyListAll.isNotEmpty;
-    final busyList = busyStale ? busyListAll : busyListRecent;
+    final busyStale =
+        busyListRecent.isEmpty && predictedBusy.isEmpty && busyListAll.isNotEmpty;
+    final busyList = busyStale ? busyListAll : [...busyListRecent, ...predictedBusy];
     final closedList = all
         .where((r) =>
             r.status == '영업안함' &&
@@ -731,6 +755,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                   stampList: stampList,
                   busyList: busyList,
                   busyStale: busyStale,
+                  predictions: predictions,
                   countClosed: countClosed,
                 ),
         ),
@@ -891,6 +916,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     required List<Restaurant> stampList,
     required List<Restaurant> busyList,
     required bool busyStale,
+    required Map<String, CrowdPrediction> predictions,
     required int countClosed,
   }) {
     void goTo(RestaurantListMode mode) => Navigator.push(
@@ -905,6 +931,25 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     final busyCards = busyList.take(busyStale ? 1 : 5).toList();
 
     const emptyMsg = '제보된 매장이 없어요. 제보하고 스탬프를 받아보세요!';
+
+    // 예측 지표: 화면에 나온 카드 중 예측이 붙은 매장을 기록(같은 매장·구간은 한 번만).
+    final shownCards = [...top5Available, ...top5SlightlyBusy, ...busyCards];
+    if (predictions.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context
+            .read<AppProvider>()
+            .trackPredictionImpressions(shownCards, surface: 'home');
+      });
+    }
+
+    // 예측이 붙은 카드를 누르면 지표를 남기고 상세로 이동한다.
+    void openCard(Restaurant r) {
+      if (predictions.containsKey(r.id)) {
+        context.read<AppProvider>().recordPredictionClick(r, surface: 'home');
+      }
+      _openDetail(r);
+    }
 
     Widget crowdBadge(String label, Color bg, Color fg) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1098,7 +1143,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         key: i == 0 ? HomeScreen.firstAvailableCardKey : null,
                         child: RestaurantCard(
                           restaurant: top5Available[i],
-                          onTap: () => _openDetail(top5Available[i]),
+                          prediction: predictions[top5Available[i].id],
+                          onTap: () => openCard(top5Available[i]),
                         ),
                       ),
                     ),
@@ -1153,7 +1199,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         key: i == 0 ? HomeScreen.firstSlightlyBusyCardKey : null,
                         child: RestaurantCard(
                           restaurant: top5SlightlyBusy[i],
-                          onTap: () => _openDetail(top5SlightlyBusy[i]),
+                          prediction: predictions[top5SlightlyBusy[i].id],
+                          onTap: () => openCard(top5SlightlyBusy[i]),
                         ),
                       ),
                     ),
@@ -1259,7 +1306,8 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                         key: i == 0 ? HomeScreen.firstBusyCardKey : null,
                         child: RestaurantCard(
                           restaurant: busyCards[i],
-                          onTap: () => _openDetail(busyCards[i]),
+                          prediction: predictions[busyCards[i].id],
+                          onTap: () => openCard(busyCards[i]),
                         ),
                       ),
                     ),

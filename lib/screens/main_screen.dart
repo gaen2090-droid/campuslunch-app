@@ -45,6 +45,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AppProvider>().recordAppSession();
+      context.read<AppProvider>().startPredictionPolling();
       AppUpdateService.checkAndPrompt(context);
       final provider = context.read<AppProvider>();
       if (provider.showSignupCompleteMessage) {
@@ -88,6 +89,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       provider.recordAppSession();
       // 다른 앱을 쓰다 돌아오면 혼잡도·사장님 좌석 입력이 바뀌어 있을 수 있어 목록을 새로 받는다.
       unawaited(provider.refreshRestaurantsOnResume());
+      provider.startPredictionPolling();
+    } else if (state == AppLifecycleState.paused) {
+      context.read<AppProvider>().stopPredictionPolling();
     }
   }
 

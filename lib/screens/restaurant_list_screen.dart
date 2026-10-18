@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/business_hours.dart';
+import '../utils/crowd_prediction_target.dart';
 import '../utils/restaurant_sort.dart';
 import '../widgets/load_error_view.dart';
 import '../widgets/restaurant_card.dart';
@@ -148,6 +150,12 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
   void _openDetail(Restaurant r) => Navigator.push(
       context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
 
+  /// 예측이 붙은 카드를 누르면 지표를 남기고 상세로 이동한다.
+  void openCard(Restaurant r) {
+    context.read<AppProvider>().recordPredictionClick(r, surface: 'list');
+    _openDetail(r);
+  }
+
   void _openReport(Restaurant r) {
     if (r.status == '영업안함') return;
     ReportSheet.show(context, r, (status) {
@@ -155,28 +163,43 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
     });
   }
 
-  List<Restaurant> _getSectionList(List<Restaurant> filtered, AppProvider provider) {
+  /// 예측이 붙은 매장은 확률로 정해진 섹션의 맨 아래(확률 높은 순)에 놓이고,
+  /// 옛 제보 기준으로는 중복해서 나오지 않는다.
+  List<Restaurant> _getSectionList(
+    List<Restaurant> filtered,
+    AppProvider provider,
+    Map<String, CrowdPrediction> predictions,
+  ) {
     bool isBusyStatus(Restaurant r) => r.status == '자리없음';
+    bool confirmed(Restaurant r) => r.hasCrowdUpdate && !predictions.containsKey(r.id);
 
     switch (widget.mode) {
       case RestaurantListMode.available:
-        final openWithReport = filtered
-            .where((r) => r.status == '여유로움' && r.hasCrowdUpdate)
-            .toList();
-        return _sortSection(openWithReport, provider);
+        final openWithReport =
+            filtered.where((r) => r.status == '여유로움' && confirmed(r)).toList();
+        return [
+          ..._sortSection(openWithReport, provider),
+          ...predictedForLevel(filtered, predictions, 1),
+        ];
       case RestaurantListMode.slightlyBusy:
-        return _sortSection(
-          filtered.where((r) => r.status == '약간혼잡' && r.hasCrowdUpdate).toList(),
-          provider,
-        );
+        return [
+          ..._sortSection(
+            filtered.where((r) => r.status == '약간혼잡' && confirmed(r)).toList(),
+            provider,
+          ),
+          ...predictedForLevel(filtered, predictions, 2),
+        ];
       case RestaurantListMode.stamp:
         return filtered.where((r) => r.status != '영업안함' && !r.hasCrowdUpdate).toList();
       case RestaurantListMode.busy:
-        return _sortSection(
-          filtered.where((r) => isBusyStatus(r) && r.hasCrowdUpdate).toList(),
-          provider,
-          isBusy: true,
-        );
+        return [
+          ..._sortSection(
+            filtered.where((r) => isBusyStatus(r) && confirmed(r)).toList(),
+            provider,
+            isBusy: true,
+          ),
+          ...predictedForLevel(filtered, predictions, 3),
+        ];
       case RestaurantListMode.closed:
         return _sortSection(
           filtered.where((r) => r.status == '영업안함').toList(),
@@ -256,7 +279,8 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
     final provider = context.watch<AppProvider>();
     final locationMode = provider.locationMode;
     final filtered = _applyFilter(provider.restaurants);
-    final list = _getSectionList(filtered, provider);
+    final predictions = collectPredictions(filtered, provider.predictionFor);
+    final list = _getSectionList(filtered, provider, predictions);
 
     Restaurant? recommended;
     if (widget.mode == RestaurantListMode.available) {
@@ -481,7 +505,8 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     const EdgeInsets.fromLTRB(20, 0, 20, 10),
                                 child: RestaurantCard(
                                     restaurant: r,
-                                    onTap: () => _openDetail(r)),
+                                    prediction: predictions[r.id],
+                                    onTap: () => openCard(r)),
                               )),
                         ] else if (widget.mode == RestaurantListMode.stamp)
                           ...list.map((r) => Padding(
@@ -497,7 +522,8 @@ class _RestaurantListScreenState extends State<RestaurantListScreen> {
                                     const EdgeInsets.fromLTRB(20, 0, 20, 10),
                                 child: RestaurantCard(
                                     restaurant: r,
-                                    onTap: () => _openDetail(r)),
+                                    prediction: predictions[r.id],
+                                    onTap: () => openCard(r)),
                               )),
 
                         if (list.isEmpty &&

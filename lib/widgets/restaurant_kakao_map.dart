@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_maps_flutter/kakao_maps_flutter.dart';
 
 import '../config/campus.dart';
 import '../config/env.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../services/kakao_map_bootstrap.dart';
 import '../utils/kakao_map_ready.dart';
@@ -28,6 +30,9 @@ class RestaurantKakaoMap extends StatefulWidget {
   final ({double lat, double lng})? pickMarker;
   final void Function(RestaurantKakaoMapState map)? onMapReady;
 
+  /// 매장 id → 현재 예측. 있는 매장은 확정 제보와 같은 색 핀에 `예측` 태그가 붙는다.
+  final Map<String, CrowdPrediction> predictions;
+
   /// 최초 진입 시에만 적용되는 카메라 포커스 (필터와 무관하게 정문 일대 우선 노출용)
   final List<Restaurant>? initialFocusRestaurants;
   final CameraFitProfile initialFocusProfile;
@@ -45,6 +50,7 @@ class RestaurantKakaoMap extends StatefulWidget {
     this.onMapTap,
     this.pickMarker,
     this.onMapReady,
+    this.predictions = const {},
     this.initialFocusRestaurants,
     this.initialFocusProfile = CameraFitProfile.tight,
   });
@@ -306,6 +312,7 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
       unawaited(fitToRestaurants());
     }
     if (widget.restaurants != oldWidget.restaurants ||
+        !mapEquals(widget.predictions, oldWidget.predictions) ||
         (widget.selected?.id != oldWidget.selected?.id && !selectedChanged) ||
         widget.pickMarker != oldWidget.pickMarker) {
       unawaited(_syncMarkers());
@@ -510,15 +517,19 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
 
         final isSelected = widget.selected?.id == r.id;
         final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
+        final prediction = widget.predictions[r.id];
         // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 개념이 없으므로
         // "영업안함"과 같은 무채색 마커로 표시한다 (검색으로만 지도에 노출됨).
+        // 예측이 있는 매장은 제보필요(별) 대신 예측 상태 색 핀 + `예측` 태그.
         final desiredStyleId = !r.crowdEnabled
             ? MapMarkerIcons.styleIdForStatus('영업안함')
             : r.status == '영업안함'
                 ? MapMarkerIcons.styleIdForStatus('영업안함')
-                : noReport
-                    ? 'pin_no_report'
-                    : MapMarkerIcons.styleIdForStatus(r.status);
+                : prediction != null
+                    ? MapMarkerIcons.styleIdForPrediction(prediction.status)
+                    : noReport
+                        ? 'pin_no_report'
+                        : MapMarkerIcons.styleIdForStatus(r.status);
         final styleId =
             KakaoMarkerLayer.styleIdOrNull(controller, desiredStyleId);
 

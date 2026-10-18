@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../utils/crowd_status_label.dart';
 import 'restaurant_image.dart';
@@ -9,13 +10,22 @@ class RestaurantCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onTap;
 
-  const RestaurantCard({super.key, required this.restaurant, required this.onTap});
+  /// 있으면 확정 제보 대신 `예측 · 바로입장` 같은 예측 배지를 보여준다 (숫자는 상세페이지에서만).
+  final CrowdPrediction? prediction;
+
+  const RestaurantCard({
+    super.key,
+    required this.restaurant,
+    required this.onTap,
+    this.prediction,
+  });
 
   @override
   Widget build(BuildContext context) {
     final r = restaurant;
+    final p = prediction;
     final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
-    final displayStatus = noReport ? '제보필요' : r.status;
+    final displayStatus = p != null ? p.status : (noReport ? '제보필요' : r.status);
     final meta = crowdStatusMeta(displayStatus);
     return GestureDetector(
       onTap: onTap,
@@ -76,7 +86,8 @@ class RestaurantCard extends StatelessWidget {
             // 배지 유무 자체가 "제보 대상인지"를 알려주는 규칙이라 별도 라벨을 넣지 않는다.
             if (r.crowdEnabled) ...[
               const SizedBox(width: 8),
-              if (r.hasCrowdUpdate &&
+              if (p == null &&
+                  r.hasCrowdUpdate &&
                   (r.crowdBaseSource == 'owner' || r.isSeatDerived)) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -107,14 +118,16 @@ class RestaurantCard extends StatelessWidget {
                     children: [
                       TextSpan(
                         // 사장님 좌석 입력으로 가정한 상태는 "4명가능"처럼 인원으로 보여준다.
-                        text: r.seatBadgeLabel ?? crowdStatusLabel(displayStatus),
+                        text: p != null
+                            ? '예측 · ${crowdStatusLabel(displayStatus)}'
+                            : (r.seatBadgeLabel ?? crowdStatusLabel(displayStatus)),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           color: Color(meta.color),
                         ),
                       ),
-                      if (r.status != '영업안함' && r.hasCrowdUpdate)
+                      if (p == null && r.status != '영업안함' && r.hasCrowdUpdate)
                         TextSpan(
                           text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
                           style: const TextStyle(

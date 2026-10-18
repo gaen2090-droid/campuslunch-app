@@ -5,8 +5,10 @@ import '../utils/map_pin_painter.dart';
 import '../utils/map_camera_fit.dart';
 import '../utils/navigation_helper.dart';
 import '../navigation/app_route_observer.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/crowd_prediction_target.dart';
 import '../utils/report_feedback.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/restaurant_kakao_map.dart';
@@ -201,6 +203,13 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             !filtered.any((r) => r.id == _selected!.id)
         ? [...filtered, _selected!]
         : filtered;
+    // 예측이 붙는 매장(오늘 제보 없음 / 마지막 제보 30분 초과)은 같은 색 핀 + `예측` 태그로 그린다.
+    final predictions = collectPredictions(markerRestaurants, provider.predictionFor);
+    final selectedPrediction = _selected == null
+        ? null
+        : provider.predictionFor(
+            all.firstWhere((x) => x.id == _selected!.id, orElse: () => _selected!),
+          );
     final jeongmunRestaurants = all.where((r) => r.area == '정문').toList();
     // '제보없음' 필터 자동 리셋은 실제로 화면에 보이는(crowdEnabled=true) 매장
     // 기준이어야 한다 — all 기준이면 컬렉션 전용 매장 때문에 리셋이 안 걸릴 수 있음.
@@ -232,12 +241,14 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
         Positioned.fill(
           child: RestaurantKakaoMap(
             restaurants: markerRestaurants,
+            predictions: predictions,
             selected: _selected,
             onSelect: (r) {
               final wasSelected = _selected?.id == r.id;
               setState(() => _selected = wasSelected ? null : r);
               if (!wasSelected) {
                 context.read<AppProvider>().recordMapMarkerClick(r.id);
+                context.read<AppProvider>().recordPredictionClick(r, surface: 'map');
               }
             },
             onDeselect: () => setState(() => _selected = null),
@@ -311,6 +322,25 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
+                        // 스탬프 2개를 받을 수 있는(오늘 제보가 0건인) 매장만 모아 보는 칩.
+                        // 대상 매장이 없으면 숨긴다(켜져 있는 동안에는 항상 보인다).
+                        if (hasNeedsReportRestaurant || _reportFilter == '제보없음') ...[
+                          _MapFilterChip(
+                            label: '스탬프 2개',
+                            active: _reportFilter == '제보없음',
+                            open: false,
+                            showArrow: false,
+                            leadingIcon: Icons.star_rounded,
+                            onTap: () {
+                              setState(() {
+                                _reportFilter =
+                                    _reportFilter == '제보없음' ? _allLabel : '제보없음';
+                              });
+                              _saveMapFilter();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         _MapFilterChip(
                           label: '카페',
                           active: _cuisines.length == 1 && _cuisines.contains('카페'),
@@ -344,7 +374,8 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                         ),
                         if (!_isAllFilter(_cuisines) ||
                             !_isAllFilter(_regions) ||
-                            _bookmarkOnly) ...[
+                            _bookmarkOnly ||
+                            _reportFilter != _allLabel) ...[
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
@@ -352,6 +383,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                                 _cuisines = {_allLabel};
                                 _regions = {_allLabel};
                                 _bookmarkOnly = false;
+                                _reportFilter = _allLabel;
                               });
                               _saveMapFilter();
                               _bumpCameraFit();
@@ -434,7 +466,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                       children: [
                         _StampCriteriaBadge(onTap: _openStampCriteriaSheet),
                         const SizedBox(height: 8),
-                        const _CrowdLegend(),
+                        _CrowdLegend(showPredictionNote: predictions.isNotEmpty),
                       ],
                     ),
                   ),
@@ -567,6 +599,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             bottom: 0, left: 0, right: 0,
             child: _SelectedCard(
               restaurant: _selected!,
+              prediction: selectedPrediction,
               onDetail: () => _openDetail(_selected!),
               onReport: _selected!.status == '영업안함' ? null : () => ReportSheet.show(
                 context,
@@ -775,7 +808,10 @@ class _StampCriteriaMarkerLine extends StatelessWidget {
 
 // ── 혼잡도 범례 ──
 class _CrowdLegend extends StatelessWidget {
-  const _CrowdLegend();
+  /// 지도에 `예측` 태그가 붙은 마커가 있을 때만 설명 한 줄을 덧붙인다.
+  final bool showPredictionNote;
+
+  const _CrowdLegend({this.showPredictionNote = false});
 
   @override
   Widget build(BuildContext context) {
@@ -788,14 +824,41 @@ class _CrowdLegend extends StatelessWidget {
           BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 0)),
         ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LegendItem(color: Color(0xFF26BC7D), label: '바로입장'),
-          SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
-          SizedBox(height: 4),
-          _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
+          const _LegendItem(color: Color(0xFF26BC7D), label: '바로입장'),
+          const SizedBox(height: 4),
+          const _LegendItem(color: Color(0xFFFFBF00), label: '약간혼잡'),
+          const SizedBox(height: 4),
+          const _LegendItem(color: Color(0xFFEF4444), label: '자리없음'),
+          if (showPredictionNote) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF9CA3AF)),
+                  ),
+                  child: const Text('예측',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF6B7280))),
+                ),
+                const SizedBox(width: 4),
+                const Text('이 시간대에 쌓인 제보로 계산한 확률이에요.',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280))),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1064,8 +1127,12 @@ class _SelectedCard extends StatelessWidget {
   final VoidCallback onCrowdDisabledTap;
   final double safeBottom;
 
+  /// 있으면 상태 자리에 `예측 · 바로입장`처럼 보여준다 (숫자는 상세페이지에서만).
+  final CrowdPrediction? prediction;
+
   const _SelectedCard({
     required this.restaurant,
+    required this.prediction,
     required this.onDetail,
     required this.onReport,
     required this.onDismiss,
@@ -1079,7 +1146,8 @@ class _SelectedCard extends StatelessWidget {
     final r = restaurant;
     final noReport = r.status != '영업안함' && !r.hasCrowdUpdate;
     final crowdDisabled = !r.crowdEnabled;
-    final displayStatus = noReport ? '제보필요' : r.status;
+    final p = prediction;
+    final displayStatus = p != null ? p.status : (noReport ? '제보필요' : r.status);
     final meta = crowdStatusMeta(displayStatus);
     final statusColor = Color(meta.color);
 
@@ -1154,7 +1222,7 @@ class _SelectedCard extends StatelessWidget {
                                 style: const TextStyle(
                                     fontSize: 12, color: Color(0xFF9CA3AF))),
                           ),
-                          Text(meta.label,
+                          Text(p != null ? '예측 · ${meta.label}' : meta.label,
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,

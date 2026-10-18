@@ -4,6 +4,7 @@ import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
 import 'package:provider/provider.dart';
 import '../utils/navigation_helper.dart';
+import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/crowd_status_label.dart';
@@ -131,6 +132,7 @@ class _DetailScreenState extends State<DetailScreen> {
       orElse: () => widget.restaurant,
     );
     final isBookmarked = provider.bookmarks.contains(r.id);
+    final prediction = r.crowdEnabled ? provider.predictionFor(r) : null;
     final statusColor = _statusColor(r.status);
     final safeTop = MediaQuery.of(context).padding.top;
     final ownerPriorityActive = r.hasCrowdUpdate &&
@@ -338,22 +340,38 @@ class _DetailScreenState extends State<DetailScreen> {
                               Text(
                                 r.status == '영업안함'
                                     ? r.status
-                                    : r.hasCrowdUpdate
-                                        ? crowdStatusLabel(r.status)
-                                        : '제보필요',
+                                    : prediction != null
+                                        ? crowdStatusLabel(prediction.status)
+                                        : r.hasCrowdUpdate
+                                            ? crowdStatusLabel(r.status)
+                                            : '제보필요',
                                 maxLines: 1,
                                 textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
-                                  color: (r.status != '영업안함' && !r.hasCrowdUpdate)
-                                      ? const Color(0xFF9CA3AF)
-                                      : statusColor,
+                                  color: prediction != null
+                                      ? _statusColor(prediction.status)
+                                      : (r.status != '영업안함' && !r.hasCrowdUpdate)
+                                          ? const Color(0xFF9CA3AF)
+                                          : statusColor,
                                   height: 1.15,
                                 ),
                               ),
-                              if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
+                              // 예측이 대표 상태일 때는 마지막 제보 시각 대신 "예측"만 보여준다.
+                              if (prediction != null && r.status != '영업안함') ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '예측',
+                                  maxLines: 1,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                ),
+                              ] else if (r.status != '영업안함' && r.hasCrowdUpdate) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   (r.crowdBaseSource == 'owner' || r.isSeatDerived)
@@ -390,13 +408,19 @@ class _DetailScreenState extends State<DetailScreen> {
                 _ownerSeatUpdate!.isVisibleAt(DateTime.now()))
               OwnerSeatMessageCard(update: _ownerSeatUpdate!),
 
+            // 예측이 있으면 최근 제보 바로 위에 여유로울 확률을 보여준다.
+            if (r.crowdEnabled && prediction != null)
+              _PredictionCard(prediction: prediction),
+
             if (r.crowdEnabled && _recentEntries().isNotEmpty)
               _RecentReportsSection(
                 reports: _recentEntries(),
                 showPriorityNote: ownerPriorityActive,
+                topGap: prediction != null ? 12 : 20,
               ),
 
-            if (r.crowdEnabled)
+            // 예측이 없을 때는 기존 "예측 제공 예정" 안내를 그대로 둔다.
+            if (r.crowdEnabled && prediction == null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Container(
@@ -426,7 +450,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   ),
                 ),
               )
-            else
+            else if (!r.crowdEnabled)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Container(
@@ -471,6 +495,7 @@ class _DetailScreenState extends State<DetailScreen> {
       floatingActionButton: _ActionButtonBar(
         showReportButton: !provider.hasOwnerTab && r.crowdEnabled,
         reportEnabled: r.status != '영업안함',
+        stampBonus: r.status != '영업안함' && !r.hasCrowdUpdate,
         onReport: () => ReportSheet.show(
           context,
           r,
@@ -500,6 +525,75 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _navigate(Restaurant r) {
     openInAppDirections(context, r);
+  }
+}
+
+/// 예측이 있는 매장의 상세페이지에서만 보이는 여유로울 확률. (홈, 지도에는 숫자 없이 배지만)
+class _PredictionCard extends StatelessWidget {
+  final CrowdPrediction prediction;
+
+  const _PredictionCard({required this.prediction});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = crowdStatusMeta(prediction.status);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Color(meta.bgColor),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '예측',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(meta.color),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '지금 여유로울 확률 ${prediction.relaxProbability}%',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(meta.color),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '이 시간대에 쌓인 제보로 계산한 확률이에요.',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -691,12 +785,16 @@ class _MenuSection extends StatelessWidget {
 class _ActionButtonBar extends StatelessWidget {
   final bool showReportButton;
   final bool reportEnabled;
+
+  /// 오늘 제보가 0건인 매장: 제보하면 스탬프 2개라는 걸 버튼에 함께 보여준다.
+  final bool stampBonus;
   final VoidCallback onReport;
   final VoidCallback onNavigate;
 
   const _ActionButtonBar({
     required this.showReportButton,
     required this.reportEnabled,
+    required this.stampBonus,
     required this.onReport,
     required this.onNavigate,
   });
@@ -752,18 +850,51 @@ class _ActionButtonBar extends StatelessWidget {
                           color: AppColors.primaryCta,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.edit_outlined, size: 15, color: Colors.white),
-                            SizedBox(width: 5),
-                            Text(
-                              '혼잡도 제보하기',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                            // 오늘 제보가 0건인 매장은 "제보하고 (별 아이콘) 2개 받기".
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      if (!stampBonus) const TextSpan(text: '혼잡도 제보하기'),
+                                      if (stampBonus) ...[
+                                        const TextSpan(text: '제보하고 '),
+                                        // 흰 동그라미 안의 초록 별 (초록 버튼 위에서 보이도록).
+                                        WidgetSpan(
+                                          alignment: PlaceholderAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(right: 2),
+                                            child: Container(
+                                              width: 14,
+                                              height: 14,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.star_rounded,
+                                                size: 12,
+                                                color: AppColors.primaryCta,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const TextSpan(text: '2개 받기'),
+                                      ],
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -796,15 +927,19 @@ class _RecentEntry {
 class _RecentReportsSection extends StatelessWidget {
   final List<_RecentEntry> reports;
   final bool showPriorityNote;
+
+  /// 위 카드와의 간격. 예측 카드 바로 아래일 때는 메뉴 카드와 같은 12로 좁힌다.
+  final double topGap;
   const _RecentReportsSection({
     required this.reports,
     this.showPriorityNote = false,
+    this.topGap = 20,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: EdgeInsets.fromLTRB(20, topGap, 20, 0),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),

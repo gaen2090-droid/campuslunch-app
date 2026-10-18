@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/env.dart';
 import '../constants/app_links.dart';
 import '../constants/email_auth.dart';
 import '../constants/legal_terms.dart';
@@ -22,6 +23,7 @@ import '../data/profile_repository.dart';
 import '../data/push_config_repository.dart';
 import '../data/supabase_restaurant_repository.dart';
 import '../models/account.dart';
+import '../models/crowd_prediction.dart';
 import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
@@ -39,6 +41,7 @@ import '../utils/app_startup.dart';
 import '../utils/available_restaurant_ranking.dart';
 import '../utils/owner_seat_signal.dart';
 import '../utils/business_hours.dart';
+import '../utils/crowd_prediction_target.dart';
 import '../utils/profanity_filter.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -465,6 +468,7 @@ class AppProvider extends ChangeNotifier {
   void dispose() {
     _authSub?.cancel();
     _reportLocationSub?.cancel();
+    _predictionTimer?.cancel();
     super.dispose();
   }
 
@@ -2952,6 +2956,101 @@ class AppProvider extends ChangeNotifier {
     if (last != null && now.difference(last) < const Duration(seconds: 20)) return;
     _lastResumeRefreshAt = now;
     await _reloadRestaurantList();
+  }
+
+  // ── 혼잡도 예측 (평일 11:30~13:00) ──
+
+  static const Duration _predictionPollInterval = Duration(seconds: 90);
+
+  /// 매장 id → 현재 15분 구간 예측. Restaurant 모델은 건드리지 않고 따로 들고 있는다.
+  Map<String, CrowdPrediction> _predictions = const {};
+  Timer? _predictionTimer;
+  bool _predictionFetching = false;
+
+  /// 예측 판정에 쓰는 현재 시각. 개발 중에는 .env 의 DEBUG_PREDICTION_AT 으로 고정할 수 있다.
+  DateTime get predictionNow => Env.debugPredictionAt ?? DateTime.now();
+
+  /// 이 매장에 지금 보여줄 예측. 없으면 null (기존 화면 그대로 쓰면 된다).
+  /// 노출 시간 안이고, 받아 둔 값이 현재 구간 것이며, 오늘 제보가 없거나 30분 넘은 매장일 때만 값이 있다.
+  CrowdPrediction? predictionFor(Restaurant r) {
+    final now = predictionNow;
+    final slot = predictionSlotStart(now);
+    if (slot == null) return null;
+    final p = _predictions[r.id];
+    if (p == null || p.slotStartMinute != slot) return null;
+    return isPredictionTarget(r, now) ? p : null;
+  }
+
+  /// 예측을 서버에서 새로 받는다. 시간대 밖이면 받아 둔 값을 비운다. 실패하면 기존 값을 유지한다.
+  Future<void> refreshPredictions() async {
+    final repo = _restaurantRepo;
+    if (repo == null || _predictionFetching) return;
+    if (!isPredictionFetchWindow(predictionNow)) {
+      if (_predictions.isNotEmpty) {
+        _predictions = const {};
+        notifyListeners();
+      }
+      return;
+    }
+    _predictionFetching = true;
+    try {
+      final fetched = await repo.fetchCrowdPredictions(at: Env.debugPredictionAt);
+      if (fetched == null || mapEquals(fetched, _predictions)) return;
+      _predictions = fetched;
+      notifyListeners();
+    } finally {
+      _predictionFetching = false;
+    }
+  }
+
+  /// 앱이 앞에 있는 동안 90초마다 예측을 새로 받는다. 이미 돌고 있으면 무시.
+  void startPredictionPolling() {
+    if (_predictionTimer != null) return;
+    unawaited(refreshPredictions());
+    _predictionTimer = Timer.periodic(
+      _predictionPollInterval,
+      (_) => unawaited(refreshPredictions()),
+    );
+  }
+
+  void stopPredictionPolling() {
+    _predictionTimer?.cancel();
+    _predictionTimer = null;
+  }
+
+  // ── 혼잡도 예측 지표 (어드민 "혼잡도 예측" 카드) ──
+
+  final Set<String> _predictionImpressionKeys = {};
+
+  /// 예측 배지가 붙은 카드가 화면에 만들어졌을 때 기록한다.
+  /// 같은 매장·같은 15분 구간·같은 화면은 앱 실행당 한 번만 센다.
+  /// 개발용으로 시각을 고정한 실행에서는 가짜 시각의 값이 운영 지표에 섞이지 않게 기록하지 않는다.
+  void trackPredictionImpressions(Iterable<Restaurant> shown, {required String surface}) {
+    if (Env.debugPredictionAt != null) return;
+    final now = predictionNow;
+    for (final r in shown) {
+      final p = predictionFor(r);
+      if (p == null) continue;
+      final key = '${r.id}|${now.year}-${now.month}-${now.day}|${p.slotStartMinute}|$surface';
+      if (!_predictionImpressionKeys.add(key)) continue;
+      unawaited(recordFeatureEvent('prediction', 'impression', metadata: {
+        'surface': surface,
+        'restaurant_id': r.id,
+        'level': p.level,
+      }));
+    }
+  }
+
+  /// 예측이 붙은 매장을 눌렀을 때 기록한다. 예측이 없는 매장이면 아무것도 하지 않는다.
+  void recordPredictionClick(Restaurant r, {required String surface}) {
+    if (Env.debugPredictionAt != null) return;
+    final p = predictionFor(r);
+    if (p == null) return;
+    unawaited(recordFeatureEvent('prediction', 'click', metadata: {
+      'surface': surface,
+      'restaurant_id': r.id,
+      'level': p.level,
+    }));
   }
 
   Future<OwnerSeatUpdate?> fetchOwnerSeatUpdate(String restaurantId) async {

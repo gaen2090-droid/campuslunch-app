@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/env.dart';
+import '../models/crowd_prediction.dart';
 import '../models/crowd_report.dart';
 import '../models/dashboard_metrics.dart';
 import '../models/owner_seat_update.dart';
@@ -24,7 +26,9 @@ class SupabaseRestaurantRepository {
   final SupabaseClient _client;
 
   Future<List<Restaurant>> fetchAll({bool includeInactive = false}) async {
-    final now = DateTime.now();
+    // 개발 중 DEBUG_PREDICTION_AT 으로 시각을 고정했으면 영업시간·오늘 제보 판정도 그 시각 기준으로 한다.
+    // (예측 화면을 보려면 평일 점심에 영업 중이어야 해서) 릴리스 빌드에서는 항상 현재 시각.
+    final now = Env.debugPredictionAt ?? DateTime.now();
     final cutoff = now.subtract(const Duration(hours: 1)).toUtc().toIso8601String();
 
     var query = _client.from('restaurants').select();
@@ -133,6 +137,29 @@ class SupabaseRestaurantRepository {
       ).copyWith(status: '영업안함', updated: 0, hasCrowdUpdate: false);
     } catch (e, st) {
       debugPrint('[Supabase] fetchByLinkNo failed: $e\n$st');
+      return null;
+    }
+  }
+
+  /// 지금 시각(평일 11:30~13:00)의 15분 구간 매장별 혼잡도 예측. 키는 매장 id.
+  /// 시간대 밖이면 서버가 빈 결과를 주므로 빈 맵. 호출이 실패하면 null (기존 값을 유지하라는 뜻).
+  /// [at] 은 개발 중 시각을 고정해서 확인할 때만 쓴다.
+  Future<Map<String, CrowdPrediction>?> fetchCrowdPredictions({DateTime? at}) async {
+    try {
+      final rows = await _client.rpc(
+        'app_crowd_prediction',
+        params: at == null ? null : {'p_at': at.toUtc().toIso8601String()},
+      );
+      if (rows is! List) return const {};
+      final result = <String, CrowdPrediction>{};
+      for (final row in rows) {
+        if (row is! Map) continue;
+        final p = CrowdPrediction.fromMap(row);
+        result[p.restaurantId] = p;
+      }
+      return result;
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchCrowdPredictions failed: $e\n$st');
       return null;
     }
   }

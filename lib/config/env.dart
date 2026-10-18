@@ -82,6 +82,21 @@ class Env {
   static bool get isGoogleOAuthConfigured =>
       googleOAuthWebClientId.isNotEmpty;
 
+  /// 개발 전용: 혼잡도 예측은 평일 11:30~13:00에만 나오므로, 그 밖의 시간에도 확인할 수 있게
+  /// 현재 시각을 고정한다. .env 에 `DEBUG_PREDICTION_AT=2026-10-19T12:20:00+09:00` 처럼 적는다.
+  /// 릴리스 빌드에서는 값이 있어도 항상 null.
+  /// 실행 인자(`--dart-define=DEBUG_PREDICTION_AT=...`)가 있으면 그 값이 우선이다.
+  /// 웹은 .env 가 번들에 한 번 들어가면 핫 리스타트로 다시 읽히지 않을 수 있어서 이쪽이 확실하다.
+  static DateTime? get debugPredictionAt {
+    if (!kDebugMode) return null;
+    const fromDefine = String.fromEnvironment('DEBUG_PREDICTION_AT');
+    final raw = fromDefine.trim().isNotEmpty
+        ? fromDefine.trim()
+        : (dotenv.env['DEBUG_PREDICTION_AT']?.trim() ?? '');
+    if (raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toLocal();
+  }
+
   /// App Link / Universal Link 호스트 (예: campuslunch.shop)
   static String get appLinkHost =>
       _get('APP_LINK_HOST').isNotEmpty
