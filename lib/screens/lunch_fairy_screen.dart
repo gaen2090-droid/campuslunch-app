@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
-    show Button, Link, ShareClient, TextTemplate;
+    show ShareClient;
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +16,8 @@ import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
 import '../utils/lunch_fairy_flavor.dart';
 import '../utils/lunch_fairy_recommender.dart';
-import '../widgets/share_sheet.dart' show buildShareLink;
+import '../widgets/share_sheet.dart'
+    show buildShareLink, launchRestaurantKakaoShare;
 import '../widgets/restaurant_image.dart';
 import 'detail_screen.dart';
 
@@ -451,29 +452,18 @@ class _LunchFairyScreenState extends State<LunchFairyScreen> {
     final menuLine = menus.isNotEmpty
         ? '\n대표메뉴: ${menus.join(' · ')}'
         : (pick.menu != null ? '\n추천메뉴: ${pick.menu!.name}' : '');
-    final text = '오늘 점심, 점메추 요정의 선택은 ${r.name}!'
-        '$menuLine\n캠퍼스런치에서 점메추 요정에게 맡겨보세요.';
-
-    final url = Uri.parse(buildShareLink(r));
-    final params = r.linkNo > 0
-        ? <String, String>{'r': '${r.linkNo}'}
-        : <String, String>{'path': 'home'};
-    final link = Link(
-      webUrl: url,
-      mobileWebUrl: url,
-      androidExecutionParams: params,
-      iosExecutionParams: params,
-    );
-    final template = TextTemplate(
-      text: text,
-      link: link,
-      buttons: [Button(title: '앱에서 열기', link: link)],
-    );
+    const closing = '캠퍼스런치에서 점메추 요정에게 맡겨보세요.';
+    final title = '오늘 점심, 점메추 요정의 선택은 ${r.name}!';
+    final description = menuLine.isEmpty ? closing : '${menuLine.trim()}\n$closing';
+    final text = '$title\n$description';
 
     try {
       if (await ShareClient.instance.isKakaoTalkSharingAvailable()) {
-        final uri = await ShareClient.instance.shareDefault(template: template);
-        await ShareClient.instance.launchKakaoTalk(uri);
+        await launchRestaurantKakaoShare(
+          restaurant: r,
+          title: title,
+          description: description,
+        );
         return;
       }
       await Share.share('$text\n${buildShareLink(r)}');

@@ -15,7 +15,8 @@ import '../providers/app_provider.dart';
 import '../utils/lunch_fairy_recommender.dart';
 import '../utils/lunch_roulette.dart';
 import '../widgets/restaurant_image.dart';
-import '../widgets/share_sheet.dart' show buildShareLink;
+import '../widgets/share_sheet.dart'
+    show buildShareLink, launchRestaurantKakaoShare;
 import 'detail_screen.dart';
 
 /// 점메추 요정 아래에 놓는 룰렛 배너. 홈은 요정 배너와 같은 시간대에만 보인다.
@@ -711,28 +712,17 @@ class _LunchRouletteScreenState extends State<LunchRouletteScreen>
         metadata: {'tab': _tab == 0 ? 'random' : 'pick'});
     final menus = fairySignatureMenus(r).map((m) => m.name).toList();
     final menuLine = menus.isNotEmpty ? '\n대표메뉴: ${menus.join(' · ')}' : '';
-    final text = '오늘 점심, 식당 룰렛이 고른 곳은 ${r.name}!'
-        '$menuLine\n캠퍼스런치에서 같이 돌려봐요.';
-
-    final url = Uri.parse(buildShareLink(r));
-    final params = r.linkNo > 0
-        ? <String, String>{'r': '${r.linkNo}'}
-        : <String, String>{'path': 'home'};
-    final link = Link(
-      webUrl: url,
-      mobileWebUrl: url,
-      androidExecutionParams: params,
-      iosExecutionParams: params,
-    );
-    final template = TextTemplate(
-      text: text,
-      link: link,
-      buttons: [Button(title: '앱에서 열기', link: link)],
-    );
+    const closing = '캠퍼스런치에서 같이 돌려봐요.';
+    final title = '오늘 점심, 식당 룰렛이 고른 곳은 ${r.name}!';
+    final description = menuLine.isEmpty ? closing : '${menuLine.trim()}\n$closing';
+    final text = '$title\n$description';
     try {
       if (await ShareClient.instance.isKakaoTalkSharingAvailable()) {
-        final uri = await ShareClient.instance.shareDefault(template: template);
-        await ShareClient.instance.launchKakaoTalk(uri);
+        await launchRestaurantKakaoShare(
+          restaurant: r,
+          title: title,
+          description: description,
+        );
         return;
       }
       await Share.share('$text\n${buildShareLink(r)}');

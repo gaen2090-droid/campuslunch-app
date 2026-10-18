@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide ImageInfo;
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 
 import '../constants/app_colors.dart';
@@ -26,6 +27,104 @@ String buildShareText(Restaurant r) => '${_shareSummary(r)}\n${buildShareLink(r)
 
 /// 카카오톡 템플릿용 — 링크는 템플릿의 버튼이 대신하므로 본문에는 넣지 않음
 String buildKakaoShareText(Restaurant r) => _shareSummary(r);
+
+Uri? _kakaoShareImageUri(String raw) {
+  final uri = Uri.tryParse(raw.trim());
+  if (uri == null || uri.host.isEmpty) return null;
+  if (uri.scheme != 'https' && uri.scheme != 'http') return null;
+  return uri;
+}
+
+Link _restaurantShareLink(Restaurant restaurant) {
+  final url = Uri.parse(buildShareLink(restaurant));
+  final params = restaurant.linkNo > 0
+      ? <String, String>{'r': '${restaurant.linkNo}'}
+      : <String, String>{'path': 'home'};
+  return Link(
+    webUrl: url,
+    mobileWebUrl: url,
+    androidExecutionParams: params,
+    iosExecutionParams: params,
+  );
+}
+
+TextTemplate _restaurantTextTemplate({
+  required Restaurant restaurant,
+  required String title,
+  required String description,
+}) {
+  final link = _restaurantShareLink(restaurant);
+  return TextTemplate(
+    text: '$title\n$description',
+    link: link,
+    buttons: [Button(title: '앱에서 열기', link: link)],
+  );
+}
+
+/// 매장 페이지 이미지를 카카오에 올려 피드 카드에 쓸 주소를 받는다.
+/// 구글 사진 주소는 카카오 서버가 직접 받지 못하는 경우가 있어, 그때는 앱이 받아 올린다.
+Future<ImageInfo?> _hostedShareImage(String raw) async {
+  final uri = _kakaoShareImageUri(raw);
+  if (uri == null) return null;
+  try {
+    final scraped =
+        await ShareClient.instance.scrapImage(imageUrl: uri.toString());
+    return scraped.infos.original;
+  } catch (e) {
+    debugPrint('[Share] scrap image failed: $e');
+  }
+  try {
+    final res = await http.get(uri).timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200 || res.bodyBytes.isEmpty) return null;
+    if (res.bodyBytes.length > 5 * 1024 * 1024) return null;
+    final uploaded =
+        await ShareClient.instance.uploadImage(byteData: res.bodyBytes);
+    return uploaded.infos.original;
+  } catch (e) {
+    debugPrint('[Share] upload image failed: $e');
+    return null;
+  }
+}
+
+/// 점메추·룰렛 결과를 카카오톡으로 연다. 매장 이미지가 있으면 카드에 넣고, 없으면 글만 보낸다.
+Future<void> launchRestaurantKakaoShare({
+  required Restaurant restaurant,
+  required String title,
+  required String description,
+}) async {
+  final image = await _hostedShareImage(restaurant.imageUrl);
+  final link = _restaurantShareLink(restaurant);
+  final DefaultTemplate template = image == null
+      ? _restaurantTextTemplate(
+          restaurant: restaurant,
+          title: title,
+          description: description,
+        )
+      : FeedTemplate(
+          content: Content(
+            title: title,
+            description: description,
+            imageUrl: Uri.parse(image.url),
+            imageWidth: image.width,
+            imageHeight: image.height,
+            link: link,
+          ),
+          buttons: [Button(title: '앱에서 열기', link: link)],
+        );
+  try {
+    final uri = await ShareClient.instance.shareDefault(template: template);
+    await ShareClient.instance.launchKakaoTalk(uri);
+  } catch (_) {
+    if (template is! FeedTemplate) rethrow;
+    final plain = _restaurantTextTemplate(
+      restaurant: restaurant,
+      title: title,
+      description: description,
+    );
+    final uri = await ShareClient.instance.shareDefault(template: plain);
+    await ShareClient.instance.launchKakaoTalk(uri);
+  }
+}
 
 Future<void> showShareSheet(BuildContext context, Restaurant restaurant) {
   return showModalBottomSheet(
