@@ -91,6 +91,10 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
   /// 마커 겹침 제거(간소화) on/off. 현재 제보 가능 매장 수가 적어 꺼둠 —
   /// 매장이 많아지면 true로 되돌려 재사용.
   static const bool _markerOverlapEnabled = true;
+
+  /// 이 확대 단계(카카오 레벨↑=확대) 이상에서는 겹쳐도 모든 마커를 보여준다.
+  /// 가게 카드를 눌렀을 때 이동하는 확대가 19, 지역 맞춤이 보통 18 안팎.
+  static const int _showAllMarkersZoom = 18;
   int? _lastZoomLevel;
   LatLng? _cachedMyLocation;
   bool _myLocationFetchInFlight = false;
@@ -129,9 +133,11 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
     // 화면에서 직접 요청한 맞춤(지역 선택 등)은 항상 따른다.
     if (widget.cameraFitToken != oldWidget.cameraFitToken) return true;
     // 필터를 풀어서 매장이 늘어나기만 한 경우에는 카메라를 움직이지 않는다
-    // (축소되며 위치가 바뀌는 게 거슬린다는 피드백). 처음 목록이 채워질 때(이전이 빈 목록)는 맞춘다.
+    // (축소되며 위치가 바뀌는 게 거슬린다는 피드백). 필터 결과가 비어 있던 상태(예: 즐겨찾기가
+    // 하나도 없을 때)에서 풀어도 마찬가지다. 단, 지도가 처음 맞춰지기 전(_lastFitKey 비어 있음)에
+    // 목록이 처음 채워질 때는 맞춘다.
     final oldIds = _locatedIds(oldWidget.restaurants);
-    if (oldIds.isNotEmpty && _locatedIds(widget.restaurants).containsAll(oldIds)) {
+    if (_lastFitKey.isNotEmpty && _locatedIds(widget.restaurants).containsAll(oldIds)) {
       return false;
     }
     return _fitKeyFor(widget.restaurants) != _fitKeyFor(oldWidget.restaurants);
@@ -496,11 +502,15 @@ class RestaurantKakaoMapState extends State<RestaurantKakaoMap>
             priority: priority,
           ));
         }
-        visibleIds = MarkerOverlap.resolveVisibleIds(
-          candidates: candidates,
-          zoomLevel: zoom,
-          iconRadiusPixels: _markerIconRadiusPixels,
-        );
+        // 가게 카드를 눌렀을 때 정도로 확대한 상태(_showAllMarkersZoom 이상)에서는
+        // 겹침 제거 없이 모든 매장을 보여준다(숨겨진 매장이 없도록).
+        visibleIds = zoom >= _showAllMarkersZoom
+            ? candidates.map((c) => c.id).toList()
+            : MarkerOverlap.resolveVisibleIds(
+                candidates: candidates,
+                zoomLevel: zoom,
+                iconRadiusPixels: _markerIconRadiusPixels,
+              );
 
         // 라벨(매장명)은 화면상 서로 겹치지 않는 것만 표시 — 매장 수와 무관하게 항상 동작.
         final visibleCandidates =
