@@ -47,9 +47,9 @@ class _CommunityPostEditorSheetState extends State<CommunityPostEditorSheet> {
 
   static const _maxImages = 10;
 
-  /// 선택 시 긴 변 1920px, JPEG 품질 85로 줄여 업로드 용량·시간을 줄인다.
-  static const _imageMaxSide = 1920.0;
-  static const _imageQuality = 85;
+  /// 선택 시 긴 변 1600px, JPEG 품질 80으로 줄여 업로드·로딩 용량을 줄인다.
+  static const _imageMaxSide = 1600.0;
+  static const _imageQuality = 80;
 
   /// 게시된 글의 투표는 전혀 수정할 수 없으므로(§0), 이미 투표가 달린 글을
   /// 수정할 때는 새 투표를 추가하는 UI 진입점을 노출하지 않는다. 대신 기존
