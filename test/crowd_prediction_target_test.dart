@@ -185,5 +185,56 @@ void main() {
       expect(predictedForLevel(stores, map, 2).map((r) => r.id), ['d']);
       expect(predictedForLevel(stores, map, 3), isEmpty);
     });
+
+    test('추천 배너용: 바로입장 예측 중 확률이 가장 높은 매장을 고른다', () {
+      final stores = [store('a', 30), store('b', 20), store('c', 10)];
+      final map = {
+        'a': pred('a', 60, 2),
+        'b': pred('b', 85, 1),
+        'c': pred('c', 70, 1),
+      };
+      expect(pickPredictedBannerRestaurant(stores, map)?.id, 'b');
+    });
+
+    test('추천 배너용: 약간혼잡·자리없음 예측은 확률이 높아도 올리지 않는다', () {
+      final stores = [store('a', 30), store('b', 20), store('c', 10)];
+      final map = {
+        'a': pred('a', 69, 2),
+        'b': pred('b', 39, 3),
+        'c': pred('c', 70, 1),
+      };
+      expect(pickPredictedBannerRestaurant(stores, map)?.id, 'c');
+    });
+
+    test('추천 배너용: 바로입장 예측이 하나도 없으면 null', () {
+      final stores = [store('a', 30), store('b', 20)];
+      final map = {
+        'a': pred('a', 65, 2),
+        'b': pred('b', 20, 3),
+      };
+      expect(pickPredictedBannerRestaurant(stores, map), isNull);
+    });
+
+    test('추천 배너용: 확률이 같으면 가까운 매장을 고른다', () {
+      final stores = [store('a', 30), store('b', 20), store('c', 10)];
+      final map = {
+        'a': pred('a', 80, 1),
+        'b': pred('b', 80, 1),
+        'c': pred('c', 80, 1),
+      };
+      expect(pickPredictedBannerRestaurant(stores, map)?.id, 'c');
+    });
+
+    test('추천 배너용: 예측이 붙은 매장이 없으면 null', () {
+      final stores = [store('a', 30), store('b', 20)];
+      expect(pickPredictedBannerRestaurant(stores, const {}), isNull);
+      expect(pickPredictedBannerRestaurant(const [], const {}), isNull);
+    });
+
+    test('추천 배너용: 예측 값이 없는 매장은 확률 비교에서 제외된다', () {
+      final stores = [store('a', 5), store('b', 20)];
+      final map = {'b': pred('b', 75, 1)};
+      expect(pickPredictedBannerRestaurant(stores, map)?.id, 'b');
+    });
   });
 }

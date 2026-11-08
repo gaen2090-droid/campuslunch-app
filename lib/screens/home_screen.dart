@@ -241,7 +241,10 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
       context, MaterialPageRoute(builder: (_) => DetailScreen(restaurant: r)));
 
   void _openRecommendedDetail(Restaurant r) {
-    context.read<AppProvider>().recordBannerClick(r.id);
+    final provider = context.read<AppProvider>();
+    provider.recordBannerClick(r.id);
+    // 예측으로 올라온 배너면 예측 지표에도 클릭을 남긴다 (예측이 없는 매장이면 아무 일도 안 함).
+    provider.recordPredictionClick(r, surface: 'home');
     _openDetail(r);
   }
 
@@ -360,15 +363,24 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     int minutesSince(Restaurant r) =>
         r.updatedAt != null ? DateTime.now().difference(r.updatedAt!).inMinutes : r.updated;
 
-    final recommended = buildAvailableSection(filtered, provider.useAlgorithmRanking).recommended;
-
-    _trackBannerImpression(recommended);
+    final freshRecommended = buildAvailableSection(filtered, provider.useAlgorithmRanking).recommended;
 
     const _sectionMaxMinutes = 30;
 
     // 예측: 오늘 제보가 없거나 마지막 제보가 30분 넘은 매장에 붙는다. 확률로 정해진 섹션에서
     // 확정 제보 매장 아래에 놓이고, 예측이 붙은 매장은 30분 넘은 옛 제보 목록에서는 빠진다.
     final predictions = collectPredictions(filtered, provider.predictionFor);
+
+    // 추천 배너: 최신 제보로 뽑힌 매장이 우선, 그런 매장이 없으면 바로입장 예측 중 확률이 가장 높은 매장.
+    // (약간혼잡·자리없음 예측은 "바로입장" 섹션 위 배너에 올리지 않는다.)
+    final predictedBanner = freshRecommended == null
+        ? pickPredictedBannerRestaurant(filtered, predictions)
+        : null;
+    final recommended = freshRecommended ?? predictedBanner;
+    final recommendedPrediction =
+        predictedBanner == null ? null : predictions[predictedBanner.id];
+
+    _trackBannerImpression(recommended);
     final predictedAvailable = predictedForLevel(filtered, predictions, 1);
     final predictedSlightlyBusy = predictedForLevel(filtered, predictions, 2);
     final predictedBusy = predictedForLevel(filtered, predictions, 3);
@@ -744,6 +756,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
               ? _buildSearch(searchResults, byId)
               : _buildHome(
                   recommended: recommended,
+                  recommendedPrediction: recommendedPrediction,
                   recentCards: recentCards,
                   availableCards: availableCards,
                   loading: provider.restaurantsLoading,
@@ -905,6 +918,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
 
   Widget _buildHome({
     required Restaurant? recommended,
+    required CrowdPrediction? recommendedPrediction,
     required List<Restaurant> recentCards,
     required List<Restaurant> availableCards,
     required bool loading,
@@ -933,7 +947,12 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
     const emptyMsg = '제보된 매장이 없어요. 제보하고 스탬프를 받아보세요!';
 
     // 예측 지표: 화면에 나온 카드 중 예측이 붙은 매장을 기록(같은 매장·구간은 한 번만).
-    final shownCards = [...top5Available, ...top5SlightlyBusy, ...busyCards];
+    final shownCards = [
+      if (recommendedPrediction != null && recommended != null) recommended,
+      ...top5Available,
+      ...top5SlightlyBusy,
+      ...busyCards,
+    ];
     if (predictions.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1131,6 +1150,7 @@ List<Restaurant> _search(List<Restaurant> all, String q) {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                       child: HeroRestaurantCard(
                         restaurant: recommended,
+                        prediction: recommendedPrediction,
                         onDetail: () => _openRecommendedDetail(recommended),
                         onReport: () => _openReport(recommended),
                       ),

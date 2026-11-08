@@ -65,6 +65,31 @@ Map<String, CrowdPrediction> collectPredictions(
   return result;
 }
 
+/// 홈 추천 배너에 올릴 예측 매장: 바로입장(level 1) 예측 중 여유로울 확률이 가장 높은 매장,
+/// 같으면 가까운 순. 최신 제보로 뽑힌 추천 매장이 없을 때만 쓴다.
+/// 약간혼잡·자리없음 예측은 배너에 올리지 않는다. 해당 매장이 없으면 null.
+Restaurant? pickPredictedBannerRestaurant(
+  Iterable<Restaurant> list,
+  Map<String, CrowdPrediction> predictions,
+) {
+  Restaurant? best;
+  for (final r in list) {
+    final p = predictions[r.id];
+    if (p == null || p.level != 1) continue;
+    if (best == null) {
+      best = r;
+      continue;
+    }
+    final byProbability =
+        p.relaxProbability.compareTo(predictions[best.id]!.relaxProbability);
+    if (byProbability > 0 ||
+        (byProbability == 0 && r.distance < best.distance)) {
+      best = r;
+    }
+  }
+  return best;
+}
+
 /// 섹션 [level](1=바로입장, 2=약간혼잡, 3=자리없음)에 들어갈 예측 매장.
 /// 확률이 높은 순, 같으면 가까운 순이다. 확정 제보 매장 뒤에 이어 붙이는 용도.
 List<Restaurant> predictedForLevel(

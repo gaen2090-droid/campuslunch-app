@@ -166,11 +166,15 @@ class HeroRestaurantCard extends StatefulWidget {
   final VoidCallback onDetail;
   final VoidCallback onReport;
 
+  /// 있으면 최신 제보 대신 `예측 · 바로입장` 배지를 보여준다 (최신 제보가 없을 때 예측 매장을 올리는 경우).
+  final CrowdPrediction? prediction;
+
   const HeroRestaurantCard({
     super.key,
     required this.restaurant,
     required this.onDetail,
     required this.onReport,
+    this.prediction,
   });
 
   @override
@@ -191,11 +195,13 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
   Widget build(BuildContext context) {
     final r = widget.restaurant;
     final hasImage = !_isFallback;
-    final isBusy = r.status == '약간혼잡';
+    final p = widget.prediction;
+    final displayStatus = p != null ? p.status : r.status;
+    final isBusy = displayStatus == '약간혼잡';
     final keyColor = isBusy ? const Color(0xFFF59E0B) : const Color(0xFFCDE9DC);
     const reportTextColor = Color(0xFF26BC7D);
-    final statusLabel = crowdStatusLabel(r.status);
-    final meta = crowdStatusMeta(r.status);
+    final statusLabel = crowdStatusLabel(displayStatus);
+    final meta = crowdStatusMeta(displayStatus);
 
     return GestureDetector(
       onTap: widget.onDetail,
@@ -241,7 +247,8 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (r.hasCrowdUpdate &&
+                        if (p == null &&
+                            r.hasCrowdUpdate &&
                             (r.crowdBaseSource == 'owner' || r.isSeatDerived)) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -268,14 +275,16 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                           ),
                           child: Text.rich(
                             TextSpan(
-                              text: r.seatBadgeLabel ?? statusLabel,
+                              text: p != null
+                                  ? '예측 · $statusLabel'
+                                  : (r.seatBadgeLabel ?? statusLabel),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 color: Color(meta.color),
                               ),
                               children: [
-                                if (r.status != '영업안함' && r.hasCrowdUpdate)
+                                if (p == null && r.status != '영업안함' && r.hasCrowdUpdate)
                                   TextSpan(
                                     text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
                                     style: const TextStyle(
