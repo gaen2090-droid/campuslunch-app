@@ -11,6 +11,7 @@ import '../providers/app_provider.dart';
 import '../utils/profanity_filter.dart';
 import '../utils/time_ago.dart';
 import '../widgets/block_user_dialog.dart';
+import '../widgets/community_image_gallery.dart';
 import '../widgets/community_poll_card.dart';
 import '../widgets/community_post_editor_sheet.dart';
 import '../widgets/admin_badge.dart';
@@ -519,21 +520,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                   ),
                   if (_post.imageUrls.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    ...(_post.imageUrls.map((url) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              url,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 160,
-                                color: const Color(0xFFF3F4F6),
-                              ),
-                            ),
-                          ),
-                        ))),
+                    CommunityImageGallery(urls: _post.imageUrls),
                   ],
                   if (_post.hasPoll) ...[
                     const SizedBox(height: 12),

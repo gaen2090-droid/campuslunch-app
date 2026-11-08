@@ -12,6 +12,7 @@ import '../widgets/business_hours_section.dart';
 import '../widgets/owner_seat_message_card.dart';
 import '../models/owner_seat_update.dart';
 import '../utils/report_feedback.dart';
+import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/share_sheet.dart';
 import '../models/crowd_report.dart';
@@ -61,6 +62,18 @@ class _DetailScreenState extends State<DetailScreen> {
       _loadOwnerSeatUpdate();
       _loadRecentReports();
     });
+  }
+
+  Future<void> _openPhotoViewer(List<String> photos, int index) async {
+    final last = await FullScreenImageViewer.show(
+      context,
+      urls: photos,
+      initialIndex: index,
+    );
+    // 뷰어에서 넘긴 위치를 상단 캐러셀에도 반영
+    if (last != null && last != _photoIndex && _photoPageController.hasClients) {
+      _photoPageController.jumpToPage(last);
+    }
   }
 
   @override
@@ -167,19 +180,24 @@ class _DetailScreenState extends State<DetailScreen> {
                           itemCount: photos.length,
                           onPageChanged: (i) => setState(() => _photoIndex = i),
                           itemBuilder: (context, i) {
-                            if (i == 0) {
-                              return RestaurantImage(
-                                url: photos[i],
-                                fallback: () => const RiceBallIcon(size: null),
-                                onFallbackChanged: (hasFallback) {
-                                  if (hasFallback == !_hasImage) return;
-                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                    if (mounted) setState(() => _hasImage = !hasFallback);
-                                  });
-                                },
-                              );
-                            }
-                            return RestaurantImage(url: photos[i]);
+                            final Widget image = i == 0
+                                ? RestaurantImage(
+                                    url: photos[i],
+                                    fallback: () => const RiceBallIcon(size: null),
+                                    onFallbackChanged: (hasFallback) {
+                                      if (hasFallback == !_hasImage) return;
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (mounted) setState(() => _hasImage = !hasFallback);
+                                      });
+                                    },
+                                  )
+                                : RestaurantImage(url: photos[i]);
+                            // 눌러서 전체 화면으로 보기 (확대·좌우 넘기기)
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openPhotoViewer(photos, i),
+                              child: image,
+                            );
                           },
                         ),
                       );
