@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../widgets/restaurant_image.dart';
 import '../widgets/rice_ball_icon.dart';
@@ -7,6 +8,7 @@ import '../utils/navigation_helper.dart';
 import '../models/crowd_prediction.dart';
 import '../models/restaurant.dart';
 import '../providers/app_provider.dart';
+import '../utils/crowd_prediction_target.dart';
 import '../utils/crowd_status_label.dart';
 import '../widgets/business_hours_section.dart';
 import '../widgets/owner_seat_message_card.dart';
@@ -28,6 +30,8 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   OwnerSeatUpdate? _ownerSeatUpdate;
   List<RecentCrowdReport> _recentReports = [];
+  List<CrowdPrediction> _predictionProfile = const [];
+  Timer? _profileTimer;
   late bool _hasImage;
   final _photoPageController = PageController();
   int _photoIndex = 0;
@@ -50,6 +54,16 @@ class _DetailScreenState extends State<DetailScreen> {
       // 맛집컬렉션 전용 매장(crowdEnabled=false)은 혼잡도 제보 기능 자체가 없으므로
       // 제보 유도 시트/좌석 업데이트/최근 제보를 아예 불러오지 않는다.
       if (!r.crowdEnabled) return;
+      _loadPredictionProfile();
+      // 화면을 열어 둔 동안 점심시간이면 1분마다 값을 새로 받고 "지금" 구간 표시도 옮긴다.
+      _profileTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        if (isPredictionFetchWindow(context.read<AppProvider>().predictionNow)) {
+          _loadPredictionProfile();
+        } else {
+          setState(() {});
+        }
+      });
       // 사장님이 자기 매장을 미리보기할 때는 제보 유도 시트를 띄우지 않는다.
       if (r.status == '영업안함' || provider.hasOwnerTab) {
         _loadOwnerSeatUpdate();
@@ -78,6 +92,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   void dispose() {
+    _profileTimer?.cancel();
     _photoPageController.dispose();
     super.dispose();
   }
@@ -94,6 +109,14 @@ class _DetailScreenState extends State<DetailScreen> {
           .read<AppProvider>()
           .applyOwnerSeatUpdateLocally(widget.restaurant.id, update);
     }
+  }
+
+  Future<void> _loadPredictionProfile() async {
+    final profile = await context
+        .read<AppProvider>()
+        .fetchPredictionProfile(widget.restaurant.id);
+    if (!mounted) return;
+    setState(() => _predictionProfile = profile);
   }
 
   Future<void> _loadRecentReports() async {
@@ -152,6 +175,14 @@ class _DetailScreenState extends State<DetailScreen> {
         r.crowdBaseSource == 'owner' &&
         r.updatedAt != null &&
         DateTime.now().difference(r.updatedAt!) < const Duration(minutes: 5);
+
+    // 영업시간 아래에 이미 카드(사장님 공지, 좌석 메시지, 지금 여유로울 확률)가 있으면
+    // 다음 카드와의 간격을 12로, 없으면 20으로 한다.
+    final hasCardAbove = prediction != null ||
+        (r.crowdEnabled && r.ownerNotice.isNotEmpty) ||
+        (r.crowdEnabled &&
+            _ownerSeatUpdate != null &&
+            _ownerSeatUpdate!.isVisibleAt(DateTime.now()));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -377,11 +408,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                   height: 1.15,
                                 ),
                               ),
-                              // 예측이 대표 상태일 때는 마지막 제보 시각 자리에 "예측"을 같은 회색 글씨로 보여준다.
+                              // 예측이 대표 상태일 때는 마지막 제보 시각 대신 "실시간 예측"만 보여준다.
                               if (prediction != null && r.status != '영업안함') ...[
                                 const SizedBox(height: 4),
                                 const Text(
-                                  '예측',
+                                  '실시간 예측',
                                   maxLines: 1,
                                   textAlign: TextAlign.right,
                                   style: TextStyle(
@@ -430,15 +461,23 @@ class _DetailScreenState extends State<DetailScreen> {
             if (r.crowdEnabled && prediction != null)
               _PredictionCard(prediction: prediction),
 
+            // 시간대별 예측 요약: 점심시간 밖에 들어온 사용자도 예측이 제공되는 시간을 알 수 있게 항상 보여준다.
+            if (r.crowdEnabled && _predictionProfile.isNotEmpty)
+              _PredictionProfileCard(
+                profile: _predictionProfile,
+                currentSlot: predictionSlotStart(provider.predictionNow),
+                topGap: hasCardAbove ? 12 : 20,
+              ),
+
             if (r.crowdEnabled && _recentEntries().isNotEmpty)
               _RecentReportsSection(
                 reports: _recentEntries(),
                 showPriorityNote: ownerPriorityActive,
-                topGap: prediction != null ? 12 : 20,
+                topGap: hasCardAbove || _predictionProfile.isNotEmpty ? 12 : 20,
               ),
 
-            // 예측이 없을 때는 기존 "예측 제공 예정" 안내를 그대로 둔다.
-            if (r.crowdEnabled && prediction == null)
+            // 예측도, 시간대별 데이터도 없을 때는 기존 "예측 제공 예정" 안내를 그대로 둔다.
+            if (r.crowdEnabled && prediction == null && _predictionProfile.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Container(
@@ -610,6 +649,182 @@ class _PredictionCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 점심 시간대(11:30~12:45) 15분 구간별 예측 상태 칩(바로입장/약간혼잡/자리없음) + 여유 확률. 시간과 무관하게 항상 보인다.
+/// 표본이 부족한 구간은 회색 `-` 칩으로 둔다. 지금 구간(점심시간 중)은 윤곽선과 "지금"으로 강조한다.
+class _PredictionProfileCard extends StatelessWidget {
+  final List<CrowdPrediction> profile;
+  final int? currentSlot;
+
+  /// 위 카드와의 간격.
+  final double topGap;
+
+  const _PredictionProfileCard({
+    required this.profile,
+    required this.currentSlot,
+    this.topGap = 20,
+  });
+
+  static const _slots = [690, 705, 720, 735, 750, 765];
+  /// 가장 여유로운 구간(확률이 같으면 이른 구간). 바로입장/약간혼잡일 때만 "추천"을 붙인다.
+  int? _bestSlot() {
+    final best = profile.reduce(
+      (a, b) => b.relaxProbability > a.relaxProbability ? b : a,
+    );
+    return best.level <= 2 ? best.slotStartMinute : null;
+  }
+
+  String _slotLabel(int minute) =>
+      '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final bySlot = {for (final p in profile) p.slotStartMinute: p};
+    final bestSlot = _bestSlot();
+    // 최근 제보·메뉴 카드와 같은 모양(흰 배경, 여백 16, 모서리 16, 테두리 D1D5DB).
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, topGap, 20, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Expanded(
+                  child: Text(
+                    '오늘 점심시간 예측',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF000000),
+                    ),
+                  ),
+                ),
+                Text(
+                  '숫자는 여유로울 확률',
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final slot in _slots)
+                  Expanded(child: _chip(bySlot[slot], slot, slot == bestSlot)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(CrowdPrediction? p, int slot, bool isBest) {
+    final isNow = slot == currentSlot;
+    final meta = p == null ? null : crowdStatusMeta(p.status);
+    final fg = meta == null ? const Color(0xFF9CA3AF) : Color(meta.color);
+    final bg = meta == null ? const Color(0xFFF3F4F6) : Color(meta.bgColor);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        children: [
+          Text(
+            _slotLabel(slot),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isNow ? FontWeight.w900 : FontWeight.w500,
+              color: const Color(0xFF000000),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isNow ? fg : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                p == null ? '-' : crowdStatusLabel(p.status),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: fg,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            p == null ? '' : '${p.relaxProbability}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isNow ? FontWeight.w900 : FontWeight.w500,
+              color: const Color(0xFF000000),
+            ),
+          ),
+          const SizedBox(height: 6),
+          // 가장 여유로운 구간 표시(퍼센트 바로 아래). 높이를 고정해 다른 칩과 줄이 어긋나지 않게 한다.
+          SizedBox(
+            height: 22,
+            child: isBest
+                ? Align(
+                    alignment: Alignment.topCenter,
+                    // 좁은 폰에서 칸보다 넓어지면 두 줄로 꺾이지 않고 알약째 줄어들게 한다.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: fg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          '추천',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.2,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        ],
       ),
     );
   }

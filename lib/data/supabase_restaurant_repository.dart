@@ -164,6 +164,26 @@ class SupabaseRestaurantRepository {
     }
   }
 
+  /// 한 매장의 점심 시간대별(11:30~12:45, 15분 6구간) 예측. 시간 제한 없이 조회된다.
+  /// 표본이 부족한 구간은 빠져 있다. 호출이 실패하면 빈 리스트.
+  Future<List<CrowdPrediction>> fetchCrowdPredictionProfile(String restaurantId) async {
+    try {
+      final rows = await _client.rpc(
+        'app_crowd_prediction_profile',
+        params: {'p_restaurant_id': restaurantId},
+      );
+      if (rows is! List) return const [];
+      return [
+        for (final row in rows)
+          if (row is Map)
+            CrowdPrediction.fromMap({...row, 'restaurant_id': restaurantId}),
+      ];
+    } catch (e, st) {
+      debugPrint('[Supabase] fetchCrowdPredictionProfile failed: $e\n$st');
+      return const [];
+    }
+  }
+
   /// 사장님 통계용: 본인 매장의 누적 즐겨찾기 수
   Future<int> fetchOwnerRestaurantBookmarkCount(String restaurantId) async {
     try {

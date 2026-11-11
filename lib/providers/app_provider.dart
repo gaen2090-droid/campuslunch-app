@@ -2981,6 +2981,13 @@ class AppProvider extends ChangeNotifier {
     return isPredictionTarget(r, now) ? p : null;
   }
 
+  /// 상세화면용: 이 매장의 시간대별 예측(시간 제한 없음). 없으면 빈 리스트.
+  Future<List<CrowdPrediction>> fetchPredictionProfile(String restaurantId) async {
+    final repo = _restaurantRepo;
+    if (repo == null) return const [];
+    return repo.fetchCrowdPredictionProfile(restaurantId);
+  }
+
   /// 예측을 서버에서 새로 받는다. 시간대 밖이면 받아 둔 값을 비운다. 실패하면 기존 값을 유지한다.
   Future<void> refreshPredictions() async {
     final repo = _restaurantRepo;
