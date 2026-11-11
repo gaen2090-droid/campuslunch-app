@@ -10,7 +10,7 @@ class RestaurantCard extends StatelessWidget {
   final Restaurant restaurant;
   final VoidCallback onTap;
 
-  /// 있으면 확정 제보 대신 `예측 · 바로입장` 같은 예측 배지를 보여준다 (숫자는 상세페이지에서만).
+  /// 있으면 확정 제보 대신 `바로입장 · 예측`처럼 보여준다. `예측`은 `5분 전`과 같은 회색 글씨.
   final CrowdPrediction? prediction;
 
   const RestaurantCard({
@@ -119,7 +119,7 @@ class RestaurantCard extends StatelessWidget {
                       TextSpan(
                         // 사장님 좌석 입력으로 가정한 상태는 "4명가능"처럼 인원으로 보여준다.
                         text: p != null
-                            ? '예측 · ${crowdStatusLabel(displayStatus)}'
+                            ? crowdStatusLabel(displayStatus)
                             : (r.seatBadgeLabel ?? crowdStatusLabel(displayStatus)),
                         style: TextStyle(
                           fontSize: 11,
@@ -127,7 +127,16 @@ class RestaurantCard extends StatelessWidget {
                           color: Color(meta.color),
                         ),
                       ),
-                      if (p == null && r.status != '영업안함' && r.hasCrowdUpdate)
+                      if (p != null)
+                        const TextSpan(
+                          text: ' · 예측',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        )
+                      else if (r.status != '영업안함' && r.hasCrowdUpdate)
                         TextSpan(
                           text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
                           style: const TextStyle(
@@ -166,7 +175,7 @@ class HeroRestaurantCard extends StatefulWidget {
   final VoidCallback onDetail;
   final VoidCallback onReport;
 
-  /// 있으면 최신 제보 대신 `예측 · 바로입장` 배지를 보여준다 (최신 제보가 없을 때 예측 매장을 올리는 경우).
+  /// 있으면 최신 제보 대신 `바로입장 · 예측`처럼 보여준다. `예측`은 `5분 전`과 같은 회색 글씨.
   final CrowdPrediction? prediction;
 
   const HeroRestaurantCard({
@@ -276,7 +285,7 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                           child: Text.rich(
                             TextSpan(
                               text: p != null
-                                  ? '예측 · $statusLabel'
+                                  ? statusLabel
                                   : (r.seatBadgeLabel ?? statusLabel),
                               style: TextStyle(
                                 fontSize: 11,
@@ -284,7 +293,16 @@ class _HeroRestaurantCardState extends State<HeroRestaurantCard> {
                                 color: Color(meta.color),
                               ),
                               children: [
-                                if (p == null && r.status != '영업안함' && r.hasCrowdUpdate)
+                                if (p != null)
+                                  const TextSpan(
+                                    text: ' · 예측',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  )
+                                else if (r.status != '영업안함' && r.hasCrowdUpdate)
                                   TextSpan(
                                     text: ' · ${formatUpdateAgeFromDateTime(r.updatedAt)}',
                                     style: const TextStyle(

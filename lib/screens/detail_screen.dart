@@ -377,11 +377,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                   height: 1.15,
                                 ),
                               ),
-                              // 예측이 대표 상태일 때는 마지막 제보 시각 대신 "예측"만 보여준다.
+                              // 예측이 대표 상태일 때는 마지막 제보 시각 자리에 "예측"을 같은 회색 글씨로 보여준다.
                               if (prediction != null && r.status != '영업안함') ...[
                                 const SizedBox(height: 4),
                                 const Text(
-                                  '실시간 예측',
+                                  '예측',
                                   maxLines: 1,
                                   textAlign: TextAlign.right,
                                   style: TextStyle(

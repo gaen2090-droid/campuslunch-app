@@ -1057,7 +1057,7 @@ class _SelectedCard extends StatelessWidget {
   final VoidCallback onCrowdDisabledTap;
   final double safeBottom;
 
-  /// 있으면 상태 자리에 `예측 · 바로입장`처럼 보여준다 (숫자는 상세페이지에서만).
+  /// 있으면 상태 옆에 `예측`을 `5분 전`과 같은 회색 글씨로 붙인다 (숫자는 상세페이지에서만).
   final CrowdPrediction? prediction;
 
   const _SelectedCard({
@@ -1152,11 +1152,29 @@ class _SelectedCard extends StatelessWidget {
                                 style: const TextStyle(
                                     fontSize: 12, color: Color(0xFF9CA3AF))),
                           ),
-                          Text(p != null ? '예측 · ${meta.label}' : meta.label,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                  color: statusColor)),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: meta.label,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: statusColor,
+                                  ),
+                                ),
+                                if (p != null)
+                                  const TextSpan(
+                                    text: ' · 예측',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ]),
                         // 예측 가게는 배지 바로 아래에 확률이 어떻게 나온 건지 한 줄로 알려준다.
                         if (p != null) ...[
