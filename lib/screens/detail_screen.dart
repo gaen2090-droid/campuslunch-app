@@ -716,7 +716,7 @@ class _PredictionProfileCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '숫자는 여유로울 확률',
+                  '여유로울 확률(%)',
                   maxLines: 1,
                   softWrap: false,
                   style: TextStyle(
